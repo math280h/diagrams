@@ -70,4 +70,9 @@ describe('cleanLabel', () => {
     expect(cleanLabel('Order service<br/>v2')).toEqual(['Order service', 'v2'])
     expect(cleanLabel('fa:fa-car Car #quot;fast#quot;')).toEqual(['Car "fast"'])
   })
+
+  it('leaves no complete tag after one pass', () => {
+    expect(cleanLabel('<scr<script>ipt>API</script>')).toEqual(['ipt>API'])
+    expect(cleanLabel('a < b')).toEqual(['a < b'])
+  })
 })

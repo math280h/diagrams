@@ -13,11 +13,16 @@ import {
 import type { DiagramEdge } from './types'
 
 const ID_ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyz'
+const ID_LENGTH = 10
+const UNBIASED_BYTE_LIMIT = 256 - (256 % ID_ALPHABET.length)
 
 export function newId(prefix: string): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(10))
   let id = ''
-  for (const byte of bytes) id += ID_ALPHABET[byte % ID_ALPHABET.length]
+  while (id.length < ID_LENGTH) {
+    for (const byte of crypto.getRandomValues(new Uint8Array(ID_LENGTH))) {
+      if (byte < UNBIASED_BYTE_LIMIT && id.length < ID_LENGTH) id += ID_ALPHABET[byte % ID_ALPHABET.length]
+    }
+  }
   return `${prefix}_${id}`
 }
 

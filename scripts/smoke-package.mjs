@@ -71,6 +71,7 @@ const child = spawn(executable, [], {
     DIAGRAMS_USER_DATA: userData,
     DIAGRAMS_DATA_DIR: dataDir,
     DIAGRAMS_AGENT_PORT: String(port),
+    DIAGRAMS_REGISTER_PROTOCOL: '0',
     ELECTRON_ENABLE_LOGGING: '1',
   },
   stdio: 'inherit',

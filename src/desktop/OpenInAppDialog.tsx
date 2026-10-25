@@ -1,5 +1,5 @@
-import { Check, Download, Loader2, RotateCw } from 'lucide-react'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Check, Loader2, RotateCw } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { DESKTOP_DOWNLOAD_URL } from './constants'
+import { DesktopDownloadLink } from './DesktopDownloadLink'
 import { closeOpenInApp, retryOpenInApp, useHandoff } from './open-in-app'
 
 /** Shows the progress while the website hands a diagram to the desktop app. */
@@ -54,14 +54,7 @@ export function OpenInAppDialog() {
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <a
-                href={DESKTOP_DOWNLOAD_URL}
-                target="_blank"
-                rel="noreferrer"
-                className={buttonVariants({ variant: 'ghost' })}
-              >
-                <Download /> Get the desktop app
-              </a>
+              <DesktopDownloadLink variant="ghost" />
               <Button onClick={retryOpenInApp}>
                 <RotateCw /> Try again
               </Button>

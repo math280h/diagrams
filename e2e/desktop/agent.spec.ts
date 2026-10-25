@@ -2,6 +2,8 @@ import { AGENT_ENDPOINT } from '@/desktop/constants'
 import { agentUrl, callTool, expect, test } from './fixtures'
 
 const PNG_SIGNATURE = 'iVBORw0KGgo'
+// React Flow hides a node until it measures the node.
+const MEASURE_TIMEOUT_MS = 20_000
 
 test('refuses a client without the token', async ({ window, agentPort }) => {
   await expect(window.getByRole('banner').getByRole('button', { name: 'Connect an agent' })).toBeVisible()
@@ -31,7 +33,7 @@ test('an agent builds a diagram that the user sees and undoes in one step', asyn
   })
   const nodes = window.locator('[data-editor-canvas] .react-flow__node')
   await expect(nodes).toHaveCount(4)
-  await expect(window.getByText('Checkout API')).toBeVisible()
+  await expect(nodes.filter({ hasText: 'Checkout API' })).toBeVisible({ timeout: MEASURE_TIMEOUT_MS })
 
   await callTool(mcp, 'layout_diagram', {})
   const { json } = await callTool(mcp, 'get_diagram', {})
