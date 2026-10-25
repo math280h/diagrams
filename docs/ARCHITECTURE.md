@@ -478,6 +478,8 @@ the handoff from the website, and updates from GitHub Releases.
   report an Intel Mac also on Apple silicon, so a Mac without the architecture hint, other systems
   and a failed lookup open the release page instead. The link accepts only files from the releases
   of this repository.
+- The app registers `diagrams://` each time it starts. Uninstalling on Windows removes that
+  registration when it points at the installed app (`build/installer.nsh`); an update keeps it.
 - Before Restart installs an update, main saves the open diagram and waits for the writes
   (`prepareQuit`), because the quit for an update closes the windows without the usual close step
   on macOS.
