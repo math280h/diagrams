@@ -6,7 +6,8 @@ export const DEEP_LINK_SCHEME = 'diagrams'
 export const WEBSITE_ORIGIN = 'https://draw.thias.dev'
 export const DEV_ORIGINS = ['http://127.0.0.1:5173', 'http://localhost:5173']
 export const REPOSITORY_URL = 'https://github.com/math280h/diagrams'
-export const DESKTOP_DOWNLOAD_URL = `${REPOSITORY_URL}#desktop-app`
+/** GitHub redirects this address to the newest published release that is not a pre-release. */
+export const DESKTOP_DOWNLOAD_URL = `${REPOSITORY_URL}/releases/latest`
 
 export const HANDOFF_PATH = '/handoff'
 export const HANDOFF_TTL_MS = 60_000
