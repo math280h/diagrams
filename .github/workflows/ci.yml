@@ -68,6 +68,14 @@ jobs:
       - name: Desktop end-to-end tests
         if: runner.os == 'Linux'
         run: xvfb-run --auto-servernum pnpm e2e:desktop
+      - name: Package the app without installers
+        run: pnpm exec electron-builder --dir --publish never
+      - name: Test the packaged app
+        if: runner.os != 'Linux'
+        run: node scripts/smoke-package.mjs
+      - name: Test the packaged app
+        if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum node scripts/smoke-package.mjs
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
