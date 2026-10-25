@@ -466,6 +466,11 @@ the handoff from the website, and updates from GitHub Releases.
     certificate, the app only says that a version is out and links to it (`macSigned` in the
     packaged `package.json`).
   - A build from source, or a package without `app-update.yml`, does not update itself.
+- The download button on the website asks the GitHub API for the latest release and links the
+  installer for the system of the visitor (client hints, then the user agent). Safari and Firefox
+  report an Intel Mac also on Apple silicon, so a Mac without the architecture hint, other systems
+  and a failed lookup open the release page instead. The link accepts only files from the releases
+  of this repository.
 - Before Restart installs an update, main saves the open diagram and waits for the writes
   (`prepareQuit`), because the quit for an update closes the windows without the usual close step
   on macOS.

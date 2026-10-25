@@ -1,9 +1,9 @@
-import { ArrowUpRight, X } from 'lucide-react'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { hideAgentIntro, openConnectAgent, useAgentIntroVisible, useAgentProblem } from './agent-store'
 import { isDesktop } from './bridge'
-import { DESKTOP_DOWNLOAD_URL } from './constants'
+import { DesktopDownloadLink } from './DesktopDownloadLink'
 
 const EXAMPLE_REQUEST = '“draw our checkout with Stripe”'
 
@@ -43,18 +43,7 @@ export function AgentIntro({ className }: { className?: string }) {
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-3">
-        {desktop ? (
-          <DesktopAction />
-        ) : (
-          <a
-            href={DESKTOP_DOWNLOAD_URL}
-            target="_blank"
-            rel="noreferrer"
-            className={buttonVariants({ variant: 'secondary' })}
-          >
-            Get the desktop app <ArrowUpRight />
-          </a>
-        )}
+        {desktop ? <DesktopAction /> : <DesktopDownloadLink variant="secondary" allDownloads />}
       </div>
       <Button
         variant="ghost"
