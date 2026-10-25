@@ -453,7 +453,9 @@ the handoff from the website, and updates from GitHub Releases.
   `node_modules`.
 - The Electron fuses turn off `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS`, the inspect flags and extra
   `file://` rights, and load the app only from its checked asar archive.
-- A `v*` tag starts `.github/workflows/release.yml`. One job creates a draft release, because
+- A `v*` tag starts `.github/workflows/release.yml`, and the tag gives the version of the build
+  (`-c.extraMetadata.version`), so a release needs no commit. `pnpm release:tag` works out the next
+  tag. One job creates a draft release, because
   parallel jobs of electron-builder could each create their own. Each platform job then packages,
   starts the packaged app and drives it through the agent server (`scripts/smoke-package.mjs`), and
   uploads its files. The maintainer publishes the draft. `docs/RELEASING.md` has the steps.
