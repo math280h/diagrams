@@ -457,6 +457,11 @@ the handoff from the website, and updates from GitHub Releases.
   parallel jobs of electron-builder could each create their own. Each platform job then packages,
   starts the packaged app and drives it through the agent server (`scripts/smoke-package.mjs`), and
   uploads its files. The maintainer publishes the draft. `docs/RELEASING.md` has the steps.
+- A tag such as `v0.2.0-beta.1` is a preview. It builds with the version of the tag, in the `preview`
+  environment without approval, and publishes itself as a GitHub pre-release. electron-updater
+  reads `/releases/latest`, which never returns a pre-release, for an app with a normal version.
+  For an app with a beta or alpha version it takes the newest release of the same or a more stable
+  channel. electron-builder writes only `latest*.yml` for GitHub, so no channel files are needed.
 - electron-updater reads the published releases of the public repository, so the app needs no
   token. `electron/updates.ts` picks a policy for each build:
   - Windows, a signed Mac build and an AppImage download an update and install it on quit, or at
