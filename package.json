@@ -1,6 +1,6 @@
 {
   "name": "diagrams",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Animated architecture diagrams and user flows, on the web and as a desktop app that AI agents can edit.",
   "homepage": "https://draw.thias.dev",
