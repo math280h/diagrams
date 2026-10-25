@@ -59,6 +59,7 @@ function handoffOrigins(): readonly string[] {
 }
 
 function registerProtocolClient() {
+  if (process.env.DIAGRAMS_REGISTER_PROTOCOL === '0') return
   if (!process.defaultApp) {
     app.setAsDefaultProtocolClient(DEEP_LINK_SCHEME)
     return
