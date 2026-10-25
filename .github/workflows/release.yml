@@ -26,13 +26,12 @@ jobs:
       - name: Read the version from the tag
         id: version
         run: |
-          app="v$(node -p "require('./package.json').version")"
           if [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-(alpha|beta)\.[0-9]+$ ]]; then
             echo "preview=true" >> "$GITHUB_OUTPUT"
-          elif [ "$GITHUB_REF_NAME" = "$app" ]; then
+          elif [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "preview=false" >> "$GITHUB_OUTPUT"
           else
-            echo "::error::The tag $GITHUB_REF_NAME is neither a preview such as v1.2.3-beta.1 nor the app version $app."
+            echo "::error::The tag $GITHUB_REF_NAME is neither a release such as v1.2.3 nor a preview such as v1.2.3-beta.1."
             exit 1
           fi
           echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"

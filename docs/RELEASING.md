@@ -1,36 +1,38 @@
 # Releasing the desktop app
 
 The website deploys from `main`. The desktop app ships through GitHub Releases, and the installed app updates itself
-from the latest published release.
+from the latest published release. The tag gives the version of a release: the workflow builds the app with it. The
+version in `package.json` only names builds on your own computer, so a release needs no commit.
 
 ## Make a release
 
-1. Set the new version in `package.json` (for example `0.2.0`), and merge that change to `main`.
-2. Tag the merge commit and push the tag:
+1. On an up-to-date `main` with no local changes, run:
 
    ```sh
-   git tag v0.2.0
-   git push origin v0.2.0
+   pnpm release:tag patch
    ```
 
-3. The Release workflow checks that the tag matches the version and creates a draft release. The packaging jobs use
-   the `release` environment, so GitHub asks you to approve them. Then they package the app on Windows, macOS and
-   Linux. Each job starts the packaged app and drives it through the agent server before it uploads its files.
-4. When all three jobs pass, open the draft on GitHub, edit the notes, and publish it. Installed apps find the update
+   Use `minor` or `major` for a bigger step, or an exact version such as `0.3.0`. The script works out the next
+   version from the newest tag, then creates and pushes the tag (signed, if git signs your tags). Add `--dry-run` to
+   only see the next version.
+
+2. The Release workflow creates a draft release. The packaging jobs use the `release` environment, so GitHub asks you
+   to approve them. Then they package the app on Windows, macOS and Linux. Each job starts the packaged app and drives
+   it through the agent server before it uploads its files.
+3. When all three jobs pass, open the draft on GitHub, edit the notes, and publish it. Installed apps find the update
    only after you publish.
 
 ## Make a preview
 
-A preview is a pre-release for testing. It needs no version change in `package.json`, no approval and no publish step.
+A preview is a pre-release for testing. It needs no approval and no publish step.
 
 ```sh
-git tag v0.2.0-beta.1
-git push origin v0.2.0-beta.1
+pnpm release:tag beta
 ```
 
-The tag must look like `v<version>-beta.<n>` or `v<version>-alpha.<n>`, and the version must be higher than the
-latest release. The workflow builds the app with the version of the tag in the `preview` environment, and publishes
-it as a GitHub pre-release when all three jobs pass.
+This tags the next beta, for example `v0.1.2-beta.1`, then `v0.1.2-beta.2`. Use `alpha` for an alpha, or an exact
+version such as `0.2.0-beta.1` for a preview of a bigger step. The workflow builds the app in the `preview`
+environment and publishes it as a GitHub pre-release when all three jobs pass.
 
 Installed apps with a normal version never get a preview. An app that runs a preview updates to the next preview or
 release, whichever is newer. An app on a beta preview skips alpha previews.
