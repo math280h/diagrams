@@ -16,21 +16,40 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      preview: ${{ steps.version.outputs.preview }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Check that the tag matches the app version
-        run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+      - name: Read the version from the tag
+        id: version
+        run: |
+          app="v$(node -p "require('./package.json').version")"
+          if [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-(alpha|beta)\.[0-9]+$ ]]; then
+            echo "preview=true" >> "$GITHUB_OUTPUT"
+          elif [ "$GITHUB_REF_NAME" = "$app" ]; then
+            echo "preview=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::The tag $GITHUB_REF_NAME is neither a preview such as v1.2.3-beta.1 nor the app version $app."
+            exit 1
+          fi
+          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
       - name: Create the draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --verify-tag --title "$GITHUB_REF_NAME" --generate-notes
+          PREVIEW: ${{ steps.version.outputs.preview }}
+        run: |
+          kind=()
+          if [ "$PREVIEW" = true ]; then kind=(--prerelease); fi
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
+            --title "$GITHUB_REF_NAME" --generate-notes "${kind[@]}"
 
   package:
     name: Package for ${{ matrix.os }}
     needs: draft
-    environment: release
+    environment: ${{ needs.draft.outputs.preview == 'true' && 'preview' || 'release' }}
     permissions:
       contents: write
     strategy:
@@ -70,13 +89,14 @@ jobs:
           AZURE_SIGNING_ACCOUNT: ${{ runner.os == 'Windows' && vars.AZURE_SIGNING_ACCOUNT || '' }}
           AZURE_SIGNING_PROFILE: ${{ runner.os == 'Windows' && vars.AZURE_SIGNING_PROFILE || '' }}
           AZURE_SIGNING_PUBLISHER: ${{ runner.os == 'Windows' && vars.AZURE_SIGNING_PUBLISHER || '' }}
+          VERSION: ${{ needs.draft.outputs.version }}
         run: |
           for name in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID \
             AZURE_TENANT_ID AZURE_CLIENT_ID AZURE_CLIENT_SECRET \
             AZURE_SIGNING_ENDPOINT AZURE_SIGNING_ACCOUNT AZURE_SIGNING_PROFILE AZURE_SIGNING_PUBLISHER; do
             [ -n "${!name}" ] || unset "$name"
           done
-          pnpm exec electron-builder ${{ matrix.target }} --publish never
+          pnpm exec electron-builder ${{ matrix.target }} --publish never -c.extraMetadata.version="$VERSION"
       - name: Allow the Electron sandbox
         if: runner.os == 'Linux'
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
@@ -92,5 +112,18 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           find release -maxdepth 1 -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.zip' -o -name '*.AppImage' \
-            -o -name '*.deb' -o -name '*.blockmap' -o -name 'latest*.yml' \) -print0 |
+            -o -name '*.deb' -o -name '*.blockmap' -o -name '*.yml' \) ! -name 'builder-debug.yml' -print0 |
             xargs -0 gh release upload "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --clobber
+
+  publish-preview:
+    name: Publish the preview
+    needs: [draft, package]
+    if: needs.draft.outputs.preview == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Publish the pre-release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease

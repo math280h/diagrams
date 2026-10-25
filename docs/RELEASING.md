@@ -13,11 +13,33 @@ from the latest published release.
    git push origin v0.2.0
    ```
 
-3. The Release workflow checks that the tag matches the version, creates a draft release, and then packages the app
-   on Windows, macOS and Linux. Each job starts the packaged app and drives it through the agent server before it
-   uploads its files.
+3. The Release workflow checks that the tag matches the version and creates a draft release. The packaging jobs use
+   the `release` environment, so GitHub asks you to approve them. Then they package the app on Windows, macOS and
+   Linux. Each job starts the packaged app and drives it through the agent server before it uploads its files.
 4. When all three jobs pass, open the draft on GitHub, edit the notes, and publish it. Installed apps find the update
    only after you publish.
+
+## Make a preview
+
+A preview is a pre-release for testing. It needs no version change in `package.json`, no approval and no publish step.
+
+```sh
+git tag v0.2.0-beta.1
+git push origin v0.2.0-beta.1
+```
+
+The tag must look like `v<version>-beta.<n>` or `v<version>-alpha.<n>`, and the version must be higher than the
+latest release. The workflow builds the app with the version of the tag in the `preview` environment, and publishes
+it as a GitHub pre-release when all three jobs pass.
+
+Installed apps with a normal version never get a preview. An app that runs a preview updates to the next preview or
+release, whichever is newer. An app on a beta preview skips alpha previews.
+
+## Who can release
+
+Only repository admins can create, move or delete `v*` tags (the "Release tags" ruleset), so only they can start a
+release or a preview. The `release` and `preview` environments accept only tags (`v*` and `v*-*`), so a pull request
+can never use them or their secrets.
 
 Test a package on your own computer with `pnpm desktop:package`. It writes the installer for your platform to
 `release/` and publishes nothing. `node scripts/smoke-package.mjs` then tests the packaged app.
