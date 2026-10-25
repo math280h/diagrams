@@ -1,0 +1,68 @@
+import { getNodesBounds, useNodesInitialized, useReactFlow, useStore, useStoreApi } from '@xyflow/react'
+import { useEffect, useState } from 'react'
+import type { Rect } from '@/engine/camera'
+import { readableViewport } from './framing'
+
+export interface FramingOptions {
+  edges: readonly { source: string; target: string }[]
+  paddingPx: number
+  minZoom: number
+  maxZoom: number
+  /** The screen pixels at the bottom of the view that a caption strip covers. */
+  bottomInsetPx?: number
+  /** If true, the hook frames the diagram one time and does not follow later size changes. */
+  once?: boolean
+}
+
+/**
+ * Sets the viewport of the React Flow instance around it to the {@link readableViewport} after React Flow measures the
+ * nodes.
+ *
+ * @returns True after the first viewport change.
+ */
+export function useReadableFraming({
+  edges,
+  paddingPx,
+  minZoom,
+  maxZoom,
+  bottomInsetPx = 0,
+  once = false,
+}: FramingOptions) {
+  const initialized = useNodesInitialized()
+  const store = useStoreApi()
+  const { setViewport } = useReactFlow()
+  const width = useStore((state) => state.width)
+  const height = useStore((state) => state.height)
+  const [framed, setFramed] = useState(false)
+
+  useEffect(() => {
+    if (!initialized || width === 0 || height === 0 || (once && framed)) return
+    const { nodes, nodeLookup } = store.getState()
+    const framedNodes = nodes.filter((node) => node.type !== 'text')
+    const bounds = getNodesBounds(framedNodes.length > 0 ? framedNodes : nodes, { nodeLookup })
+    const rects = new Map<string, Rect>()
+    for (const [id, node] of nodeLookup) {
+      if (node.type === 'group' || node.type === 'text') continue
+      rects.set(id, {
+        ...node.internals.positionAbsolute,
+        width: node.measured.width ?? 0,
+        height: node.measured.height ?? 0,
+      })
+    }
+    void setViewport(
+      readableViewport({
+        bounds,
+        rects,
+        edges,
+        view: { width, height: height - bottomInsetPx },
+        paddingPx,
+        minZoom,
+        maxZoom,
+      }),
+    )
+    const frame = requestAnimationFrame(() => setFramed(true))
+    return () => cancelAnimationFrame(frame)
+  }, [initialized, width, height, store, setViewport, edges, paddingPx, minZoom, maxZoom, bottomInsetPx, once, framed])
+
+  return framed
+}

@@ -1,0 +1,19 @@
+name: Idea
+description: Suggest a new feature or a change.
+labels: [idea]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What do you want to do?
+      description: Describe the task or the problem, not only the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: How could the app help?
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What do you do today instead?

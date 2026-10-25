@@ -1,0 +1,16 @@
+{
+  "name": "diagrams",
+  "displayName": "Diagrams",
+  "description": "Draw, animate and review architecture diagrams in the Diagrams desktop app.",
+  "author": { "name": "Mathias V. Nielsen" },
+  "keywords": ["diagrams", "architecture", "mcp"],
+  "userConfig": {
+    "diagrams_token": {
+      "type": "string",
+      "title": "Diagrams access token",
+      "description": "The token from Connect an agent in the Diagrams app.",
+      "sensitive": true,
+      "required": true
+    }
+  }
+}

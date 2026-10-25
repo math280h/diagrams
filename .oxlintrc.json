@@ -1,0 +1,68 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "typescript", "oxc", "jsdoc", "import", "unicorn"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "settings": {
+    "jsdoc": {
+      "tagNamePreference": {
+        "returns": "returns",
+        "default": "default"
+      }
+    }
+  },
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn",
+    "react/only-export-components": [
+      "warn",
+      {
+        "allowConstantExport": true,
+        "allowExportNames": ["buttonVariants", "tabsListVariants", "toggleVariants"]
+      }
+    ],
+    "react/react-in-jsx-scope": "off",
+    "no-warning-comments": [
+      "error",
+      {
+        "terms": ["todo", "fixme", "xxx", "hack"],
+        "location": "anywhere"
+      }
+    ],
+    "jsdoc/check-tag-names": [
+      "error",
+      {
+        "typed": true
+      }
+    ],
+    "jsdoc/empty-tags": "error",
+    "jsdoc/no-blank-blocks": "error",
+    "jsdoc/no-defaults": "error",
+    "jsdoc/require-param-name": "error",
+    "jsdoc/require-param-description": "error",
+    "jsdoc/require-returns-description": "error",
+    "jsdoc/require-throws-description": "error",
+    "jsdoc/require-param-type": "off",
+    "jsdoc/require-returns-type": "off",
+    "jsdoc/require-param": "off",
+    "jsdoc/require-returns": "off",
+    "unicorn/no-array-reverse": "off",
+    "unicorn/prefer-add-event-listener": "off",
+    "typescript/no-unsafe-type-assertion": "off",
+    "typescript/consistent-return": "off",
+    "import/no-unassigned-import": "off",
+    "unicorn/consistent-function-scoping": "off"
+  },
+  "overrides": [
+    {
+      "files": ["e2e/**/fixtures.ts"],
+      "rules": {
+        "react/rules-of-hooks": "off",
+        "no-empty-pattern": "off"
+      }
+    }
+  ],
+  "ignorePatterns": ["dist", "dist-electron", "out", "release", "node_modules", ".playwright-mcp"]
+}

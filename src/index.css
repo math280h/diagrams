@@ -1,0 +1,287 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@import '@xyflow/react/dist/base.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: 'Host Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Fragment Mono', ui-monospace, monospace;
+  --font-heading: var(--font-sans);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --color-panel: var(--panel);
+  --color-panel-border: var(--panel-border);
+  --color-faint: var(--faint);
+  --color-focus: var(--focus);
+  --color-raised: var(--raised);
+  --color-flow: var(--flow);
+  --color-flow-ink: var(--flow-ink);
+  --color-ok: var(--ok);
+  --color-info: var(--info);
+  --color-warn: var(--warn);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.5);
+  --radius-2xl: calc(var(--radius) * 2);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --radius: 0.5rem;
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  --primary: #0a0a0a;
+  --primary-hover: #2e2e2e;
+  --primary-foreground: #ffffff;
+  --secondary: #f3f3f3;
+  --secondary-foreground: #0a0a0a;
+  --muted: #f2f2f2;
+  --muted-foreground: #5e5e5e;
+  --faint: #767676;
+  --accent: #f0f0f0;
+  --accent-foreground: #0a0a0a;
+  --destructive: #cc2827;
+  --border: #e6e6e6;
+  --input: #dadada;
+  --focus: #226cff;
+  --ring: var(--focus);
+  --panel: #ffffff;
+  --panel-border: #e6e6e6;
+  --raised: #f6f6f6;
+  --flow: #226cff;
+  --flow-ink: #ffffff;
+  --ok: #0a7e3a;
+  --info: #0a0a0a;
+  --warn: #a16100;
+}
+
+.dark {
+  --background: #000000;
+  --foreground: #fafafa;
+  --card: #0a0a0a;
+  --card-foreground: #fafafa;
+  --popover: #141414;
+  --popover-foreground: #fafafa;
+  --primary: #fafafa;
+  --primary-hover: #dcdcdc;
+  --primary-foreground: #000000;
+  --secondary: #1f1f1f;
+  --secondary-foreground: #fafafa;
+  --muted: #1a1a1a;
+  --muted-foreground: #a0a0a0;
+  --faint: #7a7a7a;
+  --accent: #1a1a1a;
+  --accent-foreground: #fafafa;
+  --destructive: #fc5855;
+  --border: #232323;
+  --input: #2e2e2e;
+  --focus: #226cff;
+  --ring: var(--focus);
+  --panel: #0a0a0a;
+  --panel-border: #232323;
+  --raised: #141414;
+  --flow: #226cff;
+  --flow-ink: #ffffff;
+  --ok: #56d57b;
+  --info: #fafafa;
+  --warn: #f7b83d;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-synthesis: none;
+    overflow: hidden;
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--focus) 34%, transparent);
+    color: inherit;
+  }
+  input,
+  textarea {
+    caret-color: var(--focus);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--foreground) 18%, transparent) transparent;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@utility dg-thumb-grid {
+  background-color: var(--background);
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    color-mix(in oklab, var(--foreground) 10%, transparent) 1px,
+    transparent 0
+  );
+  background-size: 16px 16px;
+}
+
+@utility dg-chrome {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+}
+
+@utility dg-menu {
+  background: var(--popover);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px -12px rgb(0 0 0 / 0.45);
+}
+
+@utility dg-display {
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+@utility dg-log-row {
+  color: var(--foreground);
+  border-bottom: 1px solid color-mix(in oklab, var(--panel-border) 60%, transparent);
+  &:hover {
+    background: var(--accent);
+  }
+  &:focus-visible {
+    outline-offset: -2px;
+  }
+  & .dg-log-dim {
+    color: var(--muted-foreground);
+  }
+  & .dg-log-event {
+    color: var(--info);
+  }
+  &[data-level='warn'] .dg-log-event {
+    color: var(--warn);
+  }
+  &[data-level='error'] .dg-log-event {
+    color: var(--destructive);
+  }
+  & .dg-log-caption {
+    color: var(--muted-foreground);
+  }
+  & .dg-log-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    border: 1.5px solid var(--faint);
+  }
+  &[data-state='done'] .dg-log-dot {
+    border-color: var(--muted-foreground);
+    background: var(--muted-foreground);
+  }
+  &[data-state='active'] {
+    background: var(--raised);
+  }
+  &[data-state='active'] .dg-log-dot {
+    width: 9px;
+    height: 9px;
+    border-color: var(--flow);
+    background: var(--flow);
+  }
+  &[data-state='active'] .dg-log-caption {
+    color: var(--foreground);
+  }
+  &[data-state='pending'],
+  &[data-state='skipped'] {
+    color: var(--muted-foreground);
+  }
+  &[data-state='pending'] .dg-log-event,
+  &[data-state='skipped'] .dg-log-event {
+    color: color-mix(in oklab, currentColor 30%, var(--muted-foreground));
+  }
+}
+
+@utility dg-log-row-selected {
+  outline: 1px dashed var(--foreground);
+  outline-offset: -1px;
+}
+
+.dg-art {
+  flex: none;
+  object-fit: contain;
+}
+.dg-art[data-variant='dark'],
+.dark .dg-art[data-variant='light'],
+.dg-canvas[data-theme='dark'] .dg-art[data-variant='light'],
+.dg-canvas[data-theme='light'] .dg-art[data-variant='dark'] {
+  display: none;
+}
+.dark .dg-art[data-variant='dark'],
+.dg-canvas[data-theme='dark'] .dg-art[data-variant='dark'],
+.dg-canvas[data-theme='light'] .dg-art[data-variant='light'] {
+  display: inline-block;
+}
+
+html[data-desktop] .dg-drag-strip {
+  position: fixed;
+  inset: 0 0 auto;
+  height: 2.75rem;
+  pointer-events: none;
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+html[data-desktop] :is([role='dialog'], [role='alertdialog'], [role='menu'], [role='listbox'], [data-sonner-toaster]),
+html[data-desktop]
+  .dg-titlebar
+  :is(button, a, input, textarea, select, [role='button'], [role='tab'], [role='switch'], [contenteditable='true']) {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+html[data-desktop] .dg-titlebar {
+  padding-left: calc(var(--titlebar-pad, 0.375rem) + env(titlebar-area-x, 0px));
+  padding-right: calc(
+    var(--titlebar-pad, 0.375rem) + 100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)
+  );
+}
+
+html[data-desktop='darwin'] .dg-titlebar {
+  padding-left: calc(var(--titlebar-pad, 0.375rem) + env(titlebar-area-x, 4.5rem));
+}

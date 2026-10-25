@@ -1,0 +1,26 @@
+---
+name: flows
+description: Adds animated flows to a Diagrams diagram, in which a token moves a request or a user journey through the nodes while a log line and a caption show for each step. Use when the user asks to animate, trace, walk through or present a request path, a user flow or a sequence.
+---
+
+# Animate a flow
+
+A flow plays like a log. A token moves from node to node, the camera follows it, and each step shows a log line and a caption.
+
+1. **Read the diagram.** Call `get_diagram` to learn the node labels and the edges. The token moves along edges, so first add any missing edges with `add_elements`.
+2. **Add the flow.** Call `add_flow` with the nodes in the order the request visits them. With `connect` (the default), the app puts in the edge steps between two nodes on the shortest path. To make the token take one particular edge, name the edge as `"A -> B"`.
+3. **Write each step as a log line.**
+   - `event`: what the system does, for example "POST /orders", "INSERT orders", "publish order.created" or "200 OK".
+   - `latencyMs`: the time of the hop, for edge steps.
+   - `level`: `warn` for a retry or a slow path, `error` for a failure. Leave `info` for the rest.
+   - `caption`: one short sentence in the present tense about what happens for the person, for example "The shopper presses Pay."
+4. **Set the camera.** The flow opens on the whole diagram, and the steps follow the token. Use `camera: "fit"` for a step whose node or edge must be fully in view. Keep the default durations unless a step needs more time to read.
+5. **Name the token.** Set the `token` label to what moves, for example "Order", "Request" or "User", and give it an icon.
+6. **Check it.** Call `render_image` with the `flow` and a `step` to see a moment of the flow.
+
+## Good flows
+
+- Tell one story in each flow, in 6 to 14 steps. Make a second flow for a different story.
+- Show a failure as its own steps: a `warn` retry, then the recovery. Or make a separate flow, such as "Payment declined".
+- Keep `spotlight` on for walkthroughs, so that the parts the flow has not reached yet look dim.
+- To change steps later, call `update_flow`. It can replace all steps, append steps, change a step by index or remove steps by index.

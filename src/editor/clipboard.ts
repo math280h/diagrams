@@ -1,0 +1,94 @@
+import { toast } from 'sonner'
+import { z } from 'zod'
+import { absolutePosition } from '@/model/graph'
+import { storedEdgeSchema, storedNodeSchema, type StoredEdge } from '@/model/schema'
+import { toStoredEdge, toStoredNode } from '@/persistence/serialize'
+import { addNodes, cloneSubgraph, deleteSelection, selectionSubgraph } from '@/store/actions'
+import { useDoc } from '@/store/doc-store'
+
+const MARKER = 'diagrams/clipboard@1'
+const PASTE_OFFSET = 32
+
+const clipboardSchema = z.object({
+  marker: z.literal(MARKER),
+  nodes: z.array(storedNodeSchema),
+  edges: z.array(storedEdgeSchema),
+})
+
+type ClipboardPayload = z.infer<typeof clipboardSchema>
+
+let memory: ClipboardPayload | null = null
+let pasteCount = 0
+
+function payloadFromSelection(): ClipboardPayload | null {
+  const { nodes, edges } = selectionSubgraph()
+  if (nodes.length === 0) return null
+  const all = new Map(useDoc.getState().nodes.map((node) => [node.id, node]))
+  const included = new Set(nodes.map((node) => node.id))
+  const detached = nodes.map((node) =>
+    node.parentId && !included.has(node.parentId)
+      ? { ...node, parentId: undefined, position: absolutePosition(node, all) }
+      : node,
+  )
+  return {
+    marker: MARKER,
+    nodes: detached.map(toStoredNode),
+    edges: edges.map(toStoredEdge).filter((edge): edge is StoredEdge => edge !== null),
+  }
+}
+
+export function copySelection(event?: ClipboardEvent): boolean {
+  const payload = payloadFromSelection()
+  if (!payload) return false
+  memory = payload
+  pasteCount = 0
+  const text = JSON.stringify(payload)
+  if (event?.clipboardData) {
+    event.clipboardData.setData('text/plain', text)
+    event.preventDefault()
+  } else {
+    void navigator.clipboard?.writeText(text).catch(() => undefined)
+  }
+  return true
+}
+
+export function cutSelection(event?: ClipboardEvent) {
+  if (copySelection(event)) deleteSelection()
+}
+
+function parse(text: string | undefined): ClipboardPayload | null {
+  if (!text) return null
+  try {
+    const result = clipboardSchema.safeParse(JSON.parse(text))
+    return result.success ? result.data : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Pastes the copied nodes.
+ *
+ * @param at - The canvas point for the top-left corner of the pasted nodes. Without it, the nodes
+ *     move a small distance from the copied nodes for each paste.
+ */
+export function paste(event?: ClipboardEvent, at?: { x: number; y: number }): boolean {
+  const payload = parse(event?.clipboardData?.getData('text/plain')) ?? memory
+  if (!payload) return false
+  event?.preventDefault()
+  pasteCount++
+  const roots = payload.nodes.filter((node) => !payload.nodes.some((other) => other.id === node.parentId))
+  const minX = Math.min(...roots.map((node) => node.position.x))
+  const minY = Math.min(...roots.map((node) => node.position.y))
+  const offset = at
+    ? { x: at.x - minX, y: at.y - minY }
+    : { x: PASTE_OFFSET * pasteCount, y: PASTE_OFFSET * pasteCount }
+  const copy = cloneSubgraph(
+    payload.nodes.map((node) => ({ ...node })),
+    payload.edges.map((edge) => ({ ...edge })),
+    offset,
+  )
+  addNodes(copy.nodes, copy.edges)
+  if (copy.nodes.length > 1) toast.message(`Pasted ${copy.nodes.length} nodes`)
+  return true
+}

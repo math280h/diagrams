@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "diagrams": {
+      "type": "http",
+      "url": "http://127.0.0.1:27419/mcp",
+      "headers": { "Authorization": "Bearer ${user_config.diagrams_token}" }
+    }
+  }
+}
