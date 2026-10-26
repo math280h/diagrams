@@ -2,8 +2,11 @@ import { playwright } from '@vitest/browser-playwright'
 import { defineConfig, mergeConfig } from 'vitest/config'
 import viteConfig from './vite.config.ts'
 
+// Vite optimizes the dependencies of warm-up files while browser tests run, and then reloads a running test.
+const { warmup: _warmup, ...server } = viteConfig.server ?? {}
+
 export default mergeConfig(
-  viteConfig,
+  { ...viteConfig, server },
   defineConfig({
     test: {
       projects: [
