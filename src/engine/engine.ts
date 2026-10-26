@@ -48,6 +48,8 @@ export interface Caption {
   reversed: boolean
   event: string
   level: LogLevel
+  /** True if the log line of an edge step shows the body of the edge. */
+  bodies: boolean
 }
 
 const MAX_FRAME_DELTA_MS = 1000
@@ -343,7 +345,11 @@ export class Engine {
       previous?.text === next?.text &&
       previous?.index === next?.index &&
       previous?.total === next?.total &&
-      previous?.target.id === next?.target.id
+      previous?.target.id === next?.target.id &&
+      previous?.reversed === next?.reversed &&
+      previous?.event === next?.event &&
+      previous?.level === next?.level &&
+      previous?.bodies === next?.bodies
     ) {
       return
     }
@@ -501,6 +507,7 @@ export class Engine {
             reversed: segment.reversed,
             event: segment.step.event,
             level: segment.step.level,
+            bodies: timeline.flow.bodies,
           }
         : null,
     )

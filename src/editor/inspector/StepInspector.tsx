@@ -1,11 +1,41 @@
 import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { usePlaybackState } from '@/engine/hooks'
+import { payloadJson } from '@/model/payload'
 import type { Flow, Step } from '@/model/schema'
 import { updateFlow } from '@/store/actions'
+import { useDoc } from '@/store/doc-store'
 import { setUi } from '@/store/ui-store'
 import { targetName } from '@/editor/flow/names'
 import { Field, Section, Segmented, SliderField, TextInput } from './controls'
+
+function StepBody({ flow, step }: { flow: Flow; step: Step }) {
+  const playback = usePlaybackState()
+  const edge = useDoc((state) => state.edges.find((candidate) => candidate.id === step.target.id))
+  const reversed = playback.timeline?.segments.find((segment) => segment.step.id === step.id)?.reversed ?? false
+  const part = reversed ? 'response' : 'request'
+  const body = payloadJson(edge?.data?.[part], 2)
+  const note = !flow.bodies
+    ? 'The flow hides bodies. Turn them on in the flow options.'
+    : body
+      ? `The token moves ${reversed ? 'back' : 'forward'}, so the log shows the ${part} body.`
+      : `The connection has no ${part} body. Add its fields on the connection.`
+  return (
+    <div className="space-y-1.5">
+      <span className="text-xs text-muted-foreground">{reversed ? 'Response body' : 'Request body'}</span>
+      {body && (
+        <pre
+          aria-label={`The ${part} body of the connection`}
+          className="max-h-40 overflow-auto rounded-lg border bg-background/40 px-2 py-1.5 font-mono text-xs leading-5 text-muted-foreground [font-variant-ligatures:none]"
+        >
+          {body}
+        </pre>
+      )}
+      <p className="text-xs text-muted-foreground">{note}</p>
+    </div>
+  )
+}
 
 export function StepInspector({ flow, step }: { flow: Flow; step: Step }) {
   const index = flow.steps.findIndex((candidate) => candidate.id === step.id)
@@ -86,6 +116,7 @@ export function StepInspector({ flow, step }: { flow: Flow; step: Step }) {
           }}
         />
       </Field>
+      {step.target.kind === 'edge' && <StepBody flow={flow} step={step} />}
       <Field label="Level">
         <Segmented
           value={step.level}

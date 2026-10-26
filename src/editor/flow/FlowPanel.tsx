@@ -183,6 +183,11 @@ function FlowSettings({ flow }: { flow: Flow }) {
         />
         <SwitchField label="Loop" checked={flow.loop} onChange={(loop) => set((draft) => void (draft.loop = loop))} />
         <SwitchField
+          label="Show request and response bodies"
+          checked={flow.bodies}
+          onChange={(bodies) => set((draft) => void (draft.bodies = bodies))}
+        />
+        <SwitchField
           label="Camera follows the flow"
           checked={playback.follow}
           onChange={(follow) => engine.playback.setFollow(follow)}

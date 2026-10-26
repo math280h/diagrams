@@ -79,7 +79,9 @@ export function LogTable({ flow }: { flow: Flow }) {
             : segment.index === current
               ? 'active'
               : 'pending'
-        const { element, event } = stepLine(step, segment?.reversed ?? false)
+        const line = stepLine(step, segment?.reversed ?? false)
+        const { element, event } = line
+        const body = flow.bodies ? line.body : ''
         const selected = selectedStepId === step.id
         return (
           <button
@@ -110,7 +112,10 @@ export function LogTable({ flow }: { flow: Flow }) {
             <span className="dg-log-dim max-sm:hidden">{segment ? offset(segment.startMs) : '—'}</span>
             <span className="dg-log-dot" />
             <span className="truncate font-sans text-[13px]">{element}</span>
-            <span className="dg-log-event truncate max-sm:hidden">{event}</span>
+            <span className="dg-log-event truncate max-sm:hidden" title={body ? `${event} ${body}`.trim() : undefined}>
+              {event}
+              {body && <span className={cn('dg-log-dim', event && 'ml-1.5')}>{body}</span>}
+            </span>
             {showLatency && (
               <span className="dg-log-dim text-right whitespace-nowrap">
                 {step.latencyMs === null ? '' : `${step.latencyMs} ms`}

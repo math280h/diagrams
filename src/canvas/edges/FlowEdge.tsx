@@ -51,6 +51,22 @@ function labelFraction(label: string, position: number, lengthPx: number): numbe
   return Math.min(1 - min, Math.max(min, position))
 }
 
+function bodyMark(requestFields: number, responseFields: number): string {
+  const request = requestFields > 0 ? `{${requestFields}}` : ''
+  const response = responseFields > 0 ? `→ {${responseFields}}` : ''
+  return [request, response].filter(Boolean).join(' ')
+}
+
+function bodyTitle(requestFields: number, responseFields: number): string {
+  const count = (fields: number) => (fields === 1 ? '1 field' : `${fields} fields`)
+  return [
+    requestFields > 0 ? `Request body: ${count(requestFields)}` : '',
+    responseFields > 0 ? `Response body: ${count(responseFields)}` : '',
+  ]
+    .filter(Boolean)
+    .join('. ')
+}
+
 export function FlowEdge(props: EdgeProps<DiagramEdge>) {
   const { id, source, target, data = FALLBACK_DATA, selected } = props
   const engine = useEngine()
@@ -95,9 +111,14 @@ export function FlowEdge(props: EdgeProps<DiagramEdge>) {
     return () => engine.unregisterTraffic(id)
   }, [engine, id, table, traffic, count])
 
+  const requestFields = data.request?.fields.length ?? 0
+  const responseFields = data.response?.fields.length ?? 0
+  const mark = bodyMark(requestFields, responseFields)
+  const labelText = [data.label, mark].filter(Boolean).join(' ')
+
   const start = pointAt(table, 0)
   const end = pointAt(table, 1)
-  const label = pointAt(table, labelFraction(data.label, data.labelPosition, table.lengthPx))
+  const label = pointAt(table, labelFraction(labelText, data.labelPosition, table.lengthPx))
   const strokeWidth = data.width
   const protocol = edgeProtocol(data) ?? undefined
 
@@ -142,7 +163,7 @@ export function FlowEdge(props: EdgeProps<DiagramEdge>) {
         {data.markerEnd !== 'none' && <Marker kind={data.markerEnd} x={end.x} y={end.y} angle={end.angleRad} />}
       </g>
 
-      {data.label && (
+      {labelText && (
         <EdgeLabelPortal>
           <div
             className="dg-edge-label dg-mono nodrag nopan"
@@ -152,12 +173,23 @@ export function FlowEdge(props: EdgeProps<DiagramEdge>) {
             style={{ transform: `translate(-50%, -50%) translate(${label.x}px, ${label.y}px)` }}
             onClick={() => editable && selectOnly([], [id])}
           >
-            <EditableText
-              value={data.label}
-              editable={editable}
-              onCommit={(value) => updateEdgeData(id, { label: value })}
-              style={{ width: `${Math.max(2, data.label.length + 1)}ch` }}
-            />
+            {data.label && (
+              <EditableText
+                value={data.label}
+                editable={editable}
+                onCommit={(value) => updateEdgeData(id, { label: value })}
+                style={{ width: `${Math.max(2, data.label.length + 1)}ch` }}
+              />
+            )}
+            {mark && (
+              <span
+                className="dg-edge-fields"
+                data-after-label={data.label ? 'true' : undefined}
+                title={bodyTitle(requestFields, responseFields)}
+              >
+                {mark}
+              </span>
+            )}
           </div>
         </EdgeLabelPortal>
       )}

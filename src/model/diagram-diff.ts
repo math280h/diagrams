@@ -40,6 +40,34 @@ function edgeChanged(before: StoredEdge, after: StoredEdge) {
   )
 }
 
+function withoutBodies(edge: StoredEdge): StoredEdge {
+  const { request: _request, response: _response, ...data } = edge.data
+  return { ...edge, data }
+}
+
+function changedBodies(before: StoredEdge, after: StoredEdge): string[] {
+  return [
+    ...(same(before.data.request, after.data.request) ? [] : ['request']),
+    ...(same(before.data.response, after.data.response) ? [] : ['response']),
+  ]
+}
+
+function connectionName(edge: StoredEdge, nodes: readonly StoredNode[]): string {
+  const source = nodes.find((node) => node.id === edge.source)
+  const target = nodes.find((node) => node.id === edge.target)
+  return source && target ? `${summaryName(source)} → ${summaryName(target)}` : 'a connection'
+}
+
+function bodySentence(edges: readonly [StoredEdge, StoredEdge][], nodes: readonly StoredNode[]): string | null {
+  const changed = edges.filter(([a, b]) => changedBodies(a, b).length > 0)
+  if (changed.length === 0) return null
+  if (changed.length > 1) return `Changed the bodies of ${changed.length} connections.`
+  const [before, after] = changed[0]!
+  const parts = changedBodies(before, after)
+  const what = parts.length === 2 ? 'request and response bodies' : `${parts[0]} body`
+  return `Changed the ${what} of ${connectionName(after, nodes)}.`
+}
+
 interface Split<T> {
   added: T[]
   removed: T[]
@@ -105,7 +133,7 @@ export function describeChange(before: Diagram, after: Diagram): string {
     if (a.type !== b.type || !same(a.data, b.data)) changedNodes.push(b)
     else if (moved(a, b)) movedNodes.push(b)
   }
-  const changedEdges = edges.common.filter(([a, b]) => edgeChanged(a, b))
+  const changedEdges = edges.common.filter(([a, b]) => edgeChanged(withoutBodies(a), withoutBodies(b)))
   const changedFlows = flows.common.filter(([a, b]) => !same(a, b)).map(([, b]) => b)
 
   const sentences: string[] = []
@@ -120,6 +148,8 @@ export function describeChange(before: Diagram, after: Diagram): string {
   add('Added', nodes.added, edges.added.length, flows.added)
   add('Removed', nodes.removed, edges.removed.length, flows.removed)
   add('Changed', changedNodes, changedEdges.length, changedFlows)
+  const bodies = bodySentence(edges.common, after.nodes)
+  if (bodies) sentences.push(bodies)
   add('Moved', movedNodes)
   if (before.name !== after.name) sentences.push(`Renamed the diagram to “${after.name}”.`)
   if (!same(before.theme, after.theme)) sentences.push('Changed the style.')

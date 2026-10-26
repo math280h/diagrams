@@ -1,5 +1,6 @@
-import type { Diagram } from '@/model/schema'
+import type { Diagram, Payload } from '@/model/schema'
 import { boundaryKind, TINTED_TIERS } from '@/model/boundaries'
+import { fieldsFromExample } from '@/model/payload'
 import { DiagramBuilder, edgeStep, nodeStep } from './builder'
 
 export interface Template {
@@ -11,6 +12,10 @@ export interface Template {
 
 const STILL = { enabled: false, direction: 'forward', style: 'dots', density: 1.4, speed: 80, size: 1.5 } as const
 const EVENTS = { ...STILL, enabled: true, style: 'comets', speed: 120 } as const
+
+function body(example: object): Payload {
+  return { fields: fieldsFromExample(example) }
+}
 
 function orderSystem(): Diagram {
   const b = new DiagramBuilder()
@@ -60,14 +65,26 @@ function orderSystem(): Diagram {
   )
 
   const edge = { traffic: STILL, markerEnd: 'arrow' } as const
-  const toGateway = b.edge(browser, gateway, { ...edge, label: 'HTTPS' })
+  const orderCreated = () => body({ orderId: 'ord_8f2k', email: 'ada@example.com', total: 49 })
+  const toGateway = b.edge(browser, gateway, {
+    ...edge,
+    label: 'HTTPS',
+    request: body({ items: [{ sku: 'LAMP-01', qty: 1 }], paymentMethod: 'pm_card_visa' }),
+    response: body({ orderId: 'ord_8f2k', status: 'pending' }),
+  })
   b.edge(gateway, auth, { ...edge, label: 'gRPC' })
   const toOrders = b.edge(gateway, orders, { ...edge, label: 'gRPC' })
   const toPostgres = b.edge(orders, postgres, { ...edge, label: 'SQL' })
   b.edge(orders, redis, { ...edge, width: 0.75, protocol: 'data' })
-  const toTopic = b.edge(orders, topic, { ...edge, label: 'publish' })
-  const toMailer = b.edge(topic, mailer, { ...edge, label: 'consume' })
-  const toStripe = b.edge(orders, stripe, { ...edge, label: 'HTTPS', stroke: 'dashed' })
+  const toTopic = b.edge(orders, topic, { ...edge, label: 'publish', request: orderCreated() })
+  const toMailer = b.edge(topic, mailer, { ...edge, label: 'consume', request: orderCreated() })
+  const toStripe = b.edge(orders, stripe, {
+    ...edge,
+    label: 'HTTPS',
+    stroke: 'dashed',
+    request: body({ amount: 4900, currency: 'eur', customer: 'cus_Q2x' }),
+    response: body({ id: 'pi_3Nf', status: 'succeeded' }),
+  })
 
   b.text(0, -120, { text: 'Order system', size: 'xl' })
   b.text(0, -72, { text: 'How a checkout becomes an order and a confirmation email.', size: 'sm', tone: 'muted' })

@@ -9,13 +9,15 @@ import {
   DEFAULT_TRAFFIC,
   defaultCardData,
   defaultGroupData,
+  defaultPayloadField,
   defaultShapeData,
   defaultTextData,
   newId,
 } from '@/model/defaults'
 import { DEFAULT_NODE_SIZE, ELEMENT_Z } from '@/model/graph'
+import { fieldIssues, fieldsFromExample, mergeFields, PayloadJsonError, type PayloadPart } from '@/model/payload'
 import { defaultShapeSize } from '@/model/presets'
-import type { CardData, EdgeData, GroupData, ShapeData, Side, Step, TextData } from '@/model/schema'
+import type { CardData, EdgeData, GroupData, Payload, ShapeData, Side, Step, TextData } from '@/model/schema'
 import type { DiagramEdge, DiagramNode } from '@/model/types'
 import { nodeLabel } from '@/model/labels'
 import type { HandlerContext } from '@/agent/context'
@@ -199,17 +201,75 @@ export function nodeDataPatch(
  *
  * @param current - The edge data now. A traffic toggle keeps the other traffic settings of it.
  */
+type PayloadInput = NonNullable<EdgeInput['request']>
+
+/**
+ * Makes the body of an edge from agent input. An example replaces the fields, given fields change the fields with
+ * the same path or add new fields, and removed paths go.
+ *
+ * @returns The body, or `undefined` if it has no fields.
+ * @throws ToolError If the input gives nothing to change, the example is not an object or an array, or the body
+ *     cannot hold a field.
+ */
+export function payloadFromInput(part: PayloadPart, input: PayloadInput, current?: Payload): Payload | undefined {
+  if (input.example === undefined && !input.fields && !input.remove) {
+    throw new ToolError(`Give an example, fields or paths to remove for the ${part} body, or null to remove it.`)
+  }
+  let fields = current?.fields ?? []
+  if (input.example !== undefined) {
+    try {
+      fields = mergeFields(fields, fieldsFromExample(input.example))
+    } catch (error) {
+      if (error instanceof PayloadJsonError) throw new ToolError(`The ${part} example cannot be read. ${error.message}`)
+      throw error
+    }
+  }
+  const removed = new Set((input.remove ?? []).map((path) => path.trim()))
+  fields = fields.filter((field) => !removed.has(field.path.trim()))
+  for (const given of input.fields ?? []) {
+    const patch = definedFields({
+      path: given.path.trim(),
+      type: given.type,
+      required: given.required,
+      example: given.example === undefined ? undefined : String(given.example),
+      description: given.description,
+    })
+    const index = fields.findIndex((field) => field.path.trim() === patch.path)
+    fields =
+      index >= 0
+        ? fields.map((field, at) => (at === index ? { ...field, ...patch } : field))
+        : [...fields, defaultPayloadField(patch)]
+  }
+  const issues = fieldIssues(fields)
+  if (issues.size > 0) {
+    const problems = fields
+      .filter((field) => issues.has(field.id))
+      .map((field) => `"${field.path}": ${issues.get(field.id)}`)
+    throw new ToolError(`The ${part} body cannot hold these fields. ${problems.join(' ')}`)
+  }
+  return fields.length > 0 ? { fields } : undefined
+}
+
+function payloadPatch(part: PayloadPart, input: PayloadInput | null | undefined, current?: Payload) {
+  if (input === undefined) return {}
+  return { [part]: input === null ? undefined : payloadFromInput(part, input, current) }
+}
+
 export function edgeDataPatch(input: Partial<EdgeInput>, current?: EdgeData): Partial<EdgeData> {
-  return definedFields({
-    label: input.label,
-    protocol: input.protocol,
-    stroke: input.style,
-    path: input.path,
-    traffic:
-      input.traffic === undefined ? undefined : { ...(current?.traffic ?? DEFAULT_TRAFFIC), enabled: input.traffic },
-    markerStart:
-      input.bidirectional === undefined ? undefined : input.bidirectional ? ('arrow' as const) : ('none' as const),
-  })
+  return {
+    ...definedFields({
+      label: input.label,
+      protocol: input.protocol,
+      stroke: input.style,
+      path: input.path,
+      traffic:
+        input.traffic === undefined ? undefined : { ...(current?.traffic ?? DEFAULT_TRAFFIC), enabled: input.traffic },
+      markerStart:
+        input.bidirectional === undefined ? undefined : input.bidirectional ? ('arrow' as const) : ('none' as const),
+    }),
+    ...payloadPatch('request', input.request, current?.request),
+    ...payloadPatch('response', input.response, current?.response),
+  }
 }
 
 type SideInput = Side | 'auto'

@@ -1,4 +1,5 @@
 import { nodeTitle as namedTitle } from '@/model/labels'
+import { stepBody } from '@/model/payload'
 import type { Step, Target } from '@/model/schema'
 import type { DiagramNode } from '@/model/types'
 import { useDoc } from '@/store/doc-store'
@@ -23,16 +24,25 @@ export function targetName(target: Target): string {
  *
  * @param reversed - True if the token moves from the edge target to the edge source.
  * @returns The element: a node name, or the two node names of an edge in travel order. The event:
- *     the step event, or the edge label if the step has no event.
+ *     the step event, or the edge label if the step has no event. The body: for an edge step, the request body of
+ *     the edge as compact JSON, or the response body if the token moves back. It is empty without such a body.
  */
-export function stepLine(step: Step, reversed: boolean): { element: string; event: string } {
+export function stepLine(step: Step, reversed: boolean): { element: string; event: string; body: string } {
   const { nodes, edges } = useDoc.getState()
   if (step.target.kind === 'node') {
-    return { element: nodeTitle(nodes.find((candidate) => candidate.id === step.target.id)), event: step.event }
+    return {
+      element: nodeTitle(nodes.find((candidate) => candidate.id === step.target.id)),
+      event: step.event,
+      body: '',
+    }
   }
   const edge = edges.find((candidate) => candidate.id === step.target.id)
-  if (!edge) return { element: 'Missing connection', event: step.event }
+  if (!edge) return { element: 'Missing connection', event: step.event, body: '' }
   const from = nodeTitle(nodes.find((node) => node.id === (reversed ? edge.target : edge.source)))
   const to = nodeTitle(nodes.find((node) => node.id === (reversed ? edge.source : edge.target)))
-  return { element: `${from} → ${to}`, event: step.event || (edge.data?.label ?? '') }
+  return {
+    element: `${from} → ${to}`,
+    event: step.event || (edge.data?.label ?? ''),
+    body: stepBody(edge.data, reversed),
+  }
 }

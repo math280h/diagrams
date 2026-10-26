@@ -18,6 +18,8 @@ computer.
   connection or for all.
 - **Flows**: record a path through the diagram, add captions, and play it back with a camera that follows the user.
   A timeline adds camera paths and fades.
+- **Request and response bodies**: list the JSON fields that a connection carries, or paste an example body to fill
+  them. Copy an example body back as JSON, and see the body in the log line while a flow plays.
 - **Present and export**: present in full screen, or export PNG, SVG, MP4, WebM or GIF. Video export is exact to the
   frame.
 - **Mermaid import and export**: paste a Mermaid flowchart and get a laid-out diagram, or copy a diagram as a

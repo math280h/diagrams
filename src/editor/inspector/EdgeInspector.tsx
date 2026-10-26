@@ -5,6 +5,7 @@ import { SIDES, type EdgeData, type Side, type Traffic } from '@/model/schema'
 import type { DiagramEdge } from '@/model/types'
 import { reverseEdge, setEdgeSides, updateEdgesData, updateEdgesTraffic } from '@/store/actions'
 import { Choice, Field, Section, Segmented, SliderField, SwitchField, TextInput } from './controls'
+import { PayloadSection } from './PayloadFields'
 
 const MARKER_OPTIONS = [
   { value: 'none' as const, label: 'None' },
@@ -181,6 +182,12 @@ export function EdgeInspector({ edges }: { edges: DiagramEdge[] }) {
           onChange={(width) => set({ width }, 'edge-width')}
         />
       </Section>
+      {single && (
+        <>
+          <PayloadSection key={`request:${first.id}`} edge={first} part="request" />
+          <PayloadSection key={`response:${first.id}`} edge={first} part="response" />
+        </>
+      )}
       <Section title="Ends">
         <Field label="Start">
           <Segmented

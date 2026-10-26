@@ -1,6 +1,8 @@
-import { useReactFlow } from '@xyflow/react'
+import { useReactFlow, useStore } from '@xyflow/react'
 import { useCallback } from 'react'
 import { nodeName } from '@/model/labels'
+import { stepBody } from '@/model/payload'
+import type { EdgeData } from '@/model/schema'
 import { useCaption, useEngine, usePlaybackState } from '@/engine/hooks'
 import type { DiagramEdge, DiagramNode } from '@/model/types'
 import { Icon } from './icon'
@@ -44,7 +46,12 @@ export const CAPTION_HEIGHT_PX = 48
 export function FlowCaption() {
   const caption = useCaption()
   const { getNode, getEdge } = useReactFlow<DiagramNode, DiagramEdge>()
+  const edgeId = caption?.target.kind === 'edge' ? caption.target.id : null
+  const edgeData = useStore((state) =>
+    edgeId ? (state.edgeLookup.get(edgeId)?.data as EdgeData | undefined) : undefined,
+  )
   if (!caption) return null
+  const body = caption.bodies && edgeId ? stepBody(edgeData, caption.reversed) : ''
 
   let element = ''
   let event = caption.event
@@ -71,6 +78,7 @@ export function FlowCaption() {
           {event}
         </span>
       )}
+      {body && <span className="dg-caption-body dg-mono">{body}</span>}
       {caption.text && <span className="dg-caption-text">{caption.text}</span>}
     </div>
   )

@@ -6,6 +6,7 @@ import {
   type EdgeData,
   type Flow,
   type GroupData,
+  type PayloadField,
   type ShapeData,
   type TextData,
   type Traffic,
@@ -133,7 +134,12 @@ export function createFlow(name = 'User flow'): Flow {
     token: { label: 'User', icon: 'user', accent: 'blue', shape: 'chip' },
     spotlight: true,
     loop: false,
+    bodies: true,
   }
+}
+
+export function defaultPayloadField(overrides: Partial<PayloadField> = {}): PayloadField {
+  return { id: newId('fld'), path: '', type: 'string', required: true, example: '', description: '', ...overrides }
 }
 
 export const DEFAULT_DIAGRAM_NAME = 'Untitled diagram'
