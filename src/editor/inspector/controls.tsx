@@ -92,18 +92,21 @@ export function TextInput({
   onChange,
   placeholder,
   mono,
+  autoFocus,
   className,
 }: {
   value: string
   onChange: (value: string) => void
   placeholder?: string
   mono?: boolean
+  autoFocus?: boolean
   className?: string
 }) {
   return (
     <Input
       value={value}
       placeholder={placeholder}
+      autoFocus={autoFocus}
       spellCheck={false}
       onChange={(event) => onChange(event.target.value)}
       className={cn('h-7 px-2 py-0 text-xs md:text-xs dark:bg-transparent', mono && 'font-mono', className)}

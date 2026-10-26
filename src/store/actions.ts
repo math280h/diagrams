@@ -31,9 +31,11 @@ import {
   type EdgeData,
   type Flow,
   type GroupData,
+  type PayloadField,
   type ShapeData,
   type TextData,
 } from '@/model/schema'
+import { withPayload, type PayloadPart } from '@/model/payload'
 import type { DiagramEdge, DiagramNode } from '@/model/types'
 import { applyLayout } from '@/layout/apply-layout'
 import type { LayoutResult } from '@/layout/diagram-layout'
@@ -122,6 +124,22 @@ export function updateEdgesData(ids: ReadonlySet<string>, patch: Partial<EdgeDat
     edges: useDoc
       .getState()
       .edges.map((edge) => (ids.has(edge.id) && edge.data ? { ...edge, data: { ...edge.data, ...patch } } : edge)),
+  })
+}
+
+/**
+ * Replaces the fields of the request or the response body of an edge. No fields remove that body.
+ *
+ * @param key - The undo key. Edits with the same key less than {@link COALESCE_MS} apart make one undo step.
+ */
+export function setEdgePayload(id: string, part: PayloadPart, fields: PayloadField[], key?: string) {
+  record(key)
+  useDoc.setState({
+    edges: useDoc
+      .getState()
+      .edges.map((edge) =>
+        edge.id === id && edge.data ? { ...edge, data: withPayload(edge.data, part, fields) } : edge,
+      ),
   })
 }
 

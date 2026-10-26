@@ -116,6 +116,15 @@ describe('migrate', () => {
     expect(migrate(JSON.parse(JSON.stringify(plex))).theme.fonts).toBe('plex')
   })
 
+  it('shows the bodies in the flows of version 6 diagrams, and keeps edges without bodies', () => {
+    const base = createDiagram()
+    const { bodies: _bodies, ...flow } = createFlow('Checkout')
+    const v6 = { ...base, version: 6, flows: [flow], edges: [createEdge('a', 'b', { label: 'HTTPS' })] }
+    const migrated = migrate(JSON.parse(JSON.stringify(v6)))
+    expect(migrated.flows[0]!.bodies).toBe(true)
+    expect(migrated.edges[0]!.data.request).toBeUndefined()
+  })
+
   it('gives version 4 groups the custom kind and turns on boundary colors', () => {
     const base = createDiagram()
     const group = {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DiagramBuilder } from '@/templates/builder'
 import { describeChange, describeContent } from './diagram-diff'
+import { fieldsFromExample } from './payload'
 import type { Diagram } from './schema'
 
 function base() {
@@ -28,6 +29,23 @@ describe('describeChange', () => {
       copy.edges.push(...b.build('x').edges)
     })
     expect(describeChange(diagram, after)).toBe('Added Redis and a connection.')
+  })
+
+  it('names the connection whose body changed, apart from other connection changes', () => {
+    const { diagram } = base()
+    const withRequest = edit(diagram, (copy) => {
+      copy.edges[0]!.data.request = { fields: fieldsFromExample({ sku: 'A-1' }) }
+    })
+    expect(describeChange(diagram, withRequest)).toBe('Changed the request body of API → Orders DB.')
+
+    const both = edit(withRequest, (copy) => {
+      copy.edges[0]!.data.request = { fields: fieldsFromExample({ sku: 'B-2' }) }
+      copy.edges[0]!.data.response = { fields: fieldsFromExample({ ok: true }) }
+      copy.edges[0]!.data.label = 'SQL write'
+    })
+    expect(describeChange(withRequest, both)).toBe(
+      'Changed a connection. Changed the request and response bodies of API → Orders DB.',
+    )
   })
 
   it('tells a move apart from a change of content', () => {

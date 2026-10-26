@@ -54,6 +54,8 @@ The visual system lives in `DESIGN.md` at the repository root.
   `atkinson`. Version 4 added `event`, `latencyMs` and `level` to flow steps, so that a step reads
   as a log line. Version 6 made Host Grotesk with Fragment Mono (`host`) the default pair and moved
   diagrams on `atkinson` to it, and added `protocol` to edges and `protocolColors` to the theme.
+  Version 7 added the `request` and `response` bodies to edges and `bodies` to flows; the migration
+  turns `bodies` on.
 - Groups are boundaries. A group's `kind` points into the catalogue in `src/model/boundaries.ts`:
   AWS, Azure, Google Cloud, Kubernetes and general kinds, plus the custom group. Each kind has a
   family (scope, logical, location, zone, network, subnet, security, runtime) that sets its line
@@ -206,6 +208,31 @@ the file name is the id. The `rev` counter detects edits from another tab or ano
 A `Flow` is an ordered list of steps (a node or an edge, a caption, a duration, a camera mode) plus
 optional keyframe tracks (camera, opacity, traffic). The timeline is computed from the steps and
 never stored.
+
+### Request and response bodies
+
+An edge can carry a `request` body (what the source sends) and a `response` body (what comes back).
+`src/model/payload.ts` holds the rules.
+
+- A body is a flat list of fields. The path of a field gives its place: dots for nested names and
+  `[]` for array items (`customer.email`, `items[].sku`, `[]` first for a body that is an array). A
+  list edits simply in the narrow properties panel, keeps the order of the keys, and gives each
+  field an id for undo. A tree editor needed nested controls in 288 px. A name that holds a dot or
+  `[]` cannot be written; it reads as nesting.
+- The example value of a field is text, and the type sets its JSON value when the example body is
+  built. The editor keeps what the user typed, also while a number is incomplete. A field without
+  an example gets `"string"`, `0`, `true` or `null`; an array gets one item.
+- Edit as JSON reads the fields, types and examples from a pasted body. The items of an array share
+  their fields, and a key that only some items have is not required. Fields with the same path keep
+  their id and description. `fieldIssues` reports paths that the body cannot hold, such as a
+  field inside a string, for the panel and for agent calls.
+- The edge label shows `{n}` for the request fields and `→ {n}` for the response fields, so a
+  reader sees that a connection has a body without a table on the canvas.
+- While a flow plays, the log line of an edge step shows the request body as compact JSON, or the
+  response body while the token moves back along the edge (`reversed` in the timeline). The flow
+  setting `bodies` turns this off. The strip and the log table read the body from the edge when they
+  render, so the timeline and `evaluateFlow` do not change, and a video export shows the same text.
+  The strip truncates the body and hides it on narrow frames, as it does the event.
 
 ### Animation engine
 

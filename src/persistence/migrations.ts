@@ -83,8 +83,13 @@ function toVersion6(raw: Record<string, unknown>): Record<string, unknown> {
   }
 }
 
+function toVersion7(raw: Record<string, unknown>): Record<string, unknown> {
+  const flows = Array.isArray(raw.flows) ? raw.flows : []
+  return { ...raw, flows: flows.map((flow: Record<string, unknown>) => ({ bodies: true, ...flow })) }
+}
+
 /** The migration at index `n` converts a diagram from version `n + 1` to version `n + 2`. */
-const MIGRATIONS: Migration[] = [toVersion2, toVersion3, toVersion4, toVersion5, toVersion6]
+const MIGRATIONS: Migration[] = [toVersion2, toVersion3, toVersion4, toVersion5, toVersion6, toVersion7]
 
 export class DiagramFormatError extends Error {}
 

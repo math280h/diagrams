@@ -5,6 +5,7 @@ import type { ToolContent } from '@/desktop/contract'
 import { createDiagram } from '@/model/defaults'
 import { absolutePosition } from '@/model/graph'
 import { nodeLabel } from '@/model/labels'
+import { stepBody } from '@/model/payload'
 import { setRepository, repository } from '@/persistence/active-repository'
 import { createCachedRepository } from '@/persistence/cached-repository'
 import { useDoc } from '@/store/doc-store'
@@ -319,6 +320,94 @@ describe('agent tools', () => {
 
     await call('update_flow', { flow: 'Order', steps: { remove: [1, 2], update: [{ index: 0, level: 'warn' }] } })
     expect(useDoc.getState().flows[0]!.steps.map((step) => step.level)).toEqual(['warn', 'info'])
+  })
+
+  it('gives an edge request and response bodies from an example and from fields, and reads them back', async () => {
+    await call('create_diagram', { name: 'Shop' })
+    await call('add_elements', {
+      nodes: [
+        { ref: 'web', label: 'Browser' },
+        { ref: 'api', label: 'API' },
+      ],
+      edges: [
+        {
+          from: 'web',
+          to: 'api',
+          label: 'POST /orders',
+          request: { example: { items: [{ sku: 'LAMP-01', qty: 1 }] } },
+        },
+      ],
+    })
+    const data = () => useDoc.getState().edges[0]!.data!
+    expect(data().request?.fields.map((field) => field.path)).toEqual(['items', 'items[].sku', 'items[].qty'])
+
+    await call('update_elements', {
+      edges: [
+        {
+          edge: 'Browser -> API',
+          request: {
+            fields: [
+              { path: 'items[].sku', description: 'The product code' },
+              { path: 'coupon', required: false },
+            ],
+            remove: ['items[].qty'],
+          },
+          response: {
+            fields: [
+              { path: 'orderId', example: 'ord_1' },
+              { path: 'total', type: 'number', example: 49 },
+            ],
+          },
+        },
+      ],
+    })
+    expect(data().request?.fields.map((field) => [field.path, field.description, field.required])).toEqual([
+      ['items', '', true],
+      ['items[].sku', 'The product code', true],
+      ['coupon', '', false],
+    ])
+    expect(stepBody(data(), true)).toBe('{"orderId":"ord_1","total":49}')
+
+    const outline = (await call('get_diagram', {})) as { edges: Record<string, unknown>[] }
+    expect(outline.edges[0]).toMatchObject({ request: { fields: 3 }, response: { fields: 2 } })
+    const full = (await call('get_diagram', { detail: 'full' })) as { edges: Record<string, unknown>[] }
+    expect(full.edges[0]?.request).toEqual({
+      fields: [
+        { path: 'items', type: 'array' },
+        { path: 'items[].sku', type: 'string', example: 'LAMP-01', description: 'The product code' },
+        { path: 'coupon', type: 'string', required: false },
+      ],
+    })
+
+    await call('update_elements', { edges: [{ edge: 'Browser -> API', response: null }] })
+    expect(data().response).toBeUndefined()
+    expect(useDoc.getState().edges[0]!.data!.request).toBeDefined()
+  })
+
+  it('explains a body that it cannot build', async () => {
+    await call('create_diagram', { name: 'Shop' })
+    await call('add_elements', { nodes: [{ label: 'A' }, { label: 'B' }], edges: [{ from: 'A', to: 'B' }] })
+    await expect(
+      call('update_elements', { edges: [{ edge: 'A -> B', request: { example: 'text' } }] }),
+    ).rejects.toThrow('The request example cannot be read.')
+    await expect(
+      call('update_elements', {
+        edges: [{ edge: 'A -> B', request: { fields: [{ path: 'customer' }, { path: 'customer.email' }] } }],
+      }),
+    ).rejects.toThrow('"customer.email": “customer” is a string. Make it an object to hold this field.')
+    await expect(call('update_elements', { edges: [{ edge: 'A -> B', request: {} }] })).rejects.toThrow(
+      'Give an example, fields or paths to remove for the request body',
+    )
+    expect(useDoc.getState().edges[0]!.data!.request).toBeUndefined()
+  })
+
+  it('hides the bodies of a flow when asked', async () => {
+    await call('create_diagram', { name: 'Shop' })
+    await call('add_elements', { nodes: [{ label: 'API' }] })
+    await call('add_flow', { name: 'Ping', steps: [{ target: 'API' }] })
+    expect(useDoc.getState().flows[0]!.bodies).toBe(true)
+    await call('update_flow', { flow: 'Ping', bodies: false })
+    expect(useDoc.getState().flows[0]!.bodies).toBe(false)
   })
 
   it('reports flow steps that lost their node', async () => {

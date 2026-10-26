@@ -30,6 +30,7 @@ The Diagrams app shows every change while you make it, and each call that change
 - Use `style: "dashed"` for asynchronous or optional paths. Use `bidirectional` only for real two-way traffic, such as a WebSocket.
 - Turn on `traffic` only for the main paths.
 - Do not connect an edge to a group. Connect the nodes in the group.
+- When the user asks about the data of a call, or gives an API or a message format, add the body to the edge. Set `request` to what the caller sends and `response` to what comes back. The easiest way is `example`: a short, realistic JSON body. Add `fields` with a `description` for fields whose meaning is not clear from the name. The edge label then shows `{n}`, the number of fields.
 
 ## Boundaries
 

@@ -55,6 +55,8 @@ that follows the token, and frame-exact video and GIF export, all in the browser
 - Edges with animated traffic (dots, comets, dashes, pulse) and labels.
 - Flows: steps recorded by clicking nodes, captions, camera modes, and a keyframe timeline for
   camera, opacity and traffic.
+- Request and response bodies on connections: JSON fields with types, examples and notes, filled
+  from a pasted example, copied out as example JSON, and shown in the log line of a flow.
 - Export: PNG, SVG, MP4, WebM, GIF, JSON, Mermaid flowcharts. Import: JSON, Mermaid flowcharts.
 - Version history: saved versions of each diagram, by the user, by an agent or from outside the
   editor, kept locally. Any version shows on the canvas and restores as one undo step.

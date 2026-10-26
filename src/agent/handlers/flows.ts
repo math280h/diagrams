@@ -9,7 +9,7 @@ import { applyStepInput, buildSteps } from './build'
 import { commitEdit, json, openForEdit, stepRangeHint, type ToolHandler } from './common'
 import { withWarnings } from '@/agent/warnings'
 
-type FlowOptions = Pick<ToolInput<'add_flow'>, 'token' | 'spotlight' | 'loop'> & { name?: string }
+type FlowOptions = Pick<ToolInput<'add_flow'>, 'token' | 'spotlight' | 'loop' | 'bodies'> & { name?: string }
 
 function applyOptions(flow: Flow, options: FlowOptions) {
   if (options.name !== undefined) flow.name = options.name
@@ -17,6 +17,7 @@ function applyOptions(flow: Flow, options: FlowOptions) {
   if (options.token?.icon !== undefined) flow.token.icon = options.token.icon
   if (options.spotlight !== undefined) flow.spotlight = options.spotlight
   if (options.loop !== undefined) flow.loop = options.loop
+  if (options.bodies !== undefined) flow.bodies = options.bodies
 }
 
 function result(diagramId: string, flowId: string, steps: number, warnings: string[]) {

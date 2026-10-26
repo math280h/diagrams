@@ -14,6 +14,7 @@ A flow plays like a log. A token moves from node to node, the camera follows it,
    - `latencyMs`: the time of the hop, for edge steps.
    - `level`: `warn` for a retry or a slow path, `error` for a failure. Leave `info` for the rest.
    - `caption`: one short sentence in the present tense about what happens for the person, for example "The shopper presses Pay."
+   - Bodies: an edge step shows the `request` body of its edge after the event, or the `response` body when the token moves back along the edge. To show the data of a call, give the edge a body with `update_elements` instead of putting JSON in the event. Set `bodies: false` on the flow to hide them.
 4. **Set the camera.** The flow opens on the whole diagram, and the steps follow the token. Use `camera: "fit"` for a step whose node or edge must be fully in view. Keep the default durations unless a step needs more time to read.
 5. **Name the token.** Set the `token` label to what moves, for example "Order", "Request" or "User", and give it an icon.
 6. **Check it.** Call `render_image` with the `flow` and a `step` to see a moment of the flow.

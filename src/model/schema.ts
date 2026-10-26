@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { BOUNDARY_COLORS } from './boundaries'
 
-export const DIAGRAM_VERSION = 6
+export const DIAGRAM_VERSION = 7
 
 export const ACCENTS = ['neutral', 'slate', 'blue', 'violet', 'emerald', 'amber', 'rose', 'cyan'] as const
 export const accentSchema = z.enum(ACCENTS)
@@ -119,6 +119,29 @@ export const trafficSchema = z.object({
 })
 export type Traffic = z.infer<typeof trafficSchema>
 
+export const PAYLOAD_TYPES = ['string', 'number', 'boolean', 'object', 'array', 'null'] as const
+export type PayloadType = (typeof PAYLOAD_TYPES)[number]
+
+export const payloadFieldSchema = z.object({
+  id: z.string(),
+  /**
+   * The place of the field in the body. Dots separate the names of nested fields, and `[]` marks the items of an
+   * array, for example `customer.email` or `items[].sku`. A path that starts with `[]` describes a body that is an
+   * array.
+   */
+  path: z.string(),
+  type: z.enum(PAYLOAD_TYPES),
+  required: z.boolean(),
+  /** An example value as text, for example `A-1` or `2`. Objects, arrays and `null` do not use it. */
+  example: z.string(),
+  description: z.string(),
+})
+export type PayloadField = z.infer<typeof payloadFieldSchema>
+
+/** A JSON body that a connection carries, as a list of fields. */
+export const payloadSchema = z.object({ fields: z.array(payloadFieldSchema) })
+export type Payload = z.infer<typeof payloadSchema>
+
 export const MARKERS = ['none', 'arrow', 'dot'] as const
 export const EDGE_PROTOCOLS = ['auto', 'http', 'rpc', 'data', 'messaging', 'none'] as const
 export const edgeDataSchema = z.object({
@@ -144,6 +167,10 @@ export const edgeDataSchema = z.object({
    * An edge with automatic sides follows it while its ends still touch both nodes.
    */
   route: z.array(xySchema).optional(),
+  /** The body that the source sends to the target. */
+  request: payloadSchema.optional(),
+  /** The body that the target sends back to the source. */
+  response: payloadSchema.optional(),
 })
 export type EdgeData = z.infer<typeof edgeDataSchema>
 
@@ -234,6 +261,11 @@ export const flowSchema = z.object({
   /** If true, the player dims the elements that the flow did not reach. */
   spotlight: z.boolean(),
   loop: z.boolean(),
+  /**
+   * If true, the log line of an edge step shows the request body of the edge, or the response body while the token
+   * moves back.
+   */
+  bodies: z.boolean(),
 })
 export type Flow = z.infer<typeof flowSchema>
 

@@ -797,6 +797,12 @@
   color: var(--dg-select);
   outline: 1px dashed var(--dg-select);
 }
+.dg-edge-fields {
+  opacity: 0.7;
+}
+.dg-edge-fields[data-after-label] {
+  margin-left: 0.5ch;
+}
 
 .dg-port {
   position: absolute;
@@ -910,6 +916,16 @@
 .dg-caption-event[data-level='error'] {
   color: var(--dg-error);
 }
+.dg-caption-body {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 36%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--dg-muted);
+}
 .dg-caption-text {
   min-width: 0;
   color: var(--dg-muted);
@@ -926,7 +942,8 @@
   .dg-caption-element {
     max-width: calc(100% - 64px);
   }
-  .dg-caption-event {
+  .dg-caption-event,
+  .dg-caption-body {
     display: none;
   }
   .dg-caption-text {

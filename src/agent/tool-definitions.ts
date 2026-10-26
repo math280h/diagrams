@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { LAYOUT_DIRECTIONS } from '@/layout/types'
 import { BOUNDARY_PROVIDER_IDS } from '@/model/boundaries'
-import { CARD_FORMS, EDGE_PROTOCOLS, FONT_PAIRS, LOG_LEVELS, SHAPES, SIDES } from '@/model/schema'
+import { CARD_FORMS, EDGE_PROTOCOLS, FONT_PAIRS, LOG_LEVELS, PAYLOAD_TYPES, SHAPES, SIDES } from '@/model/schema'
 
 const NODE_KINDS = ['card', 'shape', 'text', 'group'] as const
 const PROVIDERS = ['aws', 'azure', 'gcp', 'k8s', 'logo', 'lucide'] as const
@@ -81,6 +81,40 @@ const nodePatch = z.object({
     .describe('The new parent group: a ref, id or unique label. The value null moves the node to the top level.'),
 })
 
+const payloadField = z.object({
+  path: z
+    .string()
+    .describe(
+      'The field name. Use dots for nested fields and [] for array items, for example "customer.email" or "items[].sku". Start with [] if the body is an array.',
+    ),
+  type: z.enum(PAYLOAD_TYPES).optional().describe('string (the default), number, boolean, object, array or null.'),
+  required: z.boolean().optional().describe('If false, the body can leave the field out. The default is true.'),
+  example: z
+    .union([z.string(), z.number(), z.boolean()])
+    .optional()
+    .describe('An example value, for example "LAMP-01" or 2.'),
+  description: z.string().optional().describe('One short sentence about what the field holds.'),
+})
+
+const payloadInput = z
+  .object({
+    example: z
+      .unknown()
+      .optional()
+      .describe(
+        'An example JSON body: an object or an array. It replaces the fields with the fields, types and example values that it holds. Fields with the same path keep their description.',
+      ),
+    fields: z
+      .array(payloadField)
+      .optional()
+      .describe(
+        'Fields to change by path, or to add. Use it to add descriptions, or to describe a body without an example.',
+      ),
+    remove: z.array(z.string()).optional().describe('The paths of fields to remove.'),
+  })
+  .nullable()
+  .optional()
+
 const edgeFields = {
   label: z
     .string()
@@ -110,6 +144,12 @@ const edgeFields = {
     .enum([...SIDES, 'auto'])
     .optional()
     .describe('The side of the target node that the edge enters. "auto" lets the app choose the sides again.'),
+  request: payloadInput.describe(
+    'The JSON body that the source sends, for example the body of a POST request or of a message. A flow shows it in the log line while the token moves along the edge. null removes it.',
+  ),
+  response: payloadInput.describe(
+    'The JSON body that the target sends back. A flow shows it while the token moves back along the edge. null removes it.',
+  ),
 }
 
 const edgeInput = z.object({
@@ -155,6 +195,12 @@ const flowOptions = {
     .optional(),
   spotlight: z.boolean().optional().describe('If true, elements that the flow did not reach yet look dim.'),
   loop: z.boolean().optional().describe('If true, the flow starts again at the end.'),
+  bodies: z
+    .boolean()
+    .optional()
+    .describe(
+      'If true (the default), the log line of an edge step shows the request body of the edge, or its response body when the token moves back.',
+    ),
   connect: z
     .boolean()
     .optional()
@@ -199,13 +245,13 @@ export const TOOL_DEFINITIONS = {
   get_diagram: {
     title: 'Get diagram',
     description:
-      'Read a diagram: nodes with labels, kinds, icons, parents and canvas rectangles, edges with labels and protocols, and flows. Also warns about overlapping nodes.',
+      'Read a diagram: nodes with labels, kinds, icons, parents and canvas rectangles, edges with labels, protocols and request and response bodies, and flows. Also warns about overlapping nodes.',
     input: z.object({
       diagramId,
       detail: z
         .enum(['outline', 'full'])
         .optional()
-        .describe('outline (the default) leaves out card lines, flow steps and the theme.'),
+        .describe('outline (the default) leaves out card lines, body fields, flow steps and the theme.'),
     }),
     annotations: READ,
     timeoutMs: SHORT_MS,
@@ -315,7 +361,7 @@ export const TOOL_DEFINITIONS = {
   update_elements: {
     title: 'Update nodes and edges',
     description:
-      'Change nodes and edges in one undo step: labels, icons, forms, lines, positions, sizes, parents, edge labels, protocols, styles and ends.',
+      'Change nodes and edges in one undo step: labels, icons, forms, lines, positions, sizes, parents, edge labels, protocols, styles, ends, and request and response bodies.',
     input: z.object({ diagramId, nodes: z.array(nodePatch).optional(), edges: z.array(edgePatch).optional() }),
     annotations: CHANGE,
     timeoutMs: SHORT_MS,

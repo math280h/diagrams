@@ -3,7 +3,7 @@ import { absoluteRect } from '@/model/graph'
 import { nodeLabel } from '@/model/labels'
 import type { Rect } from '@/model/rect'
 import { edgeProtocol } from '@/model/protocols'
-import type { Flow } from '@/model/schema'
+import type { Flow, Payload } from '@/model/schema'
 import type { DiagramEdge, DiagramNode } from '@/model/types'
 import type { DocSnapshot } from '@/store/doc-store'
 import { withWarnings } from './warnings'
@@ -87,7 +87,20 @@ function compactNode(node: DiagramNode, rect: Rect, full: boolean) {
   }
 }
 
-function compactEdge(edge: DiagramEdge) {
+function compactPayload(payload: Payload, full: boolean) {
+  if (!full) return { fields: payload.fields.length }
+  return {
+    fields: payload.fields.map((field) => ({
+      path: field.path,
+      type: field.type,
+      ...(field.required ? {} : { required: false }),
+      ...(field.example ? { example: field.example } : {}),
+      ...(field.description ? { description: field.description } : {}),
+    })),
+  }
+}
+
+function compactEdge(edge: DiagramEdge, full: boolean) {
   const data = edge.data
   return {
     id: edge.id,
@@ -98,6 +111,8 @@ function compactEdge(edge: DiagramEdge) {
     ...(data && data.stroke !== 'solid' ? { style: data.stroke } : {}),
     ...(data?.traffic.enabled ? { traffic: true } : {}),
     ...(data?.markerStart === 'arrow' ? { bidirectional: true } : {}),
+    ...(data?.request ? { request: compactPayload(data.request, full) } : {}),
+    ...(data?.response ? { response: compactPayload(data.response, full) } : {}),
   }
 }
 
@@ -109,6 +124,7 @@ function compactFlow(flow: Flow, full: boolean) {
     token: flow.token.label,
     spotlight: flow.spotlight,
     loop: flow.loop,
+    bodies: flow.bodies,
     steps: flow.steps.map((step, index) => ({
       index,
       [step.target.kind]: step.target.id,
@@ -130,7 +146,7 @@ export function compactDiagram(content: DiagramContent, detail: 'outline' | 'ful
     name: content.name,
     ...(full ? { theme: content.theme } : {}),
     nodes: content.nodes.map((node) => compactNode(node, absoluteRect(node, byId), full)),
-    edges: content.edges.map(compactEdge),
+    edges: content.edges.map((edge) => compactEdge(edge, full)),
     flows: content.flows.map((flow) => compactFlow(flow, full)),
   }
   return withWarnings(compact, warnings)
