@@ -20,7 +20,8 @@ computer.
   A timeline adds camera paths and fades.
 - **Present and export**: present in full screen, or export PNG, SVG, MP4, WebM or GIF. Video export is exact to the
   frame.
-- **Mermaid import**: paste a Mermaid flowchart and get a laid-out diagram.
+- **Mermaid import and export**: paste a Mermaid flowchart and get a laid-out diagram, or copy a diagram as a
+  Mermaid flowchart for Markdown.
 - **Version history**: see how a diagram looked earlier, including each change that an agent made, and restore any
   version.
 - **Local first**: the website keeps diagrams in your browser. Export a diagram file (JSON) to move it to another

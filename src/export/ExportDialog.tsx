@@ -19,13 +19,14 @@ import { compileFlow } from '@/engine/flow/compile'
 import { downloadBlob } from '@/lib/download'
 import { formatSeconds, safeFileName } from '@/lib/format'
 import { useDoc } from '@/store/doc-store'
-import { setUi, useUi } from '@/store/ui-store'
+import { setUi, useUi, type ExportKind } from '@/store/ui-store'
 import { Choice, Field, Segmented, SliderField, SwitchField } from '@/editor/inspector/controls'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { errorMessage } from '@/lib/error-message'
 import { diagramBounds } from './bounds'
 import { captureBlob, canvasBackground, prepareAssets, waitForPaint } from './capture'
 import { ExportStage, type StageHandle } from './ExportStage'
+import { MermaidExport } from './MermaidExport'
 import { usePainted } from './use-painted'
 import { ExportAbortedError, recordStage, type VideoFormat } from './video'
 
@@ -561,17 +562,21 @@ export function ExportDialog() {
           <DialogDescription>
             {kind === 'video'
               ? 'Export a flow or the traffic animation as MP4, WebM or GIF. Frames render one by one, so none are dropped.'
-              : 'Save a PNG or SVG for READMEs, pull requests and slides.'}
+              : kind === 'mermaid'
+                ? 'Copy the diagram as a Mermaid flowchart. GitHub draws Mermaid in Markdown, for example in a README.'
+                : 'Save a PNG or SVG for READMEs, pull requests and slides.'}
           </DialogDescription>
         </DialogHeader>
-        <Tabs value={kind ?? 'image'} onValueChange={(value) => setUi({ exportOpen: value as 'image' | 'video' })}>
+        <Tabs value={kind ?? 'image'} onValueChange={(value) => setUi({ exportOpen: value as ExportKind })}>
           <TabsList>
             <TabsTrigger value="image">Image</TabsTrigger>
             <TabsTrigger value="video">Animation</TabsTrigger>
+            <TabsTrigger value="mermaid">Mermaid</TabsTrigger>
           </TabsList>
         </Tabs>
         {kind === 'image' && <ImageExport onClose={close} />}
         {kind === 'video' && <VideoExport onClose={close} />}
+        {kind === 'mermaid' && <MermaidExport />}
       </DialogContent>
     </Dialog>
   )

@@ -24,6 +24,31 @@ test('exports a PNG image and a diagram file', async ({ page }) => {
   expect(json.nodes.length).toBeGreaterThan(5)
 })
 
+test('exports a Mermaid flowchart to copy or download', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.goto('/')
+  await copyTemplate(page, 'Order system')
+  await page.getByRole('button', { name: 'Export' }).click()
+  await page.getByRole('menuitem', { name: /Mermaid/ }).click()
+
+  const text = page.getByRole('textbox', { name: 'Mermaid flowchart' })
+  await expect(text).toHaveValue(/^flowchart LR\n/)
+  await expect(text).toHaveValue(/api_gateway\["API gateway<br\/>Envoy"\]/)
+  const mermaid = await text.inputValue()
+
+  await page.getByRole('button', { name: 'Copy', exact: true }).click()
+  // The Windows clipboard gives the line ends as CRLF.
+  await expect
+    .poll(() => page.evaluate(async () => (await navigator.clipboard.readText()).replaceAll('\r\n', '\n')))
+    .toBe(mermaid)
+
+  const download = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Download .mmd' }).click()
+  const file = await download
+  expect(file.suggestedFilename()).toMatch(/\.mmd$/)
+  expect(await readFile(await file.path(), 'utf8')).toBe(mermaid)
+})
+
 test('exports a flow as a WebM video', async ({ page }) => {
   await page.goto('/')
   await copyTemplate(page, 'Checkout flow')
