@@ -12,7 +12,7 @@ import {
 
 export interface RepositorySink {
   write(file: StoredFile): Promise<unknown>
-  remove(id: string): Promise<unknown>
+  remove(id: string, trash: boolean): Promise<unknown>
 }
 
 export interface CachedRepository extends DiagramRepository {
@@ -100,9 +100,9 @@ export function createCachedRepository(options: {
       return { ok: true }
     },
 
-    remove(id) {
+    remove(id, { trash = true } = {}) {
       entries.delete(id)
-      track(id, options.sink.remove(id), 'remove')
+      track(id, options.sink.remove(id, trash), 'remove')
     },
 
     usageBytes() {

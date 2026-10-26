@@ -1,23 +1,49 @@
 import { DIAGRAM_FILE_SUFFIX } from '@/desktop/constants'
 import { forgetOpenedInApp } from '@/desktop/open-in-app'
-import { createDiagram, newId } from '@/model/defaults'
+import { createDiagram, DEFAULT_DIAGRAM_NAME, newId } from '@/model/defaults'
 import type { Diagram } from '@/model/schema'
 import { downloadBlob } from '@/lib/download'
 import { safeFileName } from '@/lib/format'
-import { closeDiagramSession } from '@/store/document'
+import { closeDiagramSession, openDiagramId } from '@/store/document'
 import { forgetVersions } from '@/store/versions'
-import { repository } from './active-repository'
+import { loadDiagramOrNull, repository } from './active-repository'
 import { DiagramFormatError, migrate } from './migrations'
-import type { SaveResult } from './repository'
+import type { RemoveOptions, SaveResult } from './repository'
 
 export function withFreshIdentity(diagram: Diagram, name = diagram.name): Diagram {
   const now = Date.now()
   return { ...diagram, id: newId('d'), name, rev: 0, createdAt: now, updatedAt: now }
 }
 
+const newBlankIds = new Set<string>()
+
 export function createBlankDiagram(): { diagram: Diagram; result: SaveResult } {
   const diagram = createDiagram()
-  return { diagram, result: repository().save(diagram) }
+  const result = repository().save(diagram)
+  if (result.ok) newBlankIds.add(diagram.id)
+  return { diagram, result }
+}
+
+function isUnused(diagram: Diagram) {
+  return (
+    diagram.name === DEFAULT_DIAGRAM_NAME &&
+    diagram.nodes.length === 0 &&
+    diagram.edges.length === 0 &&
+    diagram.flows.length === 0
+  )
+}
+
+/**
+ * Deletes each diagram from {@link createBlankDiagram} that is still empty and has the default name, if no editor
+ * shows it. On the desktop, the file does not go to the trash.
+ */
+export function discardUnusedBlankDiagrams() {
+  for (const id of newBlankIds) {
+    if (openDiagramId() === id) continue
+    newBlankIds.delete(id)
+    const diagram = loadDiagramOrNull(id)
+    if (diagram && isUnused(diagram)) deleteDiagram(id, { trash: false })
+  }
 }
 
 export function saveImported(diagram: Diagram): SaveResult {
@@ -38,9 +64,9 @@ export function renameDiagram(id: string, name: string) {
   repository().save({ ...diagram, name, rev: diagram.rev + 1, updatedAt: Date.now() })
 }
 
-export function deleteDiagram(id: string) {
+export function deleteDiagram(id: string, options?: RemoveOptions) {
   closeDiagramSession(id, false)
-  repository().remove(id)
+  repository().remove(id, options)
   forgetOpenedInApp(id)
   forgetVersions(id)
 }

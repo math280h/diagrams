@@ -136,7 +136,9 @@ export function createFlow(name = 'User flow'): Flow {
   }
 }
 
-export function createDiagram(name = 'Untitled diagram'): Diagram {
+export const DEFAULT_DIAGRAM_NAME = 'Untitled diagram'
+
+export function createDiagram(name = DEFAULT_DIAGRAM_NAME): Diagram {
   const now = Date.now()
   return {
     id: newId('d'),

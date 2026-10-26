@@ -49,7 +49,7 @@ async function withRetry<T>(work: () => Promise<T>): Promise<T> {
   return work()
 }
 
-type Operation = { kind: 'write'; text: string } | { kind: 'remove' }
+type Operation = { kind: 'write'; text: string } | { kind: 'remove'; trash: boolean }
 
 export type DiagramFiles = ReturnType<typeof createDiagramFiles>
 
@@ -100,12 +100,13 @@ export function createDiagramFiles(folder: string, options: { trash?: (file: str
   async function perform(id: string, operation: Operation) {
     const target = pathOf(id)
     if (operation.kind === 'remove') {
+      const trash = operation.trash ? options.trash : undefined
       try {
-        if (options.trash) await options.trash(target)
+        if (trash) await trash(target)
         else await unlink(target)
       } catch (error) {
         if (errorCode(error) !== 'ENOENT') {
-          if (!options.trash) throw error
+          if (!trash) throw error
           await unlink(target)
         }
       }
@@ -191,7 +192,7 @@ export function createDiagramFiles(folder: string, options: { trash?: (file: str
 
     write: (id: string, text: string) => enqueue(id, { kind: 'write', text }),
 
-    remove: (id: string) => enqueue(id, { kind: 'remove' }),
+    remove: (id: string, { trash = true }: { trash?: boolean } = {}) => enqueue(id, { kind: 'remove', trash }),
 
     /** Resolves when all queued writes and removes end. */
     async drain() {

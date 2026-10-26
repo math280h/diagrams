@@ -41,7 +41,7 @@ export type ToolOutcome = { ok: true; content: ToolContent[] } | { ok: false; me
 export interface MainRequests {
   'files.list': { input: null; output: { folder: string; files: StoredFile[] } }
   'files.write': { input: StoredFile; output: null }
-  'files.remove': { input: { id: string }; output: null }
+  'files.remove': { input: { id: string; trash: boolean }; output: null }
   'files.reveal': { input: null; output: null }
   'agent.info': { input: null; output: AgentInfo }
   'agent.resetToken': { input: null; output: AgentInfo }

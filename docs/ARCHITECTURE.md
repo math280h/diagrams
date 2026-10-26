@@ -389,6 +389,12 @@ the handoff from the website, and updates from GitHub Releases.
   nothing when the content is as the last save left it, for example after a selection change.
   Deleting a diagram closes its session without the due save, so the save when the editor closes
   cannot write the file again.
+- "New diagram" stores the diagram at once, so Present, a reload and agent tools treat it like any
+  other diagram. When the library shows again, each new diagram of the window that no editor shows
+  and that is still empty, with the default name, is deleted (`discardUnusedBlankDiagrams`); on the
+  desktop the file does not go to the trash. People who opened a new diagram and went back found
+  empty "Untitled diagram" cards in the library. The window keeps the marks in memory, so a reload
+  keeps the diagram.
 - If the diagrams folder cannot be read at start, the window shows the reason and a "Try again"
   button, and agent calls fail at once with that reason.
 - A `changed` event for the open diagram means that another tab or another program changed it, so

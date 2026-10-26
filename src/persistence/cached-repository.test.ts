@@ -86,6 +86,7 @@ describe('createCachedRepository', () => {
     sink.remove.mockRejectedValueOnce(new Error('in use'))
     repository.remove('b')
     await repository.settled()
+    expect(sink.remove).toHaveBeenCalledWith('a', true)
     expect(events).toEqual([
       { kind: 'removed', id: 'a' },
       { kind: 'remove-failed', id: 'b', message: 'in use' },

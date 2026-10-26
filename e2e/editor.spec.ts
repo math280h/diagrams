@@ -36,6 +36,22 @@ test('creates a diagram, adds nodes, undoes, and keeps the result after a reload
   await expect(page.getByLabel('Diagram name')).toHaveValue('Storage tier')
 })
 
+test('deletes a new diagram that the user leaves empty, and keeps one with a name', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'New diagram' }).first().click()
+  await expect(page.getByLabel('Diagram name')).toHaveValue('Untitled diagram')
+  await page.goBack()
+  await expect(page.getByRole('heading', { name: /Draw how your system works/ })).toBeVisible()
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('dg:index'))).toBe('[]')
+
+  await page.getByRole('button', { name: 'New diagram' }).first().click()
+  await page.getByLabel('Diagram name').fill('Kept for later')
+  await page.getByLabel('Diagram name').press('Enter')
+  await page.getByRole('link', { name: 'All diagrams' }).click()
+  await expect(page.getByRole('link', { name: 'Kept for later' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Untitled diagram' })).toHaveCount(0)
+})
+
 test('edits a node in the properties panel', async ({ page }) => {
   await openTemplate(page, 'Order system')
   await expect(page.getByRole('complementary', { name: 'Properties' })).toHaveCount(0)

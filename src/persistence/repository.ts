@@ -31,12 +31,17 @@ export type RepositoryEvent =
   | { kind: 'removed'; id: string }
   | { kind: 'remove-failed'; id: string; message: string }
 
+export interface RemoveOptions {
+  /** If false, the desktop deletes the file and does not move it to the trash. The default is true. */
+  trash?: boolean
+}
+
 export interface DiagramRepository {
   readonly location: StorageLocation
   list(): DiagramMeta[]
   load(id: string): Diagram | null
   save(diagram: Diagram): SaveResult
-  remove(id: string): void
+  remove(id: string, options?: RemoveOptions): void
   /** Returns the size of all stored diagrams. */
   usageBytes(): number
   /**

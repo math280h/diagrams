@@ -12,7 +12,7 @@ import {
   Search,
   Trash2,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import {
   Dialog,
@@ -50,6 +50,7 @@ import type { Diagram } from '@/model/schema'
 import {
   createBlankDiagram,
   deleteDiagram,
+  discardUnusedBlankDiagrams,
   duplicateDiagram,
   exportDiagramJson,
   renameDiagram,
@@ -258,6 +259,8 @@ export function LibraryPage() {
   const [deleting, setDeleting] = useState<DiagramMeta | null>(null)
   const templates = useMemo(() => TEMPLATES.map((template) => ({ ...template, preview: template.build() })), [])
   const agentIntroVisible = useAgentIntroVisible()
+
+  useEffect(() => discardUnusedBlankDiagrams(), [])
 
   const open = (id: string) => void navigate({ to: '/d/$diagramId', params: { diagramId: id } })
 
