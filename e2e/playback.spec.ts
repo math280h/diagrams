@@ -83,6 +83,15 @@ test('keeps icons readable when the canvas zooms out', async ({ page }) => {
   expect(await cardAspect()).toBe(zoomedOutAspect)
 })
 
+test('hides an edge label while the token passes over it', async ({ page }) => {
+  await page.goto('/')
+  await copyTemplate(page, 'Order system')
+  await page.getByRole('button', { name: 'Present' }).click()
+  const covered = page.locator('.dg-edge-label[data-covered]')
+  await expect(covered.first()).toBeAttached({ timeout: 10_000 })
+  await expect(covered).toHaveCount(0, { timeout: 10_000 })
+})
+
 test('keeps the icon of a node that appears while the canvas is zoomed out readable', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'New diagram' }).first().click()
