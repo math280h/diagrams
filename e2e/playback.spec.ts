@@ -82,3 +82,22 @@ test('keeps icons readable when the canvas zooms out', async ({ page }) => {
   await expect.poll(iconWidth).toBeCloseTo(14, 0)
   expect(await cardAspect()).toBe(zoomedOutAspect)
 })
+
+test('keeps the icon of a node that appears while the canvas is zoomed out readable', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'New diagram' }).first().click()
+  await expect(page.getByLabel('Diagram name')).toHaveValue('Untitled diagram')
+  const zoom = page.getByRole('button', { name: 'Reset zoom to 100%' })
+  const percent = async () => Number.parseInt((await zoom.textContent()) ?? '100', 10)
+  while ((await percent()) > 50) {
+    const before = await zoom.textContent()
+    await page.getByRole('button', { name: 'Zoom out' }).click()
+    await expect(zoom).not.toHaveText(before ?? '')
+  }
+
+  await page.keyboard.press('n')
+  await page.getByPlaceholder('Insert a node').fill('lambda')
+  await page.getByRole('option', { name: /AWS Lambda/ }).click()
+  const icon = page.locator('[data-editor-canvas] .react-flow__node .dg-card-icon').first()
+  await expect.poll(async () => (await icon.boundingBox())?.width ?? 0).toBeGreaterThan(9)
+})
