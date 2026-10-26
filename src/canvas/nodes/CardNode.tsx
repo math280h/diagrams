@@ -4,6 +4,7 @@ import type { CardNodeType } from '@/model/types'
 import { updateNodeData } from '@/store/actions'
 import { Icon } from '@/canvas/icon'
 import { useCanvasMode } from '@/canvas/mode'
+import { useZoomScopeRef } from '@/canvas/zoom-scope'
 import { EditableText } from './EditableText'
 import { isIdentifier, renderHighlighted } from './highlight'
 import { WidthResizer } from './resize'
@@ -11,6 +12,7 @@ import { SideHandles } from './SideHandles'
 
 export function CardNode({ id, data, selected }: NodeProps<CardNodeType>) {
   const { editable } = useCanvasMode()
+  const zoomScope = useZoomScopeRef()
   const meterText = data.meterText || (data.meter !== null ? `${Math.round(data.meter * 100)}%` : '')
 
   return (
@@ -19,7 +21,11 @@ export function CardNode({ id, data, selected }: NodeProps<CardNodeType>) {
       <SideHandles connectable={editable} />
       <div className="dg-card" data-form={data.form}>
         <div className="dg-card-head">
-          {data.icon && <Icon name={data.icon} className="dg-card-icon" strokeWidth={1.75} />}
+          {data.icon && (
+            <span ref={zoomScope} className="dg-zoom-scope">
+              <Icon name={data.icon} className="dg-card-icon" strokeWidth={1.75} />
+            </span>
+          )}
           <EditableText
             className="dg-card-title"
             value={data.title}

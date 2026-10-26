@@ -8,11 +8,13 @@ import { updateNodeData } from '@/store/actions'
 import { GRID_DOT_PX } from '@/canvas/grid'
 import { Icon } from '@/canvas/icon'
 import { useCanvasMode } from '@/canvas/mode'
+import { useZoomScopeRef } from '@/canvas/zoom-scope'
 import { EditableText } from './EditableText'
 import { BoxResizer } from './resize'
 
 export function GroupNode({ id, data, selected, positionAbsoluteX, positionAbsoluteY }: NodeProps<GroupNodeType>) {
   const { editable, background } = useCanvasMode()
+  const zoomScope = useZoomScopeRef()
   const kind = boundaryKind(data.kind)
   const kindLabel = boundaryKindLabel(kind)
   const custom = kind.tier === 'custom'
@@ -33,7 +35,11 @@ export function GroupNode({ id, data, selected, positionAbsoluteX, positionAbsol
           <rect x="0.5" y="0.5" width="100%" height="100%" />
         </svg>
         <div className="dg-group-label">
-          {data.icon && <Icon name={data.icon} className="dg-group-icon" strokeWidth={1.75} />}
+          {data.icon && (
+            <span ref={zoomScope} className="dg-zoom-scope">
+              <Icon name={data.icon} className="dg-group-icon" strokeWidth={1.75} />
+            </span>
+          )}
           <span className="dg-group-text">
             {kindLabel && <span className="dg-group-kind">{kindLabel}</span>}
             {(custom || data.label) && (
