@@ -16,6 +16,16 @@ function setOpacity(element: HTMLElement | SVGElement, value: number | undefined
 }
 
 /**
+ * Returns a key of the state that {@link applyFlowFrame} writes for a frame of one timeline. Two frames with the same
+ * key write the same DOM.
+ */
+export function flowStateKey(frame: FlowFrame, spotlight: boolean): string {
+  let key = `${frame.segmentIndex}|${spotlight ? 1 : 0}`
+  for (const [element, value] of frame.emphasis) key += `|${element}=${value}`
+  return key
+}
+
+/**
  * Writes the flow state of a frame to the DOM of one canvas.
  *
  * @param frame - The frame to show. The value `null` removes all flow state.

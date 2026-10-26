@@ -1,6 +1,6 @@
 import { motionValue } from 'motion'
 import type { LogLevel, Target, Traffic } from '@/model/schema'
-import { applyFlowFrame } from './apply'
+import { applyFlowFrame, flowStateKey } from './apply'
 import { blendCameras, cameraToViewport, viewportToCamera, type Rect, type ViewSize, type Viewport } from './camera'
 import { createClock } from './clock'
 import { clamp01, easeInOutCubic } from './easing'
@@ -181,6 +181,10 @@ export class Engine {
   private flowDirty = true
   private lastFlowMs = -1
   private lastTimeline: Timeline | null = null
+  /** The flow state that the DOM shows, or `null` if the next frame must write it. */
+  private shownState: string | null = null
+  private tokenShown = false
+  private tokenLabelShown = false
   private point: PathPoint = { x: 0, y: 0, angleRad: 0 }
   private frameRequest = 0
   private lastTimestamp: number | null = null
@@ -365,6 +369,9 @@ export class Engine {
     this.setCaption(null)
     this.flowShown = false
     this.lastTimeline = null
+    this.shownState = null
+    this.tokenShown = false
+    this.tokenLabelShown = false
   }
 
   private coverEdgeLabels(tokenShown: boolean, tokenLabelShown: boolean) {
@@ -417,6 +424,7 @@ export class Engine {
   /** Makes the next frame write the flow state again. Call it after the diagram changes. */
   invalidate() {
     this.flowDirty = true
+    this.shownState = null
     this.edgeProtocols.clear()
   }
 
@@ -443,6 +451,7 @@ export class Engine {
     if (unchanged && !this.manual) return null
     this.flowDirty = false
     this.lastFlowMs = timeMs
+    if (timeline !== this.lastTimeline) this.shownState = null
     this.lastTimeline = timeline
     const freeView = {
       width: Math.max(1, this.viewSize.width - this.insets.left - this.insets.right),
@@ -453,7 +462,13 @@ export class Engine {
       reducedMotion: this.reducedMotion,
     })
     this.flowShown = true
-    applyFlowFrame(this.root, result, timeline.flow.spotlight)
+    // A layout read after a DOM write makes the browser compute style and layout again within the frame.
+    if (!this.manual) this.coverEdgeLabels(this.tokenShown, this.tokenLabelShown)
+    const state = flowStateKey(result, timeline.flow.spotlight)
+    if (state !== this.shownState) {
+      applyFlowFrame(this.root, result, timeline.flow.spotlight)
+      this.shownState = state
+    }
     this.trafficScale = result.trafficScale
 
     if (this.tokenElement) {
@@ -471,7 +486,9 @@ export class Engine {
         this.tokenElement.style.display = 'none'
       }
     }
-    this.coverEdgeLabels(result.token !== null, result.tokenLabel > LABEL_VISIBLE)
+    this.tokenShown = result.token !== null
+    this.tokenLabelShown = result.tokenLabel > LABEL_VISIBLE
+    if (this.manual) this.coverEdgeLabels(this.tokenShown, this.tokenLabelShown)
 
     const moveCamera = this.playback.playing || this.manual || this.playback.cameraRequest || this.handoff !== null
     if (result.camera && this.setViewport && moveCamera) {

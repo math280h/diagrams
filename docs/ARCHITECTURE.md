@@ -128,11 +128,14 @@ The visual system lives in `DESIGN.md` at the repository root.
 - Nodes and edges do not use `backdrop-filter`, because image capture cannot reproduce it.
 - Card and boundary icons keep a minimum size on screen. CSS scales them with `scale`, from
   `--dg-zoom`. A transform does not change the node size, so edges and handles stay where they are;
-  only a margin moves the title. `ZoomProperty` writes the zoom on each icon while it changes, in
-  steps of 5 %, without a React render. A changed custom property on the canvas root restyles every
-  element of the canvas, which took about 4 ms per zoom frame in the multi-cloud template, so the
-  root gets the zoom only after the zoom stops, for icons that mount later. The zoom comes from the
-  camera, so a flow frame still depends only on the time, and the video export shows the same
+  only a margin moves the title. Each icon sits in a `dg-zoom-scope` element (`display: contents`)
+  that takes the zoom when it mounts (`useZoomScopeRef`), and `ZoomProperty` writes the zoom on the
+  scopes while it changes, in steps of 5 %, without a React render. The canvas root never gets it:
+  a changed custom property on the root restyles every element of the canvas, which took about 4 ms
+  per zoom frame in the multi-cloud template. The root got the zoom 150 ms after each zoom change
+  before, for icons that mount later, and during a flow that restyle came each time the camera zoom
+  settled. The scope survives the swap from the placeholder to the loaded icon. The zoom comes from
+  the camera, so a flow frame still depends only on the time, and the video export shows the same
   icons.
 
 ### Icons
@@ -242,6 +245,19 @@ An edge can carry a `request` body (what the source sends) and a `response` body
 - One `requestAnimationFrame` loop advances two clocks: the ambient clock for traffic and the
   playback clock for the active flow. It writes particle positions as SVG attributes and flow state
   as `data-flow` attributes. React does not render per frame.
+- A frame writes the flow state of nodes, edges and labels only when the step, the spotlight or an
+  emphasis value changes (`flowStateKey`). The pass touched every element in every frame before.
+- Edge labels hide under the token, which needs the boxes of the token and the labels. In live play
+  the engine reads them at the start of the frame, before the frame writes to the DOM, so the
+  browser computes style and layout once per frame; the labels follow one frame late. A read after
+  the writes made the browser compute style and layout twice in each frame. Exports read after the
+  writes, so each export frame stays exact.
+- On a phone profile (Chromium, Pixel 7 size, 4× and 6× CPU throttling) these two changes and the
+  zoom scopes raised the frame rate of Present in the multi-cloud template from 25 to 35 fps at 6×
+  and cut frames longer than 50 ms by half or more. `will-change: transform` on the React Flow
+  viewport was tried too: it cut raster work during a pan by about 75 %, but layerization on the
+  main thread grew by more than it saved, and pinch zoom fell from 54 to 41 fps at 6×. The viewport
+  stays uncomposited.
 - `evaluateFlow(timeline, t, geometry, view)` is pure. Token position, node and edge state,
   caption and camera depend only on `t`. Scrubbing and export use the same function.
 - The step camera is a weighted mean of the step targets over a time window around `t` (1 s for

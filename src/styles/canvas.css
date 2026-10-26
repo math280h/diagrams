@@ -224,6 +224,9 @@
   --dg-icon-px: 16;
   margin-block: -1px;
 }
+.dg-zoom-scope {
+  display: contents;
+}
 .dg-card-icon,
 .dg-group-icon {
   --dg-icon-scale: clamp(
