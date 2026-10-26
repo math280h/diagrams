@@ -19,7 +19,7 @@ export function CardNode({ id, data, selected }: NodeProps<CardNodeType>) {
     <>
       {editable && selected && <WidthResizer minWidth={132} />}
       <SideHandles connectable={editable} />
-      <div className="dg-card" data-form={data.form}>
+      <div className="dg-card" data-form={data.form} data-color={data.color === 'neutral' ? undefined : data.color}>
         <div className="dg-card-head">
           {data.icon && (
             <span ref={zoomScope} className="dg-zoom-scope">

@@ -10,7 +10,17 @@ import { CARD_FORMS, SHAPES, type CardData, type GroupData, type ShapeData, type
 import type { CardNodeType, DiagramNode, GroupNodeType, ShapeNodeType, TextNodeType } from '@/model/types'
 import { updateNodeData } from '@/store/actions'
 import { useState } from 'react'
-import { BoundaryColorPicker, Field, Choice, Section, Segmented, SliderField, SwitchField, TextInput } from './controls'
+import {
+  BoundaryColorPicker,
+  Choice,
+  ColorPicker,
+  Field,
+  Section,
+  Segmented,
+  SliderField,
+  SwitchField,
+  TextInput,
+} from './controls'
 import { IconPicker } from './IconPicker'
 import { NodeLinks } from './NodeLinks'
 
@@ -47,6 +57,9 @@ function CardFields({ node }: { node: CardNodeType }) {
         </Field>
         <Field label="Icon" wide>
           <IconPicker value={data.icon} onChange={(icon) => set({ icon })} allowNone />
+        </Field>
+        <Field label="Colour" wide>
+          <ColorPicker value={data.color} onChange={(color) => set({ color })} />
         </Field>
       </Section>
       <Section title="Metrics">
@@ -190,6 +203,9 @@ function ShapeFields({ node }: { node: ShapeNodeType }) {
             { value: 'outline', label: 'Line' },
           ]}
         />
+      </Field>
+      <Field label="Colour" wide>
+        <ColorPicker value={data.color} onChange={(color) => set({ color })} />
       </Field>
     </Section>
   )

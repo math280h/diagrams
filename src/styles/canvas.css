@@ -6,6 +6,8 @@
   --dg-zone-blue: #7cbbdb;
   --dg-zone-pink: #f38abe;
   --dg-zone-red: #fe8b83;
+  --dg-hue-fill: 12%;
+  --dg-hue-line: 50%;
   --dg-ground: #000000;
   --dg-chrome: #0a0a0a;
   --dg-grid: #1c1c1c;
@@ -49,6 +51,8 @@
   --dg-zone-blue: #297497;
   --dg-zone-pink: #a84078;
   --dg-zone-red: #b2403d;
+  --dg-hue-fill: 8%;
+  --dg-hue-line: 45%;
   --dg-ground: #ffffff;
   --dg-chrome: #ffffff;
   --dg-grid: #e4e4e4;
@@ -320,6 +324,47 @@
   color: var(--dg-muted);
 }
 
+:is(.dg-card, .dg-shape)[data-color='orange'] {
+  --dg-hue: var(--dg-zone-orange);
+}
+:is(.dg-card, .dg-shape)[data-color='yellow'] {
+  --dg-hue: var(--dg-zone-yellow);
+}
+:is(.dg-card, .dg-shape)[data-color='green'] {
+  --dg-hue: var(--dg-zone-green);
+}
+:is(.dg-card, .dg-shape)[data-color='teal'] {
+  --dg-hue: var(--dg-zone-teal);
+}
+:is(.dg-card, .dg-shape)[data-color='blue'] {
+  --dg-hue: var(--dg-zone-blue);
+}
+:is(.dg-card, .dg-shape)[data-color='pink'] {
+  --dg-hue: var(--dg-zone-pink);
+}
+:is(.dg-card, .dg-shape)[data-color='red'] {
+  --dg-hue: var(--dg-zone-red);
+}
+.dg-card[data-color] {
+  background: color-mix(in oklab, var(--dg-hue) var(--dg-hue-fill), var(--dg-panel));
+  border-color: color-mix(in oklab, var(--dg-hue) var(--dg-hue-line), var(--dg-panel));
+}
+.dg-card[data-color][data-form='external'] {
+  background: color-mix(in oklab, var(--dg-hue) calc(var(--dg-hue-fill) / 2), var(--dg-ground));
+}
+.dg-card[data-color][data-form='datastore']::before,
+.dg-card[data-color][data-form='queue']::after,
+.dg-card[data-color][data-form='client']::before {
+  background: color-mix(in oklab, var(--dg-hue) calc(var(--dg-hue-fill) * 1.5), var(--dg-raised));
+}
+.dg-card[data-color] .dg-card-icon,
+.dg-shape[data-color] .dg-shape-label svg {
+  color: var(--dg-hue);
+}
+.dg-card[data-color] .dg-meter-fill {
+  background: var(--dg-hue);
+}
+
 .dg-shape {
   position: relative;
   width: 100%;
@@ -370,6 +415,20 @@
   height: 14px;
   color: var(--dg-muted);
 }
+.dg-shape[data-color] .dg-shape-outline {
+  fill: color-mix(in oklab, var(--dg-hue) var(--dg-hue-fill), var(--dg-panel));
+  stroke: color-mix(in oklab, var(--dg-hue) var(--dg-hue-line), var(--dg-panel));
+}
+.dg-shape[data-color]:where([data-fill='solid']) .dg-shape-outline {
+  fill: color-mix(in oklab, var(--dg-hue) calc(var(--dg-hue-fill) * 2), var(--dg-raised));
+}
+.dg-shape[data-color]:where([data-fill='outline']) .dg-shape-outline {
+  fill: var(--dg-ground);
+  stroke: var(--dg-hue);
+}
+.dg-shape[data-color] .dg-shape-detail {
+  stroke: color-mix(in oklab, var(--dg-hue) var(--dg-hue-line), var(--dg-panel));
+}
 
 .dg-text {
   white-space: pre-wrap;
@@ -377,8 +436,7 @@
   padding: 2px 4px;
   min-width: 24px;
 }
-.dg-text[data-tone='muted'],
-.dg-text[data-tone='accent'] {
+.dg-text[data-tone='muted'] {
   color: var(--dg-muted);
 }
 .dg-text[data-size='sm'] {
@@ -621,6 +679,7 @@
 }
 .react-flow__node[data-flow='idle'] .dg-card-title,
 .react-flow__node[data-flow='idle'] .dg-shape-label,
+.react-flow__node[data-flow='idle'] .dg-shape-label svg,
 .react-flow__node[data-flow='idle'] .dg-text,
 .react-flow__node[data-flow='idle'] .dg-card-line,
 .react-flow__node[data-flow='idle'] .dg-card-icon,

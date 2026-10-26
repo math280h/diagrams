@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { createDiagram, createEdge, createFlow } from '@/model/defaults'
+import {
+  createDiagram,
+  createEdge,
+  createFlow,
+  defaultCardData,
+  defaultGroupData,
+  defaultShapeData,
+  defaultTextData,
+} from '@/model/defaults'
 import { DIAGRAM_VERSION, diagramSchema } from '@/model/schema'
 import { TEMPLATES } from '@/templates'
-import { DiagramFormatError, migrate } from './migrations'
+import { DiagramFormatError, migrate, migrateElements } from './migrations'
 import { fromDiagram, toDiagram } from './serialize'
 
 describe('templates', () => {
@@ -47,8 +55,23 @@ describe('migrate', () => {
     expect(migrate(JSON.parse(JSON.stringify(diagram)))).toEqual(diagram)
   })
 
-  it('rejects a newer version', () => {
-    expect(() => migrate({ ...createDiagram(), version: DIAGRAM_VERSION + 1 })).toThrow(DiagramFormatError)
+  it('rejects a newer version and asks the user to update', () => {
+    expect(() => migrate({ ...createDiagram(), version: DIAGRAM_VERSION + 1 })).toThrow(
+      `This diagram uses format ${DIAGRAM_VERSION + 1} from a newer version of Diagrams. This version reads format ${DIAGRAM_VERSION} and older. Update Diagrams to open it.`,
+    )
+  })
+
+  it('brings copied nodes and edges of an earlier format to the current format', () => {
+    const { color: _color, ...card } = defaultCardData({ title: 'API' })
+    const edge = createEdge('api', 'api')
+    const nodes = [{ id: 'api', type: 'card', position: { x: 0, y: 0 }, data: { ...card, accent: 'violet' } }]
+    const edges = [{ ...edge, data: { ...edge.data, accent: 'blue' } }]
+    const migrated = migrateElements(JSON.parse(JSON.stringify(nodes)), JSON.parse(JSON.stringify(edges)), 7)
+    expect(migrated.nodes[0]!.data).toMatchObject({ title: 'API', color: 'neutral' })
+    expect(migrated.nodes[0]!.data).not.toHaveProperty('accent')
+    expect(migrated.edges[0]!.data).not.toHaveProperty('accent')
+    expect(() => migrateElements(nodes, edges, DIAGRAM_VERSION + 1)).toThrow(/^The copied nodes use format/)
+    expect(() => migrateElements('nodes', [], DIAGRAM_VERSION)).toThrow(DiagramFormatError)
   })
 
   it('rejects data that is not a diagram', () => {
@@ -123,6 +146,45 @@ describe('migrate', () => {
     const migrated = migrate(JSON.parse(JSON.stringify(v6)))
     expect(migrated.flows[0]!.bodies).toBe(true)
     expect(migrated.edges[0]!.data.request).toBeUndefined()
+  })
+
+  it('gives version 7 cards and shapes the neutral colour, and drops the accents that the canvas did not draw', () => {
+    const base = createDiagram()
+    const node = (id: string, type: string, data: Record<string, unknown>) => ({
+      id,
+      type,
+      position: { x: 0, y: 0 },
+      data: { ...data, accent: 'violet' },
+    })
+    const { color: _cardColor, ...card } = defaultCardData()
+    const { color: _shapeColor, ...shape } = defaultShapeData()
+    const edge = createEdge('api', 'db')
+    const flow = createFlow('Checkout')
+    const v7 = {
+      ...base,
+      version: 7,
+      nodes: [
+        node('api', 'card', card),
+        node('start', 'shape', shape),
+        node('note', 'text', { ...defaultTextData(), tone: 'accent' }),
+        node('vpc', 'group', defaultGroupData()),
+      ],
+      edges: [{ ...edge, data: { ...edge.data, accent: 'blue' } }],
+      flows: [{ ...flow, token: { ...flow.token, accent: 'violet' } }],
+    }
+    const migrated = migrate(JSON.parse(JSON.stringify(v7)))
+    const [api, start, note, vpc] = migrated.nodes
+    expect(api!.data).toMatchObject({ color: 'neutral' })
+    expect(start!.data).toMatchObject({ color: 'neutral' })
+    expect(note!.data).toMatchObject({ tone: 'muted' })
+    expect(vpc!.data).toMatchObject({ color: 'auto' })
+    for (const value of [
+      ...migrated.nodes.map((item) => item.data),
+      migrated.edges[0]!.data,
+      migrated.flows[0]!.token,
+    ]) {
+      expect(value).not.toHaveProperty('accent')
+    }
   })
 
   it('gives version 4 groups the custom kind and turns on boundary colors', () => {

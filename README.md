@@ -11,7 +11,7 @@ computer.
 
 - **Node kinds with their own outlines**: services, data stores, queues, clients, external systems and functions.
   Shapes, text and boundaries for AWS, Azure, Google Cloud, Kubernetes and custom groupings, coloured by kind or in
-  one colour. Metrics and meters are optional.
+  one colour. Give nodes a colour to group them, for example by team. Metrics and meters are optional.
 - **Real icons**: the official AWS, Azure, Google Cloud and Kubernetes architecture icons, and 220 software logos.
   Search them in the insert menu or the icon picker.
 - **Moving connections**: dots, comets, dashes or pulses that flow along a connection. Turn them on for one
@@ -23,7 +23,7 @@ computer.
 - **Present and export**: present in full screen, or export PNG, SVG, MP4, WebM or GIF. Video export is exact to the
   frame.
 - **Mermaid import and export**: paste a Mermaid flowchart and get a laid-out diagram, or copy a diagram as a
-  Mermaid flowchart for Markdown.
+  Mermaid flowchart for Markdown. Node colours go both ways.
 - **Version history**: see how a diagram looked earlier, including each change that an agent made, and restore any
   version.
 - **Local first**: the website keeps diagrams in your browser. Export a diagram file (JSON) to move it to another

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { cleanLabel, mermaidToDiagram, MermaidImportError, parseMermaidFlowchart } from './mermaid'
+import { nodeLabel } from '@/model/labels'
+import { cleanLabel, mermaidToDiagram, MermaidImportError, parseMermaidFlowchart, styleColor } from './mermaid'
 
 const SOURCE = `flowchart LR
   user([Shopper]) --> web[Web app]
@@ -52,6 +53,26 @@ describe('mermaidToDiagram', () => {
     }
   })
 
+  it('colours nodes and boundaries from classDef, class, ::: and style', async () => {
+    const diagram = await mermaidToDiagram(
+      `flowchart LR
+  subgraph Team
+    api[API]:::service --> db[(Orders DB)]
+  end
+  db --> mail[Email]
+  classDef service fill:#9f9,stroke:#333
+  class db store
+  classDef store fill:#ececff,stroke:#d9534f
+  style mail fill:#f9f
+  style Team stroke:#f0ad4e`,
+      'Shop',
+    )
+    const colors = Object.fromEntries(
+      diagram.nodes.map((node) => [nodeLabel(node), node.type === 'text' ? null : node.data.color]),
+    )
+    expect(colors).toEqual({ Team: 'orange', API: 'green', 'Orders DB': 'red', Email: 'pink' })
+  })
+
   it('builds a laid out diagram', async () => {
     const diagram = await mermaidToDiagram(SOURCE, 'Shop')
     expect(diagram.name).toBe('Shop')
@@ -62,6 +83,22 @@ describe('mermaidToDiagram', () => {
     const positions = new Set(diagram.nodes.map((node) => `${node.position.x},${node.position.y}`))
     expect(positions.size).toBeGreaterThan(3)
     expect(diagram.edges).toHaveLength(6)
+  })
+})
+
+describe('styleColor', () => {
+  it('takes the fill colour, then the stroke colour, and a later declaration wins', () => {
+    expect(styleColor(['fill:#f96'])).toBe('orange')
+    expect(styleColor(['fill:#fff', 'stroke:#2a9d8f', 'stroke-width:2px'])).toBe('teal')
+    expect(styleColor(['fill:#f96', 'fill:lightblue !important'])).toBe('blue')
+    expect(styleColor(['fill:rgb(255 0 0 / 50%)'])).toBe('red')
+  })
+
+  it('reads greys, see-through fills and values that are not colours as neutral', () => {
+    expect(styleColor([])).toBe('neutral')
+    expect(styleColor(['fill:#333', 'stroke:#999'])).toBe('neutral')
+    expect(styleColor(['fill:transparent', 'fill-opacity:0.5'])).toBe('neutral')
+    expect(styleColor(['fill:none', 'stroke:url(#a)'])).toBe('neutral')
   })
 })
 

@@ -1,3 +1,4 @@
+import type { Color } from './colors'
 import { matchKeywords } from './keywords'
 
 export const BOUNDARY_PROVIDER_IDS = ['general', 'aws', 'azure', 'gcp', 'k8s'] as const
@@ -33,15 +34,12 @@ export const TINTED_TIERS: ReadonlySet<BoundaryTier> = new Set(['scope', 'networ
 /** The tiers whose boundaries hide the outlines of the other boundaries under them. */
 export const SOLID_TIERS: ReadonlySet<BoundaryTier> = new Set(['runtime'])
 
-export const BOUNDARY_COLORS = ['neutral', 'orange', 'yellow', 'green', 'teal', 'blue', 'pink', 'red'] as const
-export type BoundaryColor = (typeof BOUNDARY_COLORS)[number]
-
 export interface BoundaryKind {
   id: string
   provider: BoundaryProvider
   name: string
   tier: BoundaryTier
-  color: BoundaryColor
+  color: Color
   icon: string
   /** An example value for the detail line, for example an account id or an address range. */
   detailHint: string
@@ -61,7 +59,7 @@ function kind(
   provider: BoundaryProvider,
   name: string,
   tier: BoundaryTier,
-  color: BoundaryColor,
+  color: Color,
   icon: string,
   detailHint: string,
   keywords: string[],

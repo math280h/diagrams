@@ -35,6 +35,7 @@ release
 *.sw?
 
 .playwright-mcp
+.format-samples
 .vitest
 test-results
 playwright-report

@@ -7,6 +7,7 @@ import {
   type NodeChange,
 } from '@xyflow/react'
 import { produce, type Draft } from 'immer'
+import type { Color } from '@/model/colors'
 import { createEdge, createFlow, defaultGroupData, newId } from '@/model/defaults'
 import {
   absolutePosition,
@@ -36,7 +37,7 @@ import {
   type TextData,
 } from '@/model/schema'
 import { withPayload, type PayloadPart } from '@/model/payload'
-import type { DiagramEdge, DiagramNode } from '@/model/types'
+import { takesColor, type DiagramEdge, type DiagramNode } from '@/model/types'
 import { applyLayout } from '@/layout/apply-layout'
 import type { LayoutResult } from '@/layout/diagram-layout'
 import { unionRects, type Rect } from '@/model/rect'
@@ -541,6 +542,13 @@ export function patchNodesData(patches: ReadonlyMap<string, NodeDataPatch>) {
       return patch ? withData(node, patch) : node
     }),
   })
+}
+
+/** Gives a colour to the cards and shapes among the nodes, as one undo step. Other node types do not change. */
+export function colorNodes(ids: Iterable<string>, color: Color) {
+  const wanted = new Set(ids)
+  const colored = useDoc.getState().nodes.filter((node) => wanted.has(node.id) && takesColor(node))
+  patchNodesData(new Map(colored.map((node) => [node.id, { color }])))
 }
 
 /**

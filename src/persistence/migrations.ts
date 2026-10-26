@@ -1,4 +1,13 @@
-import { DIAGRAM_VERSION, diagramSchema, type Diagram } from '@/model/schema'
+import { z } from 'zod'
+import {
+  DIAGRAM_VERSION,
+  diagramSchema,
+  storedEdgeSchema,
+  storedNodeSchema,
+  type Diagram,
+  type StoredEdge,
+  type StoredNode,
+} from '@/model/schema'
 
 type Migration = (raw: Record<string, unknown>) => Record<string, unknown>
 
@@ -88,23 +97,42 @@ function toVersion7(raw: Record<string, unknown>): Record<string, unknown> {
   return { ...raw, flows: flows.map((flow: Record<string, unknown>) => ({ bodies: true, ...flow })) }
 }
 
+function withoutAccent(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null) return value
+  const { accent: _accent, ...rest } = value as Record<string, unknown>
+  return rest
+}
+
+function toVersion8(raw: Record<string, unknown>): Record<string, unknown> {
+  const nodes = Array.isArray(raw.nodes) ? raw.nodes : []
+  const edges = Array.isArray(raw.edges) ? raw.edges : []
+  const flows = Array.isArray(raw.flows) ? raw.flows : []
+  return {
+    ...raw,
+    nodes: nodes.map((node: Record<string, unknown>) => {
+      if (typeof node.data !== 'object' || node.data === null) return node
+      const data = withoutAccent(node.data) as Record<string, unknown>
+      if (node.type === 'card' || node.type === 'shape') return { ...node, data: { color: 'neutral', ...data } }
+      if (node.type === 'text')
+        return { ...node, data: { ...data, tone: data.tone === 'accent' ? 'muted' : data.tone } }
+      return { ...node, data }
+    }),
+    edges: edges.map((edge: Record<string, unknown>) => ({ ...edge, data: withoutAccent(edge.data) })),
+    flows: flows.map((flow: Record<string, unknown>) => ({ ...flow, token: withoutAccent(flow.token) })),
+  }
+}
+
 /** The migration at index `n` converts a diagram from version `n + 1` to version `n + 2`. */
-const MIGRATIONS: Migration[] = [toVersion2, toVersion3, toVersion4, toVersion5, toVersion6, toVersion7]
+const MIGRATIONS: Migration[] = [toVersion2, toVersion3, toVersion4, toVersion5, toVersion6, toVersion7, toVersion8]
 
 export class DiagramFormatError extends Error {}
 
-/**
- * Converts stored or imported data to the current diagram version and validates it.
- *
- * @throws DiagramFormatError If the data is not a diagram, or if its version is newer than this app.
- */
-export function migrate(raw: unknown): Diagram {
-  if (typeof raw !== 'object' || raw === null) throw new DiagramFormatError('The data is not a diagram.')
-  let current = raw as Record<string, unknown>
+function upgrade(raw: Record<string, unknown>, subject: string): Record<string, unknown> {
+  let current = raw
   let version = typeof current.version === 'number' ? current.version : 1
   if (version > DIAGRAM_VERSION) {
     throw new DiagramFormatError(
-      `The diagram has version ${version}. This app reads version ${DIAGRAM_VERSION} or lower.`,
+      `${subject} format ${version} from a newer version of Diagrams. This version reads format ${DIAGRAM_VERSION} and older. Update Diagrams to open it.`,
     )
   }
   while (version < DIAGRAM_VERSION) {
@@ -114,13 +142,43 @@ export function migrate(raw: unknown): Diagram {
     version++
     current.version = version
   }
-  const result = diagramSchema.safeParse(current)
+  return current
+}
+
+function problem(error: z.ZodError): string {
+  const issue = error.issues[0]
+  const field = issue && issue.path.length > 0 ? `${issue.path.join('.')}: ` : ''
+  return `${field}${issue?.message ?? 'unknown problem'}`
+}
+
+/**
+ * Converts stored or imported data to the current diagram version and validates it.
+ *
+ * @throws DiagramFormatError If the data is not a diagram, or if its version is newer than this app.
+ */
+export function migrate(raw: unknown): Diagram {
+  if (typeof raw !== 'object' || raw === null) throw new DiagramFormatError('The data is not a diagram.')
+  const result = diagramSchema.safeParse(upgrade(raw as Record<string, unknown>, 'This diagram uses'))
   if (!result.success) {
-    const issue = result.error.issues[0]
-    const field = issue && issue.path.length > 0 ? `${issue.path.join('.')}: ` : ''
-    throw new DiagramFormatError(
-      `The data is not a diagram that this app can read (${field}${issue?.message ?? 'unknown problem'}).`,
-    )
+    throw new DiagramFormatError(`The data is not a diagram that this app can read (${problem(result.error)}).`)
   }
+  return result.data
+}
+
+const elementsSchema = z.object({ nodes: z.array(storedNodeSchema), edges: z.array(storedEdgeSchema) })
+
+/**
+ * Converts copied nodes and edges to the current diagram version and validates them.
+ *
+ * @param version - The diagram version of the app that copied them.
+ * @throws DiagramFormatError If the data has no valid nodes and edges, or if its version is newer than this app.
+ */
+export function migrateElements(
+  nodes: unknown,
+  edges: unknown,
+  version: number,
+): { nodes: StoredNode[]; edges: StoredEdge[] } {
+  const result = elementsSchema.safeParse(upgrade({ version, nodes, edges, flows: [] }, 'The copied nodes use'))
+  if (!result.success) throw new DiagramFormatError(`The copied nodes cannot be read (${problem(result.error)}).`)
   return result.data
 }

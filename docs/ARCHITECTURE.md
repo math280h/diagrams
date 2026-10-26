@@ -55,7 +55,7 @@ The visual system lives in `DESIGN.md` at the repository root.
   as a log line. Version 6 made Host Grotesk with Fragment Mono (`host`) the default pair and moved
   diagrams on `atkinson` to it, and added `protocol` to edges and `protocolColors` to the theme.
   Version 7 added the `request` and `response` bodies to edges and `bodies` to flows; the migration
-  turns `bodies` on.
+  turns `bodies` on. Version 8 added `color` to cards and shapes and removed the `accent` fields.
 - Groups are boundaries. A group's `kind` points into the catalogue in `src/model/boundaries.ts`:
   AWS, Azure, Google Cloud, Kubernetes and general kinds, plus the custom group. Each kind has a
   family (scope, logical, location, zone, network, subnet, security, runtime) that sets its line
@@ -82,8 +82,16 @@ The visual system lives in `DESIGN.md` at the repository root.
   its first hop, use signal blue. In a spotlight flow, idle edges recede to the neutral line.
 - The grid is an editing aid. Present, the library previews and exports (unless the user turns it
   on) do not draw it.
-- Node accent colours are no longer offered in the editor. The schema keeps the `accent` field for
-  older diagrams, and the canvas draws every accent in the neutral tone.
+- Cards and shapes can take a colour, so people can group nodes by team or by kind of part across
+  boundaries. The colours are the boundary palette (`COLORS` in `src/model/colors.ts`), so a node
+  and a boundary of one team can share a hue, and the palette has no saturated blue. Neutral is the
+  default. A coloured node mixes its hue into the fill and the outline (`--dg-hue-fill`,
+  `--dg-hue-line`, lower in the light theme) and draws its line icon in the hue; official cloud
+  icons keep their own colours. The flow states still win: an active node gets the signal ring,
+  and an idle node in a spotlight flow recedes like a neutral one. The switch `boundaryColors`
+  does not turn node colours off, because a node colour is always a choice of the user and never
+  comes from a kind. Several selected nodes take a colour in one undo step, from the properties
+  panel or the context menu. The `accent` fields that version 8 removed were never drawn.
 - A flow plays as a log: the flow panel lists each step as a line (offset, element, event,
   latency, caption; warn and error levels colour the event), and the line under the pointer marks
   its node or edge on the canvas. The latency column hides when no step has a latency, as in user
@@ -211,6 +219,40 @@ the file name is the id. The `rev` counter detects edits from another tab or ano
 A `Flow` is an ordered list of steps (a node or an edge, a caption, a duration, a camera mode) plus
 optional keyframe tracks (camera, opacity, traffic). The timeline is computed from the steps and
 never stored.
+
+### Change the diagram format
+
+Fields come and go, and diagrams from every earlier format must keep opening. Each diagram carries
+its format in `version`, and `DIAGRAM_VERSION` is the format that this build writes. Data from an
+earlier format passes through the steps in `src/persistence/migrations.ts`, one step for each
+version, and then through the schema. Every way in uses them: browser storage, diagram files,
+imports, the website handoff, version history and pasted nodes (the clipboard carries the
+`version` of the app that copied). Opening a diagram does not save it: a stored diagram keeps its
+format until the app saves a change, which can also be a pan or a zoom. Until then, a second
+computer with an older app can still open it.
+
+The website deploys from `main`, so a format that reaches `main` is in some browser. Any change to
+`diagramSchema`, also a new optional field or a new enum value, therefore needs a new version:
+
+1. Raise `DIAGRAM_VERSION` and add `toVersion<N>` to `MIGRATIONS`. The step fills new fields with
+   their default, maps changed values, and removes fields that went. It must not fail on data that
+   already has the change.
+2. Add a test of the step to `src/persistence/serialize.test.ts`, and note the version in "Visual
+   language" above.
+3. Run `node scripts/format-sample.mjs`. It writes `src/persistence/formats/v<N>.schema.json` (the
+   JSON Schema of the format) and `v<N>.json` (the Order system and Checkout flow templates as this
+   build writes them).
+
+`src/persistence/formats.test.ts` fails when the schema differs from the file of the current
+version, or when a sample of format 6 or later does not come through the migrations with the same
+nodes, edges and flows. The files of a format that reached `main` never change; a diff in one of
+them in a pull request means a missing version. `node scripts/format-sample.mjs <git ref>` writes the
+files of an earlier format from a release, in a worktree inside the repository that uses the same
+`node_modules`. The samples of formats 6 and 7 come from v0.1.2 and v0.1.3. Formats 1 to 5 are
+older than the first release and have only the tests in `serialize.test.ts`.
+
+An older app refuses a newer format and asks the user to update, because it would drop the fields
+that it does not know on its next save.
 
 ### Request and response bodies
 
@@ -379,8 +421,15 @@ camera path and framing.
 The Mermaid tab writes the diagram as a flowchart text (`diagramToMermaid` in `src/export/mermaid.ts`),
 so a diagram can go into Markdown that GitHub draws. It needs no export stage.
 
-- Cards, shapes and boundaries become nodes and nested subgraphs; text nodes, flows, icons, colours
-  and positions stay out, because Mermaid has no place for them and lays out the chart again.
+- Cards, shapes and boundaries become nodes and nested subgraphs; text nodes, flows, icons and
+  positions stay out, because Mermaid has no place for them and lays out the chart again.
+- Node colours become one `classDef` for each colour and a `class` line with its nodes. A class
+  sets only the stroke, in a middle tone of the hue, because GitHub draws Mermaid on a light or a
+  dark page with a fill and a text colour from its theme. Boundaries with the colour of their kind
+  get no class; the import finds the kind again. The import reads the fill colour of a node, or
+  its stroke colour when the fill is grey, from `classDef`, `class`, `:::` and `style`, and takes
+  the nearest palette colour (`nearestColor`). A canvas 2D context turns CSS colour names into
+  numbers.
 - It uses the classic bracket shapes, not the newer `@{ shape: … }` form, so that older Mermaid
   versions in docs tools read it too. Data store cards become cylinders; the other card forms are
   rectangles.

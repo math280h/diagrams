@@ -14,15 +14,22 @@ import {
   StretchVertical,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { DiagramNode } from '@/model/types'
-import { alignSelection, distributeSelection, groupSelection, setTheme, updateEdgesTraffic } from '@/store/actions'
+import { takesColor, type DiagramNode } from '@/model/types'
+import {
+  alignSelection,
+  colorNodes,
+  distributeSelection,
+  groupSelection,
+  setTheme,
+  updateEdgesTraffic,
+} from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
 import { useSettings } from '@/store/settings-store'
 import { setUi } from '@/store/ui-store'
 import { useFitToScreen } from '@/editor/fit'
 import { tidyUp } from '@/editor/layout-command'
 import { plural } from '@/lib/format'
-import { Field, Section, Segmented, SwitchField } from './controls'
+import { ColorPicker, Field, Section, Segmented, SwitchField } from './controls'
 
 const ALIGN_LABELS = {
   left: 'Align left',
@@ -169,46 +176,68 @@ export function StylePanel() {
 }
 
 export function MultiInspector({ nodes }: { nodes: DiagramNode[] }) {
+  const colored = nodes.filter(takesColor)
+  const colors = new Set(colored.map((node) => node.data.color))
   return (
-    <Section title="Arrange">
-      <Field label="Align" wide>
-        <div className="grid grid-cols-6 gap-1">
-          {(
-            [
-              ['left', AlignStartVertical],
-              ['center', AlignCenterVertical],
-              ['right', AlignEndVertical],
-              ['top', AlignStartHorizontal],
-              ['middle', AlignCenterHorizontal],
-              ['bottom', AlignEndHorizontal],
-            ] as const
-          ).map(([alignment, IconComponent]) => (
-            <Button
-              key={alignment}
-              variant="ghost"
-              size="icon-sm"
-              title={ALIGN_LABELS[alignment]}
-              aria-label={ALIGN_LABELS[alignment]}
-              onClick={() => alignSelection(alignment)}
-            >
-              <IconComponent />
+    <>
+      <Section title="Arrange">
+        <Field label="Align" wide>
+          <div className="grid grid-cols-6 gap-1">
+            {(
+              [
+                ['left', AlignStartVertical],
+                ['center', AlignCenterVertical],
+                ['right', AlignEndVertical],
+                ['top', AlignStartHorizontal],
+                ['middle', AlignCenterHorizontal],
+                ['bottom', AlignEndHorizontal],
+              ] as const
+            ).map(([alignment, IconComponent]) => (
+              <Button
+                key={alignment}
+                variant="ghost"
+                size="icon-sm"
+                title={ALIGN_LABELS[alignment]}
+                aria-label={ALIGN_LABELS[alignment]}
+                onClick={() => alignSelection(alignment)}
+              >
+                <IconComponent />
+              </Button>
+            ))}
+          </div>
+        </Field>
+        <Field label="Distribute" wide>
+          <div className="grid grid-cols-2 gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => distributeSelection('x')} disabled={nodes.length < 3}>
+              <StretchHorizontal /> Across
             </Button>
-          ))}
-        </div>
-      </Field>
-      <Field label="Distribute" wide>
-        <div className="grid grid-cols-2 gap-1.5">
-          <Button variant="outline" size="sm" onClick={() => distributeSelection('x')} disabled={nodes.length < 3}>
-            <StretchHorizontal /> Across
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => distributeSelection('y')} disabled={nodes.length < 3}>
-            <StretchVertical /> Down
-          </Button>
-        </div>
-      </Field>
-      <Button variant="outline" size="sm" className="w-full" onClick={() => groupSelection()}>
-        <Group /> Group selection
-      </Button>
-    </Section>
+            <Button variant="outline" size="sm" onClick={() => distributeSelection('y')} disabled={nodes.length < 3}>
+              <StretchVertical /> Down
+            </Button>
+          </div>
+        </Field>
+        <Button variant="outline" size="sm" className="w-full" onClick={() => groupSelection()}>
+          <Group /> Group selection
+        </Button>
+      </Section>
+      {colored.length > 0 && (
+        <Section title="Colour">
+          <ColorPicker
+            value={colors.size === 1 ? colored[0]!.data.color : null}
+            onChange={(color) =>
+              colorNodes(
+                colored.map((node) => node.id),
+                color,
+              )
+            }
+          />
+          {colored.length < nodes.length && (
+            <p className="text-xs text-muted-foreground">
+              The colour applies to the nodes and shapes in the selection.
+            </p>
+          )}
+        </Section>
+      )}
+    </>
   )
 }

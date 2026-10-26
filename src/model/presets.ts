@@ -10,7 +10,7 @@ import {
 import { ELEMENT_Z } from './graph'
 import { matchKeywords } from './keywords'
 import { defaultCardData, defaultGroupData, defaultShapeData, defaultTextData, newId } from './defaults'
-import type { Accent, CardData, CardForm, ShapeKind, TextData, XY } from './schema'
+import type { CardData, CardForm, ShapeKind, TextData, XY } from './schema'
 import type { DiagramNode } from './types'
 
 export type PresetCategory = 'architecture' | 'flow' | 'shapes' | 'annotate' | BoundaryProvider
@@ -105,7 +105,6 @@ function shape(
   kind: ShapeKind,
   icon: string,
   keywords: string[],
-  accent: Accent = 'neutral',
   category: PresetCategory = 'shapes',
 ): Preset {
   return {
@@ -120,7 +119,7 @@ function shape(
       position,
       ...defaultShapeSize(kind),
       zIndex: ELEMENT_Z,
-      data: defaultShapeData({ shape: kind, label, accent }),
+      data: defaultShapeData({ shape: kind, label }),
     }),
   }
 }
@@ -175,9 +174,9 @@ export const PRESETS: Preset[] = [
   card('action', 'Action', 'mouse-pointer-click', ['action', 'click', 'tap', 'submit'], { form: 'function' }, 'flow'),
   card('form', 'Form', 'text-cursor-input', ['form', 'input', 'field'], { form: 'client' }, 'flow'),
   card('notify', 'Notification', 'bell', ['notification', 'push', 'alert'], { form: 'external' }, 'flow'),
-  shape('decision', 'Decision', 'diamond', 'diamond', ['decision', 'if', 'choice', 'branch'], 'amber', 'flow'),
-  shape('start', 'Start', 'pill', 'play', ['start', 'begin', 'entry'], 'emerald', 'flow'),
-  shape('end', 'End', 'pill', 'flag', ['end', 'finish', 'exit', 'done'], 'rose', 'flow'),
+  shape('decision', 'Decision', 'diamond', 'diamond', ['decision', 'if', 'choice', 'branch'], 'flow'),
+  shape('start', 'Start', 'pill', 'play', ['start', 'begin', 'entry'], 'flow'),
+  shape('end', 'End', 'pill', 'flag', ['end', 'finish', 'exit', 'done'], 'flow'),
 
   shape('rectangle', 'Rectangle', 'rectangle', 'square', ['rectangle', 'box']),
   shape('rounded', 'Rounded', 'rounded', 'square-dashed', ['rounded']),

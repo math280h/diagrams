@@ -1,3 +1,4 @@
+import { COLOR_NAMES, type Color } from './colors'
 import { nodeName } from './labels'
 import type { Diagram, Flow, StoredEdge, StoredNode } from './schema'
 
@@ -18,6 +19,24 @@ function summaryName(node: StoredNode): string {
 
 function same(a: unknown, b: unknown) {
   return a === b || JSON.stringify(a) === JSON.stringify(b)
+}
+
+function nodeColor(node: StoredNode): Color | null {
+  return node.type === 'card' || node.type === 'shape' ? node.data.color : null
+}
+
+function onlyColorChanged(before: StoredNode, after: StoredNode) {
+  if (before.type !== after.type || nodeColor(before) === nodeColor(after)) return false
+  return same({ ...before.data, color: null }, { ...after.data, color: null })
+}
+
+function colorSentence(nodes: readonly StoredNode[]): string | null {
+  if (nodes.length === 0) return null
+  const colors = new Set(nodes.map(nodeColor))
+  if (colors.size > 1) return `Changed the colour of ${joinItems(nodeItems(nodes))}.`
+  const [color] = colors
+  if (color === 'neutral') return `Removed the colour from ${joinItems(nodeItems(nodes))}.`
+  return `Coloured ${joinItems(nodeItems(nodes))} ${COLOR_NAMES[color!].toLowerCase()}.`
 }
 
 function moved(before: StoredNode, after: StoredNode) {
@@ -128,9 +147,12 @@ export function describeChange(before: Diagram, after: Diagram): string {
   const edges = split(before.edges, after.edges)
   const flows = split(before.flows, after.flows)
   const changedNodes: StoredNode[] = []
+  const coloredNodes: StoredNode[] = []
   const movedNodes: StoredNode[] = []
   for (const [a, b] of nodes.common) {
-    if (a.type !== b.type || !same(a.data, b.data)) changedNodes.push(b)
+    const recolored = onlyColorChanged(a, b)
+    if (recolored) coloredNodes.push(b)
+    if (!recolored && (a.type !== b.type || !same(a.data, b.data))) changedNodes.push(b)
     else if (moved(a, b)) movedNodes.push(b)
   }
   const changedEdges = edges.common.filter(([a, b]) => edgeChanged(withoutBodies(a), withoutBodies(b)))
@@ -148,6 +170,8 @@ export function describeChange(before: Diagram, after: Diagram): string {
   add('Added', nodes.added, edges.added.length, flows.added)
   add('Removed', nodes.removed, edges.removed.length, flows.removed)
   add('Changed', changedNodes, changedEdges.length, changedFlows)
+  const colored = colorSentence(coloredNodes)
+  if (colored) sentences.push(colored)
   const bodies = bodySentence(edges.common, after.nodes)
   if (bodies) sentences.push(bodies)
   add('Moved', movedNodes)

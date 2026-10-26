@@ -69,4 +69,25 @@ describe('diagramToMermaid with Mermaid', () => {
     expect(graph.edges[2]?.arrowTypeEnd).toContain('circle')
     expect((await render('export-tricky', text)).svg).toContain('<svg')
   })
+
+  it('writes colours that Mermaid draws and the import reads back', async () => {
+    const builder = new DiagramBuilder()
+    const team = builder.group(0, 0, 900, 300, { label: 'Payments', color: 'orange' })
+    const api = builder.card(32, 56, { title: 'API', color: 'blue' }, 216, team)
+    const db = builder.card(400, 56, { title: 'Orders DB', form: 'datastore', color: 'yellow' }, 216, team)
+    const check = builder.shape(700, 56, 136, 136, { shape: 'diamond', label: 'Paid?', color: 'red' })
+    const logs = builder.card(32, 456, { title: 'Logs' })
+    builder.edge(api, db)
+    builder.edge(db, check)
+    builder.edge(check, logs)
+    const text = diagramToMermaid(builder)
+
+    const { svg } = await render('export-colors', text)
+    expect(svg).toContain('stroke:#5297b9')
+    const imported = await mermaidToDiagram(text)
+    const colors = Object.fromEntries(
+      imported.nodes.map((node) => [nodeLabel(node), node.type === 'text' ? null : node.data.color]),
+    )
+    expect(colors).toEqual({ Payments: 'orange', API: 'blue', 'Orders DB': 'yellow', 'Paid?': 'red', Logs: 'neutral' })
+  })
 })

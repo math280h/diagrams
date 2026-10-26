@@ -84,6 +84,27 @@ describe('diagramToMermaid', () => {
     ])
   })
 
+  it('writes the colours of cards, shapes and boundaries as classes', () => {
+    const builder = new DiagramBuilder()
+    const team = builder.group(0, 0, 900, 300, { label: 'Payments', color: 'teal' })
+    builder.group(0, 400, 600, 200, { kind: 'aws.vpc', label: 'shared' })
+    const api = builder.card(32, 56, { title: 'API', color: 'green' }, 216, team)
+    const db = builder.card(400, 56, { title: 'Orders DB', form: 'datastore', color: 'green' }, 216, team)
+    const done = builder.shape(700, 56, 136, 56, { shape: 'pill', label: 'Done', color: 'pink' }, team)
+    builder.card(32, 456, { title: 'Logs' })
+    builder.edge(api, db)
+    builder.edge(db, done)
+
+    expect(diagramToMermaid(builder).split('\n').slice(-7, -1)).toEqual([
+      '    classDef green stroke:#34a65c,stroke-width:2px',
+      '    class api,orders_db green',
+      '    classDef teal stroke:#23a5a6,stroke-width:2px',
+      '    class payments teal',
+      '    classDef pink stroke:#cd659b,stroke-width:2px',
+      '    class done pink',
+    ])
+  })
+
   it('writes only the header for an empty diagram', () => {
     expect(diagramToMermaid({ nodes: [], edges: [] })).toBe('flowchart LR\n')
   })
