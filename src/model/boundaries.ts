@@ -223,11 +223,28 @@ export function boundaryKindLabel(boundary: BoundaryKind): string {
 }
 
 /**
- * Returns the boundary kind whose keywords match a label best, for example a Mermaid subgraph
- * title.
+ * Returns the boundary kind whose canvas name with a provider starts the label, for example `Kubernetes namespace`.
+ * If no such name starts the label, the kind whose keywords match it best.
  *
+ * @param label - A Mermaid subgraph title, for example.
  * @returns The matched kind, or the custom group if no keyword occurs in the label.
  */
 export function matchBoundary(label: string): BoundaryKind {
-  return matchKeywords(label, MATCHABLE_BOUNDARIES) ?? boundaryKind(CUSTOM_BOUNDARY)
+  return namedBoundary(label) ?? matchKeywords(label, MATCHABLE_BOUNDARIES) ?? boundaryKind(CUSTOM_BOUNDARY)
+}
+
+/** Returns true if the label is the canvas name of the kind, or starts with it as whole words. */
+export function startsWithKindLabel(label: string, boundary: BoundaryKind): boolean {
+  const lower = label.trim().toLowerCase()
+  const name = boundaryKindLabel(boundary).toLowerCase()
+  return name !== '' && (lower === name || lower.startsWith(`${name} `))
+}
+
+function namedBoundary(label: string): BoundaryKind | undefined {
+  let best: BoundaryKind | undefined
+  for (const boundary of MATCHABLE_BOUNDARIES) {
+    if (boundary.provider === 'general' || !startsWithKindLabel(label, boundary)) continue
+    if (!best || boundaryKindLabel(boundary).length > boundaryKindLabel(best).length) best = boundary
+  }
+  return best
 }

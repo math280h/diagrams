@@ -30,4 +30,11 @@ describe('boundary kinds', () => {
     expect(matchBoundary('Kubernetes cluster').id).toBe('k8s.cluster')
     expect(matchBoundary('Backend').id).toBe('custom')
   })
+
+  it('finds each kind with a provider from its canvas name, before its keywords', () => {
+    expect(matchBoundary('Kubernetes namespace streaming').id).toBe('k8s.namespace')
+    for (const kind of BOUNDARY_KINDS.filter((boundary) => boundary.provider !== 'general')) {
+      expect(matchBoundary(`${boundaryKindLabel(kind)} prod`).id).toBe(kind.id)
+    }
+  })
 })

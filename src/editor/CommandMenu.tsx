@@ -4,6 +4,7 @@ import {
   Bot,
   CopyPlus,
   Download,
+  FileCode,
   FileJson,
   Film,
   Waypoints,
@@ -157,6 +158,9 @@ export function CommandMenu() {
           </CommandItem>
           <CommandItem onSelect={run(() => setUi({ exportOpen: 'video' }))}>
             <Film /> Export animation
+          </CommandItem>
+          <CommandItem onSelect={run(() => setUi({ exportOpen: 'mermaid' }))}>
+            <FileCode /> Export Mermaid flowchart
           </CommandItem>
           <CommandItem onSelect={run(() => exportDiagramJson(currentDiagram()))}>
             <FileJson /> Export diagram file

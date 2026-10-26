@@ -55,7 +55,7 @@ that follows the token, and frame-exact video and GIF export, all in the browser
 - Edges with animated traffic (dots, comets, dashes, pulse) and labels.
 - Flows: steps recorded by clicking nodes, captions, camera modes, and a keyframe timeline for
   camera, opacity and traffic.
-- Export: PNG, SVG, MP4, WebM, GIF, JSON. Import: JSON, Mermaid flowcharts.
+- Export: PNG, SVG, MP4, WebM, GIF, JSON, Mermaid flowcharts. Import: JSON, Mermaid flowcharts.
 - Version history: saved versions of each diagram, by the user, by an agent or from outside the
   editor, kept locally. Any version shows on the canvas and restores as one undo step.
 - Dark and light themes are both required.
@@ -84,4 +84,4 @@ that follows the token, and frame-exact video and GIF export, all in the browser
    how work leaves the app.
 4. **What you see is what you export.** Images and videos match the canvas exactly.
 5. **Versatile, without lock-in.** Architecture and user flows from one set of parts; JSON export
-   and Mermaid import keep the work portable.
+   and Mermaid import and export keep the work portable.

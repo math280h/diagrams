@@ -1,7 +1,7 @@
 import { createDiagram, defaultCardData, defaultGroupData, defaultShapeData, newId, createEdge } from '@/model/defaults'
 import { loadIconSets, matchIcon, type IconSet } from '@/canvas/icons/library'
 import { matchPreset } from '@/model/presets'
-import { matchBoundary, TINTED_TIERS } from '@/model/boundaries'
+import { boundaryKindLabel, matchBoundary, startsWithKindLabel, TINTED_TIERS } from '@/model/boundaries'
 import { ELEMENT_Z } from '@/model/graph'
 import type { Diagram, GroupData, ShapeKind } from '@/model/schema'
 import type { DiagramEdge, DiagramNode } from '@/model/types'
@@ -146,9 +146,12 @@ const PROVIDER_NAMES =
 function boundaryData(title: string): GroupData {
   const kind = matchBoundary(title)
   if (kind.tier === 'custom') return defaultGroupData({ label: title })
-  const rest = title
-    .replace(new RegExp(`\\b(${kind.keywords.join('|')})\\b`, 'i'), '')
-    .replace(PROVIDER_NAMES, '')
+  const named = startsWithKindLabel(title, kind)
+  const rest = (
+    named
+      ? title.trim().slice(boundaryKindLabel(kind).length)
+      : title.replace(new RegExp(`\\b(${kind.keywords.join('|')})\\b`, 'i'), '').replace(PROVIDER_NAMES, '')
+  )
     .replace(/\s+/g, ' ')
     .trim()
   return defaultGroupData({ kind: kind.id, label: rest, icon: kind.icon, tint: TINTED_TIERS.has(kind.tier) })

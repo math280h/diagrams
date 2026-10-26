@@ -5,6 +5,7 @@ import {
   Command,
   Download,
   Film,
+  FileCode,
   FileJson,
   History,
   Image,
@@ -214,6 +215,9 @@ export function TopBar() {
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setUi({ exportOpen: 'video' })}>
               <Film /> Animation (MP4, WebM, GIF)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setUi({ exportOpen: 'mermaid' })}>
+              <FileCode /> Mermaid flowchart
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => exportDiagramJson(currentDiagram())}>

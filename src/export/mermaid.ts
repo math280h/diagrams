@@ -1,0 +1,195 @@
+import { boundaryKind, boundaryKindLabel } from '@/model/boundaries'
+import { absolutePosition, estimateSize } from '@/model/graph'
+import { nodeLabel, nodeTitle } from '@/model/labels'
+import type { EdgeData, ShapeKind } from '@/model/schema'
+import type { DiagramEdge, DiagramNode } from '@/model/types'
+
+type Direction = 'LR' | 'TD'
+type Point = { x: number; y: number }
+
+const INDENT = '    '
+
+const SHAPE_BRACKETS: Record<ShapeKind, readonly [string, string]> = {
+  rectangle: ['[', ']'],
+  rounded: ['(', ')'],
+  pill: ['([', '])'],
+  circle: ['((', '))'],
+  diamond: ['{', '}'],
+  hexagon: ['{{', '}}'],
+  cylinder: ['[(', ')]'],
+  parallelogram: ['[/', '/]'],
+}
+
+// Mermaid reads these words as syntax when they stand alone as a node id.
+const RESERVED_IDS = new Set([
+  'end',
+  'graph',
+  'flowchart',
+  'subgraph',
+  'direction',
+  'style',
+  'linkstyle',
+  'class',
+  'classdef',
+  'click',
+  'call',
+  'callback',
+  'href',
+  'default',
+  'interpolate',
+])
+
+// Mermaid ends a quoted label at a double quote, and reads < and > as the start of HTML.
+const ENTITIES: Record<string, string> = { '"': '#quot;', '<': '#lt;', '>': '#gt;' }
+
+const START_MARKERS: Record<EdgeData['markerStart'], string> = { none: '', arrow: '<', dot: 'o' }
+
+function quoted(lines: readonly string[]): string {
+  const text = lines
+    .flatMap((line) => line.split('\n'))
+    .map((line) => line.trim().replace(/["<>]/g, (char) => ENTITIES[char]!))
+    .filter(Boolean)
+    .join('<br/>')
+  return `"${text}"`
+}
+
+function idMaker() {
+  const used = new Set<string>()
+  return (label: string) => {
+    const slug = label
+      .normalize('NFKD')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 32)
+      .replace(/_+$/, '')
+    const base = /^[a-z]/.test(slug) && !RESERVED_IDS.has(slug) ? slug : slug ? `node_${slug}` : 'node'
+    let id = base
+    for (let count = 2; used.has(id); count++) id = `${base}_${count}`
+    used.add(id)
+    return id
+  }
+}
+
+function fullLabel(node: DiagramNode): string {
+  return nodeLabel(node).trim() ? nodeLabel(node) : nodeTitle(node)
+}
+
+function cardLines(node: Extract<DiagramNode, { type: 'card' }>): string[] {
+  return [fullLabel(node), ...node.data.lines.map((line) => line.text.replace(/\{([^{}]*)\}/g, '$1'))]
+}
+
+function groupTitle(node: Extract<DiagramNode, { type: 'group' }>): string[] {
+  const kind = boundaryKindLabel(boundaryKind(node.data.kind))
+  const name = [kind, node.data.label].filter(Boolean).join(' ') || nodeTitle(node)
+  return [name, node.data.detail]
+}
+
+function nodeShape(node: Exclude<DiagramNode, { type: 'group' | 'text' }>): string {
+  if (node.type === 'shape') {
+    const [open, close] = SHAPE_BRACKETS[node.data.shape]
+    return `${open}${quoted([fullLabel(node)])}${close}`
+  }
+  const [open, close] = SHAPE_BRACKETS[node.data.form === 'datastore' ? 'cylinder' : 'rectangle']
+  return `${open}${quoted(cardLines(node))}${close}`
+}
+
+function chooseDirection(edges: readonly DiagramEdge[], centers: ReadonlyMap<string, Point>): Direction {
+  let across = 0
+  let down = 0
+  for (const edge of edges) {
+    const source = centers.get(edge.source)
+    const target = centers.get(edge.target)
+    if (!source || !target) continue
+    across += Math.abs(target.x - source.x)
+    down += Math.abs(target.y - source.y)
+  }
+  const points = [...centers.values()]
+  if (across === 0 && down === 0 && points.length > 0) {
+    across = Math.max(...points.map((point) => point.x)) - Math.min(...points.map((point) => point.x))
+    down = Math.max(...points.map((point) => point.y)) - Math.min(...points.map((point) => point.y))
+  }
+  return down > across ? 'TD' : 'LR'
+}
+
+type Marker = EdgeData['markerEnd']
+
+function markers(data: EdgeData | undefined): { swapped: boolean; start: Marker; end: Marker } {
+  const start = data?.markerStart ?? 'none'
+  const end = data?.markerEnd ?? 'arrow'
+  if (end === 'none') return { swapped: start !== 'none', start: 'none', end: start }
+  // Mermaid reads a link with two different end markers as not valid.
+  return { swapped: false, start: start === end ? start : 'none', end }
+}
+
+function link(data: EdgeData | undefined, start: Marker, end: Marker): string {
+  const dotted = data !== undefined && data.stroke !== 'solid'
+  const thick = !dotted && data !== undefined && data.width >= 2
+  const head = START_MARKERS[start]
+  if (dotted) return `${head}-.${end === 'arrow' ? '->' : end === 'dot' ? '-o' : '-'}`
+  if (thick) return `${head}==${end === 'arrow' ? '>' : end === 'dot' ? 'o' : '='}`
+  return `${head}--${end === 'arrow' ? '>' : end === 'dot' ? 'o' : '-'}`
+}
+
+/**
+ * Writes the nodes and edges of a diagram as a Mermaid flowchart.
+ *
+ * Cards, shapes and boundaries become nodes and nested subgraphs. Text nodes, flows, icons, colours and positions stay
+ * out, and Mermaid lays out the chart again. The direction follows the edges: `LR` unless they run mostly down.
+ */
+export function diagramToMermaid(content: { nodes: readonly DiagramNode[]; edges: readonly DiagramEdge[] }): string {
+  const byId = new Map(content.nodes.map((node) => [node.id, node]))
+  const kept = content.nodes.filter((node) => node.type !== 'text')
+  const centers = new Map<string, Point>()
+  for (const node of kept) {
+    const position = absolutePosition(node, byId)
+    const size = estimateSize(node)
+    centers.set(node.id, { x: position.x + size.width / 2, y: position.y + size.height / 2 })
+  }
+  const edges = content.edges.filter((edge) => centers.has(edge.source) && centers.has(edge.target))
+  const direction = chooseDirection(edges, centers)
+
+  const along = (point: Point): [number, number] => (direction === 'LR' ? [point.x, point.y] : [point.y, point.x])
+  const ordered = kept.toSorted((a, b) => {
+    const [a1, a2] = along(centers.get(a.id)!)
+    const [b1, b2] = along(centers.get(b.id)!)
+    return a1 - b1 || a2 - b2
+  })
+  const rank = new Map(ordered.map((node, index) => [node.id, index]))
+
+  const nextId = idMaker()
+  const ids = new Map(ordered.map((node) => [node.id, nextId(nodeTitle(node))]))
+  const children = new Map<string | undefined, DiagramNode[]>()
+  for (const node of ordered) {
+    const parent = node.parentId !== undefined && centers.has(node.parentId) ? node.parentId : undefined
+    children.set(parent, [...(children.get(parent) ?? []), node])
+  }
+
+  const lines = [`flowchart ${direction}`]
+  const write = (parent: string | undefined, depth: number) => {
+    const indent = INDENT.repeat(depth)
+    for (const node of children.get(parent) ?? []) {
+      const id = ids.get(node.id)!
+      if (node.type === 'group') {
+        lines.push(`${indent}subgraph ${id}[${quoted(groupTitle(node))}]`)
+        write(node.id, depth + 1)
+        lines.push(`${indent}end`)
+      } else if (node.type !== 'text') {
+        lines.push(`${indent}${id}${nodeShape(node)}`)
+      }
+    }
+  }
+  write(undefined, 1)
+
+  const links = edges.map((edge) => {
+    const { swapped, start, end } = markers(edge.data)
+    const [from, to] = swapped ? [edge.target, edge.source] : [edge.source, edge.target]
+    return { from, to, data: edge.data, start, end }
+  })
+  links.sort((a, b) => rank.get(a.from)! - rank.get(b.from)! || rank.get(a.to)! - rank.get(b.to)!)
+  for (const { from, to, data, start, end } of links) {
+    const label = data?.label.trim() ? `|${quoted([data.label])}|` : ''
+    lines.push(`${INDENT}${ids.get(from)} ${link(data, start, end)}${label} ${ids.get(to)}`)
+  }
+  return `${lines.join('\n')}\n`
+}

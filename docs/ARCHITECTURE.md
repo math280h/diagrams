@@ -333,6 +333,25 @@ The canvas grid is off in exports unless the user turns it on: it is an editing 
 tab captures five frames from the export stage as a preview strip, so the preview shows the real
 camera path and framing.
 
+The Mermaid tab writes the diagram as a flowchart text (`diagramToMermaid` in `src/export/mermaid.ts`),
+so a diagram can go into Markdown that GitHub draws. It needs no export stage.
+
+- Cards, shapes and boundaries become nodes and nested subgraphs; text nodes, flows, icons, colours
+  and positions stay out, because Mermaid has no place for them and lays out the chart again.
+- It uses the classic bracket shapes, not the newer `@{ shape: … }` form, so that older Mermaid
+  versions in docs tools read it too. Data store cards become cylinders; the other card forms are
+  rectangles.
+- Node ids come from the titles (`api_gateway`), so the text stays easy to edit by hand. Ids that
+  Mermaid reads as syntax, such as `end`, get a `node_` prefix.
+- The direction is `LR`, or `TD` when the edges run mostly down. Nodes and edges follow the
+  positions along that direction, so Mermaid keeps a similar order.
+- A boundary title starts with the canvas name of its kind (`Kubernetes namespace`), and the
+  Mermaid import matches that name before its keywords, so an export comes back with the same
+  boundary kinds. The detail goes on a second line, which the import leaves out.
+- Mermaid rejects a link with two different end markers, so such an edge keeps only its end
+  marker. An edge with only a start marker is written the other way round.
+- A browser test exports each template, draws it with Mermaid and imports it again.
+
 ## Desktop app
 
 The desktop app is the same React app in an Electron window. It adds file storage, agent control,
