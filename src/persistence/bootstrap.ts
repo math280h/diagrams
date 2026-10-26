@@ -14,7 +14,7 @@ export async function bootstrapStorage() {
       files,
       sink: {
         write: (file) => desktop.request('files.write', file),
-        remove: (id) => desktop.request('files.remove', { id }),
+        remove: (id, trash) => desktop.request('files.remove', { id, trash }),
       },
     })
     desktop.on('files.changed', (change) => folderRepository.applyExternal(change))

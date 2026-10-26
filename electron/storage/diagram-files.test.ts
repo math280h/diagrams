@@ -132,6 +132,16 @@ describe('createDiagramFiles', () => {
     expect(trash).toHaveBeenCalledWith(path.join(folder, 'd_one.diagram.json'))
     expect(await files.inspect('d_one')).toBeNull()
   })
+
+  it('deletes a file without the trash when the remove asks for it', async () => {
+    const trash = vi.fn(async () => undefined)
+    const files = createDiagramFiles(folder, { trash })
+    await files.write('d_one', 'text')
+    await files.remove('d_one', { trash: false })
+    expect(trash).not.toHaveBeenCalled()
+    expect(readdirSync(folder)).toEqual([])
+    expect(await files.inspect('d_one')).toBeNull()
+  })
 })
 
 describe('watchDiagramFolder', () => {

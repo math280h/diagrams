@@ -165,8 +165,8 @@ async function start() {
         await files.write(id, text)
         return null
       },
-      'files.remove': async ({ id }) => {
-        await files.remove(id)
+      'files.remove': async ({ id, trash }) => {
+        await files.remove(id, { trash })
         return null
       },
       'files.reveal': async () => {

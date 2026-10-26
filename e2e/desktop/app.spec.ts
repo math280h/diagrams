@@ -21,14 +21,24 @@ test('keeps diagrams as files in the diagrams folder', async ({ window, dirs }) 
   await expect(window.getByText(`Saved as files in ${dirs.data}`)).toBeVisible()
 })
 
+test('deletes the file of a new diagram that the user leaves empty', async ({ window, dirs }) => {
+  await window.getByRole('button', { name: 'New diagram' }).click()
+  await expect(window).toHaveURL(/#\/d\//)
+  const id = decodeURIComponent(window.url().split('#/d/')[1] ?? '')
+  const file = path.join(dirs.data, `${id}.diagram.json`)
+  await expect.poll(() => existsSync(file)).toBe(true)
+
+  await window.getByRole('link', { name: 'All diagrams' }).click()
+  await expect.poll(() => existsSync(file)).toBe(false)
+  await expect(window.getByRole('heading', { name: /Draw how your system works/ })).toBeVisible()
+})
+
 test('shows a diagram file that another program adds to the folder', async ({ window, dirs }) => {
   await expect(window.getByRole('button', { name: 'New diagram' })).toBeVisible()
-  await window.getByRole('button', { name: 'New diagram' }).click()
-  await window.getByRole('link', { name: 'All diagrams' }).click()
   const file = diagramFile('Added from outside')
   writeFileSync(path.join(dirs.data, `${file.id}.diagram.json`), file.text)
   await expect(window.getByText('Added from outside')).toBeVisible({ timeout: 10_000 })
-  expect(readdirSync(dirs.data).filter((name) => name.endsWith('.diagram.json'))).toHaveLength(2)
+  expect(readdirSync(dirs.data).filter((name) => name.endsWith('.diagram.json'))).toHaveLength(1)
 })
 
 test('quits through the app quit command after it writes the last change', async ({ appEnv, dirs }) => {

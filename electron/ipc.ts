@@ -13,7 +13,7 @@ const HEX_COLOR = z.string().regex(HEX_COLOR_PATTERN)
 const INPUTS = {
   'files.list': z.null(),
   'files.write': z.object({ id: z.string(), text: z.string() }),
-  'files.remove': z.object({ id: z.string() }),
+  'files.remove': z.object({ id: z.string(), trash: z.boolean() }),
   'files.reveal': z.null(),
   'agent.info': z.null(),
   'agent.resetToken': z.null(),
