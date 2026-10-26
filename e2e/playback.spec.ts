@@ -48,6 +48,13 @@ test('previews a template without copying it, then copies it on request', async 
   ).toBe(1)
 })
 
+test('names the way back from a template on a phone', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/#/t/checkout-flow')
+  await page.getByRole('button', { name: 'All diagrams' }).click()
+  await expect(page).toHaveURL(/#\/$/)
+})
+
 test('draws edges with fixed sides on a read-only canvas', async ({ page }) => {
   await page.goto('/#/t/multi-cloud')
   const risk = page.locator('.react-flow__node', { hasText: 'Risk client' }).first()

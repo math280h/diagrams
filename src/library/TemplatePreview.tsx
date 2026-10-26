@@ -66,7 +66,7 @@ function Preview({ template }: { template: Template }) {
   return (
     <div className="flex h-full flex-col">
       <header className="dg-titlebar z-20 flex h-11 shrink-0 items-center gap-1 border-b bg-panel px-1.5">
-        <Button variant="ghost" nativeButton={false} render={<Link to="/" />}>
+        <Button variant="ghost" aria-label="All diagrams" nativeButton={false} render={<Link to="/" />}>
           <ArrowLeft /> <span className="hidden sm:inline">All diagrams</span>
         </Button>
         <Separator orientation="vertical" className="mx-1 h-5 data-vertical:self-center" />
