@@ -20,6 +20,7 @@ description: Checks a Diagrams diagram for layout and clarity problems and fixes
 | An edge touches a group                            | Connect the edge to a node in the group with `from` or `to`                                                                                            |
 | An edge crosses cards or makes a long detour       | Set `fromSide` and `toSide` to `"auto"` with `update_elements`, then call `layout_diagram` so that the edge follows the routes of the layout           |
 | A badge or status carries no data                  | Set it to an empty string, or set status to `none`                                                                                                     |
+| A node colour marks no group                       | Set `color` to `neutral`, or give the same colour to all nodes of the group                                                                            |
 | A flow step points at nothing, or has no event     | Fix it with `update_flow`                                                                                                                              |
 
 4. **Fix in batches.** Send the fixes in a few `update_elements` calls, not one call for each node. Each call is one undo step for the user.

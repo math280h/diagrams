@@ -4,6 +4,7 @@ import { iconSourceOf, type IconSet } from '@/canvas/icons/library'
 import { createStep } from '@/editor/flow/record'
 import { findEdgePath } from '@/engine/route'
 import { boundaryKind, BOUNDARY_BY_ID, TINTED_TIERS } from '@/model/boundaries'
+import type { Color } from '@/model/colors'
 import {
   createEdge,
   DEFAULT_TRAFFIC,
@@ -28,10 +29,10 @@ import type { EdgeInput, NodeInput, NodePatch, StepInput } from '@/agent/tool-de
 const OPPOSITE: Record<Side, Side> = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' }
 
 const FIELDS_BY_KIND = {
-  card: ['form', 'lines', 'badge', 'status'],
-  shape: ['shape'],
+  card: ['form', 'lines', 'badge', 'status', 'color'],
+  shape: ['shape', 'color'],
   text: ['textSize'],
-  group: ['boundary', 'detail'],
+  group: ['boundary', 'detail', 'color'],
 } as const satisfies Record<DiagramNode['type'], readonly (keyof NodeInput)[]>
 
 const KIND_FIELDS = new Set(Object.values(FIELDS_BY_KIND).flat())
@@ -82,6 +83,10 @@ function warnFields(input: NodeInput | NodePatch, kind: DiagramNode['type'], lab
   }
 }
 
+function nodeColor(color: NodeInput['color']): Color | undefined {
+  return color === 'auto' ? 'neutral' : color
+}
+
 function groupKind(boundary: string | undefined, warnings: string[]) {
   if (boundary !== undefined && !BOUNDARY_BY_ID.has(boundary)) {
     warnings.push(`"${boundary}" is not a boundary kind, so the group is a custom group. See list_boundary_kinds.`)
@@ -115,6 +120,7 @@ export function buildNode(
           lines: (input.lines ?? []).map((text) => ({ id: newId('l'), text })),
           badge: input.badge ?? '',
           status: input.status ?? 'none',
+          color: nodeColor(input.color) ?? 'neutral',
         }),
       }
     case 'shape': {
@@ -127,7 +133,12 @@ export function buildNode(
         width: input.width ?? size.width,
         height: input.height ?? size.height,
         zIndex: ELEMENT_Z,
-        data: defaultShapeData({ label: input.label, shape, icon: icon ?? '' }),
+        data: defaultShapeData({
+          label: input.label,
+          shape,
+          icon: icon ?? '',
+          color: nodeColor(input.color) ?? 'neutral',
+        }),
       }
     }
     case 'text':
@@ -154,6 +165,7 @@ export function buildNode(
           detail: input.detail ?? '',
           icon: icon ?? boundary.icon,
           tint: TINTED_TIERS.has(boundary.tier),
+          color: input.color ?? 'auto',
         }),
       }
     }
@@ -177,9 +189,10 @@ export function nodeDataPatch(
         lines: patch.lines?.map((text) => ({ id: newId('l'), text })),
         badge: patch.badge,
         status: patch.status,
+        color: nodeColor(patch.color),
       })
     case 'shape':
-      return definedFields({ icon, label: patch.label, shape: patch.shape })
+      return definedFields({ icon, label: patch.label, shape: patch.shape, color: nodeColor(patch.color) })
     case 'text':
       return definedFields({ text: patch.label, size: patch.textSize })
     case 'group': {
@@ -190,6 +203,7 @@ export function nodeDataPatch(
         kind: boundary?.id,
         tint: boundary ? TINTED_TIERS.has(boundary.tier) : undefined,
         icon: icon ?? boundary?.icon,
+        color: patch.color,
       })
     }
   }

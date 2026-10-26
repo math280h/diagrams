@@ -79,6 +79,28 @@ describe('describeChange', () => {
     )
   })
 
+  it('names the colour that nodes get, apart from other changes', () => {
+    const { diagram, api, db } = base()
+    const recolor = (source: Diagram, colors: Record<string, string>) =>
+      edit(source, (copy) => {
+        for (const node of copy.nodes) {
+          if (node.id in colors && node.type === 'card') node.data.color = colors[node.id] as 'green'
+        }
+      })
+    const green = recolor(diagram, { [api]: 'green', [db]: 'green' })
+    expect(describeChange(diagram, green)).toBe('Coloured API and Orders DB green.')
+    expect(describeChange(green, recolor(green, { [api]: 'neutral' }))).toBe('Removed the colour from API.')
+    expect(describeChange(green, recolor(green, { [api]: 'red', [db]: 'teal' }))).toBe(
+      'Changed the colour of API and Orders DB.',
+    )
+    const renamedAndMoved = edit(recolor(diagram, { [api]: 'pink' }), (copy) => {
+      const node = copy.nodes.find((item) => item.id === db)!
+      if (node.type === 'card') node.data.title = 'Orders'
+      copy.nodes.find((item) => item.id === api)!.position.x = 40
+    })
+    expect(describeChange(diagram, renamedAndMoved)).toBe('Changed Orders. Coloured API pink. Moved API.')
+  })
+
   it('ignores measured sizes', () => {
     const { diagram, api } = base()
     const after = edit(diagram, (copy) => {

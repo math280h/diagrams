@@ -2,6 +2,7 @@ import { createDiagram, defaultCardData, defaultGroupData, defaultShapeData, new
 import { loadIconSets, matchIcon, type IconSet } from '@/canvas/icons/library'
 import { matchPreset } from '@/model/presets'
 import { boundaryKindLabel, matchBoundary, startsWithKindLabel, TINTED_TIERS } from '@/model/boundaries'
+import { nearestColor, type Color } from '@/model/colors'
 import { ELEMENT_Z } from '@/model/graph'
 import type { Diagram, GroupData, ShapeKind } from '@/model/schema'
 import type { DiagramEdge, DiagramNode } from '@/model/types'
@@ -15,6 +16,8 @@ export interface MermaidNode {
   shape: string
   parentId?: string
   isGroup: boolean
+  /** The CSS declarations of the node, such as `fill:#f96`, from its classes first and then from `style`. */
+  styles: string[]
 }
 
 export interface MermaidEdge {
@@ -45,6 +48,10 @@ function isFlowchartDb(value: unknown): value is FlowchartDb {
 
 function text(value: unknown): string {
   return typeof value === 'string' ? value : ''
+}
+
+function texts(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item) => typeof item === 'string') : []
 }
 
 const DIRECTIONS: Record<string, LayoutDirection> = { TB: 'DOWN', TD: 'DOWN', BT: 'UP', LR: 'RIGHT', RL: 'LEFT' }
@@ -81,6 +88,7 @@ export async function parseMermaidFlowchart(source: string): Promise<MermaidGrap
       shape: text(node.shape),
       parentId: text(node.parentId) || undefined,
       isGroup: node.isGroup === true,
+      styles: [...texts(node.cssCompiledStyles), ...texts(node.cssStyles)],
     }
   })
   const edges: MermaidEdge[] = data.edges.map((raw) => {
@@ -114,6 +122,54 @@ export function cleanLabel(label: string): string[] {
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
+}
+
+const MIN_ALPHA = 0.2
+
+let colorContext: CanvasRenderingContext2D | null | undefined
+
+function cssRgb(value: string): [number, number, number] | null {
+  colorContext ??= document.createElement('canvas').getContext('2d')
+  if (!colorContext) return null
+  colorContext.fillStyle = '#000000'
+  colorContext.fillStyle = value
+  const parsed = colorContext.fillStyle
+  colorContext.fillStyle = '#ffffff'
+  colorContext.fillStyle = value
+  // A canvas keeps its previous fill style when the value is not a CSS colour.
+  if (colorContext.fillStyle !== parsed) return null
+  const hex = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(parsed)
+  if (hex) return [parseInt(hex[1]!, 16), parseInt(hex[2]!, 16), parseInt(hex[3]!, 16)]
+  const rgba = /^rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)$/.exec(parsed)
+  if (!rgba || Number(rgba[4] ?? 1) < MIN_ALPHA) return null
+  return [Number(rgba[1]), Number(rgba[2]), Number(rgba[3])]
+}
+
+/**
+ * Returns the palette colour of Mermaid styles: the colour of the fill, or of the stroke if the fill is grey or not
+ * set.
+ *
+ * @param styles - CSS declarations such as `fill:#f96`. A later declaration of a property wins.
+ */
+export function styleColor(styles: readonly string[]): Color {
+  const values = new Map<string, string>()
+  for (const style of styles) {
+    const [name = '', ...value] = style.split(':')
+    values.set(
+      name.trim().toLowerCase(),
+      value
+        .join(':')
+        .replace(/!important/i, '')
+        .trim(),
+    )
+  }
+  for (const property of ['fill', 'stroke']) {
+    const value = values.get(property)
+    const rgb = value ? cssRgb(value) : null
+    const color = rgb ? nearestColor(rgb) : 'neutral'
+    if (color !== 'neutral') return color
+  }
+  return 'neutral'
 }
 
 const SHAPE_MAP: Record<string, ShapeKind | 'card' | 'database'> = {
@@ -160,7 +216,9 @@ function boundaryData(title: string): GroupData {
 function toDiagramNode(node: MermaidNode, iconSets: readonly IconSet[]): DiagramNode {
   const [title = node.id, ...rest] = cleanLabel(node.label)
   const position = { x: 0, y: 0 }
+  const color = styleColor(node.styles)
   if (node.isGroup) {
+    const data = boundaryData(title)
     return {
       id: node.id,
       type: 'group',
@@ -168,7 +226,7 @@ function toDiagramNode(node: MermaidNode, iconSets: readonly IconSet[]): Diagram
       width: 320,
       height: 200,
       zIndex: -1,
-      data: boundaryData(title),
+      data: color === 'neutral' ? data : { ...data, color },
     }
   }
   const mapped = SHAPE_MAP[node.shape] ?? 'card'
@@ -184,6 +242,7 @@ function toDiagramNode(node: MermaidNode, iconSets: readonly IconSet[]): Diagram
       data: defaultShapeData({
         shape: mapped,
         label: [title, ...rest].join(' '),
+        color,
       }),
     }
   }
@@ -201,6 +260,7 @@ function toDiagramNode(node: MermaidNode, iconSets: readonly IconSet[]): Diagram
       icon: named?.id ?? '',
       form: template?.type === 'card' ? template.data.form : (named?.form ?? 'service'),
       lines: rest.map((line) => ({ id: newId('l'), text: line })),
+      color,
     }),
   }
 }

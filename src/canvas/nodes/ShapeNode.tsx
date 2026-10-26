@@ -19,7 +19,12 @@ export function ShapeNode({ id, data, selected, width, height }: NodeProps<Shape
     <>
       <BoxResizer visible={editable && selected} minWidth={48} minHeight={32} />
       <SideHandles connectable={editable} />
-      <div className="dg-shape" data-fill={data.fill} style={{ width: w, height: h }}>
+      <div
+        className="dg-shape"
+        data-fill={data.fill}
+        data-color={data.color === 'neutral' ? undefined : data.color}
+        style={{ width: w, height: h }}
+      >
         <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
           <path className="dg-shape-outline" d={outline} />
           {detail && <path className="dg-shape-detail" d={detail} />}

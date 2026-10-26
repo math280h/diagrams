@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { LAYOUT_DIRECTIONS } from '@/layout/types'
 import { BOUNDARY_PROVIDER_IDS } from '@/model/boundaries'
+import { COLORS } from '@/model/colors'
 import { CARD_FORMS, EDGE_PROTOCOLS, FONT_PAIRS, LOG_LEVELS, PAYLOAD_TYPES, SHAPES, SIDES } from '@/model/schema'
 
 const NODE_KINDS = ['card', 'shape', 'text', 'group'] as const
@@ -39,6 +40,12 @@ const nodeFields = {
       'Cards only. Short lines under the title, for example a port or an engine version. A line that reads as an identifier, such as a host, path or port, shows in monospace. Text in braces, such as {497}, shows brighter.',
     ),
   badge: z.string().optional().describe('Cards only. A short tag in the corner, for example a version.'),
+  color: z
+    .enum([...COLORS, 'auto'])
+    .optional()
+    .describe(
+      'Cards, shapes and groups. A colour that groups nodes, for example one colour for each team or each kind of part. Cards and shapes are neutral (grey) by default. A group uses the colour of its boundary kind with auto, the default.',
+    ),
   status: z.enum(['none', 'ok', 'warn', 'error']).optional().describe('Cards only. A status dot.'),
   shape: z.enum(SHAPES).optional().describe('Shapes only. The outline of the shape.'),
   textSize: z.enum(['sm', 'md', 'lg', 'xl']).optional().describe('Text only. The text size.'),

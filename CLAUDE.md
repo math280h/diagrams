@@ -22,6 +22,7 @@ reasons behind it.
 | Desktop installer    | `pnpm desktop:package` (electron-builder to `release/`; then `node scripts/smoke-package.mjs`) |
 | Release (maintainer) | `pnpm release:tag patch` (or `minor`, `major`, `beta`; see `docs/RELEASING.md`)                |
 | App icon             | `pnpm app-icon` (renders `build/icon.png` and `icon.ico`)                                      |
+| Diagram format files | `node scripts/format-sample.mjs` (or `<git ref>`; see "Change the diagram format")             |
 
 Run typecheck, lint, format:check, test and e2e before you report work as done. For changes to `electron/`,
 `src/desktop/` or `src/agent/`, also run `pnpm desktop:build` and `pnpm e2e:desktop`.
@@ -69,5 +70,8 @@ the JSDoc tag rules.
   that `electron/` imports (for example `src/desktop/contract.ts`, `src/desktop/constants.ts` and
   `src/agent/tool-definitions.ts`) stays free of DOM code; `tsconfig.electron.json` checks it
   without the DOM library.
+- Every change to `diagramSchema` needs a new `DIAGRAM_VERSION`, a migration step and new format
+  samples, so that diagrams from every earlier format keep opening. Follow "Change the diagram
+  format" in `docs/ARCHITECTURE.md`; `src/persistence/formats.test.ts` checks it.
 - Agent tools change a diagram through `src/store/actions.ts` inside `oneStep`, so each call is one
   undo step. Skills live in `claude-plugin/skills`; a test fails when they name a missing tool.

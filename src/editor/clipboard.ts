@@ -1,21 +1,29 @@
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { absolutePosition } from '@/model/graph'
-import { storedEdgeSchema, storedNodeSchema, type StoredEdge } from '@/model/schema'
+import { DIAGRAM_VERSION, type StoredEdge, type StoredNode } from '@/model/schema'
+import { DiagramFormatError, migrateElements } from '@/persistence/migrations'
 import { toStoredEdge, toStoredNode } from '@/persistence/serialize'
 import { addNodes, cloneSubgraph, deleteSelection, selectionSubgraph } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
 
 const MARKER = 'diagrams/clipboard@1'
 const PASTE_OFFSET = 32
+const UNVERSIONED_PAYLOAD_VERSION = 7
 
 const clipboardSchema = z.object({
   marker: z.literal(MARKER),
-  nodes: z.array(storedNodeSchema),
-  edges: z.array(storedEdgeSchema),
+  version: z.number().int().min(1).default(UNVERSIONED_PAYLOAD_VERSION),
+  nodes: z.unknown(),
+  edges: z.unknown(),
 })
 
-type ClipboardPayload = z.infer<typeof clipboardSchema>
+interface ClipboardPayload {
+  marker: typeof MARKER
+  version: number
+  nodes: StoredNode[]
+  edges: StoredEdge[]
+}
 
 let memory: ClipboardPayload | null = null
 let pasteCount = 0
@@ -32,6 +40,7 @@ function payloadFromSelection(): ClipboardPayload | null {
   )
   return {
     marker: MARKER,
+    version: DIAGRAM_VERSION,
     nodes: detached.map(toStoredNode),
     edges: edges.map(toStoredEdge).filter((edge): edge is StoredEdge => edge !== null),
   }
@@ -58,12 +67,16 @@ export function cutSelection(event?: ClipboardEvent) {
 
 function parse(text: string | undefined): ClipboardPayload | null {
   if (!text) return null
+  let raw: unknown
   try {
-    const result = clipboardSchema.safeParse(JSON.parse(text))
-    return result.success ? result.data : null
+    raw = JSON.parse(text)
   } catch {
     return null
   }
+  const result = clipboardSchema.safeParse(raw)
+  if (!result.success) return null
+  const { nodes, edges } = migrateElements(result.data.nodes, result.data.edges, result.data.version)
+  return { marker: MARKER, version: DIAGRAM_VERSION, nodes, edges }
 }
 
 /**
@@ -73,7 +86,15 @@ function parse(text: string | undefined): ClipboardPayload | null {
  *     move a small distance from the copied nodes for each paste.
  */
 export function paste(event?: ClipboardEvent, at?: { x: number; y: number }): boolean {
-  const payload = parse(event?.clipboardData?.getData('text/plain')) ?? memory
+  let payload: ClipboardPayload | null
+  try {
+    payload = parse(event?.clipboardData?.getData('text/plain')) ?? memory
+  } catch (error) {
+    if (!(error instanceof DiagramFormatError)) throw error
+    event?.preventDefault()
+    toast.error(error.message)
+    return true
+  }
   if (!payload) return false
   event?.preventDefault()
   pasteCount++

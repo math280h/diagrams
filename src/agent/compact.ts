@@ -72,10 +72,16 @@ function compactNode(node: DiagramNode, rect: Rect, full: boolean) {
         ...(node.data.icon ? { icon: node.data.icon } : {}),
         ...(node.data.badge ? { badge: node.data.badge } : {}),
         ...(node.data.status !== 'none' ? { status: node.data.status } : {}),
+        ...(node.data.color !== 'neutral' ? { color: node.data.color } : {}),
         ...(full && node.data.lines.length > 0 ? { lines: node.data.lines.map((line) => line.text) } : {}),
       }
     case 'shape':
-      return { ...base, shape: node.data.shape, ...(node.data.icon ? { icon: node.data.icon } : {}) }
+      return {
+        ...base,
+        shape: node.data.shape,
+        ...(node.data.icon ? { icon: node.data.icon } : {}),
+        ...(node.data.color !== 'neutral' ? { color: node.data.color } : {}),
+      }
     case 'text':
       return base
     case 'group':
@@ -83,6 +89,7 @@ function compactNode(node: DiagramNode, rect: Rect, full: boolean) {
         ...base,
         ...(node.data.kind !== CUSTOM_BOUNDARY ? { boundary: node.data.kind } : {}),
         ...(node.data.detail ? { detail: node.data.detail } : {}),
+        ...(node.data.color !== 'auto' ? { color: node.data.color } : {}),
       }
   }
 }

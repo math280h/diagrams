@@ -1,11 +1,9 @@
 import { z } from 'zod'
-import { BOUNDARY_COLORS } from './boundaries'
+import { COLORS } from './colors'
 
-export const DIAGRAM_VERSION = 7
+export const DIAGRAM_VERSION = 8
 
-export const ACCENTS = ['neutral', 'slate', 'blue', 'violet', 'emerald', 'amber', 'rose', 'cyan'] as const
-export const accentSchema = z.enum(ACCENTS)
-export type Accent = z.infer<typeof accentSchema>
+const colorSchema = z.enum(COLORS)
 
 export const SIDES = ['top', 'right', 'bottom', 'left'] as const
 export type Side = (typeof SIDES)[number]
@@ -27,7 +25,8 @@ export const cardDataSchema = z.object({
    * `logo:postgresql`. An empty string shows no icon.
    */
   icon: z.string(),
-  accent: accentSchema,
+  /** A colour that groups nodes, for example one colour for each team or each kind of part. */
+  color: colorSchema,
   /**
    * Monospace text lines below the title.
    *
@@ -57,7 +56,7 @@ export const shapeDataSchema = z.object({
   shape: z.enum(SHAPES),
   label: z.string(),
   icon: z.string(),
-  accent: accentSchema,
+  color: colorSchema,
   fill: z.enum(['tint', 'solid', 'outline']),
 })
 export type ShapeData = z.infer<typeof shapeDataSchema>
@@ -66,8 +65,7 @@ export type ShapeKind = ShapeData['shape']
 export const textDataSchema = z.object({
   text: z.string(),
   size: z.enum(['sm', 'md', 'lg', 'xl']),
-  tone: z.enum(['default', 'muted', 'accent']),
-  accent: accentSchema,
+  tone: z.enum(['default', 'muted']),
   align: z.enum(['left', 'center', 'right']),
   mono: z.boolean(),
 })
@@ -80,9 +78,8 @@ export const groupDataSchema = z.object({
   /** A short fact under the kind, for example an account id or an address range. */
   detail: z.string(),
   /** With `auto`, the boundary uses the colour of its kind. */
-  color: z.enum(['auto', ...BOUNDARY_COLORS]),
+  color: z.enum(['auto', ...COLORS]),
   icon: z.string(),
-  accent: accentSchema,
   border: z.enum(['dashed', 'solid', 'none']),
   tint: z.boolean(),
 })
@@ -148,7 +145,6 @@ export const edgeDataSchema = z.object({
   path: z.enum(['bezier', 'smooth', 'step', 'straight']),
   stroke: z.enum(['solid', 'dashed', 'dotted']),
   width: z.number().min(0.5).max(8),
-  accent: accentSchema,
   label: z.string(),
   /** The label location as a fraction of the path length, from 0 to 1. */
   labelPosition: z.number().min(0).max(1),
@@ -248,7 +244,6 @@ export type Track = z.infer<typeof trackSchema>
 export const tokenSchema = z.object({
   label: z.string(),
   icon: z.string(),
-  accent: accentSchema,
   shape: z.enum(['dot', 'chip']),
 })
 

@@ -12,8 +12,9 @@ import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { swatchColor } from '@/canvas/canvas-theme'
 import { cn } from '@/lib/utils'
-import { BOUNDARY_COLORS, type BoundaryColor } from '@/model/boundaries'
+import { COLOR_NAMES, COLORS, type Color } from '@/model/colors'
 import { useResolvedAppTheme } from '@/store/settings-store'
 
 export function Section({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
@@ -153,21 +154,62 @@ export function Segmented<T extends string>({
   )
 }
 
-const COLOR_NAMES: Record<BoundaryColor, string> = {
-  neutral: 'Neutral',
-  orange: 'Orange',
-  yellow: 'Yellow',
-  green: 'Green',
-  teal: 'Teal',
-  blue: 'Blue',
-  pink: 'Pink',
-  red: 'Red',
+const SWATCH_CLASS =
+  'size-6 min-w-0 rounded-md border border-transparent p-0 hover:border-input hover:bg-transparent aria-pressed:border-foreground aria-pressed:bg-transparent'
+
+function Swatches({
+  value,
+  onChange,
+  children,
+}: {
+  value: string | null
+  onChange: (value: string) => void
+  children?: ReactNode
+}) {
+  const theme = useResolvedAppTheme()
+  return (
+    <ToggleGroup
+      aria-label="Colour"
+      data-theme={theme}
+      value={value === null ? [] : [value]}
+      onValueChange={(next) => {
+        if (next[0] !== undefined) onChange(next[0])
+      }}
+      className="dg-zones flex-wrap gap-1.5"
+    >
+      {children}
+      {COLORS.map((color) => (
+        <ToggleGroupItem
+          key={color}
+          value={color}
+          aria-label={COLOR_NAMES[color]}
+          title={COLOR_NAMES[color]}
+          className={SWATCH_CLASS}
+        >
+          <span className="size-3 rounded-full" style={{ background: swatchColor(color) }} />
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
+  )
 }
 
-const COLOR_CHOICES: (BoundaryColor | 'auto')[] = ['auto', ...BOUNDARY_COLORS]
-
-function swatch(color: BoundaryColor) {
-  return color === 'neutral' ? 'var(--dg-line-strong)' : `var(--dg-zone-${color})`
+export function ColorPicker({
+  value,
+  onChange,
+}: {
+  /** The selected colour. The value `null` selects no colour, for example for mixed values. */
+  value: Color | null
+  onChange: (color: Color) => void
+}) {
+  return (
+    <Swatches
+      value={value}
+      onChange={(next) => {
+        const picked = COLORS.find((color) => color === next)
+        if (picked) onChange(picked)
+      }}
+    />
+  )
 }
 
 export function BoundaryColorPicker({
@@ -175,42 +217,27 @@ export function BoundaryColorPicker({
   kindColor,
   onChange,
 }: {
-  value: BoundaryColor | 'auto'
-  kindColor: BoundaryColor
-  onChange: (color: BoundaryColor | 'auto') => void
+  value: Color | 'auto'
+  kindColor: Color
+  onChange: (color: Color | 'auto') => void
 }) {
-  const theme = useResolvedAppTheme()
   return (
-    <ToggleGroup
-      aria-label="Colour"
-      data-theme={theme}
-      value={[value]}
-      onValueChange={(next) => {
-        const picked = COLOR_CHOICES.find((choice) => choice === next[0])
+    <Swatches
+      value={value}
+      onChange={(next) => {
+        const picked = next === 'auto' ? next : COLORS.find((color) => color === next)
         if (picked) onChange(picked)
       }}
-      className="dg-zones flex-wrap gap-1.5"
     >
       <ToggleGroupItem
         value="auto"
         title={`Auto (${COLOR_NAMES[kindColor].toLowerCase()})`}
         className="h-6 min-w-0 gap-1 rounded-md border border-input px-1.5 text-xs font-normal text-muted-foreground hover:bg-transparent hover:text-foreground aria-pressed:border-foreground aria-pressed:bg-transparent aria-pressed:text-foreground"
       >
-        <span className="size-2.5 rounded-full" style={{ background: swatch(kindColor) }} />
+        <span className="size-2.5 rounded-full" style={{ background: swatchColor(kindColor) }} />
         Auto
       </ToggleGroupItem>
-      {BOUNDARY_COLORS.map((color) => (
-        <ToggleGroupItem
-          key={color}
-          value={color}
-          aria-label={COLOR_NAMES[color]}
-          title={COLOR_NAMES[color]}
-          className="size-6 min-w-0 rounded-md border border-transparent p-0 hover:border-input hover:bg-transparent aria-pressed:border-foreground aria-pressed:bg-transparent"
-        >
-          <span className="size-3 rounded-full" style={{ background: swatch(color) }} />
-        </ToggleGroupItem>
-      ))}
-    </ToggleGroup>
+    </Swatches>
   )
 }
 

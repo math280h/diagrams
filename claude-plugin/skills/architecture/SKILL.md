@@ -22,6 +22,7 @@ The Diagrams app shows every change while you make it, and each call that change
 - Use the icon names from `search_icons`. A product icon also gives the card its form if you do not set `form`.
 - Use `badge` and `status` only for real data, such as a version or a health state. Never use them as decoration.
 - Use shapes and text only for notes and titles, not for parts of the system.
+- Leave cards neutral, unless the user asks for colours or the nodes fall into groups that cross boundaries, such as the teams that own them. Then set `color` on the cards of each group, with one colour for each group, and tell the user what each colour means. When the nodes of a group run in one place, such as an account, a network or a cluster, use a boundary instead.
 
 ## Edges
 

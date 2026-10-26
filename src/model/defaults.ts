@@ -41,7 +41,6 @@ export function defaultEdgeData(overrides: Partial<EdgeData> = {}): EdgeData {
     path: 'smooth',
     stroke: 'solid',
     width: 1.25,
-    accent: 'neutral',
     label: '',
     labelPosition: 0.5,
     markerStart: 'none',
@@ -76,7 +75,7 @@ export function defaultCardData(overrides: Partial<CardData> = {}): CardData {
     form: 'service',
     title: 'Service',
     icon: '',
-    accent: 'neutral',
+    color: 'neutral',
     lines: [],
     meter: null,
     meterText: '',
@@ -87,7 +86,7 @@ export function defaultCardData(overrides: Partial<CardData> = {}): CardData {
 }
 
 export function defaultShapeData(overrides: Partial<ShapeData> = {}): ShapeData {
-  return { shape: 'rounded', label: 'Shape', icon: '', accent: 'neutral', fill: 'tint', ...overrides }
+  return { shape: 'rounded', label: 'Shape', icon: '', color: 'neutral', fill: 'tint', ...overrides }
 }
 
 export function defaultTextData(overrides: Partial<TextData> = {}): TextData {
@@ -95,7 +94,6 @@ export function defaultTextData(overrides: Partial<TextData> = {}): TextData {
     text: 'Text',
     size: 'md',
     tone: 'default',
-    accent: 'neutral',
     align: 'left',
     mono: false,
     ...overrides,
@@ -109,7 +107,6 @@ export function defaultGroupData(overrides: Partial<GroupData> = {}): GroupData 
     detail: '',
     color: 'auto',
     icon: '',
-    accent: 'neutral',
     border: 'dashed',
     tint: true,
     ...overrides,
@@ -131,7 +128,7 @@ export function createFlow(name = 'User flow'): Flow {
     name,
     steps: [],
     tracks: [],
-    token: { label: 'User', icon: 'user', accent: 'blue', shape: 'chip' },
+    token: { label: 'User', icon: 'user', shape: 'chip' },
     spotlight: true,
     loop: false,
     bodies: true,

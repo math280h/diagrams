@@ -1,3 +1,4 @@
+import type { Color } from '@/model/colors'
 import type { DiagramTheme } from '@/model/schema'
 import { resolveAppTheme, useResolvedAppTheme, useSettings } from '@/store/settings-store'
 
@@ -14,4 +15,9 @@ export function currentCanvasTheme(mode: DiagramTheme['mode']): CanvasTheme {
 
 export function useCanvasTheme(mode: DiagramTheme['mode']): CanvasTheme {
   return canvasTheme(mode, useResolvedAppTheme())
+}
+
+/** Returns the CSS colour of a palette swatch. It needs an element with the `dg-zones` class and a theme around it. */
+export function swatchColor(color: Color): string {
+  return color === 'neutral' ? 'var(--dg-line-strong)' : `var(--dg-zone-${color})`
 }

@@ -291,7 +291,7 @@ Type is one grotesque, Host Grotesk, at weights 400 and 500, with tighter tracki
 
 ## Colors
 
-A black, grey and white ramp carries all structure; one signal blue and four protocol hues carry motion and traffic; three state colours carry levels; seven boundary hues name boundary kinds.
+A black, grey and white ramp carries all structure; one signal blue and four protocol hues carry motion and traffic; three state colours carry levels; seven boundary hues name boundary kinds and the groups that people mark on nodes.
 
 ### Primary
 
@@ -311,7 +311,7 @@ The protocol palette. Each protocol has a wire value (line, arrowhead) and a bri
 ### Tertiary
 
 - **State colours** (ok, warn, error): ok and warn status markers, warn and error event levels in the log and the caption, destructive actions. Info-level events are plain text colour.
-- **Boundary palette** (zone-orange, zone-yellow, zone-green, zone-teal, zone-blue, zone-pink, zone-red): boundary outlines, label icons and kind tags. A kind sets its default hue; the user can pick another or Neutral (Strong Line). Zone Blue is a pale steel, not a saturated blue, so it never reads as the signal.
+- **Boundary palette** (zone-orange, zone-yellow, zone-green, zone-teal, zone-blue, zone-pink, zone-red): boundary outlines, label icons and kind tags. A kind sets its default hue; the user can pick another or Neutral (Strong Line). Cards and shapes take the same hues when the user gives them a colour, so a team can have one hue on its boundary and on its nodes. Zone Blue is a pale steel, not a saturated blue, so it never reads as the signal.
 
 ### Neutral
 
@@ -479,6 +479,7 @@ The top bar is the navigation. The mark returns to the library. On phones labels
 - **Active or hovered:** Node Fill Active, Signal Blue border plus a 1px Signal Blue ring.
 - **Idle in a flow:** ground fill, dim outline, faint text, grey icons.
 - **Selected:** a 1px dashed text-colour outline offset 4px; 8px handles with 2px corners appear on hover.
+- **Coloured:** neutral by default. A hue from the boundary palette mixes 12% into Node Fill (8% in light) and 50% into the outline (45% in light); caps mix 18% into Canvas Raised. The line icon and the meter fill take the hue; the title stays in text colour. External cards mix 6% into the ground. Active, hovered and idle states replace the colour. Shapes use the same mixes, and a Line shape draws its outline in the full hue.
 
 ### Edges and labels
 
@@ -527,6 +528,7 @@ Present, the library stage and video export only. Docked to the bottom of the ca
 - **Do** colour a wire by its protocol, and let the token take the colour of its current or last hop.
 - **Do** set values people copy in Fragment Mono with slashed zero and tabular figures.
 - **Do** tell boundary tiers apart by line pattern so a diagram reads the same with boundary colours off.
+- **Do** leave nodes neutral unless a colour marks a group, such as a team or a kind of part.
 - **Do** show previews as read-only live canvases with the grid off: cards fit the whole diagram, the stage frames by `readableViewport`.
 - **Do** give every new token a light-theme counterpart with the same role.
 - **Do** stop autoplay and cut the camera when the user prefers reduced motion.

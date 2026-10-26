@@ -1,4 +1,5 @@
 import { boundaryKind, boundaryKindLabel } from '@/model/boundaries'
+import { COLORS, type Color } from '@/model/colors'
 import { absolutePosition, estimateSize } from '@/model/graph'
 import { nodeLabel, nodeTitle } from '@/model/labels'
 import type { EdgeData, ShapeKind } from '@/model/schema'
@@ -43,6 +44,17 @@ const RESERVED_IDS = new Set([
 const ENTITIES: Record<string, string> = { '"': '#quot;', '<': '#lt;', '>': '#gt;' }
 
 const START_MARKERS: Record<EdgeData['markerStart'], string> = { none: '', arrow: '<', dot: 'o' }
+
+/** The stroke that a Mermaid export gives to each palette colour. Each stroke shows on a light and on a dark page. */
+export const MERMAID_STROKES: Readonly<Record<Exclude<Color, 'neutral'>, string>> = {
+  orange: '#cf7229',
+  yellow: '#b18c20',
+  green: '#34a65c',
+  teal: '#23a5a6',
+  blue: '#5297b9',
+  pink: '#cd659b',
+  red: '#d86560',
+}
 
 function quoted(lines: readonly string[]): string {
   const text = lines
@@ -94,6 +106,12 @@ function nodeShape(node: Exclude<DiagramNode, { type: 'group' | 'text' }>): stri
   return `${open}${quoted(cardLines(node))}${close}`
 }
 
+function exportedColor(node: DiagramNode): Color | null {
+  if (node.type === 'text') return null
+  const color = node.data.color
+  return color === 'neutral' || color === 'auto' ? null : color
+}
+
 function chooseDirection(edges: readonly DiagramEdge[], centers: ReadonlyMap<string, Point>): Direction {
   let across = 0
   let down = 0
@@ -134,8 +152,9 @@ function link(data: EdgeData | undefined, start: Marker, end: Marker): string {
 /**
  * Writes the nodes and edges of a diagram as a Mermaid flowchart.
  *
- * Cards, shapes and boundaries become nodes and nested subgraphs. Text nodes, flows, icons, colours and positions stay
- * out, and Mermaid lays out the chart again. The direction follows the edges: `LR` unless they run mostly down.
+ * Cards, shapes and boundaries become nodes and nested subgraphs, and their colours become classes. Text nodes, flows,
+ * icons and positions stay out, and Mermaid lays out the chart again. The direction follows the edges: `LR` unless
+ * they run mostly down. A boundary with the colour of its kind gets no class.
  */
 export function diagramToMermaid(content: { nodes: readonly DiagramNode[]; edges: readonly DiagramEdge[] }): string {
   const byId = new Map(content.nodes.map((node) => [node.id, node]))
@@ -190,6 +209,12 @@ export function diagramToMermaid(content: { nodes: readonly DiagramNode[]; edges
   for (const { from, to, data, start, end } of links) {
     const label = data?.label.trim() ? `|${quoted([data.label])}|` : ''
     lines.push(`${INDENT}${ids.get(from)} ${link(data, start, end)}${label} ${ids.get(to)}`)
+  }
+  for (const color of COLORS) {
+    const members = ordered.filter((node) => exportedColor(node) === color).map((node) => ids.get(node.id)!)
+    if (color === 'neutral' || members.length === 0) continue
+    lines.push(`${INDENT}classDef ${color} stroke:${MERMAID_STROKES[color]},stroke-width:2px`)
+    lines.push(`${INDENT}class ${members.join(',')} ${color}`)
   }
   return `${lines.join('\n')}\n`
 }

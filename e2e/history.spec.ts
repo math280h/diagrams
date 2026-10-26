@@ -47,6 +47,7 @@ test('leaves the current diagram alone while an older version shows', async ({ p
 
   await page.getByRole('button', { name: 'Version history' }).click()
   const versions = page.getByRole('listbox', { name: 'Versions' })
+  await expect(versions.getByRole('option', { name: /Added Database/ })).toBeVisible()
   await versions.getByRole('option', { name: /First opened/ }).click()
   await expect(page.locator('[data-history-preview]')).toBeVisible()
   await expect(page.locator('[inert]').getByRole('button', { name: 'Undo' })).toHaveCount(1)

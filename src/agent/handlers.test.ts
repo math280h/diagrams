@@ -185,6 +185,56 @@ describe('agent tools', () => {
     expect(cache.type === 'card' && cache.data.icon).toBe('')
   })
 
+  it('colours cards, shapes and boundaries, reads the colours back and warns about text', async () => {
+    await call('create_diagram', { name: 'Shop' })
+    const added = await call('add_elements', {
+      nodes: [
+        { ref: 'team', kind: 'group', label: 'Payments', color: 'teal' },
+        { ref: 'vpc', kind: 'group', label: 'shared', boundary: 'aws.vpc' },
+        { label: 'API', color: 'green', parent: 'team' },
+        { label: 'Orders DB', form: 'datastore', color: 'green', parent: 'team' },
+        { kind: 'shape', label: 'Done', shape: 'pill', color: 'pink' },
+        { kind: 'text', label: 'Note', color: 'red' },
+        { label: 'Logs', color: 'auto' },
+      ],
+    })
+    expect(added.warnings).toEqual([expect.stringContaining('"color" does not apply to the text "Note"')])
+    const colorOf = (label: string) => {
+      const node = nodeByLabel(label)
+      return node.type === 'text' ? null : node.data.color
+    }
+    expect(['Payments', 'shared', 'API', 'Orders DB', 'Done', 'Logs'].map(colorOf)).toEqual([
+      'teal',
+      'auto',
+      'green',
+      'green',
+      'pink',
+      'neutral',
+    ])
+
+    await call('update_elements', {
+      nodes: [
+        { node: 'API', color: 'neutral' },
+        { node: 'shared', color: 'orange' },
+        { node: 'Payments', color: 'auto' },
+      ],
+    })
+    expect(['API', 'shared', 'Payments'].map(colorOf)).toEqual(['neutral', 'orange', 'auto'])
+    const read = await call('get_diagram', {})
+    const colors = Object.fromEntries(
+      (read.nodes as { label: string; color?: string }[]).map((node) => [node.label, node.color]),
+    )
+    expect(colors).toEqual({
+      Payments: undefined,
+      shared: 'orange',
+      API: undefined,
+      'Orders DB': 'green',
+      Done: 'pink',
+      Note: undefined,
+      Logs: undefined,
+    })
+  })
+
   it('places a new node next to the existing node it connects to', async () => {
     await call('create_diagram', { name: 'Shop' })
     await call('add_elements', { nodes: [{ label: 'API', x: 0, y: 0 }] })

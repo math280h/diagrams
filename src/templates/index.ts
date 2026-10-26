@@ -122,7 +122,7 @@ function orderSystem(): Diagram {
         latencyMs: 120,
       }),
     ],
-    { token: { label: 'POST /orders', icon: '', accent: 'violet', shape: 'chip' } },
+    { token: { label: 'POST /orders', icon: '', shape: 'chip' } },
   )
 
   return b.build('Order system')
@@ -220,7 +220,7 @@ function checkoutFlow(): Diagram {
       edgeStep(e7, '', 1300, 'follow', 1.1, { event: 'POST /orders' }),
       nodeStep(done, 'Order placed in 41 seconds.', 2000, 'fit', 1, { event: 'order placed' }),
     ],
-    { token: { label: 'Customer', icon: '', accent: 'violet', shape: 'chip' } },
+    { token: { label: 'Customer', icon: '', shape: 'chip' } },
   )
   return b.build('Checkout flow')
 }
@@ -704,7 +704,7 @@ function multiCloud(): Diagram {
         latencyMs: 655,
       }),
     ],
-    { token: { label: 'order 4821', icon: '', accent: 'violet', shape: 'chip' } },
+    { token: { label: 'order 4821', icon: '', shape: 'chip' } },
   )
   b.flow(
     'Card payment',
@@ -738,7 +738,7 @@ function multiCloud(): Diagram {
         event: 'captured',
       }),
     ],
-    { token: { label: 'card ••42', icon: '', accent: 'violet', shape: 'chip' } },
+    { token: { label: 'card ••42', icon: '', shape: 'chip' } },
   )
   b.flow(
     'Invoice to ERP',
@@ -761,7 +761,7 @@ function multiCloud(): Diagram {
       edgeStep(erpToOracle, '', 1100, follow, 1, { event: 'INSERT VBRK', latencyMs: 12 }),
       nodeStep(oracle, 'Finance sees the invoice in SAP.', 1600, fit, 1, { event: 'committed' }),
     ],
-    { token: { label: 'invoice', icon: '', accent: 'violet', shape: 'chip' } },
+    { token: { label: 'invoice', icon: '', shape: 'chip' } },
   )
   b.flow(
     'Analytics and training',
@@ -790,7 +790,7 @@ function multiCloud(): Diagram {
       }),
       nodeStep(fraud, 'The next checkout uses the new model.', 1600, fit, 1, { event: 'serving v42' }),
     ],
-    { token: { label: 'sales row', icon: '', accent: 'violet', shape: 'chip' } },
+    { token: { label: 'sales row', icon: '', shape: 'chip' } },
   )
 
   return b.build('Multi-cloud commerce platform')
@@ -1209,7 +1209,7 @@ function collaborativeEditor(): Diagram {
         latencyMs: 50,
       }),
     ],
-    { token: { label: 'update 41 B', icon: '', accent: 'violet', shape: 'chip' } },
+    { token: { label: 'update 41 B', icon: '', shape: 'chip' } },
   )
   b.flow(
     'Mention in a comment',
@@ -1258,7 +1258,7 @@ function collaborativeEditor(): Diagram {
       edgeStep(notifierToEmail, '', 1300, follow, 0.9, { event: 'POST /emails', latencyMs: 180 }),
       nodeStep(email, 'Resend accepts the email for delivery.', 1800, fit, 1, { event: '200 OK' }),
     ],
-    { token: { label: 'comment', icon: '', accent: 'violet', shape: 'chip' } },
+    { token: { label: 'comment', icon: '', shape: 'chip' } },
   )
   b.flow(
     'Back online',
@@ -1302,7 +1302,7 @@ function collaborativeEditor(): Diagram {
       }),
       nodeStep(view, 'The page shows the edits from both sides.', 1800, fit, 1, { event: 'render' }),
     ],
-    { token: { label: '37 updates', icon: '', accent: 'violet', shape: 'chip' } },
+    { token: { label: '37 updates', icon: '', shape: 'chip' } },
   )
 
   return b.build('Collaborative editor')

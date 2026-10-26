@@ -8,3 +8,8 @@ export type GroupNodeType = Node<GroupData, 'group'>
 
 export type DiagramNode = CardNodeType | ShapeNodeType | TextNodeType | GroupNodeType
 export type DiagramEdge = Edge<EdgeData, 'flow'>
+
+/** Returns true for the node types that take a colour of their own: cards and shapes. */
+export function takesColor(node: DiagramNode): node is CardNodeType | ShapeNodeType {
+  return node.type === 'card' || node.type === 'shape'
+}
