@@ -1,6 +1,7 @@
 import {
   ChevronDown,
   Copy,
+  FileCode,
   Play,
   Pause,
   Plus,
@@ -12,6 +13,7 @@ import {
   X,
 } from 'lucide-react'
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -36,7 +38,9 @@ import { IconPicker } from '@/editor/inspector/IconPicker'
 import { appendNodeToFlow } from './record'
 import { FLOW_PANEL_HEIGHT } from './layout'
 import { stepFlow, useSegmentIndex } from './hooks'
+import { flowToMermaidSequence } from '@/export/sequence'
 import { LogTable } from './LogTable'
+import { SequenceView } from './SequenceView'
 import { Timeline } from './Timeline'
 
 function TimeReadout() {
@@ -208,6 +212,14 @@ function FlowSettings({ flow }: { flow: Flow }) {
   )
 }
 
+function copySequence(flow: Flow) {
+  const { nodes, edges } = useDoc.getState()
+  void navigator.clipboard.writeText(flowToMermaidSequence(flow, { nodes, edges })).then(
+    () => toast.success('Copied the Mermaid sequence diagram'),
+    () => toast.error('Could not copy. Use Export, then Mermaid.'),
+  )
+}
+
 function FlowMenu({ flows, flow }: { flows: Flow[]; flow: Flow | undefined }) {
   return (
     <DropdownMenu>
@@ -249,6 +261,9 @@ function FlowMenu({ flows, flow }: { flows: Flow[]; flow: Flow | undefined }) {
               }}
             >
               <Copy /> Duplicate flow
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => copySequence(flow)}>
+              <FileCode /> Copy as Mermaid sequence
             </DropdownMenuItem>
             <DropdownMenuItem
               variant="destructive"
@@ -354,6 +369,7 @@ export function FlowPanel() {
           onChange={(flowView) => setUi({ flowView })}
           options={[
             { value: 'steps', label: 'Log' },
+            { value: 'sequence', label: 'Sequence' },
             { value: 'timeline', label: 'Timeline' },
           ]}
         />
@@ -382,6 +398,8 @@ export function FlowPanel() {
         </div>
       ) : view === 'steps' ? (
         <LogTable flow={flow} />
+      ) : view === 'sequence' ? (
+        <SequenceView flow={flow} />
       ) : (
         <div className="min-h-0 flex-1 p-2">
           <Timeline flow={flow} />
