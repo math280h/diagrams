@@ -349,6 +349,21 @@ export const TOOL_DEFINITIONS = {
     annotations: ADD,
     timeoutMs: LONG_MS,
   },
+  import_trace: {
+    title: 'Import trace',
+    description:
+      'Play a recorded request as a flow, from a distributed trace in OpenTelemetry (OTLP JSON), Jaeger or Zipkin format. Each call between services, databases, topics and outside hosts becomes a request step and a response step with the operation, latency and status. Cards with the same name stand for the services; missing cards and edges are added. Without diagramId, the tool makes a new diagram.',
+    input: z.object({
+      trace: z.string().describe('The text of the trace file, as JSON.'),
+      diagramId: z
+        .string()
+        .optional()
+        .describe('The diagram that gets the flow. Leave it out to make a new diagram from the trace.'),
+      name: z.string().optional().describe('The name of a new diagram. The default is the operation of the root span.'),
+    }),
+    annotations: ADD,
+    timeoutMs: LONG_MS,
+  },
   add_elements: {
     title: 'Add nodes and edges',
     description:

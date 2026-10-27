@@ -5,6 +5,7 @@ import {
   CopyPlus,
   Download,
   FileCode,
+  FileInput,
   FileJson,
   Film,
   Waypoints,
@@ -133,6 +134,9 @@ export function CommandMenu() {
             })}
           >
             <Waypoints /> New flow
+          </CommandItem>
+          <CommandItem onSelect={run(() => setUi({ traceImportOpen: true }))}>
+            <FileInput /> Import a trace as a flow
           </CommandItem>
           {flows.map((flow) => (
             <CommandItem

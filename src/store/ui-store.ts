@@ -25,6 +25,7 @@ interface UiState {
   commandOpen: boolean
   exportOpen: ExportKind | null
   importOpen: boolean
+  traceImportOpen: boolean
   shortcutsOpen: boolean
   historyOpen: boolean
   insert: InsertRequest | null
@@ -39,6 +40,7 @@ export const useUi = create<UiState>(() => ({
   commandOpen: false,
   exportOpen: null,
   importOpen: false,
+  traceImportOpen: false,
   shortcutsOpen: false,
   historyOpen: false,
   insert: null,

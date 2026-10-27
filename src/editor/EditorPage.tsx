@@ -7,6 +7,7 @@ import { EngineProvider } from '@/engine/context'
 import { useEngine } from '@/engine/hooks'
 import { ExportDialog } from '@/export/ExportDialog'
 import { ImportDialog } from '@/io/ImportDialog'
+import { TraceImportDialog } from './flow/TraceImportDialog'
 import { saveImported } from '@/persistence/library-actions'
 import { storageCopy } from '@/persistence/storage-copy'
 import { useDiagramDocument } from '@/store/document'
@@ -91,6 +92,7 @@ function EditorShell() {
       <CommandMenu />
       <ExportDialog />
       <ShortcutsDialog />
+      <TraceImportDialog />
       <ImportDialog
         open={importOpen}
         onOpenChange={(open) => setUi({ importOpen: open })}

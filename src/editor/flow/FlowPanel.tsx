@@ -1,6 +1,7 @@
 import {
   ChevronDown,
   Copy,
+  FileInput,
   Play,
   Pause,
   Plus,
@@ -240,6 +241,9 @@ function FlowMenu({ flows, flow }: { flows: Flow[]; flow: Flow | undefined }) {
         >
           <Plus /> New flow
         </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setUi({ traceImportOpen: true })}>
+          <FileInput /> Import a trace
+        </DropdownMenuItem>
         {flow && (
           <>
             <DropdownMenuItem
@@ -378,6 +382,9 @@ export function FlowPanel() {
             }}
           >
             <Plus /> New flow
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setUi({ traceImportOpen: true })}>
+            <FileInput /> Import a trace
           </Button>
         </div>
       ) : view === 'steps' ? (
