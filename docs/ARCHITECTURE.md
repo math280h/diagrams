@@ -231,7 +231,7 @@ imports, the website handoff, version history and pasted nodes (the clipboard ca
 format until the app saves a change, which can also be a pan or a zoom. Until then, a second
 computer with an older app can still open it.
 
-The website deploys from `main`, so a format that reaches `main` is in some browser. Any change to
+The preview website deploys from `main`, so a format that reaches `main` is in some browser. Any change to
 `diagramSchema`, also a new optional field or a new enum value, therefore needs a new version:
 
 1. Raise `DIAGRAM_VERSION` and add `toVersion<N>` to `MIGRATIONS`. The step fills new fields with
