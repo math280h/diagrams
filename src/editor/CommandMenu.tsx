@@ -5,7 +5,9 @@ import {
   CopyPlus,
   Download,
   FileCode,
+  FileInput,
   FileJson,
+  Globe,
   Film,
   Waypoints,
   Group,
@@ -134,6 +136,9 @@ export function CommandMenu() {
           >
             <Waypoints /> New flow
           </CommandItem>
+          <CommandItem onSelect={run(() => setUi({ traceImportOpen: true }))}>
+            <FileInput /> Import a trace as a flow
+          </CommandItem>
           {flows.map((flow) => (
             <CommandItem
               key={flow.id}
@@ -158,6 +163,9 @@ export function CommandMenu() {
           </CommandItem>
           <CommandItem onSelect={run(() => setUi({ exportOpen: 'video' }))}>
             <Film /> Export animation
+          </CommandItem>
+          <CommandItem onSelect={run(() => setUi({ exportOpen: 'page' }))}>
+            <Globe /> Export web page
           </CommandItem>
           <CommandItem onSelect={run(() => setUi({ exportOpen: 'mermaid' }))}>
             <FileCode /> Export Mermaid flowchart

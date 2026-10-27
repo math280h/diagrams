@@ -199,11 +199,12 @@ src/
   engine/       clock, path sampler, traffic, flow compile/evaluate, camera, engine, React glue
   editor/       editor page, insert menu, properties panel, flow panel and timeline, version history, menus, shortcuts
   export/       export stage, capture, image and video/GIF export dialog
-  import/       Mermaid import
-  io/           import dialog (diagram file and Mermaid)
+  import/       Mermaid import, trace import
+  io/           import dialog (diagram file, Mermaid and trace)
   layout/       ELK layers, group grid and edge router, run in a worker
   library/      library page, live previews and their framing
-  player/       presentation page
+  player/       presentation page and the player stage that it shares with the web page export
+  standalone/   entry of the standalone player that a web page export carries
   templates/    starter diagrams
   components/   shadcn (Base UI) primitives in ui/
   lib/          small shared helpers: errors, queues, idle mount, reduced motion
@@ -236,7 +237,7 @@ imports, the website handoff, version history and pasted nodes (the clipboard ca
 format until the app saves a change, which can also be a pan or a zoom. Until then, a second
 computer with an older app can still open it.
 
-The website deploys from `main`, so a format that reaches `main` is in some browser. Any change to
+The preview website deploys from `main`, so a format that reaches `main` is in some browser. Any change to
 `diagramSchema`, also a new optional field or a new enum value, therefore needs a new version:
 
 1. Raise `DIAGRAM_VERSION` and add `toVersion<N>` to `MIGRATIONS`. The step fills new fields with
@@ -284,6 +285,31 @@ An edge can carry a `request` body (what the source sends) and a `response` body
   render, so the timeline and `evaluateFlow` do not change, and a video export shows the same text.
   The strip truncates the body and hides it on narrow frames, as it does the event.
 
+### Trace import
+
+A trace becomes a flow (`src/import/trace.ts`, `trace-flow.ts`, `trace-apply.ts`), so a recorded request plays on the
+diagram with its real operations, latencies and statuses.
+
+- The parser reads OTLP JSON (`resourceSpans`, the `batches` of Tempo and the `result` of the Jaeger v3 API), the
+  Jaeger JSON of its UI and API, and Zipkin v2 spans. A shared Zipkin span has the id of its client span, so its
+  server half gets its own id below the client half. A file with several traces imports the one with the most spans.
+- `walkTrace` turns spans into calls between peers: services, databases (`db.system`), topics (`messaging.system`),
+  peer services and outside hosts. Spans inside one service make no call, so internal spans do not add steps. A
+  client span with a span of another service below it calls that service, and takes the protocol from the client and
+  the operation and status from the server.
+- A call is a request step, the calls under it, and a response step on the same edge, so the token always comes back
+  before the next call. A message goes to its topic and back, and the consumers take it after the other calls of the
+  root span: a consumer that played inside the request left the token away from the caller, and the response steps
+  then ran the wrong way.
+- Equal calls in a row with the same outcome merge into one step, such as `SELECT products ×3`, with the time from the
+  first start to the last end. A retry with another status stays a step of its own, because it tells part of the story.
+- A peer uses a card of the diagram when `matchKey` of the names is equal: `order-service`, `orderservice` and `Orders`
+  all give `order`. Cards of the fitting form come first, then a card line (the namespace of a database), then the
+  product icon. A database never matches a service card by its namespace, because `orders` names both. Missing cards
+  and edges go next to their neighbours through the agent placement, and the whole import is one undo step.
+- Step durations keep the defaults and the real time goes in the latency column: real calls take milliseconds, and the
+  flow must stay readable.
+
 ### Animation engine
 
 - `path-sampler` parses the SVG path data that React Flow writes and builds an arc-length table,
@@ -305,6 +331,8 @@ An edge can carry a `request` body (what the source sends) and a `response` body
   viewport was tried too: it cut raster work during a pan by about 75 %, but layerization on the
   main thread grew by more than it saved, and pinch zoom fell from 54 to 41 fps at 6×. The viewport
   stays uncomposited.
+- `usePlaybackState` returns a new snapshot object for each change. The React Compiler memoizes JSX on the identity of
+  the values that it reads, so a mutable playback object kept the play button on Play while a flow played.
 - `evaluateFlow(timeline, t, geometry, view)` is pure. Token position, node and edge state,
   caption and camera depend only on `t`. Scrubbing and export use the same function.
 - The step camera is a weighted mean of the step targets over a time window around `t` (1 s for
@@ -452,6 +480,28 @@ so a diagram can go into Markdown that GitHub draws. It needs no export stage.
 - Mermaid rejects a link with two different end markers, so such an edge keeps only its end
   marker. An edge with only a start marker is written the other way round.
 - A browser test exports each template, draws it with Mermaid and imports it again.
+
+### Web page export
+
+The Web page tab saves one HTML file that plays the diagram with no other files and no network
+(`src/export/html-export.ts`). People open it from a drive, host it on GitHub Pages or attach it to a pull request,
+and the flows still play, which an image or a video cannot do.
+
+- A second Vite build (`scripts/standalone-player.ts`) bundles `src/standalone/main.tsx` into one IIFE script and one
+  style sheet, with the licence texts of the bundled packages. The web build writes them to `standalone/`; the dev
+  server builds them on the first request and again after a change. The export fetches them, so the app needs no
+  copy of the player in its own bundle.
+- The player is `PlayerStage`, the same component as Present, with a flow picker and without the exit button. It
+  follows the light or dark setting of the viewer.
+- The page carries only what its diagram needs: the subsets of the icon sets with the icons that it uses, the Lucide
+  icons outside the player bundle (as icon data for `createLucideIcon`), and the `latin` and `latin-ext` files of the
+  app fonts and the diagram fonts as data URLs. The player build replaces `lucide-react/dynamic` and the icon set
+  files with empty modules; with them, the script grew by several megabytes.
+- The diagram and the icons go in `application/json` script elements with `<` written as `\u003c`, and `</script` in
+  the script and the licences becomes `<\/script`, because an HTML parser ends a script element there.
+- The page ends with the licence texts of the player packages and of the fonts, because the MIT and OFL licences ask
+  for them in every copy.
+- A page of the Order system is about 1.3 MB.
 
 ## Desktop app
 

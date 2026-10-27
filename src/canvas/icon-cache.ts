@@ -96,6 +96,9 @@ export const loaded = new Map<string, ComponentType<LucideProps>>(
   }),
 )
 
+/** The names of the Lucide icons that the app bundles. Other Lucide icons load on demand. */
+export const BUNDLED_ICON_NAMES: ReadonlySet<string> = new Set(loaded.keys())
+
 const pending = new Map<string, Promise<void>>()
 const listeners = new Set<() => void>()
 let version = 0
