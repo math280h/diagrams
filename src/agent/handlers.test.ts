@@ -12,6 +12,7 @@ import { useDoc } from '@/store/doc-store'
 import { closeDiagramSession, openDiagram, openDiagramId, openDiagramSession } from '@/store/document'
 import { resetHistory, undo, useHistory } from '@/store/history'
 import { TEMPLATES } from '@/templates'
+import { sampleTrace } from '@/import/trace-sample'
 import type { HandlerContext } from './context'
 import { HANDLERS } from './handlers'
 import { runAgentTool } from './runtime'
@@ -370,6 +371,29 @@ describe('agent tools', () => {
 
     await call('update_flow', { flow: 'Order', steps: { remove: [1, 2], update: [{ index: 0, level: 'warn' }] } })
     expect(useDoc.getState().flows[0]!.steps.map((step) => step.level)).toEqual(['warn', 'info'])
+  })
+
+  it('makes a new diagram from a trace, with the trace as its flow', async () => {
+    const result = await call('import_trace', { trace: sampleTrace() })
+    expect(open).toBe(result.diagramId)
+    expect(result).toMatchObject({ name: 'POST /orders', steps: 14, nodes: 7, edges: 6 })
+    const flow = useDoc.getState().flows[0]!
+    expect(flow.steps[4]).toMatchObject({ event: '429', level: 'warn' })
+  })
+
+  it('plays a trace on the cards of an existing diagram in one undo step', async () => {
+    await call('create_diagram', { name: 'Shop', template: 'order-system' })
+    const before = { nodes: useDoc.getState().nodes.length, flows: useDoc.getState().flows.length }
+    const result = await call('import_trace', { trace: sampleTrace(), diagramId: useDoc.getState().id! })
+    expect(result).toMatchObject({ steps: 14, matchedCards: 7, newCards: [], newEdges: 0 })
+    expect(useDoc.getState().nodes).toHaveLength(before.nodes)
+    expect(useDoc.getState().flows).toHaveLength(before.flows + 1)
+    undo()
+    expect(useDoc.getState().flows).toHaveLength(before.flows)
+  })
+
+  it('explains text that is not a trace', async () => {
+    await expect(call('import_trace', { trace: '{"nodes": []}' })).rejects.toThrow('The file holds no spans.')
   })
 
   it('gives an edge request and response bodies from an example and from fields, and reads them back', async () => {

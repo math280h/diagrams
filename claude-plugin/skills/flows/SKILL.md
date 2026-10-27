@@ -7,6 +7,8 @@ description: Adds animated flows to a Diagrams diagram, in which a token moves a
 
 A flow plays like a log. A token moves from node to node, the camera follows it, and each step shows a log line and a caption.
 
+For a recorded request, call `import_trace` with the text of an OpenTelemetry (OTLP JSON), Jaeger or Zipkin trace file instead of writing the steps. It matches services to cards by name, adds missing cards and edges, and writes each call as a request and a response step with the operation, latency and status. Then check the flow, and add captions with `update_flow`.
+
 1. **Read the diagram.** Call `get_diagram` to learn the node labels and the edges. The token moves along edges, so first add any missing edges with `add_elements`.
 2. **Add the flow.** Call `add_flow` with the nodes in the order the request visits them. With `connect` (the default), the app puts in the edge steps between two nodes on the shortest path. To make the token take one particular edge, name the edge as `"A -> B"`.
 3. **Write each step as a log line.**

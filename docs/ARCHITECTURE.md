@@ -194,8 +194,8 @@ src/
   engine/       clock, path sampler, traffic, flow compile/evaluate, camera, engine, React glue
   editor/       editor page, insert menu, properties panel, flow panel and timeline, version history, menus, shortcuts
   export/       export stage, capture, image and video/GIF export dialog
-  import/       Mermaid import
-  io/           import dialog (diagram file and Mermaid)
+  import/       Mermaid import, trace import
+  io/           import dialog (diagram file, Mermaid and trace)
   layout/       ELK layers, group grid and edge router, run in a worker
   library/      library page, live previews and their framing
   player/       presentation page
@@ -278,6 +278,31 @@ An edge can carry a `request` body (what the source sends) and a `response` body
   setting `bodies` turns this off. The strip and the log table read the body from the edge when they
   render, so the timeline and `evaluateFlow` do not change, and a video export shows the same text.
   The strip truncates the body and hides it on narrow frames, as it does the event.
+
+### Trace import
+
+A trace becomes a flow (`src/import/trace.ts`, `trace-flow.ts`, `trace-apply.ts`), so a recorded request plays on the
+diagram with its real operations, latencies and statuses.
+
+- The parser reads OTLP JSON (`resourceSpans`, the `batches` of Tempo and the `result` of the Jaeger v3 API), the
+  Jaeger JSON of its UI and API, and Zipkin v2 spans. A shared Zipkin span has the id of its client span, so its
+  server half gets its own id below the client half. A file with several traces imports the one with the most spans.
+- `walkTrace` turns spans into calls between peers: services, databases (`db.system`), topics (`messaging.system`),
+  peer services and outside hosts. Spans inside one service make no call, so internal spans do not add steps. A
+  client span with a span of another service below it calls that service, and takes the protocol from the client and
+  the operation and status from the server.
+- A call is a request step, the calls under it, and a response step on the same edge, so the token always comes back
+  before the next call. A message goes to its topic and back, and the consumers take it after the other calls of the
+  root span: a consumer that played inside the request left the token away from the caller, and the response steps
+  then ran the wrong way.
+- Equal calls in a row with the same outcome merge into one step, such as `SELECT products ×3`, with the time from the
+  first start to the last end. A retry with another status stays a step of its own, because it tells part of the story.
+- A peer uses a card of the diagram when `matchKey` of the names is equal: `order-service`, `orderservice` and `Orders`
+  all give `order`. Cards of the fitting form come first, then a card line (the namespace of a database), then the
+  product icon. A database never matches a service card by its namespace, because `orders` names both. Missing cards
+  and edges go next to their neighbours through the agent placement, and the whole import is one undo step.
+- Step durations keep the defaults and the real time goes in the latency column: real calls take milliseconds, and the
+  flow must stay readable.
 
 ### Animation engine
 

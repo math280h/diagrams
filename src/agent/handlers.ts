@@ -4,6 +4,7 @@ import {
   createDiagramHandler,
   deleteDiagramHandler,
   importMermaid,
+  importTrace,
   openDiagramHandler,
   updateDiagram,
 } from './handlers/diagrams'
@@ -23,6 +24,7 @@ export const HANDLERS = {
   update_diagram: updateDiagram,
   delete_diagram: deleteDiagramHandler,
   import_mermaid: importMermaid,
+  import_trace: importTrace,
   add_elements: addElements,
   update_elements: updateElements,
   delete_elements: deleteElementsHandler,

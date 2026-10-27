@@ -1,4 +1,4 @@
-import { FileJson, Loader2, Workflow } from 'lucide-react'
+import { Activity, FileJson, Loader2, Workflow } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
@@ -15,6 +15,8 @@ import { pickFile } from '@/lib/download'
 import type { Diagram } from '@/model/schema'
 import { parseDiagramJson } from '@/persistence/library-actions'
 import { errorMessage } from '@/lib/error-message'
+import { TraceInput, TraceSummary } from './TraceInput'
+import { useParsedTrace } from './use-parsed-trace'
 
 const MERMAID_SAMPLE = `flowchart LR
   user([Shopper]) --> web[Web app]
@@ -39,6 +41,8 @@ export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogPro
   const [source, setSource] = useState(MERMAID_SAMPLE)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [traceSource, setTraceSource] = useState('')
+  const parsedTrace = useParsedTrace(traceSource)
 
   const importJson = async () => {
     setError(null)
@@ -65,17 +69,43 @@ export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogPro
     }
   }
 
+  const importTrace = async () => {
+    const { trace } = parsedTrace
+    if (!trace) return
+    setError(null)
+    setBusy(true)
+    try {
+      const [{ traceToDiagram }, { loadIconSets }, { layoutDiagram }] = await Promise.all([
+        import('@/import/trace-apply'),
+        import('@/canvas/icons/library'),
+        import('@/layout/diagram-layout'),
+      ])
+      onImported(await traceToDiagram(trace, await loadIconSets().catch(() => []), layoutDiagram))
+    } catch (cause) {
+      setError(errorMessage(cause))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const traceDetail = parsedTrace.walk ? 'The new diagram gets a card for each, and the trace as a flow.' : ''
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Import a diagram</DialogTitle>
-          <DialogDescription>Paste a Mermaid flowchart, or open a JSON file exported from Diagrams.</DialogDescription>
+          <DialogDescription>
+            Paste a Mermaid flowchart or a trace, or open a JSON file exported from Diagrams.
+          </DialogDescription>
         </DialogHeader>
         <Tabs value={tab} onValueChange={(value) => setTab(String(value))}>
           <TabsList>
             <TabsTrigger value="mermaid">
               <Workflow /> Mermaid
+            </TabsTrigger>
+            <TabsTrigger value="trace">
+              <Activity /> Trace
             </TabsTrigger>
             <TabsTrigger value="json">
               <FileJson /> Diagram file (JSON)
@@ -92,6 +122,10 @@ export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogPro
               The import keeps subgraphs, labels, thick lines, dotted lines (as dashed) and decision shapes. It places
               the nodes again with automatic layout.
             </p>
+          </TabsContent>
+          <TabsContent value="trace" className="mt-3 space-y-2">
+            <TraceInput value={traceSource} onChange={setTraceSource} />
+            <TraceSummary parsed={parsedTrace} detail={traceDetail} />
           </TabsContent>
           <TabsContent value="json" className="mt-3">
             <Button
@@ -112,6 +146,17 @@ export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogPro
             <Button onClick={importMermaid} disabled={busy || !source.trim()}>
               {busy && <Loader2 className="animate-spin" />}
               Import flowchart
+            </Button>
+          </DialogFooter>
+        )}
+        {tab === 'trace' && (
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button onClick={importTrace} disabled={busy || !parsedTrace.trace}>
+              {busy && <Loader2 className="animate-spin" />}
+              Import trace
             </Button>
           </DialogFooter>
         )}
