@@ -26,6 +26,7 @@ import { errorMessage } from '@/lib/error-message'
 import { diagramBounds } from './bounds'
 import { captureBlob, canvasBackground, prepareAssets, waitForPaint } from './capture'
 import { ExportStage, type StageHandle } from './ExportStage'
+import { HtmlExport } from './HtmlExport'
 import { MermaidExport } from './MermaidExport'
 import { usePainted } from './use-painted'
 import { ExportAbortedError, recordStage, type VideoFormat } from './video'
@@ -562,20 +563,24 @@ export function ExportDialog() {
           <DialogDescription>
             {kind === 'video'
               ? 'Export a flow or the traffic animation as MP4, WebM or GIF. Frames render one by one, so none are dropped.'
-              : kind === 'mermaid'
-                ? 'Copy the diagram as a Mermaid flowchart. GitHub draws Mermaid in Markdown, for example in a README.'
-                : 'Save a PNG or SVG for READMEs, pull requests and slides.'}
+              : kind === 'page'
+                ? 'Save the diagram as a web page that plays its flows.'
+                : kind === 'mermaid'
+                  ? 'Copy the diagram as a Mermaid flowchart. GitHub draws Mermaid in Markdown, for example in a README.'
+                  : 'Save a PNG or SVG for READMEs, pull requests and slides.'}
           </DialogDescription>
         </DialogHeader>
         <Tabs value={kind ?? 'image'} onValueChange={(value) => setUi({ exportOpen: value as ExportKind })}>
           <TabsList>
             <TabsTrigger value="image">Image</TabsTrigger>
             <TabsTrigger value="video">Animation</TabsTrigger>
+            <TabsTrigger value="page">Web page</TabsTrigger>
             <TabsTrigger value="mermaid">Mermaid</TabsTrigger>
           </TabsList>
         </Tabs>
         {kind === 'image' && <ImageExport onClose={close} />}
         {kind === 'video' && <VideoExport onClose={close} />}
+        {kind === 'page' && <HtmlExport onClose={close} />}
         {kind === 'mermaid' && <MermaidExport />}
       </DialogContent>
     </Dialog>

@@ -59,6 +59,16 @@ const LABEL_VISIBLE = 0.05
 const DOT_CLEAR_PX = 6
 const HANDOFF_MS = 700
 
+/** The state of a playback at one moment. A change gives a new object. */
+export interface PlaybackSnapshot {
+  flowId: string | null
+  timeline: Timeline | null
+  playing: boolean
+  rate: number
+  follow: boolean
+  durationMs: number
+}
+
 export class Playback {
   readonly time = motionValue(0)
   flowId: string | null = null
@@ -71,17 +81,22 @@ export class Playback {
   /** If true, the next frames move the camera from the current viewport to the flow camera. */
   handoffRequest = false
   private listeners = new Set<() => void>()
-  private version = 0
+  private snapshot = this.takeSnapshot()
 
   subscribe = (listener: () => void) => {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)
   }
 
-  getVersion = () => this.version
+  getSnapshot = (): PlaybackSnapshot => this.snapshot
+
+  private takeSnapshot(): PlaybackSnapshot {
+    const { flowId, timeline, playing, rate, follow, durationMs } = this
+    return { flowId, timeline, playing, rate, follow, durationMs }
+  }
 
   private notify() {
-    this.version++
+    this.snapshot = this.takeSnapshot()
     for (const listener of this.listeners) listener()
   }
 
