@@ -1,7 +1,8 @@
 # Releasing the desktop app
 
-The website deploys from `main`. The desktop app ships through GitHub Releases, and the installed app updates itself
-from the latest published release. The tag gives the version of a release: the workflow builds the app with it. The
+The website runs on Railway in two environments: the preview deploys each push to `main`, and the live site at
+draw.thias.dev deploys when you publish a release. The desktop app ships through GitHub Releases, and the installed app
+updates itself from the latest published release. The tag gives the version of a release: the workflow builds the app with it. The
 version in `package.json` only names builds on your own computer, so a release needs no commit.
 
 ## Make a release
@@ -21,6 +22,8 @@ version in `package.json` only names builds on your own computer, so a release n
    it through the agent server before it uploads its files.
 3. When all three jobs pass, open the draft on GitHub, edit the notes, and publish it. Installed apps find the update
    only after you publish.
+4. Publishing starts the Deploy the website workflow. Approve its job in the `release` environment, and it deploys the
+   tag to the live site with the Railway CLI (`railway up`).
 
 ## Make a preview
 
@@ -97,3 +100,14 @@ After the first signed release, the installed app accepts only updates from the 
 - Do not change `appId` in `electron-builder.ts`. The installer and macOS use it to know that a new version replaces
   the old one.
 - Do not name an npm script `release`. electron-builder publishes by itself under that script name.
+
+## Set up the live website
+
+The Deploy the website workflow needs this once:
+
+- In Railway, the website service of the production environment has no GitHub source, so that only a release deploys
+  it. The service of the preview environment follows `main`.
+- In GitHub, the `release` environment has the secret `RW_TOKEN`, a Railway project token for the production
+  environment, and the variable `RAILWAY_SERVICE`, the name of the website service.
+
+A preview release does not deploy the live site.

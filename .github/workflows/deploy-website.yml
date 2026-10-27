@@ -1,0 +1,33 @@
+name: Deploy the website
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-website
+
+jobs:
+  deploy:
+    name: Deploy the live website
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          persist-credentials: false
+      - name: Deploy the release to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RW_TOKEN }}
+          RAILWAY_SERVICE: ${{ vars.RAILWAY_SERVICE }}
+        run: |
+          if [ -z "$RAILWAY_SERVICE" ]; then
+            echo "::error::Set the variable RAILWAY_SERVICE in the release environment to the name of the website service."
+            exit 1
+          fi
+          npx --yes @railway/cli@5.71.0 up --ci --service "$RAILWAY_SERVICE"
