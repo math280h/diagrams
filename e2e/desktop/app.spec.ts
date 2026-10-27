@@ -106,3 +106,24 @@ test('gives the window an app icon that Electron can read', async ({ app }) => {
 function iconFile() {
   return path.resolve('build', process.platform === 'win32' ? 'icon.ico' : 'icon.png')
 }
+
+test('serves the player files that the web page export puts in a page', async ({ window }) => {
+  const files = await window.evaluate(() =>
+    Promise.all(
+      ['standalone/player.js', 'standalone/player.css', 'standalone/licenses.txt'].map(async (file) => {
+        const response = await fetch(`/${file}`)
+        return {
+          status: response.status,
+          type: response.headers.get('content-type'),
+          size: (await response.text()).length,
+        }
+      }),
+    ),
+  )
+  expect(files.map(({ status, type }) => [status, type?.split(';')[0]])).toEqual([
+    [200, 'text/javascript'],
+    [200, 'text/css'],
+    [200, 'text/plain'],
+  ])
+  expect(files.every(({ size }) => size > 1000)).toBe(true)
+})

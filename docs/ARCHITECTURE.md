@@ -198,7 +198,8 @@ src/
   io/           import dialog (diagram file, Mermaid and trace)
   layout/       ELK layers, group grid and edge router, run in a worker
   library/      library page, live previews and their framing
-  player/       presentation page
+  player/       presentation page and the player stage that it shares with the web page export
+  standalone/   entry of the standalone player that a web page export carries
   templates/    starter diagrams
   components/   shadcn (Base UI) primitives in ui/
   lib/          small shared helpers: errors, queues, idle mount, reduced motion
@@ -325,6 +326,8 @@ diagram with its real operations, latencies and statuses.
   viewport was tried too: it cut raster work during a pan by about 75 %, but layerization on the
   main thread grew by more than it saved, and pinch zoom fell from 54 to 41 fps at 6×. The viewport
   stays uncomposited.
+- `usePlaybackState` returns a new snapshot object for each change. The React Compiler memoizes JSX on the identity of
+  the values that it reads, so a mutable playback object kept the play button on Play while a flow played.
 - `evaluateFlow(timeline, t, geometry, view)` is pure. Token position, node and edge state,
   caption and camera depend only on `t`. Scrubbing and export use the same function.
 - The step camera is a weighted mean of the step targets over a time window around `t` (1 s for
@@ -468,6 +471,28 @@ so a diagram can go into Markdown that GitHub draws. It needs no export stage.
 - Mermaid rejects a link with two different end markers, so such an edge keeps only its end
   marker. An edge with only a start marker is written the other way round.
 - A browser test exports each template, draws it with Mermaid and imports it again.
+
+### Web page export
+
+The Web page tab saves one HTML file that plays the diagram with no other files and no network
+(`src/export/html-export.ts`). People open it from a drive, host it on GitHub Pages or attach it to a pull request,
+and the flows still play, which an image or a video cannot do.
+
+- A second Vite build (`scripts/standalone-player.ts`) bundles `src/standalone/main.tsx` into one IIFE script and one
+  style sheet, with the licence texts of the bundled packages. The web build writes them to `standalone/`; the dev
+  server builds them on the first request and again after a change. The export fetches them, so the app needs no
+  copy of the player in its own bundle.
+- The player is `PlayerStage`, the same component as Present, with a flow picker and without the exit button. It
+  follows the light or dark setting of the viewer.
+- The page carries only what its diagram needs: the subsets of the icon sets with the icons that it uses, the Lucide
+  icons outside the player bundle (as icon data for `createLucideIcon`), and the `latin` and `latin-ext` files of the
+  app fonts and the diagram fonts as data URLs. The player build replaces `lucide-react/dynamic` and the icon set
+  files with empty modules; with them, the script grew by several megabytes.
+- The diagram and the icons go in `application/json` script elements with `<` written as `\u003c`, and `</script` in
+  the script and the licences becomes `<\/script`, because an HTML parser ends a script element there.
+- The page ends with the licence texts of the player packages and of the fonts, because the MIT and OFL licences ask
+  for them in every copy.
+- A page of the Order system is about 1.3 MB.
 
 ## Desktop app
 

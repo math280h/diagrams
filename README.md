@@ -23,7 +23,7 @@ computer.
 - **Request and response bodies**: list the JSON fields that a connection carries, or paste an example body to fill
   them. Copy an example body back as JSON, and see the body in the log line while a flow plays.
 - **Present and export**: present in full screen, or export PNG, SVG, MP4, WebM or GIF. Video export is exact to the
-  frame.
+  frame. Export a web page to share a diagram that plays its flows in any browser, as one HTML file with no network.
 - **Mermaid import and export**: paste a Mermaid flowchart and get a laid-out diagram, or copy a diagram as a
   Mermaid flowchart for Markdown. Node colours go both ways.
 - **Version history**: see how a diagram looked earlier, including each change that an agent made, and restore any

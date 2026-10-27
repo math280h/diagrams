@@ -22,6 +22,7 @@
     "playwright.config.ts",
     "vite.electron.config.ts",
     "scripts/third-party-licenses.ts",
+    "scripts/standalone-player.ts",
     "electron-builder.ts"
   ]
 }

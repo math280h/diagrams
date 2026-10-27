@@ -7,6 +7,7 @@ import {
   FileCode,
   FileInput,
   FileJson,
+  Globe,
   Film,
   Waypoints,
   Group,
@@ -162,6 +163,9 @@ export function CommandMenu() {
           </CommandItem>
           <CommandItem onSelect={run(() => setUi({ exportOpen: 'video' }))}>
             <Film /> Export animation
+          </CommandItem>
+          <CommandItem onSelect={run(() => setUi({ exportOpen: 'page' }))}>
+            <Globe /> Export web page
           </CommandItem>
           <CommandItem onSelect={run(() => setUi({ exportOpen: 'mermaid' }))}>
             <FileCode /> Export Mermaid flowchart

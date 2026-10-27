@@ -1,5 +1,5 @@
 import { use, useSyncExternalStore } from 'react'
-import type { Engine } from './engine'
+import type { Engine, PlaybackSnapshot } from './engine'
 import { EngineContext } from './engine-context'
 
 export function useEngine(): Engine {
@@ -8,10 +8,9 @@ export function useEngine(): Engine {
   return engine
 }
 
-export function usePlaybackState() {
+export function usePlaybackState(): PlaybackSnapshot {
   const engine = useEngine()
-  useSyncExternalStore(engine.playback.subscribe, engine.playback.getVersion)
-  return engine.playback
+  return useSyncExternalStore(engine.playback.subscribe, engine.playback.getSnapshot)
 }
 
 export function useCaption() {

@@ -78,6 +78,12 @@ export function loadIconSet(source: IconSourceId): Promise<IconSet> {
   return job
 }
 
+/** Adds an icon set that the app has without a fetch, such as the icons that an exported page carries. */
+export function registerIconSet(set: IconSet) {
+  sets.set(set.source, set)
+  pending.set(set.source, Promise.resolve(set))
+}
+
 export function loadIconSets(): Promise<IconSet[]> {
   return Promise.all(ICON_SOURCES.map((source) => loadIconSet(source.id)))
 }
