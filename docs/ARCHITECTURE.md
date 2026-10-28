@@ -361,8 +361,9 @@ goes and which trust boundaries it crosses, and the diagram already knows both: 
 - The Sensitive data button in the top bar turns on a view of the editor canvas, not a setting of the diagram. The
   canvas gets the crossings through `CanvasMode.threats`, because edge labels render in a portal outside the edge.
   Marked edges take the warning colour (personal data) or the error colour (secrets) and dim the other edges, and an
-  edge that crosses a trust boundary gets a thicker line and a filled label chip. A panel lists the marked edges, the
-  crossings first, and selects an edge on click; the edge properties show its fields and boundaries.
+  edge that crosses a trust boundary gets a thicker line and a filled label chip. A panel docked on the left of the
+  canvas lists the marked edges, the crossings first, and selects an edge on click; it takes canvas width, so it never
+  covers a node. The edge properties show the fields and boundaries of the edge.
 - Pasting a JSON example keeps the mark of a field with the same path, as it keeps the description.
 - Agents set `sensitive` on body fields, and `get_diagram` with full detail returns `dataCrossings`. The `threat-model`
   skill marks the fields and checks each crossing with STRIDE; the app does not judge threats itself.

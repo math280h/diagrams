@@ -21,6 +21,7 @@ import { HistoryPanel } from './history/HistoryPanel'
 import { HistoryPreview } from './history/HistoryPreview'
 import { useFlowBinding } from './flow/useFlowBinding'
 import { Inspector } from './inspector/Inspector'
+import { SensitiveDataPanel } from './SensitiveDataPanel'
 import { InsertMenu } from './InsertMenu'
 import { useEditorShortcuts } from './shortcuts'
 import { ShortcutsDialog } from './ShortcutsDialog'
@@ -56,6 +57,7 @@ function EditorShell() {
   const flowPanelOpen = useUi((state) => state.flowPanelOpen)
   const importOpen = useUi((state) => state.importOpen)
   const historyOpen = useUi((state) => state.historyOpen)
+  const sensitiveView = useUi((state) => state.sensitiveView)
   const previewing = useVersions((state) => state.previewId !== null)
 
   useEffect(
@@ -75,6 +77,7 @@ function EditorShell() {
     <div className="flex h-full w-full flex-col overflow-hidden">
       <TopBar />
       <div className="relative flex min-h-0 flex-1">
+        {sensitiveView && <SensitiveDataPanel />}
         <div className="relative flex min-w-0 flex-1 flex-col">
           <div className="relative min-h-0 flex-1">
             <EditorCanvas />
