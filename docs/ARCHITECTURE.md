@@ -98,6 +98,11 @@ The visual system lives in `DESIGN.md` at the repository root.
   flows. Present
   and video exports show the current line in a strip at the bottom of the frame; the camera keeps
   its target clear of that strip through the engine insets.
+- The flow panel shows a flow as a log, a sequence or a timeline. The sequence (`SequenceView`) draws a lifeline for
+  each node that the flow reaches, in the order that it reaches them, and a row for each step of the timeline: a solid
+  arrow for a call, a dashed arrow for a response (`reversed`), a note for a step on a node. The rows follow the
+  playback like the log lines. `flowSequence` (`src/export/sequence.ts`) builds the rows for the view and for the
+  Mermaid export, so both show the same thing.
 - The token label lifts above a node while the token moves along the node's top edge, and fades
   out near the ends of an edge, so that it never covers a node title. Both values come from
   `evaluateFlow`, so exports stay frame exact. When one edge step follows another at a different
@@ -445,6 +450,10 @@ wall-clock time and the captured frame would show it part way.
 The canvas grid is off in exports unless the user turns it on: it is an editing aid. The animation
 tab captures five frames from the export stage as a preview strip, so the preview shows the real
 camera path and framing.
+
+The Mermaid tab can also write a flow as a sequence diagram (`flowToMermaidSequence`): calls are solid arrows,
+responses dashed arrows, `error` steps end in a cross, and steps on a node and captions become notes. The latency
+follows the event. Mermaid reads `;` as the end of a statement and `#` as an entity, so both become entities.
 
 The Mermaid tab writes the diagram as a flowchart text (`diagramToMermaid` in `src/export/mermaid.ts`),
 so a diagram can go into Markdown that GitHub draws. It needs no export stage.
