@@ -67,7 +67,7 @@ test('adds a connected node when a connection ends on empty canvas', async ({ pa
   await page.getByPlaceholder('Add a connected node').fill('redis')
   await page.keyboard.press('Enter')
   await expect(page.locator('.react-flow__node')).toHaveCount(2)
-  await expect(page.locator('.react-flow__node', { hasText: 'Cache' })).toBeVisible()
+  await expect(page.locator('.react-flow__node', { hasText: 'Redis' })).toBeVisible()
   await expect(page.locator('.react-flow__edge')).toHaveCount(1)
 })
 
