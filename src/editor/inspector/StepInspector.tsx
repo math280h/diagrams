@@ -169,7 +169,7 @@ export function StepInspector({ flow, step }: { flow: Flow; step: Step }) {
       }
     >
       <p className="truncate text-sm font-medium">{targetName(step.target)}</p>
-      <Field label="Event" wide>
+      <Field label="Event">
         <TextInput
           mono
           value={step.event}
@@ -177,7 +177,7 @@ export function StepInspector({ flow, step }: { flow: Flow; step: Step }) {
           onChange={(event) => set({ event }, `event:${step.id}`)}
         />
       </Field>
-      <Field label="Latency" wide>
+      <Field label="Latency">
         <TextInput
           mono
           value={step.latencyMs === null ? '' : String(step.latencyMs)}
@@ -204,7 +204,7 @@ export function StepInspector({ flow, step }: { flow: Flow; step: Step }) {
           ]}
         />
       </Field>
-      <Field label="Caption" wide>
+      <Field label="Caption">
         <Textarea
           value={step.caption}
           placeholder="What happens in this step"

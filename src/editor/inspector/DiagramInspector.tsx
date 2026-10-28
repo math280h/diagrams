@@ -121,7 +121,7 @@ export function StylePanel() {
                 <Pause /> Stop all
               </Button>
             </div>
-            <Field label="Style for all" wide>
+            <Field label="Style for all">
               <Segmented
                 label="Traffic style for all connections"
                 className="w-full"
@@ -181,7 +181,7 @@ export function MultiInspector({ nodes }: { nodes: DiagramNode[] }) {
   return (
     <>
       <Section title="Arrange">
-        <Field label="Align" wide>
+        <Field label="Align">
           <div className="grid grid-cols-6 gap-1">
             {(
               [
@@ -206,7 +206,7 @@ export function MultiInspector({ nodes }: { nodes: DiagramNode[] }) {
             ))}
           </div>
         </Field>
-        <Field label="Distribute" wide>
+        <Field label="Distribute">
           <div className="grid grid-cols-2 gap-1.5">
             <Button variant="outline" size="sm" onClick={() => distributeSelection('x')} disabled={nodes.length < 3}>
               <StretchHorizontal /> Across

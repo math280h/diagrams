@@ -29,11 +29,11 @@ export function Section({ title, children, action }: { title: string; children: 
   )
 }
 
-export function Field({ label, children, wide }: { label: string; children: ReactNode; wide?: boolean }) {
+export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div role="group" aria-label={label} className="grid min-h-7 grid-cols-[72px_minmax(0,1fr)] items-center gap-2">
       <span className="truncate text-xs text-muted-foreground">{label}</span>
-      <div className={cn('min-w-0', !wide && 'flex justify-end')}>{children}</div>
+      <div className="min-w-0">{children}</div>
     </div>
   )
 }
@@ -64,6 +64,7 @@ export function Choice<T extends string>({
   className?: string
 }) {
   const items = groups ? groups.flatMap((group) => group.options) : options
+  const selected = items.find((option) => option.value === value)?.label
   const renderItem = (option: ChoiceOption<T>) => (
     <SelectItem key={option.value} value={option.value} className="text-xs">
       {option.label}
@@ -71,8 +72,13 @@ export function Choice<T extends string>({
   )
   return (
     <Select<T> value={value} onValueChange={(next) => next !== null && onChange(next)} items={items}>
-      <SelectTrigger size="sm" aria-label={label} className={cn('w-full min-w-0 rounded-lg px-2 text-xs', className)}>
-        <SelectValue />
+      <SelectTrigger
+        size="sm"
+        aria-label={label}
+        title={selected}
+        className={cn('w-full min-w-0 rounded-lg px-2 text-xs', className)}
+      >
+        <SelectValue className="min-w-0">{() => <span className="min-w-0 truncate">{selected}</span>}</SelectValue>
       </SelectTrigger>
       <SelectContent align="start" alignItemWithTrigger={false} className="max-h-80">
         {groups
@@ -137,7 +143,7 @@ export function Segmented<T extends string>({
         const picked = options.find((option) => option.value === next[0])
         if (picked) onChange(picked.value)
       }}
-      className={cn('h-7 gap-0 rounded-lg bg-muted p-0.5', className)}
+      className={cn('h-7 w-full gap-0 rounded-lg bg-muted p-0.5', className)}
     >
       {options.map((option) => (
         <ToggleGroupItem
@@ -155,7 +161,7 @@ export function Segmented<T extends string>({
 }
 
 const SWATCH_CLASS =
-  'size-6 min-w-0 rounded-md border border-transparent p-0 hover:border-input hover:bg-transparent aria-pressed:border-foreground aria-pressed:bg-transparent'
+  'size-5 min-w-0 rounded-md border border-transparent p-0 hover:border-input hover:bg-transparent aria-pressed:border-foreground aria-pressed:bg-transparent'
 
 function Swatches({
   value,
@@ -175,7 +181,7 @@ function Swatches({
       onValueChange={(next) => {
         if (next[0] !== undefined) onChange(next[0])
       }}
-      className="dg-zones flex-wrap gap-1.5"
+      className="dg-zones flex-wrap gap-0.5"
     >
       {children}
       {COLORS.map((color) => (
@@ -261,7 +267,7 @@ export function SliderField({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-xs">
-        <span className="text-foreground/80">{label}</span>
+        <span className="text-muted-foreground">{label}</span>
         <span className="text-[11px] text-muted-foreground tabular-nums">{format ? format(value) : value}</span>
       </div>
       <Slider
@@ -286,7 +292,7 @@ export function SwitchField({
 }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-xs text-foreground/80">{label}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
       <Switch aria-label={label} checked={checked} onCheckedChange={onChange} />
     </div>
   )

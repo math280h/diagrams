@@ -78,7 +78,7 @@ export function ReadmeExport() {
             />
           </Field>
           {format === 'gif' && (
-            <Field label="Animation" wide>
+            <Field label="Animation">
               <Choice
                 label="Animation"
                 value={flow ? flow.id : NO_FLOW}
@@ -91,7 +91,7 @@ export function ReadmeExport() {
             </Field>
           )}
         </div>
-        <Field label="Image path" wide>
+        <Field label="Image path">
           <Input
             value={basePath}
             onChange={(event) => setBasePath(event.target.value)}

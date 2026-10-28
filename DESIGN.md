@@ -444,6 +444,7 @@ Quiet and compact.
 - **Style:** transparent fill (30% input grey in dark), 1px Node Line border, 8px corners, 32px tall, 10px side padding.
 - **Focus:** the border turns Signal Blue; the caret is Signal Blue. No outer ring.
 - **Error / Disabled:** error border with a 3px error ring at 20%; disabled at 50% opacity.
+- **Properties rows:** a 72px muted label column and a value column; every value control starts at the left edge of the value column, and segmented controls fill it. Switch and slider labels use the same muted colour. A select cuts a long value with an ellipsis and shows it in full on hover. Colour swatches are 20px with 2px gaps, so the eight colours fit on one row.
 
 ### Cards / Containers
 

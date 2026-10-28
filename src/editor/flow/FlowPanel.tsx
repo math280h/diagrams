@@ -86,13 +86,13 @@ function FlowSettings({ flow }: { flow: Flow }) {
         <TooltipContent>Flow settings</TooltipContent>
       </Tooltip>
       <PopoverContent className="w-72 space-y-3" align="start" side="top">
-        <Field label="Name" wide>
+        <Field label="Name">
           <TextInput
             value={flow.name}
             onChange={(name) => set((draft) => void (draft.name = name), `flow-name:${flow.id}`)}
           />
         </Field>
-        <Field label="Token label" wide>
+        <Field label="Token label">
           <TextInput
             value={flow.token.label}
             onChange={(label) => set((draft) => void (draft.token.label = label), `token-label:${flow.id}`)}
@@ -109,7 +109,7 @@ function FlowSettings({ flow }: { flow: Flow }) {
           />
         </Field>
         {flow.token.shape === 'chip' && (
-          <Field label="Token icon" wide>
+          <Field label="Token icon">
             <IconPicker
               allowNone
               value={flow.token.icon}
