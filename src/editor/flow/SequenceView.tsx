@@ -7,7 +7,8 @@ import type { Flow } from '@/model/schema'
 import { selectOnly } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
 import { setUi, useUi } from '@/store/ui-store'
-import { markOnCanvas, useSegmentIndex } from './hooks'
+import { useSegmentIndex } from '@/engine/hooks'
+import { markOnCanvas } from './hooks'
 import { findPath, stepTargets } from '@/model/flow'
 
 const COLUMN_PX = 168

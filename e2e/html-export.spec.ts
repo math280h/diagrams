@@ -35,6 +35,8 @@ test('exports a web page that plays the flow with no network', async ({ page, br
   await viewer.getByRole('button', { name: 'Pause' }).click()
   await viewer.getByRole('button', { name: 'Restart' }).click()
   await viewer.getByRole('button', { name: 'Next step' }).click()
+  await expect(viewer.locator('.dg-caption')).toContainText('TLS 1.3')
+  await viewer.getByRole('button', { name: 'Next step' }).click()
   await expect(viewer.locator('.dg-caption')).toContainText('The gateway checks the session')
   expect(errors).toEqual([])
   await offline.close()

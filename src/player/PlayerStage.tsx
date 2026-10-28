@@ -26,7 +26,11 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Kbd } from '@/components/ui/kbd'
 import { useEngine, usePlaybackState } from '@/engine/hooks'
-import { compileFlow, segmentIndexAt } from '@/engine/flow/compile'
+import { compileFlow } from '@/engine/flow/compile'
+import { stepFlow } from '@/engine/flow/step'
+import { StepCount } from '@/components/StepCount'
+import { hasDetails } from '@/model/details'
+import { toast } from 'sonner'
 import { shortcutLetter } from '@/lib/keys'
 import { prefersReducedMotion } from '@/lib/motion'
 import { cn } from '@/lib/utils'
@@ -38,6 +42,23 @@ import { describeDiagram } from '@/export/describe'
 import { findPath } from '@/model/flow'
 
 const IDLE_HIDE_MS = 2600
+const DETAILS_HINT_KEY = 'dg:details-hint-shown'
+
+function readFlag(key: string): boolean {
+  try {
+    return localStorage.getItem(key) !== null
+  } catch {
+    return true
+  }
+}
+
+function writeFlag(key: string) {
+  try {
+    localStorage.setItem(key, '1')
+  } catch {
+    // Browsers can block storage, for example in a private window.
+  }
+}
 const OPEN_ZOOM_MS = 650
 
 async function toggleFullscreen() {
@@ -186,21 +207,14 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
     return () => window.clearTimeout(timer)
   }, [engine, flow, initial, pathId])
 
-  const step = useCallback(
-    (delta: number) => {
-      const timeline = engine.playback.timeline
-      if (!timeline || timeline.segments.length === 0) return
-      const current = segmentIndexAt(timeline, engine.playback.time.get())
-      const nodeSegments = timeline.segments.filter((segment) => segment.step.target.kind === 'node')
-      const target =
-        delta > 0
-          ? nodeSegments.find((segment) => segment.index > current)
-          : [...nodeSegments].reverse().find((segment) => segment.index < current)
-      engine.playback.pause()
-      engine.playback.seek(target ? target.startMs + 1 : delta > 0 ? engine.playback.durationMs : 0)
-    },
-    [engine],
-  )
+  const step = useCallback((delta: 1 | -1) => stepFlow(engine, delta), [engine])
+
+  useEffect(() => {
+    if (!initial.nodes.some((node) => node.type !== 'text' && hasDetails(node.data.details))) return
+    if (readFlag(DETAILS_HINT_KEY)) return
+    writeFlag(DETAILS_HINT_KEY)
+    toast.message('A dot on a node means it has details. Point at the node or click it to read them.')
+  }, [initial])
 
   const poke = useCallback(() => {
     setControlsVisible(true)
@@ -318,13 +332,18 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
             <Button variant="ghost" size="icon-sm" aria-label="Next step" onClick={() => step(1)}>
               <ChevronRight />
             </Button>
+            <StepCount className="ml-1 max-sm:hidden" />
             <div className="mx-2 flex min-w-16 flex-1 sm:min-w-24">
               <Scrubber />
             </div>
           </>
         ) : (
           <span className="flex-1 px-2 text-sm text-muted-foreground">
-            This diagram has no flow. The traffic animation plays.
+            {initial.nodes.length === 0
+              ? 'This diagram is empty.'
+              : initial.edges.some((edge) => edge.data?.traffic.enabled)
+                ? 'This diagram has no flow. The traffic animation plays.'
+                : 'This diagram has no flow to play.'}
           </span>
         )}
         {actions}

@@ -28,7 +28,7 @@ test('plays a fan-out with a token for each target, and an alternate path', asyn
   await page.keyboard.press('Space')
   await page.getByRole('button', { name: 'Path', exact: true }).click()
   await page.getByRole('menuitemradio', { name: 'High fraud score' }).click()
-  for (let press = 0; press < 5; press++) await page.keyboard.press('ArrowRight')
+  for (let press = 0; press < 8; press++) await page.keyboard.press('ArrowRight')
   await expect(page.locator('.dg-caption')).toContainText('The on-call engineer gets the alert')
 })
 
