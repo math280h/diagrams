@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from 'react'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
@@ -15,7 +16,7 @@ interface SettingsState {
 export const useSettings = create<SettingsState>()(
   persist(
     (set) => ({
-      theme: 'dark',
+      theme: 'system',
       ambientMotion: true,
       inspectorOpen: true,
       setTheme: (theme) => set({ theme }),
@@ -30,8 +31,16 @@ export const useSettings = create<SettingsState>()(
   ),
 )
 
+const DARK_SCHEME = '(prefers-color-scheme: dark)'
+
 function systemPrefersDark() {
-  return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
+  return typeof window !== 'undefined' && window.matchMedia(DARK_SCHEME).matches
+}
+
+function subscribeToSystemScheme(onChange: () => void) {
+  const query = window.matchMedia(DARK_SCHEME)
+  query.addEventListener('change', onChange)
+  return () => query.removeEventListener('change', onChange)
 }
 
 export function resolveAppTheme(theme: AppTheme): 'dark' | 'light' {
@@ -39,6 +48,10 @@ export function resolveAppTheme(theme: AppTheme): 'dark' | 'light' {
   return theme
 }
 
+/** Returns the app theme, and follows the system setting while it changes when the theme is `system`. */
 export function useResolvedAppTheme(): 'dark' | 'light' {
-  return resolveAppTheme(useSettings((state) => state.theme))
+  const theme = useSettings((state) => state.theme)
+  const systemDark = useSyncExternalStore(subscribeToSystemScheme, systemPrefersDark, () => true)
+  if (theme === 'system') return systemDark ? 'dark' : 'light'
+  return theme
 }
