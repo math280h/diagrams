@@ -138,6 +138,11 @@
   textarea {
     caret-color: var(--focus);
   }
+  /* Tailwind 4 gives buttons the default cursor. */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
   * {
     scrollbar-width: thin;
     scrollbar-color: color-mix(in oklab, var(--foreground) 18%, transparent) transparent;
