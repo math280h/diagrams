@@ -32,7 +32,6 @@ import { appendNodeToFlow, appendParallelNode } from './flow/record'
 import { getHelperLines, type HelperLines } from './helper-lines'
 import { PRESET_MIME, presetNodeAt } from './preset-node'
 import { RecoverViewport } from './RecoverViewport'
-import { SensitiveDataPanel } from './SensitiveDataPanel'
 import { StartFrame } from './StartFrame'
 import { editorFit, NARROW_SCREEN_PX } from './fit'
 import { bindInsertProjection } from './insert'
@@ -68,10 +67,10 @@ export function EditorCanvas() {
   const resolvedTheme = useCanvasTheme(theme.mode)
   const description = useDiagramDescription()
   const sensitiveView = useUi((state) => state.sensitiveView)
-  const crossings = useMemo(() => (sensitiveView ? dataCrossings(nodes, edges) : []), [sensitiveView, nodes, edges])
   const threats = useMemo(
-    () => (sensitiveView ? new Map(crossings.map((crossing) => [crossing.edgeId, crossing])) : undefined),
-    [sensitiveView, crossings],
+    () =>
+      sensitiveView ? new Map(dataCrossings(nodes, edges).map((crossing) => [crossing.edgeId, crossing])) : undefined,
+    [sensitiveView, nodes, edges],
   )
   const recording = useUi((state) => state.recording)
   const previewing = useVersions((state) => state.previewId !== null)
@@ -215,7 +214,6 @@ export function EditorCanvas() {
         </DiagramCanvas>
       </CanvasContextMenu>
       {nodes.length === 0 && <EmptyCanvas />}
-      {sensitiveView && <SensitiveDataPanel crossings={crossings} />}
       <ZoomControls />
     </div>
   )

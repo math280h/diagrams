@@ -6,8 +6,11 @@ test('shows the connections that carry sensitive data, and marks a field as a se
   await copyTemplate(page, 'Order system')
   await page.getByRole('button', { name: 'Sensitive data' }).click()
 
-  const panel = page.getByRole('region', { name: 'Sensitive data' })
+  const panel = page.getByRole('complementary', { name: 'Sensitive data' })
   await expect(panel).toContainText('3 connections carry sensitive data. 1 crosses a trust boundary.')
+  const panelBox = (await panel.boundingBox())!
+  const canvasBox = (await page.locator('[data-editor-canvas]').boundingBox())!
+  expect(canvasBox.x).toBeGreaterThanOrEqual(panelBox.x + panelBox.width - 1)
   await expect(panel.getByRole('listitem').first()).toContainText('Orders → Stripe')
   await expect(panel.getByRole('listitem').first()).toContainText('Crosses AWS VPC payments.')
   const labels = page.locator('.dg-edge-label')
