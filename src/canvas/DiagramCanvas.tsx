@@ -13,6 +13,7 @@ import { GRID_PX } from '@/model/graph'
 import type { DiagramEdge, DiagramNode } from '@/model/types'
 import { hasDetails } from '@/model/details'
 import type { DiagramDescription } from '@/export/describe'
+import type { DataCrossing } from '@/model/threats'
 import { CanvasDescription } from './CanvasDescription'
 import { FlowEdge } from './edges/FlowEdge'
 import { FlowCaption, FlowToken } from './FlowOverlay'
@@ -47,6 +48,8 @@ export interface DiagramCanvasProps extends Omit<ReactFlowProps<DiagramNode, Dia
   showCaption?: boolean
   /** The text that screen readers read for the diagram. */
   description?: DiagramDescription
+  /** The edges that carry sensitive fields, by edge id. With it, the canvas marks them and dims the other edges. */
+  threats?: ReadonlyMap<string, DataCrossing>
   overlay?: ReactNode
   rootRef?: React.RefObject<HTMLDivElement | null>
 }
@@ -60,6 +63,7 @@ export function DiagramCanvas({
   onOpenDiagram,
   showCaption = true,
   description,
+  threats,
   overlay,
   children,
   rootRef: givenRef,
@@ -68,8 +72,8 @@ export function DiagramCanvas({
   const ownRef = useRef<HTMLDivElement>(null)
   const rootRef = givenRef ?? ownRef
   const mode = useMemo(
-    () => ({ editable, background: theme.background, openDiagram: onOpenDiagram }),
-    [editable, theme.background, onOpenDiagram],
+    () => ({ editable, background: theme.background, openDiagram: onOpenDiagram, threats }),
+    [editable, theme.background, onOpenDiagram, threats],
   )
   const [hover] = useState(createDetailsHover)
   const nodes = useMemo(() => {
@@ -96,6 +100,7 @@ export function DiagramCanvas({
         data-readonly={editable ? undefined : 'true'}
         data-export={exportMode ? 'true' : undefined}
         data-details={details ? 'true' : undefined}
+        data-threats={threats ? 'true' : undefined}
       >
         <ReactFlow<DiagramNode, DiagramEdge>
           nodeTypes={nodeTypes}

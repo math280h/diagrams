@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { COLORS } from './colors'
 
-export const DIAGRAM_VERSION = 12
+export const DIAGRAM_VERSION = 13
 
 const colorSchema = z.enum(COLORS)
 
@@ -152,6 +152,9 @@ export type Traffic = z.infer<typeof trafficSchema>
 export const PAYLOAD_TYPES = ['string', 'number', 'boolean', 'object', 'array', 'null'] as const
 export type PayloadType = (typeof PAYLOAD_TYPES)[number]
 
+export const SENSITIVE_KINDS = ['personal', 'secret'] as const
+export type SensitiveKind = (typeof SENSITIVE_KINDS)[number]
+
 export const payloadFieldSchema = z.object({
   id: z.string(),
   /**
@@ -165,6 +168,11 @@ export const payloadFieldSchema = z.object({
   /** An example value as text, for example `A-1` or `2`. Objects, arrays and `null` do not use it. */
   example: z.string(),
   description: z.string(),
+  /**
+   * Marks a field that holds personal data, such as an email address, or a secret, such as a password or a token.
+   * Without it, the field holds neither.
+   */
+  sensitive: z.enum(SENSITIVE_KINDS).optional(),
 })
 export type PayloadField = z.infer<typeof payloadFieldSchema>
 

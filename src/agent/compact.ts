@@ -3,6 +3,7 @@ import { absoluteRect } from '@/model/graph'
 import { nodeLabel } from '@/model/labels'
 import type { Rect } from '@/model/rect'
 import { edgeProtocol } from '@/model/protocols'
+import { dataCrossings } from '@/model/threats'
 import type { Flow, NodeDetails, Payload, Step } from '@/model/schema'
 import type { DiagramEdge, DiagramNode } from '@/model/types'
 import type { DocSnapshot } from '@/store/doc-store'
@@ -119,6 +120,7 @@ function compactPayload(payload: Payload, full: boolean) {
       ...(field.required ? {} : { required: false }),
       ...(field.example ? { example: field.example } : {}),
       ...(field.description ? { description: field.description } : {}),
+      ...(field.sensitive ? { sensitive: field.sensitive } : {}),
     })),
   }
 }
@@ -185,6 +187,18 @@ function compactFlow(flow: Flow, full: boolean) {
   }
 }
 
+function dataCrossingsOf(content: DiagramContent) {
+  const crossings = dataCrossings(content.nodes, content.edges)
+  if (crossings.length === 0) return {}
+  return {
+    dataCrossings: crossings.map((crossing) => ({
+      edge: crossing.edgeId,
+      fields: crossing.fields.map((field) => ({ body: field.part, path: field.path, sensitive: field.kind })),
+      crosses: crossing.boundaries,
+    })),
+  }
+}
+
 /** Returns a short form of a diagram for an agent, with absolute canvas rectangles and without default values. */
 export function compactDiagram(content: DiagramContent, detail: 'outline' | 'full' = 'outline') {
   const full = detail === 'full'
@@ -197,6 +211,7 @@ export function compactDiagram(content: DiagramContent, detail: 'outline' | 'ful
     nodes: content.nodes.map((node) => compactNode(node, absoluteRect(node, byId), full)),
     edges: content.edges.map((edge) => compactEdge(edge, full)),
     flows: content.flows.map((flow) => compactFlow(flow, full)),
+    ...(full ? dataCrossingsOf(content) : {}),
   }
   return withWarnings(compact, warnings)
 }

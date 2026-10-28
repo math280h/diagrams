@@ -597,6 +597,41 @@ describe('agent tools', () => {
     expect(useDoc.getState().edges[0]!.data!.request).toBeDefined()
   })
 
+  it('marks sensitive body fields and reports the trust boundaries that they cross', async () => {
+    await call('create_diagram', { name: 'Shop' })
+    await call('add_elements', {
+      nodes: [
+        { ref: 'vpc', label: 'main', kind: 'group', boundary: 'aws.vpc' },
+        { ref: 'web', label: 'Browser', form: 'client' },
+        { ref: 'api', label: 'API', parent: 'vpc' },
+      ],
+      edges: [{ from: 'web', to: 'api', request: { example: { email: 'ada@example.com', qty: 1 } } }],
+    })
+    await call('update_elements', {
+      edges: [{ edge: 'Browser -> API', request: { fields: [{ path: 'email', sensitive: 'personal' }] } }],
+    })
+    const diagram = (await call('get_diagram', { detail: 'full' })) as {
+      edges: { id: string; request: { fields: { path: string; sensitive?: string }[] } }[]
+      dataCrossings: unknown
+    }
+    expect(diagram.edges[0]!.request.fields).toContainEqual(
+      expect.objectContaining({ path: 'email', sensitive: 'personal' }),
+    )
+    expect(diagram.dataCrossings).toEqual([
+      {
+        edge: diagram.edges[0]!.id,
+        fields: [{ body: 'request', path: 'email', sensitive: 'personal' }],
+        crosses: ['AWS VPC main'],
+      },
+    ])
+
+    await call('update_elements', {
+      edges: [{ edge: 'Browser -> API', request: { fields: [{ path: 'email', sensitive: null }] } }],
+    })
+    expect(useDoc.getState().edges[0]!.data!.request!.fields[0]).not.toHaveProperty('sensitive')
+    expect(await call('get_diagram', { detail: 'full' })).not.toHaveProperty('dataCrossings')
+  })
+
   it('explains a body that it cannot build', async () => {
     await call('create_diagram', { name: 'Shop' })
     await call('add_elements', { nodes: [{ label: 'A' }, { label: 'B' }], edges: [{ from: 'A', to: 'B' }] })

@@ -1,4 +1,5 @@
 import { useInternalNode, type EdgeProps } from '@xyflow/react'
+import { ShieldAlert } from 'lucide-react'
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useEngine } from '@/engine/hooks'
 import { hashUnit } from '@/engine/hash'
@@ -7,6 +8,7 @@ import { COMET_TRAIL, dashPattern, particleCount } from '@/engine/traffic'
 import { defaultEdgeData } from '@/model/defaults'
 import { edgeProtocol } from '@/model/protocols'
 import type { EdgeData } from '@/model/schema'
+import { crossingText } from '@/model/threats'
 import type { DiagramEdge } from '@/model/types'
 import { selectOnly, updateEdgeData } from '@/store/actions'
 import { useCanvasMode } from '@/canvas/mode'
@@ -70,7 +72,9 @@ function bodyTitle(requestFields: number, responseFields: number): string {
 export function FlowEdge(props: EdgeProps<DiagramEdge>) {
   const { id, source, target, data = FALLBACK_DATA, selected } = props
   const engine = useEngine()
-  const { editable } = useCanvasMode()
+  const { editable, threats } = useCanvasMode()
+  const threat = threats?.get(id)
+  const crossing = threat !== undefined && threat.boundaries.length > 0 ? 'true' : undefined
   const sourceNode = useInternalNode(source)
   const targetNode = useInternalNode(target)
   const trafficRef = useRef<SVGGElement>(null)
@@ -124,7 +128,7 @@ export function FlowEdge(props: EdgeProps<DiagramEdge>) {
 
   return (
     <>
-      <g className="dg-edge" data-protocol={protocol}>
+      <g className="dg-edge" data-protocol={protocol} data-sensitive={threat?.kind} data-crossing={crossing}>
         <path className="dg-edge-path" d={path} data-stroke={data.stroke} strokeWidth={strokeWidth} />
         <path className="react-flow__edge-interaction" d={path} fill="none" strokeOpacity={0} strokeWidth={18} />
         <g ref={trafficRef} className="dg-traffic" style={{ pointerEvents: 'none' }}>
@@ -170,6 +174,8 @@ export function FlowEdge(props: EdgeProps<DiagramEdge>) {
             data-dg-edge={id}
             data-protocol={protocol}
             data-selected={selected ? 'true' : undefined}
+            data-sensitive={threat?.kind}
+            data-crossing={crossing}
             style={{ transform: `translate(-50%, -50%) translate(${label.x}px, ${label.y}px)` }}
             onClick={() => editable && selectOnly([], [id])}
           >
@@ -188,6 +194,15 @@ export function FlowEdge(props: EdgeProps<DiagramEdge>) {
                 title={bodyTitle(requestFields, responseFields)}
               >
                 {mark}
+              </span>
+            )}
+            {threat && (
+              <span
+                className="dg-edge-data"
+                title={`${crossingText(threat).fields}. ${crossingText(threat).boundaries}`}
+              >
+                {crossing && <ShieldAlert aria-hidden />}
+                {threat.kind}
               </span>
             )}
           </div>

@@ -27,6 +27,7 @@ import type {
   GroupData,
   NodeDetails,
   Payload,
+  PayloadField,
   ShapeData,
   Side,
   Step,
@@ -322,12 +323,18 @@ export function payloadFromInput(part: PayloadPart, input: PayloadInput, current
       required: given.required,
       example: given.example === undefined ? undefined : String(given.example),
       description: given.description,
+      sensitive: given.sensitive ?? undefined,
     })
     const index = fields.findIndex((field) => field.path.trim() === patch.path)
+    const unmark = (field: PayloadField): PayloadField => {
+      if (given.sensitive !== null) return field
+      const { sensitive: _, ...rest } = field
+      return rest
+    }
     fields =
       index >= 0
-        ? fields.map((field, at) => (at === index ? { ...field, ...patch } : field))
-        : [...fields, defaultPayloadField(patch)]
+        ? fields.map((field, at) => (at === index ? unmark({ ...field, ...patch }) : field))
+        : [...fields, unmark(defaultPayloadField(patch))]
   }
   const issues = fieldIssues(fields)
   if (issues.size > 0) {

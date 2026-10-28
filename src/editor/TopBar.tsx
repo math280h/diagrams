@@ -18,6 +18,7 @@ import {
   Play,
   Plus,
   Redo2,
+  ShieldAlert,
   SlidersHorizontal,
   Undo2,
   Waypoints,
@@ -155,6 +156,7 @@ export function TopBar() {
   const { canUndo, canRedo } = useHistory()
   const flowPanelOpen = useUi((state) => state.flowPanelOpen)
   const historyOpen = useUi((state) => state.historyOpen)
+  const sensitiveView = useUi((state) => state.sensitiveView)
   const previewing = useVersions((state) => state.previewId !== null)
 
   return (
@@ -222,6 +224,13 @@ export function TopBar() {
           </Popover>
           <Separator orientation="vertical" className="mx-1 h-5 data-vertical:self-center" />
         </div>
+        <IconButton
+          label="Sensitive data"
+          pressed={sensitiveView}
+          onClick={() => setUi({ sensitiveView: !sensitiveView })}
+        >
+          <ShieldAlert />
+        </IconButton>
         <IconButton label="Version history" pressed={historyOpen} onClick={() => setUi({ historyOpen: !historyOpen })}>
           <History />
         </IconButton>

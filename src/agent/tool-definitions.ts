@@ -2,7 +2,16 @@ import { z } from 'zod'
 import { LAYOUT_DIRECTIONS } from '@/layout/types'
 import { BOUNDARY_PROVIDER_IDS } from '@/model/boundaries'
 import { COLORS } from '@/model/colors'
-import { CARD_FORMS, EDGE_PROTOCOLS, FONT_PAIRS, LOG_LEVELS, PAYLOAD_TYPES, SHAPES, SIDES } from '@/model/schema'
+import {
+  CARD_FORMS,
+  EDGE_PROTOCOLS,
+  FONT_PAIRS,
+  LOG_LEVELS,
+  PAYLOAD_TYPES,
+  SENSITIVE_KINDS,
+  SHAPES,
+  SIDES,
+} from '@/model/schema'
 
 const NODE_KINDS = ['card', 'shape', 'text', 'group'] as const
 const PROVIDERS = ['aws', 'azure', 'gcp', 'k8s', 'logo', 'lucide'] as const
@@ -135,6 +144,13 @@ const payloadField = z.object({
     .optional()
     .describe('An example value, for example "LAMP-01" or 2.'),
   description: z.string().optional().describe('One short sentence about what the field holds.'),
+  sensitive: z
+    .enum(SENSITIVE_KINDS)
+    .nullable()
+    .optional()
+    .describe(
+      'Marks the field as "personal" data (a name, an email or postal address, a phone number, an IP address, a user id) or as a "secret" (a password, a token, an API key, a card number). null removes the mark.',
+    ),
 })
 
 const payloadInput = z

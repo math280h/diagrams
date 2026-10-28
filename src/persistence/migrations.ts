@@ -151,6 +151,11 @@ function toVersion12(raw: Record<string, unknown>): Record<string, unknown> {
   return raw
 }
 
+/** Version 13 adds the optional `sensitive` mark of body fields, so earlier data needs no change. */
+function toVersion13(raw: Record<string, unknown>): Record<string, unknown> {
+  return raw
+}
+
 /** The migration at index `n` converts a diagram from version `n + 1` to version `n + 2`. */
 const MIGRATIONS: Migration[] = [
   toVersion2,
@@ -164,6 +169,7 @@ const MIGRATIONS: Migration[] = [
   toVersion10,
   toVersion11,
   toVersion12,
+  toVersion13,
 ]
 
 export class DiagramFormatError extends Error {}

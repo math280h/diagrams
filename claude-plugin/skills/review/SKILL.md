@@ -22,6 +22,7 @@ description: Checks a Diagrams diagram for layout and clarity problems and fixes
 | A badge or status carries no data                  | Set it to an empty string, or set status to `none`                                                                                                     |
 | A node colour marks no group                       | Set `color` to `neutral`, or give the same colour to all nodes of the group                                                                            |
 | A flow step points at nothing, or has no event     | Fix it with `update_flow`                                                                                                                              |
+| A body field holds personal data or a secret       | Set `sensitive` on the field with `update_elements`. For a full check, use the threat-model skill                                                      |
 
 4. **Fix in batches.** Send the fixes in a few `update_elements` calls, not one call for each node. Each call is one undo step for the user.
 5. **Confirm.** Call `render_image` again. Tell the user what you changed in a short list.

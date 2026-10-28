@@ -1,11 +1,29 @@
-import { ArrowLeftRight } from 'lucide-react'
+import { ArrowLeftRight, ShieldAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { detectProtocol, PROTOCOL_LABELS, PROTOCOLS } from '@/model/protocols'
 import { SIDES, type EdgeData, type Side, type Traffic } from '@/model/schema'
+import { crossingText, dataCrossings } from '@/model/threats'
 import type { DiagramEdge } from '@/model/types'
+import { useDoc } from '@/store/doc-store'
 import { reverseEdge, setEdgeSides, updateEdgesData, updateEdgesTraffic } from '@/store/actions'
 import { Choice, Field, Section, Segmented, SliderField, SwitchField, TextInput } from './controls'
 import { PayloadSection } from './PayloadFields'
+
+function SensitiveSummary({ edge }: { edge: DiagramEdge }) {
+  const nodes = useDoc((state) => state.nodes)
+  const crossing = dataCrossings(nodes, [edge])[0]
+  if (!crossing) return null
+  const text = crossingText(crossing)
+  return (
+    <Section title="Sensitive data">
+      <p className="text-xs">{text.fields}</p>
+      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        {crossing.boundaries.length > 0 && <ShieldAlert aria-hidden className="size-3.5 shrink-0 text-warn" />}
+        {text.boundaries}
+      </p>
+    </Section>
+  )
+}
 
 const MARKER_OPTIONS = [
   { value: 'none' as const, label: 'None' },
@@ -186,6 +204,7 @@ export function EdgeInspector({ edges }: { edges: DiagramEdge[] }) {
         <>
           <PayloadSection key={`request:${first.id}`} edge={first} part="request" />
           <PayloadSection key={`response:${first.id}`} edge={first} part="response" />
+          <SensitiveSummary edge={first} />
         </>
       )}
       <Section title="Ends">

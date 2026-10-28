@@ -1,4 +1,4 @@
-import type { Diagram, NodeDetails, Payload } from '@/model/schema'
+import type { Diagram, NodeDetails, Payload, SensitiveKind } from '@/model/schema'
 import { newId } from '@/model/defaults'
 import { boundaryKind, TINTED_TIERS } from '@/model/boundaries'
 import { fieldsFromExample } from '@/model/payload'
@@ -24,8 +24,13 @@ export function templateDiagrams(template: Template): Diagram[] {
 const STILL = { enabled: false, direction: 'forward', style: 'dots', density: 1.4, speed: 80, size: 1.5 } as const
 const EVENTS = { ...STILL, enabled: true, style: 'comets', speed: 120 } as const
 
-function body(example: object): Payload {
-  return { fields: fieldsFromExample(example) }
+function body(example: object, marks: Record<string, SensitiveKind> = {}): Payload {
+  return {
+    fields: fieldsFromExample(example).map((field) => {
+      const sensitive = marks[field.path]
+      return sensitive ? { ...field, sensitive } : field
+    }),
+  }
 }
 
 function details(owner: string, description: string, links: [label: string, url: string][]): NodeDetails {
@@ -118,7 +123,7 @@ function orderSystem(): Diagram {
   )
 
   const edge = { traffic: STILL, markerEnd: 'arrow' } as const
-  const orderCreated = () => body({ orderId: 'ord_8f2k', email: 'ada@example.com', total: 49 })
+  const orderCreated = () => body({ orderId: 'ord_8f2k', email: 'ada@example.com', total: 49 }, { email: 'personal' })
   const toGateway = b.edge(browser, gateway, {
     ...edge,
     label: 'HTTPS',
@@ -135,7 +140,7 @@ function orderSystem(): Diagram {
     ...edge,
     label: 'HTTPS',
     stroke: 'dashed',
-    request: body({ amount: 4900, currency: 'eur', customer: 'cus_Q2x' }),
+    request: body({ amount: 4900, currency: 'eur', customer: 'cus_Q2x' }, { customer: 'personal' }),
     response: body({ id: 'pi_3Nf', status: 'succeeded' }),
   })
 
