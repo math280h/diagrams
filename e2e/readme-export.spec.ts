@@ -9,7 +9,7 @@ test('exports a dark and a light image with a snippet for a README', async ({ pa
   await page.goto('/')
   await copyTemplate(page, 'Order system')
   await page.getByRole('button', { name: 'Export' }).click()
-  await page.getByRole('menuitem', { name: /README images/ }).click()
+  await page.getByRole('menuitem', { name: /README/ }).click()
 
   await page.getByRole('textbox', { name: 'Image path' }).fill('docs/orders')
   const snippet = page.getByRole('textbox', { name: 'README snippet' })

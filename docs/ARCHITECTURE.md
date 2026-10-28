@@ -578,7 +578,7 @@ An image tells nothing to a screen reader, and the same text serves as alt text 
 - The editor and the player put the description on the canvas in a visually hidden region, "Description of the
   diagram", so that a screen reader can read the diagram and its flows. The export stage has none, so captures
   stay the same.
-- The Text tab of the export dialog shows the text to copy or download. An SVG export, also from `render_image` and
+- The Description tab of the export dialog shows the text to copy or download. An SVG export, also from `render_image` and
   the command line, carries the name as its `title` element and the text as its `desc` element.
 - The parts and the connections follow `readingOrder` (`src/model/graph.ts`), the same order as the Mermaid
   flowchart: along the main direction of the edges.
@@ -661,7 +661,7 @@ every release. It also lists, marked Preview:
 
 ### Share links
 
-The Link tab of the export dialog makes a link that carries the whole diagram, so people share a diagram that
+The Share link tab of the export dialog makes a link that carries the whole diagram, so people share a diagram that
 plays without an account, a server or a file (`src/share/share-link.ts`).
 
 - The data after `#/s/` is the diagram JSON without its id, timestamps and save counter, compressed with raw deflate

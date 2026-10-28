@@ -195,10 +195,10 @@ export function CommandMenu() {
             <Link2 /> Share a link
           </CommandItem>
           <CommandItem onSelect={run(() => setUi({ exportOpen: 'mermaid' }))}>
-            <FileCode /> Export Mermaid flowchart
+            <FileCode /> Export Mermaid
           </CommandItem>
           <CommandItem onSelect={run(() => setUi({ exportOpen: 'text' }))}>
-            <FileText /> Copy text description
+            <FileText /> Copy the description
           </CommandItem>
           <CommandItem onSelect={run(() => exportDiagramJson(currentDiagram()))}>
             <FileJson /> Export diagram file

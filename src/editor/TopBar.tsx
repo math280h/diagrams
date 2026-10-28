@@ -265,7 +265,7 @@ export function TopBar() {
               <Film /> Animation (MP4, WebM, GIF)
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setUi({ exportOpen: 'readme' })}>
-              <BookOpen /> README images (dark and light)
+              <BookOpen /> README (dark and light images)
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setUi({ exportOpen: 'page' })}>
               <Globe /> Web page (HTML)
@@ -274,10 +274,10 @@ export function TopBar() {
               <Link2 /> Share link
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setUi({ exportOpen: 'mermaid' })}>
-              <FileCode /> Mermaid flowchart
+              <FileCode /> Mermaid (flowchart or sequence)
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setUi({ exportOpen: 'text' })}>
-              <FileText /> Text description
+              <FileText /> Description (alt text)
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => exportDiagramJson(currentDiagram())}>
