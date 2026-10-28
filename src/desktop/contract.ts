@@ -48,6 +48,8 @@ export interface RenderRequest {
   theme?: 'dark' | 'light'
   /** The flow to show or play: its name or its id. */
   flow?: string
+  /** With `flow`: the path to show or play, by its name or its id. Without it, the main steps. */
+  path?: string
   /** With `flow` and an image format: the step from 0 to show. */
   step?: number
   /**

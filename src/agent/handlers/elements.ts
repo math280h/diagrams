@@ -21,6 +21,7 @@ import { createResolver, type Resolver } from '@/agent/resolve'
 import { buildEdge, buildNode, createIconChecker, edgeDataPatch, edgeSides, nodeDataPatch } from './build'
 import { commitEdit, json, openForEdit, type ToolHandler } from './common'
 import { withWarnings } from '@/agent/warnings'
+import { allSteps, stepTargets } from '@/model/flow'
 
 const CHECK_HINT = 'Call render_image to check the result.'
 
@@ -229,7 +230,7 @@ export const deleteElementsHandler: ToolHandler<'delete_elements'> = async (inpu
   const after = useDoc.getState()
   const alive = new Set([...after.nodes.map((node) => node.id), ...after.edges.map((edge) => edge.id)])
   const warnings = after.flows.flatMap((flow) => {
-    const lost = flow.steps.filter((step) => !alive.has(step.target.id)).length
+    const lost = allSteps(flow).filter((step) => stepTargets(step).some((target) => !alive.has(target.id))).length
     return lost > 0
       ? [`The flow "${flow.name}" has ${lost} steps whose node or edge is gone. Fix it with update_flow.`]
       : []

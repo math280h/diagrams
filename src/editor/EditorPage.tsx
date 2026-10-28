@@ -41,7 +41,8 @@ function RecordingHint() {
   return (
     <div className="dg-chrome pointer-events-none absolute top-3 left-1/2 z-10 -translate-x-1/2 px-3 py-1.5 text-xs">
       <span className="mr-2 inline-block size-2 rounded-full bg-destructive" />
-      Click the nodes in the order the flow reaches them. Press Esc to stop.
+      Click the nodes in the order the flow reaches them. Shift-click to reach a node at the same time. Press Esc to
+      stop.
     </div>
   )
 }

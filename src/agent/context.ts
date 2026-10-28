@@ -8,7 +8,9 @@ export interface RenderOptions {
   /** Node ids to frame. Without them the image shows the whole diagram. */
   focusIds?: string[]
   flowId?: string
-  /** With `flowId`: the step to show, from 0. */
+  /** With `flowId`: the path of the flow to show. Without it, the main steps. */
+  pathId?: string
+  /** With `flowId`: the step to show, from 0, among the steps of the path. */
   step?: number
   theme?: 'dark' | 'light'
   maxSizePx: number

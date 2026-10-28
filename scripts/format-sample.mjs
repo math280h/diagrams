@@ -6,7 +6,7 @@ const root = path.resolve(import.meta.dirname, '..')
 const outDir = path.join(root, 'src', 'persistence', 'formats')
 const vitest = path.join(root, 'node_modules', 'vitest', 'vitest.mjs')
 const ref = process.argv[2]
-const SAMPLE_TEMPLATES = ['order-system', 'checkout-flow']
+const SAMPLE_TEMPLATES = ['order-system', 'checkout-flow', 'event-pipeline']
 
 const sampleTest = `import { writeFileSync } from 'node:fs'
 import path from 'node:path'

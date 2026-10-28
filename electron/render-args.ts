@@ -10,7 +10,9 @@ The format comes from the extension of --out: .png, .svg, .gif, .mp4 or .webm.
 Options:
   --theme dark|light   The canvas theme. The default is the theme of the diagram.
   --flow <name or id>  The flow to play in a video, or to show in an image.
-  --step <number>      With --flow and an image: the step to show, from 0.
+  --path <name or id>  With --flow: the path of the flow. Without it, the main steps.
+  --step <number>      With --flow and an image: the step to show, from 0, among the steps
+                       of the path.
   --max-size <pixels>  The longest side of the output. Without it, an image is at most 2048
                        pixels, a video 1280 and a GIF 960.`
 
@@ -20,6 +22,7 @@ export interface RenderArgs {
   format: RenderFormat
   theme?: 'dark' | 'light'
   flow?: string
+  path?: string
   step?: number
   maxSizePx?: number
 }
@@ -63,7 +66,7 @@ export function parseRenderArgs(argv: readonly string[]): RenderArgs | null {
     throw new RenderUsageError('--max-size must be a whole number from 64 to 8192.')
   }
   for (const name of values.keys()) {
-    if (!['render', 'out', 'theme', 'flow', 'step', 'max-size'].includes(name)) {
+    if (!['render', 'out', 'theme', 'flow', 'path', 'step', 'max-size'].includes(name)) {
       throw new RenderUsageError(`Unknown option --${name}.`)
     }
   }
@@ -73,6 +76,7 @@ export function parseRenderArgs(argv: readonly string[]): RenderArgs | null {
     format: format as RenderFormat,
     ...(theme ? { theme } : {}),
     ...(values.has('flow') ? { flow: values.get('flow') } : {}),
+    ...(values.has('path') ? { path: values.get('path') } : {}),
     ...(stepNumber !== undefined ? { step: stepNumber } : {}),
     ...(maxSize !== undefined ? { maxSizePx: maxSize } : {}),
   }

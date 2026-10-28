@@ -41,6 +41,7 @@ import { FLOW_PANEL_HEIGHT } from './layout'
 import { stepFlow, useSegmentIndex } from './hooks'
 import { flowToMermaidSequence } from '@/export/sequence'
 import { LogTable } from './LogTable'
+import { PathMenu } from './PathMenu'
 import { SequenceView } from './SequenceView'
 import { Timeline } from './Timeline'
 import { Scrubber } from '@/player/Scrubber'
@@ -180,7 +181,7 @@ function FlowMenu({ flows, flow }: { flows: Flow[]; flow: Flow | undefined }) {
           <>
             <DropdownMenuRadioGroup
               value={flow?.id ?? ''}
-              onValueChange={(id) => setUi({ activeFlowId: String(id), selectedStepId: null })}
+              onValueChange={(id) => setUi({ activeFlowId: String(id), activePathId: null, selectedStepId: null })}
             >
               {flows.map((candidate) => (
                 <DropdownMenuRadioItem key={candidate.id} value={candidate.id}>
@@ -250,6 +251,7 @@ export function FlowPanel() {
       <div className="flex h-10 shrink-0 items-center gap-1 overflow-x-auto border-b px-1.5 [scrollbar-width:none] [&>*]:shrink-0">
         <FlowMenu flows={flows} flow={flow} />
         {flow && <FlowSettings flow={flow} />}
+        {flow && <PathMenu flow={flow} />}
         <div className="mx-1 h-5 w-px bg-border" />
         <Button
           variant="ghost"
@@ -299,7 +301,9 @@ export function FlowPanel() {
             {recording ? 'Recording' : 'Record'}
           </TooltipTrigger>
           <TooltipContent>
-            {recording ? 'Click nodes to add steps. Press Esc to stop.' : 'Add steps by clicking nodes'}
+            {recording
+              ? 'Click nodes to add steps. Shift-click to reach a node at the same time. Press Esc to stop.'
+              : 'Add steps by clicking nodes'}
           </TooltipContent>
         </Tooltip>
         {flow && selectedNodes === 1 && !recording && (

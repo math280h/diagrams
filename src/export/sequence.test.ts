@@ -73,3 +73,54 @@ describe('flowToMermaidSequence', () => {
     )
   })
 })
+
+describe('flowToMermaidSequence with parallel steps and paths', () => {
+  it('writes a parallel step as a par block and a path as an alt block', () => {
+    const b = new DiagramBuilder()
+    const web = b.card(0, 0, { title: 'Web' })
+    const api = b.card(300, 0, { title: 'API' })
+    const mail = b.card(600, 0, { title: 'Mail' })
+    const audit = b.card(600, 200, { title: 'Audit' })
+    const call = b.edge(web, api, { label: 'POST' })
+    const toMail = b.edge(api, mail, { label: 'send' })
+    const toAudit = b.edge(api, audit, { label: 'log' })
+    const flow = b.flow('Sign up', [
+      edgeStep(call),
+      { ...edgeStep(toMail), parallel: [{ kind: 'edge', id: toAudit }] },
+      nodeStep(api, '', 1200, 'follow', 1, { event: 'done' }),
+    ])
+    b.path(flow, 'Taken', 0, [edgeStep(call, '', 1200, 'follow', 1, { event: '409', level: 'warn' })])
+    const diagram = b.build('Sign up')
+    const content = fromDiagram(diagram)
+
+    const rows = flowSequence(diagram.flows[0]!, content).rows
+    expect(rows.map((row) => [row.segmentIndex, row.lane, row.lanes])).toEqual([
+      [0, 0, 1],
+      [1, 0, 2],
+      [1, 1, 2],
+      [2, 0, 1],
+    ])
+    expect(flowToMermaidSequence(diagram.flows[0]!, content)).toBe(
+      [
+        'sequenceDiagram',
+        '    title Sign up',
+        '    participant web as Web',
+        '    participant api as API',
+        '    participant mail as Mail',
+        '    participant audit as Audit',
+        '    web->>api: POST',
+        '    alt Main path',
+        '        par',
+        '            api->>mail: send',
+        '        and',
+        '            api->>audit: log',
+        '        end',
+        '        Note over api: done',
+        '    else Taken',
+        '        api-->>web: 409',
+        '    end',
+        '',
+      ].join('\n'),
+    )
+  })
+})

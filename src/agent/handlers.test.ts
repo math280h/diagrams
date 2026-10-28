@@ -444,6 +444,63 @@ describe('agent tools', () => {
     expect(useDoc.getState().flows[0]!.steps.map((step) => step.level)).toEqual(['warn', 'info'])
   })
 
+  it('adds fan-out steps and paths to a flow, and shows them to agents', async () => {
+    await call('create_diagram', { name: 'Events' })
+    await call('add_elements', {
+      nodes: [
+        { ref: 'k', label: 'Kafka' },
+        { ref: 'e', label: 'Enricher' },
+        { ref: 'f', label: 'Fraud' },
+        { ref: 'p', label: 'Pager' },
+      ],
+      edges: [
+        { from: 'k', to: 'e' },
+        { from: 'k', to: 'f' },
+        { from: 'f', to: 'p' },
+      ],
+    })
+    const result = await call('add_flow', {
+      name: 'Events',
+      steps: [{ target: 'Kafka' }, { target: 'Enricher', parallel: ['Fraud'] }],
+      paths: [{ name: 'Alert', from: 2, steps: [{ target: 'Fraud -> Pager' }, { target: 'Pager', level: 'error' }] }],
+    })
+    expect(result).toMatchObject({ steps: 3, paths: 1 })
+    const flow = useDoc.getState().flows[0]!
+    expect(flow.steps.map((step) => [step.target.kind, step.parallel?.map((target) => target.kind) ?? []])).toEqual([
+      ['node', []],
+      ['edge', ['edge']],
+      ['node', ['node']],
+    ])
+    expect(flow.steps[2]!.parallel).toEqual([{ kind: 'node', id: nodeByLabel('Fraud').id }])
+    expect(flow.paths![0]).toMatchObject({ name: 'Alert', fromStep: flow.steps[2]!.id, rejoinStep: null })
+    expect(flow.paths![0]!.steps.map((step) => step.target.kind)).toEqual(['edge', 'node'])
+
+    const diagram = (await call('get_diagram', { detail: 'full' })) as { flows: Record<string, unknown>[] }
+    expect(diagram.flows[0]).toMatchObject({
+      steps: [{ index: 0 }, { index: 1, parallel: [{ edge: expect.any(String) }] }, { index: 2 }],
+      paths: [{ name: 'Alert', from: 2, steps: [{ index: 0 }, { index: 1, level: 'error' }] }],
+    })
+
+    await expect(call('render_image', { flow: 'Events', path: 'Alert', step: 4 })).resolves.toBeDefined()
+    await expect(call('render_image', { flow: 'Events', path: 'Alert', step: 5 })).rejects.toThrow(
+      'The path "Alert" of the flow "Events" has no step 5.',
+    )
+    await expect(call('render_image', { flow: 'Events', path: 'Retry' })).rejects.toThrow(
+      'The flow "Events" has no path "Retry".',
+    )
+    await expect(
+      call('add_flow', { name: 'Bad', steps: [{ target: 'Kafka' }], paths: [{ name: 'X', from: 3, steps: [] }] }),
+    ).rejects.toThrow('The path "X" starts after step 3')
+    expect(useDoc.getState().flows).toHaveLength(1)
+
+    await call('update_flow', { flow: 'Events', steps: { remove: [2] } })
+    const updated = useDoc.getState().flows[0]!
+    expect(updated.paths![0]!.fromStep).toBe(updated.steps[1]!.id)
+    await call('update_flow', { flow: 'Events', steps: { update: [{ index: 1, parallel: [] }] }, paths: [] })
+    expect(useDoc.getState().flows[0]!.steps[1]!.parallel).toBeUndefined()
+    expect(useDoc.getState().flows[0]!.paths).toBeUndefined()
+  })
+
   it('makes a new diagram from a trace, with the trace as its flow', async () => {
     const result = await call('import_trace', { trace: sampleTrace() })
     expect(open).toBe(result.diagramId)

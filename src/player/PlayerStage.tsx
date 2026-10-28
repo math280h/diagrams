@@ -34,6 +34,7 @@ import type { Diagram, Flow } from '@/model/schema'
 import type { DiagramEdge } from '@/model/types'
 import { fromDiagram } from '@/persistence/serialize'
 import { Scrubber } from './Scrubber'
+import { findPath } from '@/model/flow'
 
 const IDLE_HIDE_MS = 2600
 const OPEN_ZOOM_MS = 650
@@ -75,6 +76,44 @@ function FlowPicker({
   )
 }
 
+const MAIN_PATH = 'main'
+
+function PathPicker({
+  flow,
+  pathId,
+  onChange,
+}: {
+  flow: Flow
+  pathId: string | null
+  onChange: (pathId: string | null) => void
+}) {
+  const paths = (flow.paths ?? []).filter((path) => path.steps.length > 0)
+  if (paths.length === 0) return null
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={<Button variant="ghost" size="sm" className="max-w-44 max-sm:max-w-28" aria-label="Path" />}
+      >
+        <span className="truncate">{findPath(flow, pathId)?.name ?? 'Main path'}</span>
+        <ChevronDown className="opacity-60" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56" align="start">
+        <DropdownMenuRadioGroup
+          value={pathId ?? MAIN_PATH}
+          onValueChange={(id) => onChange(id === MAIN_PATH ? null : String(id))}
+        >
+          <DropdownMenuRadioItem value={MAIN_PATH}>Main path</DropdownMenuRadioItem>
+          {paths.map((path) => (
+            <DropdownMenuRadioItem key={path.id} value={path.id}>
+              <span className="truncate">{path.name}</span>
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 export interface PlayerStageProps {
   diagram: Diagram
   /** The flow to play. Without it, the player plays the first flow. */
@@ -101,6 +140,8 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
   const [fullscreen, setFullscreen] = useState(false)
   const hideTimer = useRef<number | undefined>(undefined)
   const flow = diagram.flows.find((candidate) => candidate.id === flowId) ?? diagram.flows[0]
+  const [pathChoice, setPathChoice] = useState<{ flowId: string; pathId: string | null } | null>(null)
+  const pathId = flow && pathChoice?.flowId === flow.id ? (findPath(flow, pathChoice.pathId)?.id ?? null) : null
   const resolvedTheme = useCanvasTheme(diagram.theme.mode)
   const { fitBounds, getInternalNode } = useReactFlow()
   const [leaving, setLeaving] = useState(false)
@@ -130,12 +171,15 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
       return
     }
     engine.setInsets({ top: 0, right: 0, bottom: CAPTION_HEIGHT_PX, left: 0 })
-    engine.playback.load(flow.id, compileFlow(flow, new Set(initial.nodes.map((node) => node.id)), initial.edges))
+    engine.playback.load(
+      flow.id,
+      compileFlow(flow, new Set(initial.nodes.map((node) => node.id)), initial.edges, pathId),
+    )
     engine.playback.setFollow(true)
     if (prefersReducedMotion()) return
     const timer = window.setTimeout(() => engine.playback.play(), 700)
     return () => window.clearTimeout(timer)
-  }, [engine, flow, initial])
+  }, [engine, flow, initial, pathId])
 
   const step = useCallback(
     (delta: number) => {
@@ -240,6 +284,11 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
         {flow ? (
           <>
             <FlowPicker flows={diagram.flows} flow={flow} onChange={onFlowChange} />
+            <PathPicker
+              flow={flow}
+              pathId={pathId}
+              onChange={(next) => setPathChoice({ flowId: flow.id, pathId: next })}
+            />
             <Button
               variant="ghost"
               size="icon-sm"

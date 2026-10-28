@@ -22,6 +22,7 @@ import { useDoc } from '@/store/doc-store'
 import { setUi, useUi } from '@/store/ui-store'
 import { Segmented, SliderField } from '@/editor/inspector/controls'
 import { targetName } from './names'
+import { findStep } from '@/model/flow'
 
 const LABEL_WIDTH = 148
 const LANE_HEIGHT = 30
@@ -311,9 +312,8 @@ export function Timeline({ flow }: { flow: Flow }) {
             ))}
           </div>
           <div className="relative border-b border-panel-border" style={{ height: LANE_HEIGHT }}>
-            {flow.steps.map((step) => {
-              const segment = segments.find((candidate) => candidate.step.id === step.id)
-              if (!segment) return null
+            {segments.map((segment) => {
+              const { step } = segment
               const width = Math.max(6, (segment.endMs - segment.startMs) * scale)
               return (
                 <div
@@ -337,7 +337,7 @@ export function Timeline({ flow }: { flow: Flow }) {
                       updateFlow(
                         flow.id,
                         (draft) => {
-                          const target = draft.steps.find((candidate) => candidate.id === step.id)
+                          const target = findStep(draft, step.id)?.step
                           if (target)
                             target.durationMs = Math.max(200, Math.round((step.durationMs + delta / scale) / 50) * 50)
                         },

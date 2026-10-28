@@ -205,6 +205,9 @@
   & .dg-log-caption {
     color: var(--muted-foreground);
   }
+  &[data-path] {
+    box-shadow: inset 2px 0 0 var(--flow);
+  }
   & .dg-log-dot {
     width: 7px;
     height: 7px;

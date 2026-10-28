@@ -2,13 +2,15 @@ import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { usePlaybackState } from '@/engine/hooks'
+import { findStep, removeStep } from '@/model/flow'
+import { nodeTitle } from '@/model/labels'
 import { payloadJson } from '@/model/payload'
-import type { Flow, Step } from '@/model/schema'
+import type { Flow, Step, Target } from '@/model/schema'
 import { updateFlow } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
 import { setUi } from '@/store/ui-store'
 import { targetName } from '@/editor/flow/names'
-import { Field, Section, Segmented, SliderField, TextInput } from './controls'
+import { Field, Section, Segmented, SliderField, SwitchField, TextInput } from './controls'
 
 function StepBody({ flow, step }: { flow: Flow; step: Step }) {
   const playback = usePlaybackState()
@@ -37,26 +39,101 @@ function StepBody({ flow, step }: { flow: Flow; step: Step }) {
   )
 }
 
+function sameTarget(a: Target, b: Target) {
+  return a.kind === b.kind && a.id === b.id
+}
+
+function ParallelTargets({ flow, step }: { flow: Flow; step: Step }) {
+  const playback = usePlaybackState()
+  const nodes = useDoc((state) => state.nodes)
+  const edges = useDoc((state) => state.edges)
+  const segments = playback.timeline?.segments ?? []
+  const index = segments.findIndex((segment) => segment.step.id === step.id)
+  const segment = segments[index]
+  const name = (id: string) => {
+    const node = nodes.find((candidate) => candidate.id === id)
+    return node ? nodeTitle(node) : 'Missing node'
+  }
+  const from = segment?.fromNode ?? null
+  const candidates: Target[] =
+    step.target.kind === 'edge'
+      ? edges
+          .filter(
+            (edge) => edge.id !== step.target.id && from && (segment?.reversed ? edge.target : edge.source) === from,
+          )
+          .map((edge) => ({ kind: 'edge', id: edge.id }))
+      : (segments[index - 1]?.lanes ?? []).flatMap((lane): Target[] =>
+          lane.target.kind === 'edge' && lane.toNode && lane.toNode !== step.target.id
+            ? [{ kind: 'node', id: lane.toNode }]
+            : [],
+        )
+  const options = [...(step.parallel ?? []), ...candidates].filter(
+    (target, position, all) => all.findIndex((other) => sameTarget(other, target)) === position,
+  )
+  const label = (target: Target) => {
+    if (target.kind === 'node') return name(target.id)
+    const edge = edges.find((candidate) => candidate.id === target.id)
+    if (!edge) return 'Missing connection'
+    const start = from && edge.target === from ? edge.target : edge.source
+    return `${name(start)} → ${name(start === edge.source ? edge.target : edge.source)}`
+  }
+  const toggle = (target: Target, on: boolean) =>
+    updateFlow(flow.id, (draft) => {
+      const place = findStep(draft, step.id)
+      if (!place) return
+      const rest = (place.step.parallel ?? []).filter((candidate) => !sameTarget(candidate, target))
+      const next = on ? [...rest, target] : rest
+      if (next.length > 0) place.step.parallel = next
+      else delete place.step.parallel
+    })
+
+  return (
+    <div className="space-y-1.5">
+      <span className="text-xs text-muted-foreground">At the same time</span>
+      {options.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          {step.target.kind === 'edge'
+            ? 'No other connection leaves the same node in this direction.'
+            : 'While you record, Shift-click a node to reach it at the same time as this one.'}
+        </p>
+      ) : (
+        options.map((target) => (
+          <SwitchField
+            key={`${target.kind}:${target.id}`}
+            label={label(target)}
+            checked={step.parallel?.some((candidate) => sameTarget(candidate, target)) ?? false}
+            onChange={(on) => toggle(target, on)}
+          />
+        ))
+      )}
+    </div>
+  )
+}
+
 export function StepInspector({ flow, step }: { flow: Flow; step: Step }) {
-  const index = flow.steps.findIndex((candidate) => candidate.id === step.id)
+  const place = findStep(flow, step.id)
+  const index = place?.index ?? 0
+  const count = place?.list.length ?? 0
   const set = (patch: Partial<Step>, key?: string) =>
     updateFlow(
       flow.id,
       (draft) => {
-        const target = draft.steps.find((candidate) => candidate.id === step.id)
+        const target = findStep(draft, step.id)?.step
         if (target) Object.assign(target, patch)
       },
       key,
     )
   const move = (delta: number) =>
     updateFlow(flow.id, (draft) => {
-      const [item] = draft.steps.splice(index, 1)
-      if (item) draft.steps.splice(index + delta, 0, item)
+      const list = findStep(draft, step.id)?.list
+      if (!list) return
+      const [item] = list.splice(index, 1)
+      if (item) list.splice(index + delta, 0, item)
     })
 
   return (
     <Section
-      title={`${index + 1} of ${flow.steps.length}`}
+      title={place?.path ? `${place.path.name}: ${index + 1} of ${count}` : `${index + 1} of ${count}`}
       action={
         <div className="flex">
           <Button
@@ -72,7 +149,7 @@ export function StepInspector({ flow, step }: { flow: Flow; step: Step }) {
             variant="ghost"
             size="icon-xs"
             aria-label="Move later"
-            disabled={index === flow.steps.length - 1}
+            disabled={index === count - 1}
             onClick={() => move(1)}
           >
             <ArrowDown />
@@ -82,9 +159,7 @@ export function StepInspector({ flow, step }: { flow: Flow; step: Step }) {
             size="icon-xs"
             aria-label="Delete step"
             onClick={() => {
-              updateFlow(flow.id, (draft) => {
-                draft.steps = draft.steps.filter((candidate) => candidate.id !== step.id)
-              })
+              updateFlow(flow.id, (draft) => removeStep(draft, step.id))
               setUi({ selectedStepId: null })
             }}
           >
@@ -117,6 +192,7 @@ export function StepInspector({ flow, step }: { flow: Flow; step: Step }) {
         />
       </Field>
       {step.target.kind === 'edge' && <StepBody flow={flow} step={step} />}
+      <ParallelTargets flow={flow} step={step} />
       <Field label="Level">
         <Segmented
           value={step.level}

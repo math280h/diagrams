@@ -146,6 +146,11 @@ function toVersion11(raw: Record<string, unknown>): Record<string, unknown> {
   return raw
 }
 
+/** Version 12 adds the optional `parallel` targets of steps and `paths` of flows, so earlier data needs no change. */
+function toVersion12(raw: Record<string, unknown>): Record<string, unknown> {
+  return raw
+}
+
 /** The migration at index `n` converts a diagram from version `n + 1` to version `n + 2`. */
 const MIGRATIONS: Migration[] = [
   toVersion2,
@@ -158,6 +163,7 @@ const MIGRATIONS: Migration[] = [
   toVersion9,
   toVersion10,
   toVersion11,
+  toVersion12,
 ]
 
 export class DiagramFormatError extends Error {}

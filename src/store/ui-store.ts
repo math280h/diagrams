@@ -18,6 +18,8 @@ export type ExportKind = 'image' | 'video' | 'page' | 'link' | 'mermaid' | 'json
 
 interface UiState {
   activeFlowId: string | null
+  /** The path of the active flow that plays, or `null` for its main steps. */
+  activePathId: string | null
   flowPanelOpen: boolean
   flowView: FlowView
   selectedStepId: string | null
@@ -33,6 +35,7 @@ interface UiState {
 
 export const useUi = create<UiState>(() => ({
   activeFlowId: null,
+  activePathId: null,
   flowPanelOpen: false,
   flowView: 'steps',
   selectedStepId: null,

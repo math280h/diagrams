@@ -225,6 +225,24 @@ const stepInput = z.object({
       'follow (the default) tracks the token, fit frames the node or edge of the step, hold keeps the last view.',
     ),
   zoom: z.number().min(0.1).max(4).optional().describe('With follow, the camera zoom. With fit, the largest zoom.'),
+  parallel: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Other nodes or edges that the step reaches at the same time, each with its own token, for example all consumers of one event. With connect, a node step gets one edge step that reaches all its nodes at once.',
+    ),
+})
+
+const pathInput = z.object({
+  name: z.string().describe('The path name, for example "Card declined".'),
+  from: z.number().int().min(0).describe('The index from 0 of the main step after which the path starts.'),
+  steps: z.array(stepInput).describe('The steps that the flow plays in place of the main steps after "from".'),
+  rejoin: z
+    .number()
+    .int()
+    .min(0)
+    .optional()
+    .describe('The index of a later main step where the flow continues after the path. Without it, the flow ends.'),
 })
 
 const flowOptions = {
@@ -249,6 +267,13 @@ const flowOptions = {
       'If true (the default), steps between two nodes get the edge steps of the shortest connection between them.',
     ),
 }
+
+const flowPaths = z
+  .array(pathInput)
+  .optional()
+  .describe(
+    'Alternate paths, for example an error path. The player and the exports play one path at a time. On update_flow, the list replaces all paths.',
+  )
 
 const flowRef = z.string().describe('The flow: its id or its name.')
 
@@ -457,6 +482,7 @@ export const TOOL_DEFINITIONS = {
       diagramId,
       name: z.string().describe('The flow name, for example "Checkout".'),
       steps: z.array(stepInput),
+      paths: flowPaths,
       ...flowOptions,
     }),
     annotations: ADD,
@@ -480,6 +506,7 @@ export const TOOL_DEFINITIONS = {
           remove: z.array(z.number().int().min(0)).optional().describe('Indexes of steps to remove, from 0.'),
         })
         .optional(),
+      paths: flowPaths,
       ...flowOptions,
     }),
     annotations: CHANGE,
@@ -503,7 +530,13 @@ export const TOOL_DEFINITIONS = {
         .optional()
         .describe('Show only the area around these nodes: ids, refs or unique labels.'),
       flow: flowRef.optional(),
-      step: z.number().int().min(0).optional().describe('With flow: the step index from 0 to show.'),
+      path: z.string().optional().describe('With flow: the path to show, by name or id. Without it, the main steps.'),
+      step: z
+        .number()
+        .int()
+        .min(0)
+        .optional()
+        .describe('With flow: the step index from 0 to show, among the steps that the path plays.'),
       theme: z
         .enum(['dark', 'light'])
         .optional()
@@ -527,6 +560,7 @@ export type NodeInput = z.infer<typeof nodeInput>
 export type NodePatch = z.infer<typeof nodePatch>
 export type EdgeInput = z.infer<typeof edgeInput>
 export type StepInput = z.infer<typeof stepInput>
+export type PathInput = z.infer<typeof pathInput>
 
 export const TOOL_NAMES = Object.keys(TOOL_DEFINITIONS) as ToolName[]
 

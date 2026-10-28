@@ -33,6 +33,8 @@ import { usePainted } from './use-painted'
 import { ExportAbortedError, recordStage, type VideoFormat } from './video'
 
 type ThemeChoice = 'canvas' | 'dark' | 'light'
+
+const MAIN_PATH = 'main'
 type Frame = '16:9' | '1:1' | '9:16'
 
 const FRAME_SIZE: Record<Frame, { width: number; height: number }> = {
@@ -242,6 +244,8 @@ function VideoExport({ onClose }: { onClose: () => void }) {
   const name = useDoc((state) => state.name)
   const activeFlowId = useUi((state) => state.activeFlowId)
   const [source, setSource] = useState<string>(activeFlowId ?? flows[0]?.id ?? 'ambient')
+  const activePathId = useUi((state) => state.activePathId)
+  const [pathChoice, setPathChoice] = useState<string>(activePathId ?? MAIN_PATH)
   const [format, setFormat] = useState<VideoFormat>('mp4')
   const [frame, setFrame] = useState<Frame>('16:9')
   const [quality, setQuality] = useState<'720' | '1080'>('1080')
@@ -255,14 +259,16 @@ function VideoExport({ onClose }: { onClose: () => void }) {
   const abortRef = useRef<AbortController | null>(null)
   const content = useStageContent(themeChoice, grid)
   const flow = flows.find((candidate) => candidate.id === source)
+  const pathId = flow?.paths?.some((path) => path.id === pathChoice) ? pathChoice : null
   const size = FRAME_SIZE[frame]
   const gif = format === 'gif'
   const scale = gif ? Math.min(1, GIF_MAX_WIDTH / size.width) : quality === '1080' ? 1.5 : 1
   const frameRate = gif ? Math.min(fps, 20) : fps
   const timeline = useMemo(
-    () => (flow ? compileFlow(flow, new Set(content.nodes.map((node) => node.id)), content.edges) : null),
-    [flow, content.nodes, content.edges],
+    () => (flow ? compileFlow(flow, new Set(content.nodes.map((node) => node.id)), content.edges, pathId) : null),
+    [flow, content.nodes, content.edges, pathId],
   )
+  const paths = flow?.paths?.filter((path) => path.steps.length > 0) ?? []
   const durationMs = timeline ? timeline.durationMs + FLOW_END_HOLD_MS : ambientSeconds * 1000
   const stageKey = `${frame}|${themeChoice}|${grid}`
   const stage = ready?.key === stageKey ? ready.stage : null
@@ -271,7 +277,7 @@ function VideoExport({ onClose }: { onClose: () => void }) {
 
   const recording = progress !== null
 
-  const previewKey = `${stageKey}|${source}|${durationMs}`
+  const previewKey = `${stageKey}|${source}|${pathId}|${durationMs}`
   const frames = captured?.key === previewKey ? captured.frames : null
 
   useEffect(() => {
@@ -374,6 +380,19 @@ function VideoExport({ onClose }: { onClose: () => void }) {
               ]}
             />
           </Field>
+          {paths.length > 0 && (
+            <Field label="Path" wide>
+              <Choice
+                label="Path"
+                value={pathId ?? MAIN_PATH}
+                onChange={setPathChoice}
+                options={[
+                  { value: MAIN_PATH, label: 'Main path' },
+                  ...paths.map((path) => ({ value: path.id, label: path.name })),
+                ]}
+              />
+            </Field>
+          )}
           <Field label="Format">
             <Segmented
               value={format}

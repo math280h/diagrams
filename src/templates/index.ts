@@ -202,18 +202,73 @@ function eventPipeline(): Diagram {
   const pager = b.card(1040, 290, { form: 'external', title: 'PagerDuty', icon: 'logo:pagerduty', lines: ['on-call'] })
 
   const edge = { traffic: EVENTS, markerEnd: 'arrow' } as const
-  b.edge(web, collector, { ...edge, protocol: 'http' })
+  const send = b.edge(web, collector, { ...edge, protocol: 'http' })
   b.edge(mobile, collector, { ...edge, protocol: 'http' })
-  b.edge(collector, stream, { ...edge, label: 'produce' })
-  b.edge(stream, enrich, { ...edge, label: 'consume' })
-  b.edge(stream, fraud, { ...edge, protocol: 'messaging' })
-  b.edge(enrich, warehouse, {
+  const produce = b.edge(collector, stream, { ...edge, label: 'produce' })
+  const toEnricher = b.edge(stream, enrich, { ...edge, label: 'consume' })
+  const toFraud = b.edge(stream, fraud, { ...edge, protocol: 'messaging' })
+  const load = b.edge(enrich, warehouse, {
     ...edge,
     label: 'every 5 min',
     protocol: 'data',
     traffic: { ...EVENTS, style: 'pulse', speed: 200 },
   })
-  b.edge(fraud, pager, { ...edge, stroke: 'dashed', protocol: 'http', traffic: { ...EVENTS, density: 0.6 } })
+  const page = b.edge(fraud, pager, {
+    ...edge,
+    stroke: 'dashed',
+    protocol: 'http',
+    traffic: { ...EVENTS, density: 0.6 },
+  })
+
+  const flow = b.flow(
+    'An event arrives',
+    [
+      nodeStep(web, 'The web SDK sends a batch of events.', 1300, 'follow', 1.1, { event: 'track checkout_started' }),
+      edgeStep(send, '', 1200, 'follow', 1.1, { event: 'POST /v1/events', latencyMs: 18 }),
+      nodeStep(collector, 'The collector checks the schema and adds a receive time.', 1400, 'follow', 1.1, {
+        event: 'validate batch',
+      }),
+      edgeStep(produce, '', 1200, 'follow', 1.1, { latencyMs: 4 }),
+      nodeStep(stream, 'Kafka keeps the batch on 12 partitions.', 1400, 'follow', 1.1, {
+        event: 'append partition 7',
+      }),
+      {
+        ...edgeStep(toEnricher, 'Two consumer groups read the same events at the same time.', 1400, 'fit', 1, {
+          event: 'poll events.raw',
+        }),
+        parallel: [{ kind: 'edge', id: toFraud }],
+      },
+      {
+        ...nodeStep(
+          enrich,
+          'The enricher adds user and geo data while fraud scoring rates each event.',
+          1800,
+          'fit',
+          1,
+          {
+            event: 'process batch',
+            latencyMs: 120,
+          },
+        ),
+        parallel: [{ kind: 'node', id: fraud }],
+      },
+      edgeStep(load, '', 1300, 'follow', 1.1, { event: 'load job' }),
+      nodeStep(warehouse, 'Analysts can query the events within five minutes.', 1800, 'fit', 1, {
+        event: 'INSERT events',
+      }),
+    ],
+    { token: { label: 'Events', icon: 'activity', shape: 'chip' } },
+  )
+  b.path(flow, 'High fraud score', 6, [
+    edgeStep(page, 'A score above 0.9 pages the on-call engineer.', 1400, 'follow', 1.1, {
+      event: 'POST /v2/enqueue',
+      level: 'error',
+    }),
+    nodeStep(pager, 'The on-call engineer gets the alert in seconds.', 1800, 'fit', 1, {
+      event: 'incident triggered',
+      level: 'error',
+    }),
+  ])
   return b.build('Event pipeline')
 }
 

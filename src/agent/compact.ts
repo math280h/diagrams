@@ -3,7 +3,7 @@ import { absoluteRect } from '@/model/graph'
 import { nodeLabel } from '@/model/labels'
 import type { Rect } from '@/model/rect'
 import { edgeProtocol } from '@/model/protocols'
-import type { Flow, NodeDetails, Payload } from '@/model/schema'
+import type { Flow, NodeDetails, Payload, Step } from '@/model/schema'
 import type { DiagramEdge, DiagramNode } from '@/model/types'
 import type { DocSnapshot } from '@/store/doc-store'
 import { withWarnings } from './warnings'
@@ -139,8 +139,30 @@ function compactEdge(edge: DiagramEdge, full: boolean) {
   }
 }
 
+function compactSteps(steps: readonly Step[]) {
+  return steps.map((step, index) => ({
+    index,
+    [step.target.kind]: step.target.id,
+    ...(step.parallel?.length ? { parallel: step.parallel.map((target) => ({ [target.kind]: target.id })) } : {}),
+    ...(step.caption ? { caption: step.caption } : {}),
+    ...(step.event ? { event: step.event } : {}),
+    ...(step.latencyMs !== null ? { latencyMs: step.latencyMs } : {}),
+    ...(step.level !== 'info' ? { level: step.level } : {}),
+  }))
+}
+
 function compactFlow(flow: Flow, full: boolean) {
-  if (!full) return { id: flow.id, name: flow.name, steps: flow.steps.length }
+  const paths = flow.paths ?? []
+  if (!full) {
+    return {
+      id: flow.id,
+      name: flow.name,
+      steps: flow.steps.length,
+      ...(paths.length > 0 ? { paths: paths.length } : {}),
+    }
+  }
+  const mainIndex = (stepId: string | null) =>
+    stepId === null ? null : flow.steps.findIndex((step) => step.id === stepId)
   return {
     id: flow.id,
     name: flow.name,
@@ -148,14 +170,18 @@ function compactFlow(flow: Flow, full: boolean) {
     spotlight: flow.spotlight,
     loop: flow.loop,
     bodies: flow.bodies,
-    steps: flow.steps.map((step, index) => ({
-      index,
-      [step.target.kind]: step.target.id,
-      ...(step.caption ? { caption: step.caption } : {}),
-      ...(step.event ? { event: step.event } : {}),
-      ...(step.latencyMs !== null ? { latencyMs: step.latencyMs } : {}),
-      ...(step.level !== 'info' ? { level: step.level } : {}),
-    })),
+    steps: compactSteps(flow.steps),
+    ...(paths.length > 0
+      ? {
+          paths: paths.map((path) => ({
+            id: path.id,
+            name: path.name,
+            from: mainIndex(path.fromStep),
+            ...(path.rejoinStep !== null ? { rejoin: mainIndex(path.rejoinStep) } : {}),
+            steps: compactSteps(path.steps),
+          })),
+        }
+      : {}),
   }
 }
 

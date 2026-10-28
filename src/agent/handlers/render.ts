@@ -1,6 +1,7 @@
 import { layoutWarnings } from '@/agent/compact'
 import { ToolError } from '@/agent/errors'
-import { createResolver, resolveFlow } from '@/agent/resolve'
+import { createResolver, resolveFlow, resolvePath } from '@/agent/resolve'
+import { pathSteps } from '@/model/flow'
 import { diagramContent, stepRangeHint, targetDiagramId, type ToolHandler } from './common'
 import { withWarnings } from '@/agent/warnings'
 
@@ -15,14 +16,20 @@ export const renderImage: ToolHandler<'render_image'> = async (input, ctx) => {
   const resolver = createResolver(content.nodes, content.edges)
   const focusIds = input.focus?.map((reference) => resolver.node(reference).id)
   const flow = input.flow !== undefined ? resolveFlow(content.flows, input.flow) : undefined
-  if (input.step !== undefined && !flow) throw new ToolError('Give a flow together with step.')
-  if (flow && input.step !== undefined && input.step >= flow.steps.length) {
-    throw new ToolError(`The flow "${flow.name}" has no step ${input.step}. ${stepRangeHint(flow.steps.length)}`)
+  if ((input.step !== undefined || input.path !== undefined) && !flow) {
+    throw new ToolError('Give a flow together with step or path.')
+  }
+  const path = flow && input.path !== undefined ? resolvePath(flow, input.path) : undefined
+  const steps = flow ? pathSteps(flow, path?.id ?? null).length : 0
+  if (flow && input.step !== undefined && input.step >= steps) {
+    const owner = path ? `The path "${path.name}" of the flow "${flow.name}"` : `The flow "${flow.name}"`
+    throw new ToolError(`${owner} has no step ${input.step}. ${stepRangeHint(steps)}`)
   }
 
   const image = await ctx.renderPng(content, {
     focusIds,
     flowId: flow?.id,
+    pathId: path?.id,
     step: input.step,
     theme: input.theme,
     maxSizePx: input.maxSizePx ?? DEFAULT_MAX_SIZE_PX,

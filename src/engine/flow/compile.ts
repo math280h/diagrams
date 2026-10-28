@@ -1,4 +1,5 @@
-import type { Flow, Step } from '@/model/schema'
+import { findPath, pathSteps, stepTargets } from '@/model/flow'
+import type { Flow, Step, Target } from '@/model/schema'
 
 export interface EdgeEnds {
   id: string
@@ -6,12 +7,10 @@ export interface EdgeEnds {
   target: string
 }
 
-export interface TimelineSegment {
-  step: Step
-  index: number
-  startMs: number
-  endMs: number
-  /** For an edge step: true if the token moves from the edge target to the edge source. */
+/** One token of a step: the main target, or one of the parallel targets. */
+export interface Lane {
+  target: Target
+  /** For an edge: true if the token moves from the edge target to the edge source. */
   reversed: boolean
   /** The node where the token is at the start of the segment. */
   fromNode: string | null
@@ -19,59 +18,85 @@ export interface TimelineSegment {
   toNode: string | null
 }
 
+export interface TimelineSegment extends Lane {
+  step: Step
+  index: number
+  startMs: number
+  endMs: number
+  /** The main target first, then the parallel targets that exist. The fields of the segment repeat the first lane. */
+  lanes: Lane[]
+  /** The path that holds the step, or `null` for a main step. */
+  pathId: string | null
+}
+
 export interface Timeline {
   flow: Flow
+  /** The path that the timeline plays, or `null` for the main steps. */
+  pathId: string | null
   segments: TimelineSegment[]
   /** The end of the last step or of the last keyframe, whichever is later. */
   durationMs: number
 }
 
 /**
- * Returns how the token travels along an edge after it rests on `lastNode`. It goes against the edge direction if
- * `lastNode` is the edge target, else along it.
+ * Returns how a token travels along an edge after the tokens rest on `lastNodes`. It goes against the edge direction
+ * if the edge target is one of them and the edge source is not, else along it.
  */
-export function edgeTravel(edge: EdgeEnds, lastNode: string | null) {
-  const reversed = lastNode !== null && lastNode === edge.target && lastNode !== edge.source
+export function edgeTravel(edge: EdgeEnds, lastNodes: string | null | ReadonlySet<string>) {
+  const rests = (id: string) =>
+    lastNodes === null ? false : typeof lastNodes === 'string' ? lastNodes === id : lastNodes.has(id)
+  const reversed = rests(edge.target) && !rests(edge.source)
   return { reversed, fromNode: reversed ? edge.target : edge.source, toNode: reversed ? edge.source : edge.target }
+}
+
+function lane(
+  target: Target,
+  nodeIds: ReadonlySet<string>,
+  edgeById: ReadonlyMap<string, EdgeEnds>,
+  lastNodes: ReadonlySet<string>,
+): Lane | null {
+  if (target.kind === 'node') {
+    return nodeIds.has(target.id) ? { target, reversed: false, fromNode: target.id, toNode: target.id } : null
+  }
+  const edge = edgeById.get(target.id)
+  return edge ? { target, ...edgeTravel(edge, lastNodes) } : null
 }
 
 /**
  * Converts the steps of a flow into timed segments.
  *
- * The function drops a step if its node or edge does not exist.
+ * The function drops a step if its main node or edge does not exist, and a parallel target that does not exist.
+ *
+ * @param pathId - The path to play, or `null` for the main steps. See {@link pathSteps}.
  */
-export function compileFlow(flow: Flow, nodeIds: ReadonlySet<string>, edges: readonly EdgeEnds[]): Timeline {
+export function compileFlow(
+  flow: Flow,
+  nodeIds: ReadonlySet<string>,
+  edges: readonly EdgeEnds[],
+  pathId: string | null = null,
+): Timeline {
   const edgeById = new Map(edges.map((edge) => [edge.id, edge]))
+  const path = findPath(flow, pathId)
+  const pathStepIds = new Set(path?.steps.map((step) => step.id))
   const segments: TimelineSegment[] = []
   let cursor = 0
-  let lastNode: string | null = null
+  let lastNodes: ReadonlySet<string> = new Set()
 
-  for (const step of flow.steps) {
-    let fromNode: string | null
-    let toNode: string | null
-    let reversed = false
-
-    if (step.target.kind === 'node') {
-      if (!nodeIds.has(step.target.id)) continue
-      fromNode = step.target.id
-      toNode = step.target.id
-    } else {
-      const edge = edgeById.get(step.target.id)
-      if (!edge) continue
-      ;({ reversed, fromNode, toNode } = edgeTravel(edge, lastNode))
-    }
-
+  for (const step of pathSteps(flow, pathId)) {
+    const [main, ...parallel] = stepTargets(step).map((target) => lane(target, nodeIds, edgeById, lastNodes))
+    if (!main) continue
+    const lanes = [main, ...parallel.filter((candidate): candidate is Lane => candidate !== null)]
     segments.push({
+      ...main,
       step,
       index: segments.length,
       startMs: cursor,
       endMs: cursor + step.durationMs,
-      reversed,
-      fromNode,
-      toNode,
+      lanes,
+      pathId: path && pathStepIds.has(step.id) ? path.id : null,
     })
     cursor += step.durationMs
-    lastNode = toNode
+    lastNodes = new Set(lanes.flatMap((candidate) => (candidate.toNode ? [candidate.toNode] : [])))
   }
 
   let durationMs = cursor
@@ -79,7 +104,7 @@ export function compileFlow(flow: Flow, nodeIds: ReadonlySet<string>, edges: rea
     for (const keyframe of track.keyframes) durationMs = Math.max(durationMs, keyframe.atMs)
   }
 
-  return { flow, segments, durationMs }
+  return { flow, pathId: path?.id ?? null, segments, durationMs }
 }
 
 /** Returns the index of the segment at the time, or -1 if the timeline has no segments. */

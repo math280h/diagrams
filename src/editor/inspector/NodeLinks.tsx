@@ -80,7 +80,7 @@ function LogLines({ node }: { node: DiagramNode }) {
     <Section title="Log lines" action={<Count value={lines.length} />}>
       <ul className="-mx-1">
         {lines.map(({ flow, segment }) => {
-          const { element, event } = stepLine(segment.step, segment.reversed)
+          const { element, event } = stepLine(segment.step, segment.lanes)
           return (
             <li key={`${flow.id}:${segment.step.id}`}>
               <Button
