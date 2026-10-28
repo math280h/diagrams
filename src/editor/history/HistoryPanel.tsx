@@ -19,12 +19,18 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { storageCopy } from '@/persistence/storage-copy'
 import type { VersionAuthor, VersionMeta } from '@/persistence/version-store'
+import { flushPendingSave } from '@/store/document'
 import { setUi } from '@/store/ui-store'
 import { COMMIT_PREVIEW_ID, MAX_VERSIONS, previewDiagram, previewVersion, useVersions } from '@/store/versions'
 import { INSPECTOR_WIDTH } from '@/editor/fit'
 import { groupByDay, versionAuthor, versionSummary, versionTime } from './format'
 
 const CURRENT = 'current'
+
+function showVersion(id: string | null) {
+  if (id !== null) flushPendingSave()
+  previewVersion(id)
+}
 
 const AUTHOR_ICONS: Record<VersionAuthor, LucideIcon> = {
   you: PenLine,
@@ -61,7 +67,7 @@ const Row = memo(function Row({
       role="option"
       id={optionId(id)}
       aria-selected={selected}
-      onClick={onSelect ?? (() => previewVersion(id === CURRENT ? null : id))}
+      onClick={onSelect ?? (() => showVersion(id === CURRENT ? null : id))}
       className={cn(
         'grid cursor-default grid-cols-[16px_1fr] gap-x-2.5 rounded-lg px-2.5 py-2 hover:bg-accent/60',
         selected && 'bg-accent hover:bg-accent',
@@ -91,6 +97,7 @@ export function HistoryPanel() {
   const linkedFile = useLibrary((state) => state.items.find((item) => item.id === diagramId)?.path)
   const showCommit = () => {
     if (!diagramId) return
+    flushPendingSave()
     committedDiagram(diagramId).then(
       (diagram) => previewDiagram(COMMIT_PREVIEW_ID, diagram),
       (error: unknown) => toast.error('The last commit could not be read.', { description: errorMessage(error) }),
@@ -119,7 +126,7 @@ export function HistoryPanel() {
               : undefined
     if (target !== undefined) {
       event.preventDefault()
-      previewVersion(target === CURRENT ? null : target)
+      showVersion(target === CURRENT ? null : target)
     } else if (event.key === 'Escape') {
       event.preventDefault()
       if (previewId) previewVersion(null)
