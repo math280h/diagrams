@@ -21,7 +21,7 @@ import { selectOnly, updateFlow } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
 import { setUi, useUi } from '@/store/ui-store'
 import { Segmented, SliderField } from '@/editor/inspector/controls'
-import { targetName } from './names'
+import { stepLine, targetName } from './names'
 import { findStep } from '@/model/flow'
 
 const LABEL_WIDTH = 148
@@ -315,9 +315,11 @@ export function Timeline({ flow }: { flow: Flow }) {
             {segments.map((segment) => {
               const { step } = segment
               const width = Math.max(6, (segment.endMs - segment.startMs) * scale)
+              const line = stepLine(step, segment.lanes)
               return (
                 <div
                   key={step.id}
+                  title={[line.element, line.event].filter(Boolean).join(': ')}
                   className={cn(
                     'absolute top-1 bottom-1 flex items-center overflow-hidden rounded-md border px-1.5 text-[11px]',
                     step.target.kind === 'node' ? 'bg-accent' : 'bg-muted/50',
@@ -330,7 +332,9 @@ export function Timeline({ flow }: { flow: Flow }) {
                     engine.playback.seek(segment.startMs + 1)
                   }}
                 >
-                  <span className="truncate">{step.target.kind === 'node' ? targetName(step.target) : '→'}</span>
+                  <span className="truncate">
+                    {step.target.kind === 'node' ? targetName(step.target) : `→ ${line.event || line.element}`}
+                  </span>
                   <div
                     className="absolute top-0 right-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-foreground/30"
                     onPointerDown={dragHandler((delta) =>

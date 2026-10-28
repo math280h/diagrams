@@ -175,7 +175,7 @@ function orderSystem(): Diagram {
         latencyMs: 120,
       }),
     ],
-    { token: { label: 'POST /orders', icon: '', shape: 'chip' } },
+    { token: { label: 'checkout', icon: '', shape: 'chip' } },
   )
 
   return b.build('Order system')
