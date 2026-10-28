@@ -230,7 +230,7 @@ src/
   lib/          small shared helpers: errors, queues, idle mount, reduced motion
   styles/       canvas CSS and its theme variables
 e2e/            Playwright tests for the website, and for the desktop app in e2e/desktop
-scripts/        icon catalog and build (icons/), app icon, desktop dev runner, third-party licence and release notes plugins
+scripts/        icon catalog and build (icons/), app icon, README image, desktop dev runner, third-party licence and release notes plugins
 build/          app icon sources and renders
 ```
 
@@ -588,6 +588,19 @@ and the flows still play, which an image or a video cannot do.
 - The page ends with the licence texts of the player packages and of the fonts, because the MIT and OFL licences ask
   for them in every copy.
 - A page of the Order system is about 1.3 MB.
+
+### README image
+
+The image at the top of the README is a GIF of the editor while the Order system flow plays. `pnpm readme-gif`
+(`scripts/readme-gif.mjs`) records it again: it starts the dev server, copies the template in Chromium with
+Playwright, opens the flow panel and plays the flow.
+
+- The fake clock of Playwright (`page.clock`) controls `requestAnimationFrame`, the timers and `performance.now`. The
+  script moves the time by one frame, takes a screenshot and does it again, so no frame is dropped and the speed of
+  the computer does not change the GIF.
+- `modern-gif`, the encoder of the GIF export, also runs in Node. It writes only the area that changed since the last
+  frame, with the unchanged pixels transparent, so the file stays at a few megabytes.
+- The script reads the PNG screenshots with `node:zlib`, so it needs no image package.
 
 ### Release notes
 

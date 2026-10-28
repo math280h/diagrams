@@ -5,7 +5,7 @@ computer.
 
 **Try it at [draw.thias.dev](https://draw.thias.dev).**
 
-![The Order system template in the editor: a request goes from the browser through an API gateway to services and data stores inside an AWS VPC, and the flow log under the canvas lists each step.](docs/images/editor.png)
+![The Order system template in the editor while its flow plays: a token carries a request from the browser through an API gateway to services and data stores inside an AWS VPC, the camera follows it, and the flow log under the canvas marks each step.](docs/images/editor.gif)
 
 ## Features
 
