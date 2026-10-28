@@ -228,7 +228,7 @@ src/
   lib/          small shared helpers: errors, queues, idle mount, reduced motion
   styles/       canvas CSS and its theme variables
 e2e/            Playwright tests for the website, and for the desktop app in e2e/desktop
-scripts/        icon catalog and build (icons/), app icon, desktop dev runner, third-party licence plugin
+scripts/        icon catalog and build (icons/), app icon, desktop dev runner, third-party licence and release notes plugins
 build/          app icon sources and renders
 ```
 
@@ -533,10 +533,17 @@ and the flows still play, which an image or a video cannot do.
 ### Release notes
 
 The What’s new page (`#/releases`) lists the published releases with their notes, so people on the website see
-what changed. It reads the GitHub releases API at runtime in the HTML media type, so GitHub renders the notes,
-mentions and pull request links. Drafts stay out. The live site deploys only full releases, so it lists no pre-releases. The preview site
-is built with `VITE_RELEASE_CHANNEL=preview`, deploys `main`, and also lists the pre-releases that are newer than the
-newest full release, marked Preview; a full release replaces the pre-releases before it.
+what changed. The notes come from the GitHub releases API in the HTML media type, so GitHub renders the notes,
+mentions and pull request links. Drafts stay out. The live site deploys only full releases, so it lists no
+pre-releases. The preview site is built with `VITE_RELEASE_CHANNEL=preview`, deploys `main`, and also lists the
+pre-releases that are newer than the newest full release, marked Preview; a full release replaces the pre-releases
+before it.
+
+- The build loads the releases once and puts them in the page (`scripts/release-notes.ts`, module
+  `virtual:release-notes`), so visitors do not call GitHub. Without a token, GitHub allows 60 API calls an hour from
+  each address, and a visitor over that limit gets no notes; a build makes one call and needs no token. It keeps only
+  the fields that the page reads. Notes that change after a deploy show after the next deploy.
+- On the dev server, and after a build could not load the releases, the page loads them from GitHub when it opens.
 
 - `cleanReleaseHtml` rebuilds the notes from an allowlist of text elements. It drops every attribute except a link
   target with an `http`, `https` or `mailto` address, and drops scripts, frames and every element outside the HTML

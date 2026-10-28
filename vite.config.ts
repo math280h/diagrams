@@ -3,13 +3,21 @@ import babel from '@rolldown/plugin-babel'
 import tailwindcss from '@tailwindcss/vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import { releaseNotes } from './scripts/release-notes.ts'
 import { standalonePlayer } from './scripts/standalone-player.ts'
 import { thirdPartyLicenses } from './scripts/third-party-licenses.ts'
 
 const licenses = thirdPartyLicenses()
 
 export default defineConfig({
-  plugins: [react(), babel({ presets: [reactCompilerPreset()] }), tailwindcss(), licenses.main, standalonePlayer()],
+  plugins: [
+    react(),
+    babel({ presets: [reactCompilerPreset()] }),
+    tailwindcss(),
+    licenses.main,
+    standalonePlayer(),
+    releaseNotes(),
+  ],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
