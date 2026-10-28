@@ -11,7 +11,7 @@ import {
   SkipBack,
   Waypoints,
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useCanvasTheme } from '@/canvas/canvas-theme'
 import { useLocalNodes } from '@/canvas/use-local-nodes'
 import { DiagramCanvas } from '@/canvas/DiagramCanvas'
@@ -82,6 +82,8 @@ export interface PlayerStageProps {
   onFlowChange: (flowId: string) => void
   /** Leaves the player. Without it, the player shows the diagram name in place of the exit button. */
   onExit?: () => void
+  /** Buttons at the end of the header, before the full screen button. */
+  actions?: ReactNode
   /** Opens the diagram that a node leads to, after the camera zooms into the node. */
   onOpenDiagram?: (diagramId: string) => void
   /** A way back to the diagram that led here. */
@@ -89,7 +91,7 @@ export interface PlayerStageProps {
 }
 
 /** Plays the flows of a diagram on a read-only canvas, with controls that hide while a flow plays. */
-export function PlayerStage({ diagram, flowId, onFlowChange, onExit, onOpenDiagram, back }: PlayerStageProps) {
+export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, onOpenDiagram, back }: PlayerStageProps) {
   const engine = useEngine()
   const playback = usePlaybackState()
   const initial = useMemo(() => fromDiagram(diagram), [diagram])
@@ -270,6 +272,7 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, onOpenDiagr
             This diagram has no flow. The traffic animation plays.
           </span>
         )}
+        {actions}
         <Button
           variant="ghost"
           size="icon-sm"

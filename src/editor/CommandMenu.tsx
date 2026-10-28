@@ -8,6 +8,7 @@ import {
   FileInput,
   FileJson,
   Globe,
+  Link2,
   Film,
   Waypoints,
   Group,
@@ -180,6 +181,9 @@ export function CommandMenu() {
           </CommandItem>
           <CommandItem onSelect={run(() => setUi({ exportOpen: 'page' }))}>
             <Globe /> Export web page
+          </CommandItem>
+          <CommandItem onSelect={run(() => setUi({ exportOpen: 'link' }))}>
+            <Link2 /> Share a link
           </CommandItem>
           <CommandItem onSelect={run(() => setUi({ exportOpen: 'mermaid' }))}>
             <FileCode /> Export Mermaid flowchart
