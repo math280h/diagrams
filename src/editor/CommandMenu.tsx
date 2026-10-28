@@ -25,6 +25,7 @@ import {
   Play,
   Redo2,
   RefreshCw,
+  ShieldAlert,
   Sun,
   Trash2,
   Undo2,
@@ -106,6 +107,9 @@ export function CommandMenu() {
           </CommandItem>
           <CommandItem onSelect={run(() => setUi({ historyOpen: true }))}>
             <History /> Show version history
+          </CommandItem>
+          <CommandItem onSelect={run(() => setUi({ sensitiveView: !useUi.getState().sensitiveView }))}>
+            <ShieldAlert /> Show or hide sensitive data
           </CommandItem>
           <CommandItem onSelect={run(duplicateSelection)}>
             <CopyPlus /> Duplicate selection <CommandShortcut>{keyCombo('D', { mod: true })}</CommandShortcut>

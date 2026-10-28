@@ -1,4 +1,16 @@
-import { ArrowDown, ArrowUp, Braces, ChevronDown, ChevronRight, Copy, Plus, Trash2, TriangleAlert } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  Braces,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  KeyRound,
+  Plus,
+  Trash2,
+  TriangleAlert,
+  UserRound,
+} from 'lucide-react'
 import { useId, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -22,7 +34,8 @@ import {
   payloadJson,
   type PayloadPart,
 } from '@/model/payload'
-import { PAYLOAD_TYPES, type PayloadField, type PayloadType } from '@/model/schema'
+import { PAYLOAD_TYPES, type PayloadField, type PayloadType, type SensitiveKind } from '@/model/schema'
+import { SENSITIVE_NAMES } from '@/model/threats'
 import type { DiagramEdge } from '@/model/types'
 import { setEdgePayload } from '@/store/actions'
 import { Choice, Field, Section, SwitchField, TextInput } from './controls'
@@ -39,6 +52,14 @@ const TYPE_LABELS: Record<PayloadType, string> = {
 }
 
 const TYPE_OPTIONS = PAYLOAD_TYPES.map((value) => ({ value, label: TYPE_LABELS[value] }))
+
+const NOT_SENSITIVE = 'none'
+
+const SENSITIVE_OPTIONS: { value: SensitiveKind | typeof NOT_SENSITIVE; label: string }[] = [
+  { value: NOT_SENSITIVE, label: 'Not sensitive' },
+  { value: 'personal', label: SENSITIVE_NAMES.personal },
+  { value: 'secret', label: SENSITIVE_NAMES.secret },
+]
 
 const EXAMPLE_PLACEHOLDERS: Partial<Record<PayloadType, string>> = { string: 'A-1', number: '2', boolean: 'true' }
 
@@ -186,6 +207,14 @@ function FieldEditor({
           onChange={(description) => onChange({ description }, `payload-description:${field.id}`)}
         />
       </Field>
+      <Field label="Data" wide>
+        <Choice
+          label="Data"
+          value={field.sensitive ?? NOT_SENSITIVE}
+          onChange={(value) => onChange({ sensitive: value === NOT_SENSITIVE ? undefined : value })}
+          options={SENSITIVE_OPTIONS}
+        />
+      </Field>
       <SwitchField label="Required" checked={field.required} onChange={(required) => onChange({ required })} />
       <div className="flex justify-end gap-0.5">
         <Button variant="ghost" size="icon-xs" aria-label="Move field up" disabled={first} onClick={() => onMove(-1)}>
@@ -219,7 +248,9 @@ function FieldRow({
     <button
       type="button"
       aria-expanded={open}
-      aria-label={`${name}, ${TYPE_LABELS[field.type].toLowerCase()}${field.required ? '' : ', optional'}`}
+      aria-label={`${name}, ${TYPE_LABELS[field.type].toLowerCase()}${field.required ? '' : ', optional'}${
+        field.sensitive ? `, ${SENSITIVE_NAMES[field.sensitive].toLowerCase()}` : ''
+      }`}
       onClick={onToggle}
       className="flex h-7 w-full min-w-0 items-center gap-1.5 rounded-md pr-1.5 text-left text-xs hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
       style={{ paddingLeft: 4 + depthOf(field) * DEPTH_INDENT_PX }}
@@ -230,6 +261,8 @@ function FieldRow({
         {!field.required && <span className="text-muted-foreground">?</span>}
       </span>
       <span className="shrink-0 text-muted-foreground">{field.type}</span>
+      {field.sensitive === 'personal' && <UserRound aria-hidden className="size-3.5 shrink-0 text-warn" />}
+      {field.sensitive === 'secret' && <KeyRound aria-hidden className="size-3.5 shrink-0 text-destructive" />}
       {hasExample(field.type) && field.example && (
         <span className="min-w-0 flex-1 truncate text-right font-mono text-muted-foreground">{field.example}</span>
       )}
@@ -249,7 +282,11 @@ export function PayloadSection({ edge, part }: { edge: DiagramEdge; part: Payloa
   const setFields = (next: PayloadField[], key?: string) => setEdgePayload(edge.id, part, next, key)
   const change = (id: string, patch: Partial<PayloadField>, key?: string) =>
     setFields(
-      fields.map((field) => (field.id === id ? { ...field, ...patch } : field)),
+      fields.map((field) => {
+        if (field.id !== id) return field
+        const { sensitive, ...rest } = { ...field, ...patch }
+        return sensitive ? { ...rest, sensitive } : rest
+      }),
       key,
     )
   const move = (index: number, delta: number) => {

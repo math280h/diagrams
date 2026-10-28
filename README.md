@@ -26,6 +26,9 @@ computer.
   diagram with each operation, latency and status in the log. Services use the cards with the same name.
 - **Request and response bodies**: list the JSON fields that a connection carries, or paste an example body to fill
   them. Copy an example body back as JSON, and see the body in the log line while a flow plays.
+- **Sensitive data**: mark body fields as personal data or secrets, and see which connections carry them across a
+  trust boundary, such as an account, a network or the edge of the system. An agent can mark the fields and check each
+  crossing with STRIDE.
 - **Present and export**: present in full screen, or export PNG, SVG, MP4, WebM or GIF. Video export is exact to the
   frame. Export a web page to share a diagram that plays its flows in any browser, as one HTML file with no network.
   Or copy a share link that carries the whole diagram, so nothing is uploaded.

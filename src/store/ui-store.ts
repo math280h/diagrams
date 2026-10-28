@@ -30,6 +30,8 @@ interface UiState {
   traceImportOpen: boolean
   shortcutsOpen: boolean
   historyOpen: boolean
+  /** Shows the connections that carry personal data or secrets, and dims the other connections. */
+  sensitiveView: boolean
   insert: InsertRequest | null
 }
 
@@ -46,6 +48,7 @@ export const useUi = create<UiState>(() => ({
   traceImportOpen: false,
   shortcutsOpen: false,
   historyOpen: false,
+  sensitiveView: false,
   insert: null,
 }))
 

@@ -19,8 +19,14 @@ const MARKDOWN_LINK = /\]\(([^)#\s]+)\)/g
 const ICON_NAME = /`((?:aws|azure|gcp|k8s|logo):[\w.-]+)`/g
 
 describe('skills', () => {
-  it('bundles the four skills', () => {
-    expect(skills.map((skill) => skill.name)).toEqual(['architecture', 'flows', 'infrastructure', 'review'])
+  it('bundles the five skills', () => {
+    expect(skills.map((skill) => skill.name)).toEqual([
+      'architecture',
+      'flows',
+      'infrastructure',
+      'review',
+      'threat-model',
+    ])
   })
 
   it('names each skill like its folder and describes it', () => {

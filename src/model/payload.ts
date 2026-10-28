@@ -185,12 +185,21 @@ export function fieldsFromJsonText(text: string): PayloadField[] {
   return fieldsFromExample(body)
 }
 
-/** Returns the fields read from an example, with the id and the description of the existing field at each path. */
+/**
+ * Returns the fields read from an example, with the id, the description and the sensitive mark of the existing field
+ * at each path.
+ */
 export function mergeFields(existing: readonly PayloadField[], read: readonly PayloadField[]): PayloadField[] {
   const byPath = new Map(existing.map((field) => [field.path.trim(), field]))
   return read.map((field) => {
     const old = byPath.get(field.path)
-    return old ? { ...field, id: old.id, description: old.description } : field
+    if (!old) return field
+    return {
+      ...field,
+      id: old.id,
+      description: old.description,
+      ...(old.sensitive ? { sensitive: old.sensitive } : {}),
+    }
   })
 }
 

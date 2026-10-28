@@ -148,6 +148,15 @@ describe('mergeFields', () => {
     ])
     expect(merged[0]!.id).toBe(existing[0]!.id)
   })
+
+  it('keeps the sensitive mark of fields with the same path', () => {
+    const merged = mergeFields(
+      [field('email', { sensitive: 'personal' })],
+      fieldsFromExample({ email: 'a@b.c', id: 1 }),
+    )
+    expect(merged.map((item) => item.sensitive)).toEqual(['personal', undefined])
+    expect(merged[1]).not.toHaveProperty('sensitive')
+  })
 })
 
 describe('fieldIssues', () => {

@@ -123,6 +123,14 @@ const SKILL_PROMPTS = [
     required: true,
   },
   {
+    name: 'threat-model',
+    skill: 'threat-model',
+    description: 'Mark the sensitive data in the open diagram and check each trust boundary crossing with STRIDE.',
+    argument: 'focus',
+    argumentDescription: 'What to look at most, for example "the payment calls". Leave it empty to check everything.',
+    required: false,
+  },
+  {
     name: 'review-diagram',
     skill: 'review',
     description: 'Review the open diagram and fix layout and clarity problems.',

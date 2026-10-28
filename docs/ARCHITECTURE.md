@@ -58,7 +58,8 @@ The visual system lives in `DESIGN.md` at the repository root.
   turns `bodies` on. Version 8 added `color` to cards and shapes and removed the `accent` fields. Version 9 added `details`
   (description, owner and links) to cards, shapes and groups. Version 10 added the optional `pinned` flag to the data of every node. Version 11 added the
   optional `opens` field, the id of another diagram, to cards and groups. Version 12 added the optional `parallel`
-  targets to flow steps and the optional `paths` to flows.
+  targets to flow steps and the optional `paths` to flows. Version 13 added the optional `sensitive` mark (`personal`
+  or `secret`) to body fields.
 - Groups are boundaries. A group's `kind` points into the catalogue in `src/model/boundaries.ts`:
   AWS, Azure, Google Cloud, Kubernetes and general kinds, plus the custom group. Each kind has a
   family (scope, logical, location, zone, network, subnet, security, runtime) that sets its line
@@ -339,6 +340,26 @@ An edge can carry a `request` body (what the source sends) and a `response` body
   setting `bodies` turns this off. The strip and the log table read the body from the edge when they
   render, so the timeline and `evaluateFlow` do not change, and a video export shows the same text.
   The strip truncates the body and hides it on narrow frames, as it does the event.
+
+### Sensitive data
+
+A body field can carry a mark, `personal` or `secret` (`sensitive` on the field). A threat model asks where such data
+goes and which trust boundaries it crosses, and the diagram already knows both: the bodies and the boundaries.
+
+- `dataCrossings` (`src/model/threats.ts`) lists each edge with a marked field in its request or response body, and the
+  trust boundaries between its two ends: the boundaries around one end and not the other. A trust boundary is a
+  boundary of the tiers scope, network, subnet or security (`TRUST_TIERS`), for example an account, a VPC, a subnet or
+  a trust boundary. Regions, zones, clusters and custom groups do not separate trust, so they do not count. When no
+  trust boundary is between the ends, an edge between a client or external card and another card crosses "the edge
+  of the system", so a diagram without boundaries still shows the data that leaves the system.
+- The Sensitive data button in the top bar turns on a view of the editor canvas, not a setting of the diagram. The
+  canvas gets the crossings through `CanvasMode.threats`, because edge labels render in a portal outside the edge.
+  Marked edges take the warning colour (personal data) or the error colour (secrets) and dim the other edges, and an
+  edge that crosses a trust boundary gets a thicker line and a filled label chip. A panel lists the marked edges, the
+  crossings first, and selects an edge on click; the edge properties show its fields and boundaries.
+- Pasting a JSON example keeps the mark of a field with the same path, as it keeps the description.
+- Agents set `sensitive` on body fields, and `get_diagram` with full detail returns `dataCrossings`. The `threat-model`
+  skill marks the fields and checks each crossing with STRIDE; the app does not judge threats itself.
 
 ### Trace import
 
@@ -899,7 +920,7 @@ and offers the same text in four ways:
 
 - the server instructions, which point to the skills (Claude Code shows 4,096 characters);
 - `skill://diagrams/<skill>/<file>` resources, in the file layout of the MCP skills extension;
-- the prompts `draw-architecture`, `animate-flow`, `diagram-from-code` and `review-diagram`;
+- the prompts `draw-architecture`, `animate-flow`, `diagram-from-code`, `threat-model` and `review-diagram`;
 - a local plugin marketplace in the user data folder, written at start with the app version, for
   `claude plugin install`.
 
