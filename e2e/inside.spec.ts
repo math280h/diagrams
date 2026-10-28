@@ -29,7 +29,7 @@ test('opens the diagram inside a card in the editor and zooms into it in Present
   await page.mouse.wheel(0, 1200)
   await card(page, 'Orders').getByRole('button', { name: 'Open Orders' }).click()
   await expect(page).toHaveURL(/#\/p\/[^?]+\?from=/)
-  await expect(page.getByText('This diagram has no flow.')).toBeVisible()
+  await expect(page.getByText('This diagram is empty.')).toBeVisible()
   await page.getByRole('button', { name: 'Order system' }).click()
   await expect(
     page.getByRole('button', { name: 'Place an order' }).or(page.getByText('Place an order', { exact: true })),

@@ -38,7 +38,8 @@ import { Field, Segmented, SwitchField, TextInput } from '@/editor/inspector/con
 import { IconPicker } from '@/editor/inspector/IconPicker'
 import { appendNodeToFlow } from './record'
 import { FLOW_PANEL_HEIGHT } from './layout'
-import { stepFlow, useSegmentIndex } from './hooks'
+import { StepCount } from '@/components/StepCount'
+import { stepFlow } from '@/engine/flow/step'
 import { flowToMermaidSequence } from '@/export/sequence'
 import { LogTable } from './LogTable'
 import { PathMenu } from './PathMenu'
@@ -66,18 +67,6 @@ function TimeReadout() {
         <span ref={elapsedRef} className="text-foreground" /> / {formatDuration(duration)}
       </span>
       <span ref={leftRef} className="max-xl:hidden" />
-    </span>
-  )
-}
-
-function StepCount() {
-  const playback = usePlaybackState()
-  const current = useSegmentIndex()
-  const total = playback.timeline?.segments.length ?? 0
-  if (total === 0) return null
-  return (
-    <span className="ml-1 text-xs whitespace-nowrap text-muted-foreground tabular-nums">
-      Step <span className="text-foreground">{Math.max(0, current) + 1}</span> of {total}
     </span>
   )
 }
@@ -280,7 +269,7 @@ export function FlowPanel() {
         >
           <SkipForward />
         </Button>
-        <StepCount />
+        <StepCount className="ml-1" />
         <div className="mx-2 flex min-w-48 flex-1 items-center gap-3">
           <Scrubber />
           <TimeReadout />
