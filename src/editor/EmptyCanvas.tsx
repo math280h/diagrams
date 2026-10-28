@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { useReactFlow } from '@xyflow/react'
 import { Plus, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -19,7 +20,8 @@ export function EmptyCanvas() {
       <div className="pointer-events-auto flex max-w-sm flex-col items-center text-center">
         <p className="text-xl font-medium tracking-[-0.015em]">Start with a node</p>
         <p className="mt-1.5 text-sm text-balance text-muted-foreground">
-          Press <Kbd>N</Kbd>, double-click the canvas, or import a Mermaid flowchart.
+          Press <Kbd>N</Kbd>, double-click the canvas, or import a Mermaid flowchart. Then connect the nodes and record
+          a flow that plays a request through them.
         </p>
         <div className="mt-5 flex gap-2">
           <Button onClick={openInsert}>
@@ -29,6 +31,13 @@ export function EmptyCanvas() {
             <Upload /> Import Mermaid
           </Button>
         </div>
+        <p className="mt-4 text-sm text-muted-foreground">
+          Or{' '}
+          <Link to="/" className="text-foreground underline underline-offset-3 hover:text-foreground/80">
+            start from a template
+          </Link>{' '}
+          that already plays.
+        </p>
       </div>
     </div>
   )

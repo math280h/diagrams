@@ -6,7 +6,15 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { newId } from '@/model/defaults'
 import { BOUNDARY_KINDS, BOUNDARY_PROVIDERS, boundaryKind, boundaryKindLabel } from '@/model/boundaries'
 import { CARD_FORM_LABELS, PRESET_BY_ID } from '@/model/presets'
-import { CARD_FORMS, SHAPES, type CardData, type GroupData, type ShapeData, type TextData } from '@/model/schema'
+import {
+  CARD_FORMS,
+  SHAPES,
+  type CardData,
+  type CardForm,
+  type GroupData,
+  type ShapeData,
+  type TextData,
+} from '@/model/schema'
 import type { CardNodeType, DiagramNode, GroupNodeType, ShapeNodeType, TextNodeType } from '@/model/types'
 import { pinNodes, updateNodeData } from '@/store/actions'
 import { useState } from 'react'
@@ -27,6 +35,15 @@ import { IconPicker } from './IconPicker'
 import { NodeLinks } from './NodeLinks'
 
 const FORM_OPTIONS = CARD_FORMS.map((value) => ({ value, label: CARD_FORM_LABELS[value] }))
+
+const DETAIL_PLACEHOLDERS: Record<CardForm, string> = {
+  service: 'Go, 3 replicas',
+  datastore: 'Postgres 16, orders',
+  queue: 'Kafka, 12 partitions',
+  client: 'checkout.shop.dev',
+  external: 'payments API',
+  function: 'Python, every 5 min',
+}
 
 const SHAPE_OPTIONS = SHAPES.map((shape) => {
   const preset = PRESET_BY_ID.get(shape)
@@ -55,7 +72,12 @@ function CardFields({ node }: { node: CardNodeType }) {
           <Choice label="Kind" value={data.form} onChange={(form) => set({ form })} options={FORM_OPTIONS} />
         </Field>
         <Field label="Detail" wide>
-          <TextInput mono value={detail?.text ?? ''} placeholder="Go, 3 replicas" onChange={setDetail} />
+          <TextInput
+            mono
+            value={detail?.text ?? ''}
+            placeholder={DETAIL_PLACEHOLDERS[data.form]}
+            onChange={setDetail}
+          />
         </Field>
         <Field label="Icon" wide>
           <IconPicker value={data.icon} onChange={(icon) => set({ icon })} allowNone />

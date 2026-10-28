@@ -8,9 +8,13 @@ import {
 import { z } from 'zod'
 import { LibraryPage } from './library/LibraryPage'
 import { RootLayout } from './RootLayout'
-import { RouteError } from './RouteError'
+import { RouteError, RouteNotFound } from './RouteError'
 
-const rootRoute = createRootRoute({ component: RootLayout, errorComponent: RouteError })
+const rootRoute = createRootRoute({
+  component: RootLayout,
+  errorComponent: RouteError,
+  notFoundComponent: RouteNotFound,
+})
 
 const libraryRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: LibraryPage })
 

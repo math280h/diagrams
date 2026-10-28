@@ -12,6 +12,7 @@ import {
   LayoutGrid,
   Maximize,
   MousePointerSquareDashed,
+  Plus,
   Palette,
   Pin,
   PinOff,
@@ -51,7 +52,7 @@ import {
 } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
 import { useResolvedAppTheme } from '@/store/settings-store'
-import { useUi } from '@/store/ui-store'
+import { setUi, useUi } from '@/store/ui-store'
 import { flushPendingSave } from '@/store/document'
 import { useLibrary } from '@/store/library-store'
 import { copySelection, cutSelection, paste } from './clipboard'
@@ -70,6 +71,7 @@ export function CanvasContextMenu({ target, children }: { target: ContextTarget;
   const { screenToFlowPosition } = useReactFlow()
   const fitToScreen = useFitToScreen()
   const [point, setPoint] = useState({ x: 0, y: 0 })
+  const [screenPoint, setScreenPoint] = useState({ x: 0, y: 0 })
   const activeFlowId = useUi((state) => state.activeFlowId)
   const isGroup = useDoc(
     (state) => target.kind === 'node' && state.nodes.some((node) => node.id === target.id && node.type === 'group'),
@@ -93,7 +95,10 @@ export function CanvasContextMenu({ target, children }: { target: ContextTarget;
     <ContextMenu>
       <ContextMenuTrigger
         className="absolute inset-0"
-        onContextMenu={(event) => setPoint(screenToFlowPosition({ x: event.clientX, y: event.clientY }))}
+        onContextMenu={(event) => {
+          setScreenPoint({ x: event.clientX, y: event.clientY })
+          setPoint(screenToFlowPosition({ x: event.clientX, y: event.clientY }))
+        }}
       >
         {children}
       </ContextMenuTrigger>
@@ -170,6 +175,9 @@ export function CanvasContextMenu({ target, children }: { target: ContextTarget;
         )}
         {!onElement && (
           <>
+            <ContextMenuItem onClick={() => setUi({ insert: { screen: screenPoint, flow: point } })}>
+              <Plus /> Insert a node here <ContextMenuShortcut>N</ContextMenuShortcut>
+            </ContextMenuItem>
             <ContextMenuItem onClick={() => paste(undefined, point)}>
               <ClipboardPaste /> Paste here <ContextMenuShortcut>{keyCombo('V', { mod: true })}</ContextMenuShortcut>
             </ContextMenuItem>
