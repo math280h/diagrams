@@ -831,6 +831,14 @@ images current without a person. `main.mjs` does the work in Node, and `lib.mjs`
   `diagram-previews` branch under `pr-<number>/<commit>/` and links them with `?raw=true`, which works in private
   repositories for people who can read them. It updates its one comment, found by a marker, at each push. The token
   goes to git through `GIT_CONFIG_*` variables, not the command line, and the log masks it.
+- With `base-app`, compare mode renders every matched diagram with two apps, also files that git does not track yet,
+  and keeps only the diagrams whose images differ. Both apps run on the same runner and render at a fixed time, so the
+  bytes of an image do not change between runs, and an exact compare is enough. A diagram that the base app cannot
+  open, for example in a newer format, gets a note in place of its old image. The comment also says when no diagram
+  looks different, so a pull request shows that the check ran.
+- `.github/workflows/display-previews.yml` uses it in this repository. For a pull request from this repository that
+  changes drawing code, templates or dependencies, it builds the app of the pull request and the app of the base
+  commit, writes each template as a dark and a light diagram file (`scripts/template-files.mjs`), and compares them.
 
 ### Skills
 

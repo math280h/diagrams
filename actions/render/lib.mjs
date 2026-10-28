@@ -49,32 +49,25 @@ export function renderOptions({ input, output, theme, maxSize }) {
   ]
 }
 
-function cell(url, label) {
-  return url ? `<img src="${url}" alt="${label}" width="420">` : label
+function cell(url, label, note) {
+  return url ? `<img src="${url}" alt="${label}" width="420">` : note
 }
 
 /**
  * Writes the pull request comment with the before and after image of each changed diagram.
  *
- * @param entries - Each changed diagram with the address of its images. An added diagram has no `before`, a removed
- *   diagram no `after`.
+ * @param intro - The sentence above the table.
+ * @param entries - Each changed diagram with the address of its images. Without `before`, the cell shows
+ *   `beforeNote`, or `New` for an added diagram. Without `after`, it shows `Removed`. Without entries, the comment has
+ *   no table.
  */
-export function commentBody({ entries, commit }) {
+export function commentBody({ entries, intro }) {
   const rows = entries.map(
-    ({ file, before, after }) =>
-      `| \`${file}\` | ${cell(before, before === undefined ? 'New' : 'Before')} | ${cell(after, after === undefined ? 'Removed' : 'After')} |`,
+    ({ file, before, after, beforeNote }) =>
+      `| \`${file}\` | ${cell(before, 'Before', beforeNote ?? 'New')} | ${cell(after, 'After', 'Removed')} |`,
   )
-  return [
-    COMMENT_MARKER,
-    '### Diagram images',
-    '',
-    `The diagrams that this pull request changes, as of ${commit.slice(0, 7)}.`,
-    '',
-    '| Diagram | Before | After |',
-    '| --- | --- | --- |',
-    ...rows,
-    '',
-  ].join('\n')
+  const table = rows.length > 0 ? ['', '| Diagram | Before | After |', '| --- | --- | --- |', ...rows] : []
+  return [COMMENT_MARKER, '### Diagram images', '', intro, ...table, ''].join('\n')
 }
 
 /** Returns a link to a file on a branch that GitHub shows as an image to the people who can read the repository. */

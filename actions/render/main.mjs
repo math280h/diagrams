@@ -41,6 +41,7 @@ const inputs = {
   branch: env.INPUT_PREVIEW_BRANCH || 'diagram-previews',
   version: env.INPUT_VERSION || 'latest',
   app: env.INPUT_APP ?? '',
+  baseApp: env.INPUT_BASE_APP ?? '',
   token: env.INPUT_TOKEN ?? '',
 }
 const temp = env.RUNNER_TEMP || path.resolve('.diagrams-render')
@@ -100,7 +101,10 @@ function installApp() {
 }
 
 function appCommand() {
-  const command = inputs.app ? splitCommand(inputs.app) : installApp()
+  return withDisplay(inputs.app ? splitCommand(inputs.app) : installApp())
+}
+
+function withDisplay(command) {
   if (process.platform !== 'linux') return command
   const prefix = []
   if (!env.DISPLAY) {
@@ -132,13 +136,14 @@ function render(command, input, output) {
   throw new ActionError(`${input}: ${reason}`)
 }
 
-function trackedDiagrams() {
-  const out = run('git', ['ls-files', '-z', '--', ...pathspecs(inputs.patterns)]).stdout
-  return out.split('\0').filter(Boolean)
+function diagramFiles({ untracked = false } = {}) {
+  const which = untracked ? ['--cached', '--others', '--exclude-standard'] : []
+  const out = run('git', ['ls-files', '-z', ...which, '--', ...pathspecs(inputs.patterns)]).stdout
+  return [...new Set(out.split('\0').filter(Boolean))]
 }
 
 function writeImages(command) {
-  const files = trackedDiagrams()
+  const files = diagramFiles()
   if (files.length === 0) console.log('No tracked file matches the files input.')
   const images = files.map((file) => {
     const image = imagePath(file, inputs.format)
@@ -219,6 +224,83 @@ function upsertComment(pullRequest, body) {
   run('gh', ['api', '--method', method, endpoint, '--input', '-'], { env: ghEnv, input: JSON.stringify({ body }) })
 }
 
+function shortSha(sha) {
+  return sha.slice(0, 7)
+}
+
+function imageLink(folder, file) {
+  return (
+    file &&
+    imageUrl({
+      server: env.GITHUB_SERVER_URL,
+      repository: env.GITHUB_REPOSITORY,
+      branch: inputs.branch,
+      file: `${folder}/${file}`,
+    })
+  )
+}
+
+function publishComment(pullRequest, commit, entries, intro) {
+  if (!inputs.publish) return
+  if (!pullRequest) {
+    console.log('::notice::The event is not a pull request, so the action does not comment.')
+    return
+  }
+  if (pullRequest.head.repo?.full_name !== env.GITHUB_REPOSITORY) {
+    console.log('::notice::A pull request from a fork gets no image comment, because its token cannot write.')
+    return
+  }
+  const folder = `pr-${pullRequest.number}/${shortSha(commit)}`
+  const files = entries.flatMap((entry) => [entry.before, entry.after].filter(Boolean))
+  if (files.length > 0) pushPreviews(folder, files, pullRequest.number)
+  const linked = entries.map((entry) => ({
+    ...entry,
+    before: imageLink(folder, entry.before),
+    after: imageLink(folder, entry.after),
+  }))
+  upsertComment(pullRequest.number, commentBody({ entries: linked, intro }))
+  console.log(`Commented on #${pullRequest.number}.`)
+}
+
+function compareApps(command, baseCommand) {
+  const event = env.GITHUB_EVENT_PATH ? JSON.parse(readFileSync(env.GITHUB_EVENT_PATH, 'utf8')) : {}
+  const commit = event.pull_request?.head?.sha ?? run('git', ['rev-parse', 'HEAD']).stdout.trim()
+  const files = diagramFiles({ untracked: true })
+  const previews = path.join(temp, 'diagram-previews')
+  setOutput('previews', [previews])
+  const entries = []
+  files.forEach((file, index) => {
+    const after = `${index + 1}/after.${inputs.format}`
+    const before = `${index + 1}/before.${inputs.format}`
+    render(command, file, path.join(previews, after))
+    try {
+      render(baseCommand, file, path.join(previews, before))
+    } catch (error) {
+      if (!(error instanceof ActionError)) throw error
+      console.log(`::warning::The base app could not render ${file}. ${error.message}`)
+      entries.push({ file, after, beforeNote: 'The base app cannot open it' })
+      return
+    }
+    const same = readFileSync(path.join(previews, before)).equals(readFileSync(path.join(previews, after)))
+    console.log(`${same ? 'Same image' : 'Different image'}: ${file}`)
+    if (!same) entries.push({ file, before, after })
+  })
+  summary(
+    [
+      '### Diagram images',
+      '',
+      `${entries.length} of ${files.length} diagrams look different with the app of this commit.`,
+      ...entries.map((entry) => `- \`${entry.file}\``),
+    ].join('\n'),
+  )
+  const compared = `It compares ${files.length} diagrams with the app of the base commit.`
+  const intro =
+    entries.length > 0
+      ? `The diagrams that look different with this pull request, as of ${shortSha(commit)}. ${compared}`
+      : `No diagram looks different with this pull request, as of ${shortSha(commit)}. ${compared}`
+  publishComment(event.pull_request, commit, entries, intro)
+}
+
 function compareImages(command) {
   const event = JSON.parse(readFileSync(env.GITHUB_EVENT_PATH, 'utf8'))
   const pullRequest = event.pull_request
@@ -252,30 +334,13 @@ function compareImages(command) {
     return entry
   })
   summary(['### Changed diagrams', '', ...changes.map(({ kind, file }) => `- \`${file}\` (${kind})`)].join('\n'))
-  if (!inputs.publish) return
-  if (pullRequest.head.repo?.full_name !== env.GITHUB_REPOSITORY) {
-    console.log('::notice::A pull request from a fork gets no image comment, because its token cannot write.')
-    return
-  }
-  const folder = `pr-${pullRequest.number}/${head.slice(0, 7)}`
-  const files = entries.flatMap((entry) => [entry.before, entry.after].filter(Boolean))
-  pushPreviews(folder, files, pullRequest.number)
-  const url = (file) =>
-    file &&
-    imageUrl({
-      server: env.GITHUB_SERVER_URL,
-      repository: env.GITHUB_REPOSITORY,
-      branch: inputs.branch,
-      file: `${folder}/${file}`,
-    })
-  upsertComment(
-    pullRequest.number,
-    commentBody({
-      commit: head,
-      entries: entries.map((entry) => ({ file: entry.file, before: url(entry.before), after: url(entry.after) })),
-    }),
+  const commit = pullRequest.head?.sha ?? head
+  publishComment(
+    pullRequest,
+    commit,
+    entries,
+    `The diagrams that this pull request changes, as of ${shortSha(commit)}.`,
   )
-  console.log(`Commented on #${pullRequest.number}.`)
 }
 
 try {
@@ -284,7 +349,9 @@ try {
     throw new ActionError('The mode input must be auto, write or compare.')
   const compare = inputs.mode === 'compare' || (inputs.mode === 'auto' && env.GITHUB_EVENT_NAME === 'pull_request')
   const command = appCommand()
-  if (compare) compareImages(command)
+  const baseCommand = inputs.baseApp ? withDisplay(splitCommand(inputs.baseApp)) : null
+  if (compare && baseCommand) compareApps(command, baseCommand)
+  else if (compare) compareImages(command)
   else writeImages(command)
 } catch (error) {
   if (!(error instanceof ActionError)) throw error

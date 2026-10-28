@@ -58,20 +58,30 @@ describe('render action', () => {
 
   it('writes a comment with the image before and after each change', () => {
     const body = commentBody({
-      commit: '0123456789abcdef',
+      intro: 'The diagrams that this pull request changes, as of 0123456.',
       entries: [
         { file: 'docs/orders.diagram.json', before: 'https://x/before.png', after: 'https://x/after.png' },
         { file: 'docs/new.diagram.json', after: 'https://x/new.png' },
         { file: 'old.diagram.json', before: 'https://x/old.png' },
+        { file: 'next.diagram.json', after: 'https://x/next.png', beforeNote: 'The base app cannot open it' },
       ],
     })
     expect(body.startsWith(COMMENT_MARKER)).toBe(true)
-    expect(body).toContain('as of 0123456.')
+    expect(body).toContain('The diagrams that this pull request changes, as of 0123456.')
+    expect(body).toContain(
+      '| `next.diagram.json` | The base app cannot open it | <img src="https://x/next.png" alt="After" width="420"> |',
+    )
     expect(body).toContain(
       '| `docs/orders.diagram.json` | <img src="https://x/before.png" alt="Before" width="420"> | <img src="https://x/after.png" alt="After" width="420"> |',
     )
     expect(body).toContain('| `docs/new.diagram.json` | New | <img src="https://x/new.png" alt="After" width="420"> |')
     expect(body).toContain('| `old.diagram.json` | <img src="https://x/old.png" alt="Before" width="420"> | Removed |')
+  })
+
+  it('writes a comment without a table when no diagram changed', () => {
+    const intro = 'No diagram looks different with this pull request, as of 0123456.'
+    const body = commentBody({ intro, entries: [] })
+    expect(body).toBe([COMMENT_MARKER, '### Diagram images', '', intro, ''].join('\n'))
   })
 
   it('links an image on the preview branch', () => {
