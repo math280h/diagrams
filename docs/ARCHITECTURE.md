@@ -198,6 +198,7 @@ src/
   io/           import dialog (diagram file, Mermaid and trace)
   layout/       ELK layers, group grid and edge router, run in a worker
   library/      library page, live previews and their framing
+  releases/     What’s new page from the GitHub releases
   player/       presentation page and the player stage that it shares with the web page export
   standalone/   entry of the standalone player that a web page export carries
   templates/    starter diagrams
@@ -493,6 +494,18 @@ and the flows still play, which an image or a video cannot do.
 - The page ends with the licence texts of the player packages and of the fonts, because the MIT and OFL licences ask
   for them in every copy.
 - A page of the Order system is about 1.3 MB.
+
+### Release notes
+
+The What’s new page (`#/releases`) lists the published releases with their notes, so people on the website see
+what changed. It reads the GitHub releases API at runtime in the HTML media type, so GitHub renders the notes,
+mentions and pull request links. Drafts and pre-releases stay out, because the live site deploys only full releases.
+
+- `cleanReleaseHtml` rebuilds the notes from an allowlist of text elements. It drops every attribute except a link
+  target with an `http`, `https` or `mailto` address, and drops scripts, frames and every element outside the HTML
+  namespace with their content. The page inserts the rebuilt nodes; it never sets HTML from a string.
+- The page links only on the website. The desktop app allows connections only to itself, and it tells about its
+  updates through the updater.
 
 ## Desktop app
 

@@ -242,6 +242,58 @@
   outline-offset: -1px;
 }
 
+.dg-release-notes {
+  font-size: 15px;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+  & :where(h1, h2, h3, h4, h5, h6) {
+    margin: 20px 0 8px;
+    font-size: 15px;
+    font-weight: 500;
+  }
+  & :where(h1, h2, h3, h4, h5, h6):first-child {
+    margin-top: 0;
+  }
+  & :where(p, ul, ol, pre, blockquote, table) {
+    margin: 8px 0;
+  }
+  & :where(ul, ol) {
+    padding-left: 20px;
+  }
+  & ul {
+    list-style: disc;
+  }
+  & ol {
+    list-style: decimal;
+  }
+  & li + li {
+    margin-top: 4px;
+  }
+  & a {
+    text-decoration: underline;
+    text-decoration-color: var(--muted-foreground);
+    text-underline-offset: 2px;
+  }
+  & a:hover {
+    text-decoration-color: currentColor;
+  }
+  & code {
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+  & pre {
+    overflow-x: auto;
+    padding: 12px;
+    border-radius: 6px;
+    background: var(--panel);
+  }
+  & blockquote {
+    padding-left: 12px;
+    border-left: 2px solid var(--border);
+    color: var(--muted-foreground);
+  }
+}
+
 .dg-art {
   flex: none;
   object-fit: contain;
