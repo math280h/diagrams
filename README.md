@@ -80,6 +80,27 @@ On the website, choose "Open in desktop app" in the export menu or in the menu o
 the app and hands the diagram over, and the copy in the browser stays. A build from source handles `diagrams://` links
 only if you start it with `DIAGRAMS_REGISTER_PROTOCOL=1`.
 
+### Render from the command line
+
+The desktop app renders a diagram file to an image or a video without a window, for example to keep the images in a
+README up to date:
+
+```sh
+Diagrams --render docs/orders.diagram.json --out docs/orders.png
+Diagrams --render docs/orders.diagram.json --out docs/checkout.mp4 --flow "Place an order"
+```
+
+The extension of `--out` gives the format: `.png`, `.svg`, `.gif`, `.mp4` or `.webm`. `--theme dark|light`,
+`--flow <name or id>`, `--step <number>` (with `--flow` and an image) and `--max-size <pixels>` change the output.
+`Diagrams --render` without arguments prints the options. The command exits with 0 after it writes the file, 1 when the
+render fails and 2 for a wrong command line.
+
+- **Windows**: `& "$env:LOCALAPPDATA\Programs\Diagrams\Diagrams.exe" --render ... | Out-Default`. The pipe makes
+  PowerShell wait for the app and show its output.
+- **macOS**: `/Applications/Diagrams.app/Contents/MacOS/Diagrams --render ...`
+- **Linux**: `diagrams --render ...` from the `.deb`, or the `.AppImage` file. Without a display, for example in CI,
+  run it under `xvfb-run`.
+
 ## Development
 
 ```sh
