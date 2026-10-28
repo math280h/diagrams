@@ -21,6 +21,7 @@ import {
   renderOptions,
   splitCommand,
 } from './lib.mjs'
+import { samePixels } from './png.mjs'
 
 const APP_REPOSITORY = 'math280h/diagrams'
 const DEFAULT_PATTERN = '**/*.diagram.json'
@@ -43,6 +44,8 @@ const inputs = {
   app: env.INPUT_APP ?? '',
   baseApp: env.INPUT_BASE_APP ?? '',
   baseRoot: env.INPUT_BASE_ROOT ?? '',
+  screens: env.INPUT_SCREENS ?? '',
+  baseScreens: env.INPUT_BASE_SCREENS ?? '',
   token: env.INPUT_TOKEN ?? '',
 }
 const temp = env.RUNNER_TEMP || path.resolve('.diagrams-render')
@@ -263,6 +266,38 @@ function publishComment(pullRequest, commit, entries, intro) {
   console.log(`Commented on #${pullRequest.number}.`)
 }
 
+function compareScreens(previews, firstIndex) {
+  if (!inputs.screens) return { entries: [], count: 0 }
+  if (!existsSync(inputs.screens)) throw new ActionError(`The screens folder ${inputs.screens} does not exist.`)
+  if (!inputs.baseScreens || !existsSync(inputs.baseScreens)) {
+    console.log('::notice::The base commit has no app screens, so the action compares none.')
+    return { entries: [], count: 0 }
+  }
+  const pngs = (folder) =>
+    readdirSync(folder)
+      .filter((name) => name.endsWith('.png'))
+      .toSorted()
+  const names = pngs(inputs.screens)
+  const baseNames = new Set(pngs(inputs.baseScreens))
+  const entries = []
+  names.forEach((name, index) => {
+    const after = `${firstIndex + index}/after.png`
+    const before = `${firstIndex + index}/before.png`
+    mkdirSync(path.join(previews, `${firstIndex + index}`), { recursive: true })
+    copyFileSync(path.join(inputs.screens, name), path.join(previews, after))
+    const file = `app/${name}`
+    if (!baseNames.has(name)) {
+      entries.push({ file, after })
+      return
+    }
+    copyFileSync(path.join(inputs.baseScreens, name), path.join(previews, before))
+    const same = samePixels(readFileSync(path.join(previews, before)), readFileSync(path.join(previews, after)))
+    console.log(`${same ? 'Same screen' : 'Different screen'}: ${name}`)
+    if (!same) entries.push({ file, before, after })
+  })
+  return { entries, count: names.length }
+}
+
 function compareApps(command, baseCommand) {
   const event = env.GITHUB_EVENT_PATH ? JSON.parse(readFileSync(env.GITHUB_EVENT_PATH, 'utf8')) : {}
   const commit = event.pull_request?.head?.sha ?? run('git', ['rev-parse', 'HEAD']).stdout.trim()
@@ -306,15 +341,18 @@ function compareApps(command, baseCommand) {
     }
   })
   const total = files.length + removed.length
+  const screens = compareScreens(previews, total + 1)
+  entries.push(...screens.entries)
   summary(
     [
       '### Diagram images',
       '',
-      `${entries.length} of ${total} diagrams look different with this commit.`,
+      `${entries.length} of ${total + screens.count} diagrams and app screens look different with this commit.`,
       ...entries.map((entry) => `- \`${entry.file}\``),
     ].join('\n'),
   )
-  const compared = `It compares ${total} diagrams with the ${inputs.baseRoot ? 'base commit' : 'app of the base commit'}.`
+  const counted = screens.count > 0 ? `${total} diagrams and ${screens.count} app screens` : `${total} diagrams`
+  const compared = `It compares ${counted} with the ${inputs.baseRoot ? 'base commit' : 'app of the base commit'}.`
   const intro =
     entries.length > 0
       ? `The diagrams that look different with this pull request, as of ${shortSha(commit)}. ${compared}`

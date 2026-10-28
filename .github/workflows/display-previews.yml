@@ -3,17 +3,13 @@ name: Display previews
 on:
   pull_request:
     paths:
-      - 'src/canvas/**'
-      - 'src/engine/**'
-      - 'src/export/**'
-      - 'src/layout/**'
-      - 'src/model/**'
-      - 'src/styles/**'
-      - 'src/templates/**'
-      - 'src/index.css'
+      - 'src/**'
+      - 'index.html'
+      - 'public/**'
       - 'electron/render-*.ts'
       - 'actions/render/**'
       - 'scripts/template-files.mjs'
+      - 'scripts/app-screens.mjs'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - '.github/workflows/display-previews.yml'
@@ -62,6 +58,16 @@ jobs:
         run: |
           node scripts/template-files.mjs .diagram-previews
           node base/scripts/template-files.mjs base/.diagram-previews
+      - name: Install Chromium for the app screens
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          cd base && pnpm exec playwright install chromium
+      - name: Take the app screens with the build of both commits
+        run: |
+          node scripts/app-screens.mjs dist .app-screens 4180
+          if [ -f base/scripts/app-screens.mjs ]; then
+            cd base && node scripts/app-screens.mjs dist .app-screens 4181
+          fi
       - name: Compare the images of both apps
         uses: ./actions/render
         with:
@@ -70,3 +76,5 @@ jobs:
           app: node_modules/.bin/electron .
           base-app: base/node_modules/.bin/electron base
           base-root: base
+          screens: .app-screens
+          base-screens: base/.app-screens

@@ -918,6 +918,20 @@ images current without a person. `main.mjs` does the work in Node, and `lib.mjs`
   `base/.diagram-previews/`), and compares them. A change to a template then shows too. A template gets new random
   ids at each build, and the traffic animation places the particles of an edge from a hash of its id, so the script
   numbers the ids in order and sets the times to 0: an unchanged template gives the same file in both commits.
+- The diagram images show only what an export draws. The workflow also takes screenshots of the app, so that a change
+  to the library, the editor, the panels, the export dialog or Present shows in the comment too.
+  `scripts/app-screens.mjs` of each commit serves the web build of that commit and takes the same screens with
+  Playwright: the library, a template page, the editor with a node selected and with the flow panel, the image export,
+  Present at its first step and five steps later, an empty diagram, and the library, the editor and Present on a
+  phone, each in the dark and the light theme. It asks for reduced motion and turns off CSS animations, so nothing
+  moves while it takes a screen.
+- The action compares the screens with `samePixels` (`actions/render/png.mjs`): no colour channel of a pixel may differ
+  by more than 8 of 255. Two builds of the same code draw text edges a few levels apart (at most 4 in tests), while a
+  change of text, colour or layout moves pixels much further, so an exact compare would show screens that did not
+  change.
+- The featured stage and the template cards frame their diagram after the fonts load, and again when the measured
+  node sizes change. Before, a font that arrived after the first measure left a frame for the fallback font, and two
+  screens of the library differed by a few pixels.
 
 ### Skills
 
