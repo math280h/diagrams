@@ -7,6 +7,7 @@ import { canvasBackground, captureBlob, prepareAssets, waitForCommit } from './c
 import { mountExportStage } from './mount-stage'
 import { recordStage, type VideoFormat } from './video'
 import { pathSteps } from '@/model/flow'
+import { describeDiagram, svgWithDescription } from './describe'
 
 const PADDING_PX = 48
 const MAX_SCALE = 2
@@ -78,10 +79,12 @@ export async function renderDiagramImage(
     stage.engine.render(timeMs, timeMs)
     await waitForCommit()
     await waitForCommit()
-    const blob = await captureBlob(stage.root, options.format, {
+    const image = await captureBlob(stage.root, options.format, {
       scale,
       backgroundColor: canvasBackground(stage.root),
     })
+    const blob =
+      options.format === 'svg' && !options.focusIds ? await svgWithDescription(image, describeDiagram(content)) : image
     return { blob, width: Math.round(size.width * scale), height: Math.round(size.height * scale), scale }
   } finally {
     dispose()

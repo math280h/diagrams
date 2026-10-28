@@ -74,6 +74,60 @@ export function absolutePosition(node: DiagramNode, byId: ReadonlyMap<string, Di
 }
 
 /** Returns a canvas position relative to the canvas position of a parent, or `absolute` for a top-level node. */
+export type ReadingDirection = 'LR' | 'TD'
+
+type Point = { x: number; y: number }
+
+function chooseDirection(
+  edges: readonly { source: string; target: string }[],
+  centers: ReadonlyMap<string, Point>,
+): ReadingDirection {
+  let across = 0
+  let down = 0
+  for (const edge of edges) {
+    const source = centers.get(edge.source)
+    const target = centers.get(edge.target)
+    if (!source || !target) continue
+    across += Math.abs(target.x - source.x)
+    down += Math.abs(target.y - source.y)
+  }
+  const points = [...centers.values()]
+  if (across === 0 && down === 0 && points.length > 0) {
+    across = Math.max(...points.map((point) => point.x)) - Math.min(...points.map((point) => point.x))
+    down = Math.max(...points.map((point) => point.y)) - Math.min(...points.map((point) => point.y))
+  }
+  return down > across ? 'TD' : 'LR'
+}
+
+/**
+ * Sorts nodes in the order that a reader follows the diagram.
+ *
+ * The direction is `LR` unless the edges between the nodes run mostly down. The nodes follow the direction by their
+ * centres.
+ *
+ * @param byId - All nodes of the diagram, to find the positions of the parent groups.
+ */
+export function readingOrder<T extends DiagramNode>(
+  nodes: readonly T[],
+  edges: readonly { source: string; target: string }[],
+  byId: ReadonlyMap<string, DiagramNode> = new Map(nodes.map((node) => [node.id, node])),
+): { direction: ReadingDirection; nodes: T[] } {
+  const centers = new Map<string, Point>()
+  for (const node of nodes) {
+    const position = absolutePosition(node, byId)
+    const size = estimateSize(node)
+    centers.set(node.id, { x: position.x + size.width / 2, y: position.y + size.height / 2 })
+  }
+  const direction = chooseDirection(edges, centers)
+  const along = (point: Point): [number, number] => (direction === 'LR' ? [point.x, point.y] : [point.y, point.x])
+  const sorted = nodes.toSorted((a, b) => {
+    const [a1, a2] = along(centers.get(a.id)!)
+    const [b1, b2] = along(centers.get(b.id)!)
+    return a1 - b1 || a2 - b2
+  })
+  return { direction, nodes: sorted }
+}
+
 export function relativePosition(
   absolute: { x: number; y: number },
   parentAbsolute: { x: number; y: number } | undefined,

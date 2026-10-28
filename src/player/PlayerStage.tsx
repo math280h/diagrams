@@ -34,6 +34,7 @@ import type { Diagram, Flow } from '@/model/schema'
 import type { DiagramEdge } from '@/model/types'
 import { fromDiagram } from '@/persistence/serialize'
 import { Scrubber } from './Scrubber'
+import { describeDiagram } from '@/export/describe'
 import { findPath } from '@/model/flow'
 
 const IDLE_HIDE_MS = 2600
@@ -134,6 +135,10 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
   const engine = useEngine()
   const playback = usePlaybackState()
   const initial = useMemo(() => fromDiagram(diagram), [diagram])
+  const description = useMemo(
+    () => describeDiagram({ ...initial, name: diagram.name, flows: diagram.flows }),
+    [initial, diagram],
+  )
   const [nodes, onNodesChange] = useLocalNodes(initial.nodes)
   const [edges, setEdges] = useState<DiagramEdge[]>(initial.edges)
   const [controlsVisible, setControlsVisible] = useState(true)
@@ -260,6 +265,7 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
         }
         nodesFocusable={false}
         edgesFocusable={false}
+        description={description}
       />
       <header
         className={cn(

@@ -1,12 +1,8 @@
-import { boundaryKind, boundaryKindLabel } from '@/model/boundaries'
 import { COLORS, type Color } from '@/model/colors'
-import { absolutePosition, estimateSize } from '@/model/graph'
-import { nodeLabel, nodeTitle } from '@/model/labels'
+import { readingOrder } from '@/model/graph'
+import { boundaryTitle, nodeLabel, nodeTitle } from '@/model/labels'
 import type { EdgeData, ShapeKind } from '@/model/schema'
 import type { DiagramEdge, DiagramNode } from '@/model/types'
-
-type Direction = 'LR' | 'TD'
-type Point = { x: number; y: number }
 
 const INDENT = '    '
 
@@ -92,9 +88,7 @@ function cardLines(node: Extract<DiagramNode, { type: 'card' }>): string[] {
 }
 
 function groupTitle(node: Extract<DiagramNode, { type: 'group' }>): string[] {
-  const kind = boundaryKindLabel(boundaryKind(node.data.kind))
-  const name = [kind, node.data.label].filter(Boolean).join(' ') || nodeTitle(node)
-  return [name, node.data.detail]
+  return [boundaryTitle(node), node.data.detail]
 }
 
 function nodeShape(node: Exclude<DiagramNode, { type: 'group' | 'text' }>): string {
@@ -110,24 +104,6 @@ function exportedColor(node: DiagramNode): Color | null {
   if (node.type === 'text') return null
   const color = node.data.color
   return color === 'neutral' || color === 'auto' ? null : color
-}
-
-function chooseDirection(edges: readonly DiagramEdge[], centers: ReadonlyMap<string, Point>): Direction {
-  let across = 0
-  let down = 0
-  for (const edge of edges) {
-    const source = centers.get(edge.source)
-    const target = centers.get(edge.target)
-    if (!source || !target) continue
-    across += Math.abs(target.x - source.x)
-    down += Math.abs(target.y - source.y)
-  }
-  const points = [...centers.values()]
-  if (across === 0 && down === 0 && points.length > 0) {
-    across = Math.max(...points.map((point) => point.x)) - Math.min(...points.map((point) => point.x))
-    down = Math.max(...points.map((point) => point.y)) - Math.min(...points.map((point) => point.y))
-  }
-  return down > across ? 'TD' : 'LR'
 }
 
 type Marker = EdgeData['markerEnd']
@@ -159,28 +135,16 @@ function link(data: EdgeData | undefined, start: Marker, end: Marker): string {
 export function diagramToMermaid(content: { nodes: readonly DiagramNode[]; edges: readonly DiagramEdge[] }): string {
   const byId = new Map(content.nodes.map((node) => [node.id, node]))
   const kept = content.nodes.filter((node) => node.type !== 'text')
-  const centers = new Map<string, Point>()
-  for (const node of kept) {
-    const position = absolutePosition(node, byId)
-    const size = estimateSize(node)
-    centers.set(node.id, { x: position.x + size.width / 2, y: position.y + size.height / 2 })
-  }
-  const edges = content.edges.filter((edge) => centers.has(edge.source) && centers.has(edge.target))
-  const direction = chooseDirection(edges, centers)
-
-  const along = (point: Point): [number, number] => (direction === 'LR' ? [point.x, point.y] : [point.y, point.x])
-  const ordered = kept.toSorted((a, b) => {
-    const [a1, a2] = along(centers.get(a.id)!)
-    const [b1, b2] = along(centers.get(b.id)!)
-    return a1 - b1 || a2 - b2
-  })
+  const keptIds = new Set(kept.map((node) => node.id))
+  const edges = content.edges.filter((edge) => keptIds.has(edge.source) && keptIds.has(edge.target))
+  const { direction, nodes: ordered } = readingOrder(kept, edges, byId)
   const rank = new Map(ordered.map((node, index) => [node.id, index]))
 
   const nextId = idMaker()
   const ids = new Map(ordered.map((node) => [node.id, nextId(nodeTitle(node))]))
   const children = new Map<string | undefined, DiagramNode[]>()
   for (const node of ordered) {
-    const parent = node.parentId !== undefined && centers.has(node.parentId) ? node.parentId : undefined
+    const parent = node.parentId !== undefined && keptIds.has(node.parentId) ? node.parentId : undefined
     children.set(parent, [...(children.get(parent) ?? []), node])
   }
 

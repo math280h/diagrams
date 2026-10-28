@@ -7,6 +7,7 @@ import {
   FileCode,
   FileInput,
   FileJson,
+  FileText,
   Globe,
   Link2,
   Film,
@@ -187,6 +188,9 @@ export function CommandMenu() {
           </CommandItem>
           <CommandItem onSelect={run(() => setUi({ exportOpen: 'mermaid' }))}>
             <FileCode /> Export Mermaid flowchart
+          </CommandItem>
+          <CommandItem onSelect={run(() => setUi({ exportOpen: 'text' }))}>
+            <FileText /> Copy text description
           </CommandItem>
           <CommandItem onSelect={run(() => exportDiagramJson(currentDiagram()))}>
             <FileJson /> Export diagram file

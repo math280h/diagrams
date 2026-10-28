@@ -35,3 +35,9 @@ export function nodeName(node: StoredNode | DiagramNode): string {
 export function nodeTitle(node: StoredNode | DiagramNode): string {
   return nodeName(node) || UNTITLED[node.type]
 }
+
+/** Returns the kind and the label of a boundary, for example `AWS VPC payments`, or {@link nodeTitle} without both. */
+export function boundaryTitle(node: Extract<StoredNode | DiagramNode, { type: 'group' }>): string {
+  const kind = boundaryKindLabel(boundaryKind(node.data.kind))
+  return [kind, node.data.label].filter(Boolean).join(' ') || nodeTitle(node)
+}

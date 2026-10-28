@@ -540,6 +540,21 @@ so a diagram can go into Markdown that GitHub draws. It needs no export stage.
   marker. An edge with only a start marker is written the other way round.
 - A browser test exports each template, draws it with Mermaid and imports it again.
 
+### Text description
+
+`describeDiagram` (`src/export/describe.ts`) writes a diagram as text from its data: the text on the canvas, the
+boundaries with the parts in them, the parts with their kind and lines, the connections, and each flow and path as
+numbered steps. A step names its nodes in travel order, as the log does, with its event, latency, level and caption.
+An image tells nothing to a screen reader, and the same text serves as alt text for an exported image.
+
+- The editor and the player put the description on the canvas in a visually hidden region, "Description of the
+  diagram", so that a screen reader can read the diagram and its flows. The export stage has none, so captures
+  stay the same.
+- The Text tab of the export dialog shows the text to copy or download. An SVG export, also from `render_image` and
+  the command line, carries the name as its `title` element and the text as its `desc` element.
+- The parts and the connections follow `readingOrder` (`src/model/graph.ts`), the same order as the Mermaid
+  flowchart: along the main direction of the edges.
+
 ### Web page export
 
 The Web page tab saves one HTML file that plays the diagram with no other files and no network
