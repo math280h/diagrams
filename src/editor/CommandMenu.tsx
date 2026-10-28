@@ -65,7 +65,7 @@ import { setUi, useUi } from '@/store/ui-store'
 import { tidyUp } from './layout-command'
 import { presetNodeAt } from './preset-node'
 import { useFitToScreen } from './fit'
-import { DELETE_KEY, FIT_KEYS, keyCombo } from './shortcuts'
+import { KEYS } from '@/lib/shortcut-keys'
 
 const CAPITALIZED_PREFIXES = BOUNDARY_PROVIDERS.map((provider) => provider.prefix).filter(Boolean)
 
@@ -100,10 +100,10 @@ export function CommandMenu() {
         <CommandEmpty>Nothing matches your search.</CommandEmpty>
         <CommandGroup heading="Diagram">
           <CommandItem onSelect={run(undo)}>
-            <Undo2 /> Undo <CommandShortcut>{keyCombo('Z', { mod: true })}</CommandShortcut>
+            <Undo2 /> Undo <CommandShortcut>{KEYS.undo}</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={run(redo)}>
-            <Redo2 /> Redo <CommandShortcut>{keyCombo('Z', { mod: true, shift: true })}</CommandShortcut>
+            <Redo2 /> Redo <CommandShortcut>{KEYS.redo}</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={run(() => setUi({ historyOpen: true }))}>
             <History /> Show version history
@@ -112,16 +112,16 @@ export function CommandMenu() {
             <ShieldAlert /> Show or hide sensitive data
           </CommandItem>
           <CommandItem onSelect={run(duplicateSelection)}>
-            <CopyPlus /> Duplicate selection <CommandShortcut>{keyCombo('D', { mod: true })}</CommandShortcut>
+            <CopyPlus /> Duplicate selection <CommandShortcut>{KEYS.duplicate}</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={run(groupSelection)}>
-            <Group /> Group selection <CommandShortcut>{keyCombo('G', { mod: true })}</CommandShortcut>
+            <Group /> Group selection <CommandShortcut>{KEYS.group}</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={run(deleteSelection)}>
-            <Trash2 /> Delete selection <CommandShortcut>{DELETE_KEY}</CommandShortcut>
+            <Trash2 /> Delete selection <CommandShortcut>{KEYS.delete}</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={run(fit)}>
-            <Maximize /> Fit to screen <CommandShortcut>{FIT_KEYS}</CommandShortcut>
+            <Maximize /> Fit to screen <CommandShortcut>{KEYS.fit}</CommandShortcut>
           </CommandItem>
           <CommandItem
             onSelect={run(() => {
