@@ -14,7 +14,7 @@ export interface InsertRequest {
   /** The node that the new node connects from, if a connection ended on empty canvas. */
   sourceId?: string
 }
-export type ExportKind = 'image' | 'video' | 'page' | 'mermaid' | 'json'
+export type ExportKind = 'image' | 'video' | 'page' | 'link' | 'mermaid' | 'json'
 
 interface UiState {
   activeFlowId: string | null
