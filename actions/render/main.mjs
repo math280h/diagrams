@@ -240,7 +240,7 @@ function imageLink(folder, file) {
   )
 }
 
-function publishComment(pullRequest, head, entries, intro) {
+function publishComment(pullRequest, commit, entries, intro) {
   if (!inputs.publish) return
   if (!pullRequest) {
     console.log('::notice::The event is not a pull request, so the action does not comment.')
@@ -250,7 +250,7 @@ function publishComment(pullRequest, head, entries, intro) {
     console.log('::notice::A pull request from a fork gets no image comment, because its token cannot write.')
     return
   }
-  const folder = `pr-${pullRequest.number}/${shortSha(head)}`
+  const folder = `pr-${pullRequest.number}/${shortSha(commit)}`
   const files = entries.flatMap((entry) => [entry.before, entry.after].filter(Boolean))
   if (files.length > 0) pushPreviews(folder, files, pullRequest.number)
   const linked = entries.map((entry) => ({
@@ -264,7 +264,7 @@ function publishComment(pullRequest, head, entries, intro) {
 
 function compareApps(command, baseCommand) {
   const event = env.GITHUB_EVENT_PATH ? JSON.parse(readFileSync(env.GITHUB_EVENT_PATH, 'utf8')) : {}
-  const head = run('git', ['rev-parse', 'HEAD']).stdout.trim()
+  const commit = event.pull_request?.head?.sha ?? run('git', ['rev-parse', 'HEAD']).stdout.trim()
   const files = diagramFiles({ untracked: true })
   const previews = path.join(temp, 'diagram-previews')
   setOutput('previews', [previews])
@@ -296,9 +296,9 @@ function compareApps(command, baseCommand) {
   const compared = `It compares ${files.length} diagrams with the app of the base commit.`
   const intro =
     entries.length > 0
-      ? `The diagrams that look different with this pull request, as of ${shortSha(head)}. ${compared}`
-      : `No diagram looks different with this pull request, as of ${shortSha(head)}. ${compared}`
-  publishComment(event.pull_request, head, entries, intro)
+      ? `The diagrams that look different with this pull request, as of ${shortSha(commit)}. ${compared}`
+      : `No diagram looks different with this pull request, as of ${shortSha(commit)}. ${compared}`
+  publishComment(event.pull_request, commit, entries, intro)
 }
 
 function compareImages(command) {
@@ -334,7 +334,13 @@ function compareImages(command) {
     return entry
   })
   summary(['### Changed diagrams', '', ...changes.map(({ kind, file }) => `- \`${file}\` (${kind})`)].join('\n'))
-  publishComment(pullRequest, head, entries, `The diagrams that this pull request changes, as of ${shortSha(head)}.`)
+  const commit = pullRequest.head?.sha ?? head
+  publishComment(
+    pullRequest,
+    commit,
+    entries,
+    `The diagrams that this pull request changes, as of ${shortSha(commit)}.`,
+  )
 }
 
 try {
