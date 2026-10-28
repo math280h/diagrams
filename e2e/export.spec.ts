@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { expect, test } from '@playwright/test'
+import { decode } from 'modern-gif'
 import { DIAGRAM_VERSION } from '@/model/schema'
 import { copyTemplate } from './helpers'
 
@@ -71,9 +72,16 @@ test('exports the traffic animation as a GIF', async ({ page }) => {
   await page.getByRole('combobox', { name: 'Content' }).click()
   await page.getByRole('option', { name: 'Traffic only, no flow' }).click()
   await page.getByRole('button', { name: 'GIF', exact: true }).click()
+  const frameRate = page.getByRole('group', { name: 'Frame rate' })
+  await expect(frameRate.getByRole('button', { name: '20 fps' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(frameRate.getByRole('button', { name: '15 fps' })).toHaveCount(0)
+  await frameRate.getByRole('button', { name: '10 fps' }).click()
   await page.getByRole('slider').fill('2')
   const download = page.waitForEvent('download', { timeout: 85_000 })
   await page.getByRole('button', { name: 'Export GIF' }).click()
   const bytes = await readFile(await (await download).path())
   expect(bytes.subarray(0, 6).toString()).toBe('GIF89a')
+  const frames = decode(bytes).frames
+  expect(frames.length).toBeGreaterThan(5)
+  expect(new Set(frames.map((frame) => frame.delay))).toEqual(new Set([100]))
 })
