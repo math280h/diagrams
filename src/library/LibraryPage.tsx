@@ -9,6 +9,7 @@ import {
   Megaphone,
   MoreHorizontal,
   Pencil,
+  Pause,
   Play,
   Plus,
   Search,
@@ -232,8 +233,10 @@ function FeaturedTemplate({ template, diagram }: { template: Template; diagram: 
   const reducedMotion = useReducedMotion()
   const [ref, inView] = useInView('0px')
   const [started, setStarted] = useState(false)
+  const [paused, setPaused] = useState(false)
   const playing = inView && (!reducedMotion || started)
   const flow = diagram.flows[0]
+  const showPlay = (reducedMotion && !started) || paused
 
   return (
     <div
@@ -249,9 +252,13 @@ function FeaturedTemplate({ template, diagram }: { template: Template; diagram: 
           </span>
         )}
         <span className="ml-auto" />
-        {reducedMotion && !started && flow && (
-          <Button size="sm" variant="ghost" onClick={() => setStarted(true)}>
-            <Play /> Play
+        {flow && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => (reducedMotion && !started ? setStarted(true) : setPaused(!paused))}
+          >
+            {showPlay ? <Play /> : <Pause />} {showPlay ? 'Play' : 'Pause'}
           </Button>
         )}
         <Link
@@ -263,7 +270,7 @@ function FeaturedTemplate({ template, diagram }: { template: Template; diagram: 
         </Link>
       </div>
       <div className="min-h-0 flex-1">
-        <LivePreview diagram={diagram} playing={playing} minZoom={0.5} paddingPx={20} showCaption />
+        <LivePreview diagram={diagram} playing={playing} paused={paused} minZoom={0.5} paddingPx={20} showCaption />
       </div>
     </div>
   )
