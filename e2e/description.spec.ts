@@ -13,7 +13,7 @@ test('describes the diagram for screen readers and as text to copy', async ({ pa
   await expect(canvas.locator('ol > li').first()).toHaveText('Browser: POST /orders — The shopper presses Pay.')
 
   await page.getByRole('button', { name: 'Export' }).click()
-  await page.getByRole('menuitem', { name: 'Text description' }).click()
+  await page.getByRole('menuitem', { name: 'Description (alt text)' }).click()
   const text = page.getByRole('textbox', { name: 'Text description' })
   await expect(text).toHaveValue(/^Order system\nThe diagram has 9 parts/)
   await expect(text).toHaveValue(/\n13\. Email worker: send confirmation \(120 ms\)/)

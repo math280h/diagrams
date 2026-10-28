@@ -582,36 +582,36 @@ export function ExportDialog() {
   const close = () => setUi({ exportOpen: null })
   return (
     <Dialog open={kind !== null} onOpenChange={(open) => !open && close()}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="top-[max(1rem,8dvh)] max-h-[calc(100dvh-max(1rem,8dvh)-1rem)] translate-y-0 grid-cols-[minmax(0,1fr)] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Export</DialogTitle>
-          <DialogDescription>
-            {kind === 'video'
-              ? 'Export a flow or the traffic animation as MP4, WebM or GIF. Frames render one by one, so none are dropped.'
-              : kind === 'link'
-                ? 'Share a link that plays the diagram in a browser.'
-                : kind === 'page'
-                  ? 'Save the diagram as a web page that plays its flows.'
-                  : kind === 'mermaid'
-                    ? 'Copy the diagram as a Mermaid flowchart. GitHub draws Mermaid in Markdown, for example in a README.'
-                    : kind === 'text'
-                      ? 'Copy a text description of the diagram, for example as the alt text of an image.'
-                      : kind === 'readme'
-                        ? 'Save a dark and a light image, and copy a snippet that shows the one that fits the page.'
-                        : 'Save a PNG or SVG for READMEs, pull requests and slides.'}
-          </DialogDescription>
         </DialogHeader>
         <Tabs value={kind ?? 'image'} onValueChange={(value) => setUi({ exportOpen: value as ExportKind })}>
-          <TabsList>
+          <TabsList className="max-w-full justify-start overflow-x-auto">
             <TabsTrigger value="image">Image</TabsTrigger>
             <TabsTrigger value="video">Animation</TabsTrigger>
-            <TabsTrigger value="page">Web page</TabsTrigger>
-            <TabsTrigger value="link">Link</TabsTrigger>
-            <TabsTrigger value="mermaid">Mermaid</TabsTrigger>
-            <TabsTrigger value="text">Text</TabsTrigger>
             <TabsTrigger value="readme">README</TabsTrigger>
+            <TabsTrigger value="page">Web page</TabsTrigger>
+            <TabsTrigger value="link">Share link</TabsTrigger>
+            <TabsTrigger value="mermaid">Mermaid</TabsTrigger>
+            <TabsTrigger value="text">Description</TabsTrigger>
           </TabsList>
         </Tabs>
+        <DialogDescription>
+          {kind === 'video'
+            ? 'Export a flow or the traffic animation as MP4, WebM or GIF. Frames render one by one, so none are dropped.'
+            : kind === 'link'
+              ? 'Share a link that plays the diagram in a browser.'
+              : kind === 'page'
+                ? 'Save the diagram as a web page that plays its flows.'
+                : kind === 'mermaid'
+                  ? 'Copy the diagram as a Mermaid flowchart. GitHub draws Mermaid in Markdown, for example in a README.'
+                  : kind === 'text'
+                    ? 'Copy a text description of the diagram, for example as the alt text of an image.'
+                    : kind === 'readme'
+                      ? 'Save a dark and a light image, and copy a snippet that shows the one that fits the page.'
+                      : 'Save a PNG or SVG for READMEs, pull requests and slides.'}
+        </DialogDescription>
         {kind === 'image' && <ImageExport onClose={close} />}
         {kind === 'video' && <VideoExport onClose={close} />}
         {kind === 'page' && <HtmlExport onClose={close} />}
