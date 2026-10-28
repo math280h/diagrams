@@ -202,6 +202,7 @@ An icon name is either a Lucide name (`database`) or a set icon with a prefix: `
 ## Architecture
 
 ```
+actions/render/ GitHub Action that renders diagram files and comments on pull requests
 electron/       desktop main process: window, app protocol, IPC, diagram files, agent server, deep links
 claude-plugin/  agent skills and the Claude Code plugin manifest, bundled into the main process
 src/
@@ -768,6 +769,25 @@ quit, so that scripts and CI can redraw diagram images without a person. It uses
   agent token of the app. On Windows, Chromium holds files in the folder until the process stops, so the next render
   deletes folders older than one hour.
 - Chromium needs a display. On Linux CI, run the app under `xvfb-run`.
+
+### Render action
+
+`actions/render` is a composite GitHub Action around the command-line render, so a repository keeps its diagram
+images current without a person. `main.mjs` does the work in Node, and `lib.mjs` holds the parts that tests cover
+(file patterns, image paths, the comment).
+
+- It downloads the Linux AppImage of a release with `gh` and the job token, and unpacks it, because GitHub runners have
+  no FUSE. It runs the app under `xvfb-run` when there is no display. When the system does not allow unprivileged
+  user namespaces, Chromium has no sandbox there, so the app gets `--no-sandbox`. The `app` input replaces the
+  download; this repository's CI uses it with the build from source.
+- Only files that git tracks count (`git ls-files` with glob pathspecs), so `node_modules` and build output stay out.
+- Write mode renders each file next to it and gives the image paths as an output. Committing them is a step of the
+  workflow, so the workflow decides the branch and the message.
+- Compare mode diffs the base commit of the pull request with the checkout and renders each added, changed or removed
+  diagram before and after. GitHub has no API to attach an image to a comment, so the action commits the images to the
+  `diagram-previews` branch under `pr-<number>/<commit>/` and links them with `?raw=true`, which works in private
+  repositories for people who can read them. It updates its one comment, found by a marker, at each push. The token
+  goes to git through `GIT_CONFIG_*` variables, not the command line, and the log masks it.
 
 ### Skills
 

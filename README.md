@@ -101,6 +101,59 @@ render fails and 2 for a wrong command line.
 - **Linux**: `diagrams --render ...` from the `.deb`, or the `.AppImage` file. Without a display, for example in CI,
   run it under `xvfb-run`.
 
+### Keep diagram images up to date with GitHub Actions
+
+The action `math280h/diagrams/actions/render` downloads the newest Linux release of the app and renders the diagram
+files in a repository (`**/*.diagram.json`, only files that git tracks). It runs on Linux runners. Pin `@main` to a
+release tag or a commit.
+
+Redraw the images when a diagram changes on `main`. The action writes `docs/orders.png` next to
+`docs/orders.diagram.json`, and the last step commits the images:
+
+```yaml
+on:
+  push:
+    branches: [main]
+    paths: ['**/*.diagram.json']
+permissions:
+  contents: write
+jobs:
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: math280h/diagrams/actions/render@main
+      - run: |
+          git add -- '*.png'
+          git diff --cached --quiet && exit 0
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Redraw the diagram images'
+          git push
+```
+
+On a pull request, the action renders each diagram that the pull request changes, as it was and as it is, and keeps
+one comment on the pull request with the images side by side:
+
+```yaml
+on: pull_request
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  diagrams:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: math280h/diagrams/actions/render@main
+```
+
+The images of the comments go to the branch `diagram-previews`, because GitHub shows images in a comment only from an
+address. You can delete the branch at any time; the comments then lose their images. A pull request from a fork gets
+no comment, because its token cannot write. Other inputs: `files`, `format` (`png` or `svg`), `theme`, `max-size`,
+`mode` (`write`, `compare` or `auto`), `publish`, `preview-branch`, `version` and `app` (see
+[`actions/render/action.yml`](actions/render/action.yml)).
+
 ## Development
 
 ```sh

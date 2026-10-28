@@ -1,0 +1,66 @@
+name: Render diagrams
+description: Renders Diagrams files to images, and shows the images before and after on a pull request.
+branding:
+  icon: image
+  color: blue
+
+inputs:
+  files:
+    description: Glob patterns of the diagram files, one for each line. Only files that git tracks count.
+    default: '**/*.diagram.json'
+  format:
+    description: The image format, png or svg.
+    default: png
+  theme:
+    description: dark or light. Without it, each diagram uses its own theme.
+    default: ''
+  max-size:
+    description: The longest side of an image, in pixels. Without it, an image is at most 2048 pixels.
+    default: ''
+  mode:
+    description: >-
+      write renders each diagram to an image next to its file, for example docs/orders.diagram.json to docs/orders.png.
+      compare renders each diagram that a pull request changes as it was and as it is, and comments on the pull
+      request. auto uses compare on pull_request events and write on other events.
+    default: auto
+  publish:
+    description: In compare mode, false keeps the images on the runner and does not push or comment.
+    default: 'true'
+  preview-branch:
+    description: In compare mode, the branch that holds the images of the comments.
+    default: diagram-previews
+  version:
+    description: The Diagrams release to download, for example v0.2.0, or latest.
+    default: latest
+  app:
+    description: A command that starts Diagrams, for example a build from source. With it, the action downloads nothing.
+    default: ''
+  token:
+    description: The token that downloads the app, pushes the images and comments.
+    default: ${{ github.token }}
+
+outputs:
+  images:
+    description: In write mode, the images that the action wrote, one for each line.
+    value: ${{ steps.render.outputs.images }}
+  previews:
+    description: In compare mode, the folder with the before and after images.
+    value: ${{ steps.render.outputs.previews }}
+
+runs:
+  using: composite
+  steps:
+    - id: render
+      shell: bash
+      run: node "$GITHUB_ACTION_PATH/main.mjs"
+      env:
+        INPUT_FILES: ${{ inputs.files }}
+        INPUT_FORMAT: ${{ inputs.format }}
+        INPUT_THEME: ${{ inputs.theme }}
+        INPUT_MAX_SIZE: ${{ inputs.max-size }}
+        INPUT_MODE: ${{ inputs.mode }}
+        INPUT_PUBLISH: ${{ inputs.publish }}
+        INPUT_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_APP: ${{ inputs.app }}
+        INPUT_TOKEN: ${{ inputs.token }}

@@ -68,6 +68,24 @@ jobs:
       - name: Desktop end-to-end tests
         if: runner.os == 'Linux'
         run: xvfb-run --auto-servernum pnpm e2e:desktop
+      - name: Test the render action
+        if: runner.os == 'Linux'
+        uses: ./actions/render
+        with:
+          files: actions/render/fixtures/*.diagram.json
+          mode: write
+          app: node_modules/.bin/electron .
+      - name: Check the image of the render action
+        if: runner.os == 'Linux'
+        run: test -s actions/render/fixtures/orders.png
+      - name: Test the render action on the pull request
+        if: runner.os == 'Linux' && github.event_name == 'pull_request'
+        uses: ./actions/render
+        with:
+          files: actions/render/fixtures/*.diagram.json
+          mode: compare
+          publish: 'false'
+          app: node_modules/.bin/electron .
       - name: Package the app without installers
         run: pnpm exec electron-builder --dir --publish never
       - name: Test the packaged app
