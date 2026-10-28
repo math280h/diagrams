@@ -611,6 +611,10 @@ the handoff from the website, and updates from GitHub Releases.
   executable or the bundle.
 - The window saves its position, size and maximized state. It opens on a connected screen and
   shrinks to fit when the saved screen is gone.
+- The desktop end-to-end tests and the package smoke test set `DIAGRAMS_HIDE_WINDOW`, so no window opens on the
+  screen while they run. The window never shows, has no taskbar button, and does not come to the front. With
+  `offscreen`, the page renders at the full frame rate without a native window. Chromium throttles a hidden native
+  window to a few frames each second, so only the test of rendering in a minimized window uses `native`.
 
 ### Storage
 
