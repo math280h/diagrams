@@ -1,3 +1,4 @@
+import builtReleases from 'virtual:release-notes'
 import { RELEASES_API_URL, REPOSITORY_URL } from '@/desktop/constants'
 
 const LOOKUP_TIMEOUT_MS = 8000
@@ -63,11 +64,12 @@ export function parseReleases(data: unknown, previews = false): Release[] {
 export class ReleaseLookupError extends Error {}
 
 /**
- * Loads the release notes from GitHub.
+ * Returns the release notes of the build, or loads them from GitHub if the build has none.
  *
  * @throws ReleaseLookupError If GitHub does not answer or answers with an error.
  */
 export async function loadReleases(): Promise<Release[]> {
+  if (builtReleases) return parseReleases(builtReleases, isPreviewSite())
   let response: Response
   try {
     response = await fetch(RELEASES_API_URL, {

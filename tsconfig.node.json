@@ -23,6 +23,8 @@
     "vite.electron.config.ts",
     "scripts/third-party-licenses.ts",
     "scripts/standalone-player.ts",
+    "scripts/release-notes.ts",
+    "scripts/release-notes.test.ts",
     "electron-builder.ts"
   ]
 }
