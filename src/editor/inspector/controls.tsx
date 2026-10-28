@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { createContext, use, useId, type ReactNode } from 'react'
 import {
   Select,
   SelectContent,
@@ -29,11 +29,18 @@ export function Section({ title, children, action }: { title: string; children: 
   )
 }
 
+const FieldLabelContext = createContext<string | undefined>(undefined)
+
 export function Field({ label, children }: { label: string; children: ReactNode }) {
+  const labelId = useId()
   return (
     <div role="group" aria-label={label} className="grid min-h-7 grid-cols-[72px_minmax(0,1fr)] items-center gap-2">
-      <span className="truncate text-xs text-muted-foreground">{label}</span>
-      <div className="min-w-0">{children}</div>
+      <span id={labelId} className="truncate text-xs text-muted-foreground">
+        {label}
+      </span>
+      <div className="min-w-0">
+        <FieldLabelContext value={labelId}>{children}</FieldLabelContext>
+      </div>
     </div>
   )
 }
@@ -65,6 +72,7 @@ export function Choice<T extends string>({
 }) {
   const items = groups ? groups.flatMap((group) => group.options) : options
   const selected = items.find((option) => option.value === value)?.label
+  const labelId = use(FieldLabelContext)
   const renderItem = (option: ChoiceOption<T>) => (
     <SelectItem key={option.value} value={option.value} className="text-xs">
       {option.label}
@@ -75,6 +83,7 @@ export function Choice<T extends string>({
       <SelectTrigger
         size="sm"
         aria-label={label}
+        aria-labelledby={label ? undefined : labelId}
         title={selected}
         className={cn('w-full min-w-0 rounded-lg px-2 text-xs', className)}
       >
@@ -109,9 +118,11 @@ export function TextInput({
   autoFocus?: boolean
   className?: string
 }) {
+  const labelId = use(FieldLabelContext)
   return (
     <Input
       value={value}
+      aria-labelledby={labelId}
       placeholder={placeholder}
       autoFocus={autoFocus}
       spellCheck={false}
@@ -135,9 +146,11 @@ export function Segmented<T extends string>({
   label?: string
   className?: string
 }) {
+  const labelId = use(FieldLabelContext)
   return (
     <ToggleGroup
       aria-label={label}
+      aria-labelledby={label ? undefined : labelId}
       value={value === null ? [] : [value]}
       onValueChange={(next) => {
         const picked = options.find((option) => option.value === next[0])

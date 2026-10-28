@@ -363,7 +363,7 @@ export function LibraryPage() {
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <main className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-6xl px-4 pb-24 sm:px-6">
           {firstRun ? (
             <>
@@ -459,7 +459,7 @@ export function LibraryPage() {
             </footer>
           )}
         </div>
-      </div>
+      </main>
 
       <ImportDialog
         open={importOpen}

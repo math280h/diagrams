@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { EngineProvider } from '@/engine/context'
 import { loadDiagramOrNull } from '@/persistence/active-repository'
 import { storageCopy } from '@/persistence/storage-copy'
+import { useDocumentTitle } from '@/lib/use-document-title'
 import { PlayerStage } from './PlayerStage'
 
 export function PlayerPage() {
@@ -12,6 +13,7 @@ export function PlayerPage() {
   const { flow, from } = useSearch({ from: '/p/$diagramId' })
   const navigate = useNavigate()
   const diagram = useMemo(() => loadDiagramOrNull(diagramId), [diagramId])
+  useDocumentTitle(diagram ? `${diagram.name}, Present` : null)
   const exit = useCallback(() => void navigate({ to: '/d/$diagramId', params: { diagramId } }), [navigate, diagramId])
   const parent = useMemo(() => (from ? loadDiagramOrNull(from) : null), [from])
   const openDiagram = useCallback(

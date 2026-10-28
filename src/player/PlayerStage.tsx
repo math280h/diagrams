@@ -265,24 +265,26 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
         leaving && 'opacity-0',
       )}
     >
-      <DiagramCanvas
-        nodes={nodes}
-        edges={edges}
-        theme={{ ...diagram.theme, background: 'none' }}
-        resolvedTheme={resolvedTheme}
-        editable={false}
-        details
-        onOpenDiagram={onOpenDiagram ? openDiagram : undefined}
-        fitView
-        fitViewOptions={{ padding: 0.14, maxZoom: 1.2 }}
-        onNodesChange={onNodesChange}
-        onEdgesChange={(changes: EdgeChange<DiagramEdge>[]) =>
-          setEdges((current) => applyEdgeChanges(changes, current))
-        }
-        nodesFocusable={false}
-        edgesFocusable={false}
-        description={description}
-      />
+      <main className="h-full w-full">
+        <DiagramCanvas
+          nodes={nodes}
+          edges={edges}
+          theme={{ ...diagram.theme, background: 'none' }}
+          resolvedTheme={resolvedTheme}
+          editable={false}
+          details
+          onOpenDiagram={onOpenDiagram ? openDiagram : undefined}
+          fitView
+          fitViewOptions={{ padding: 0.14, maxZoom: 1.2 }}
+          onNodesChange={onNodesChange}
+          onEdgesChange={(changes: EdgeChange<DiagramEdge>[]) =>
+            setEdges((current) => applyEdgeChanges(changes, current))
+          }
+          nodesFocusable={false}
+          edgesFocusable={false}
+          description={description}
+        />
+      </main>
       <header
         className={cn(
           'dg-titlebar absolute inset-x-0 top-0 z-10 flex h-11 items-center gap-1 border-b bg-panel px-1.5 transition-opacity duration-300',

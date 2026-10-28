@@ -809,6 +809,13 @@
 .dg-edge-path[data-stroke='dotted'] {
   stroke-dasharray: 0.5 4;
 }
+.react-flow__edge:focus-visible {
+  outline: none;
+}
+.react-flow__edge:focus-visible .dg-edge-path {
+  stroke: var(--dg-select);
+  stroke-width: 3px;
+}
 .react-flow__edge.selected .dg-edge-path {
   stroke: var(--dg-select);
 }
@@ -858,9 +865,6 @@
 .dg-edge-label[data-selected='true'] {
   color: var(--dg-select);
   outline: 1px dashed var(--dg-select);
-}
-.dg-edge-fields {
-  opacity: 0.7;
 }
 .dg-edge-fields[data-after-label] {
   margin-left: 0.5ch;
