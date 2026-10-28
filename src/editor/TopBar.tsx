@@ -1,6 +1,7 @@
 import { Link, useNavigate } from '@tanstack/react-router'
 import {
   AppWindow,
+  BookOpen,
   ChevronDown,
   Command,
   Download,
@@ -253,6 +254,9 @@ export function TopBar() {
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setUi({ exportOpen: 'video' })}>
               <Film /> Animation (MP4, WebM, GIF)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setUi({ exportOpen: 'readme' })}>
+              <BookOpen /> README images (dark and light)
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setUi({ exportOpen: 'page' })}>
               <Globe /> Web page (HTML)

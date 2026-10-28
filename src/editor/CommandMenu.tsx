@@ -1,6 +1,7 @@
 import { useNavigate } from '@tanstack/react-router'
 import { useReactFlow } from '@xyflow/react'
 import {
+  BookOpen,
   Bot,
   CopyPlus,
   Download,
@@ -179,6 +180,9 @@ export function CommandMenu() {
           </CommandItem>
           <CommandItem onSelect={run(() => setUi({ exportOpen: 'video' }))}>
             <Film /> Export animation
+          </CommandItem>
+          <CommandItem onSelect={run(() => setUi({ exportOpen: 'readme' }))}>
+            <BookOpen /> Export README images
           </CommandItem>
           <CommandItem onSelect={run(() => setUi({ exportOpen: 'page' }))}>
             <Globe /> Export web page

@@ -245,3 +245,23 @@ export async function svgWithDescription(svg: Blob, description: DiagramDescript
   const elements = `<title>${escapeXml(description.name)}</title><desc>${escapeXml(descriptionText(description))}</desc>`
   return new Blob([text.slice(0, at), elements, text.slice(at)], { type: svg.type || 'image/svg+xml' })
 }
+
+function sentence(text: string): string {
+  return /[.!?]$/.test(text) ? text : `${text}.`
+}
+
+/** Writes a description as one paragraph without line breaks, for example for the `alt` attribute of an image. */
+export function descriptionParagraph(description: DiagramDescription): string {
+  return [
+    sentence(description.name),
+    description.summary,
+    ...description.sections.map((section) => {
+      const items = section.numbered
+        ? section.items.map((item, index) => `${index + 1}. ${sentence(item)}`).join(' ')
+        : section.items.length > 0
+          ? sentence(section.items.join('; '))
+          : ''
+      return [`${section.title}:`, items, section.end].filter(Boolean).join(' ')
+    }),
+  ].join(' ')
+}
