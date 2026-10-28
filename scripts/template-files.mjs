@@ -11,6 +11,20 @@ import path from 'node:path'
 import { it } from 'vitest'
 import { TEMPLATES, templateDiagrams } from '@/templates'
 
+function stableJson(built: object): string {
+  const diagram = { ...built, createdAt: 0, updatedAt: 0 }
+  const ids: string[] = []
+  JSON.stringify(diagram, (key, value) => {
+    if (key === 'id' && typeof value === 'string' && !ids.includes(value)) ids.push(value)
+    return value
+  })
+  let text = JSON.stringify(diagram, null, 2)
+  ids.forEach((id, index) => {
+    text = text.replaceAll(JSON.stringify(id), JSON.stringify('id-' + (index + 1)))
+  })
+  return text
+}
+
 it('writes each template and the diagrams that it opens as diagram files in the dark and the light theme', () => {
   const out = process.env.TEMPLATE_FILES_DIR!
   for (const template of TEMPLATES) {
@@ -18,7 +32,7 @@ it('writes each template and the diagrams that it opens as diagram files in the 
       templateDiagrams(template).forEach((diagram, index) => {
         diagram.theme.mode = mode
         const name = index === 0 ? template.id : \`\${template.id}.\${diagram.id}\`
-        writeFileSync(path.join(out, \`\${name}.\${mode}.diagram.json\`), JSON.stringify(diagram, null, 2))
+        writeFileSync(path.join(out, \`\${name}.\${mode}.diagram.json\`), stableJson(diagram))
       })
     }
   }

@@ -888,7 +888,9 @@ images current without a person. `main.mjs` does the work in Node, and `lib.mjs`
   changes drawing code, templates or dependencies, it builds the app of the pull request and the app of the base
   commit, writes each template as a dark and a light diagram file with the code of each commit
   (`scripts/template-files.mjs` of the pull request into `.diagram-previews/`, the one of the base commit into
-  `base/.diagram-previews/`), and compares them. A change to a template then shows too.
+  `base/.diagram-previews/`), and compares them. A change to a template then shows too. A template gets new random
+  ids at each build, and the traffic animation places the particles of an edge from a hash of its id, so the script
+  numbers the ids in order and sets the times to 0: an unchanged template gives the same file in both commits.
 
 ### Skills
 
