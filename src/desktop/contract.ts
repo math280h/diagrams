@@ -1,9 +1,11 @@
 export interface StoredFile {
   id: string
   text: string
+  /** The file of a diagram that lives outside the diagrams folder. */
+  path?: string
 }
 
-export type FileChange = { kind: 'changed'; id: string; text: string } | { kind: 'removed'; id: string }
+export type FileChange = { kind: 'changed'; id: string; text: string; path?: string } | { kind: 'removed'; id: string }
 
 export type AgentState = 'starting' | 'running' | 'port-in-use' | 'failed'
 
@@ -43,6 +45,14 @@ export interface MainRequests {
   'files.write': { input: StoredFile; output: null }
   'files.remove': { input: { id: string; trash: boolean }; output: null }
   'files.reveal': { input: null; output: null }
+  /** Asks the user for diagram files anywhere and links them, so that the app saves them where they are. */
+  'files.open': { input: null; output: StoredFile[] }
+  /** Asks the user where to save a new diagram file, writes it there and links it. `null` means that the user cancelled. */
+  'files.saveAs': { input: { name: string; text: string }; output: StoredFile | null }
+  /** Shows a linked file in the file manager. */
+  'files.show': { input: { id: string }; output: null }
+  /** Returns a linked file as the last commit of its git repository holds it. */
+  'files.committed': { input: { id: string }; output: { text: string } }
   'agent.info': { input: null; output: AgentInfo }
   'agent.resetToken': { input: null; output: AgentInfo }
   'window.setTitleBarColors': { input: { color: string; symbolColor: string }; output: null }

@@ -6,7 +6,9 @@ import {
   Download,
   Film,
   FileCode,
+  FileCode2,
   FileJson,
+  FolderOutput,
   Globe,
   History,
   Image,
@@ -46,6 +48,11 @@ import { useVersions } from '@/store/versions'
 import { StylePanel } from './inspector/DiagramInspector'
 import { openInsertAtCenter } from './insert'
 import { keyCombo } from './shortcuts'
+import { toast } from 'sonner'
+import { errorMessage } from '@/lib/error-message'
+import { isDesktop } from '@/desktop/bridge'
+import { saveDiagramAsFile, showDiagramFile } from '@/desktop/linked-files'
+import { useLibrary } from '@/store/library-store'
 
 function IconButton({
   label,
@@ -112,6 +119,33 @@ function NameField() {
   )
 }
 
+function LinkedFileMark({ id }: { id: string | null }) {
+  const file = useLibrary((state) => state.items.find((item) => item.id === id)?.path)
+  if (!id || !file) return null
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button variant="ghost" size="icon-sm" aria-label={`Saved in ${file}`} onClick={() => showDiagramFile(id)} />
+        }
+      >
+        <FileCode2 />
+      </TooltipTrigger>
+      <TooltipContent>Saved in {file}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+async function saveAsFile(navigateTo: (id: string) => void) {
+  flushPendingSave()
+  try {
+    const id = await saveDiagramAsFile(currentDiagram())
+    if (id) navigateTo(id)
+  } catch (error) {
+    toast.error('The file could not be saved.', { description: errorMessage(error) })
+  }
+}
+
 export function TopBar() {
   const navigate = useNavigate()
   const id = useDoc((state) => state.id)
@@ -135,6 +169,7 @@ export function TopBar() {
       </Tooltip>
       <div inert={previewing} className="flex min-w-0 items-center gap-1 max-sm:flex-1 inert:opacity-50">
         <NameField />
+        <LinkedFileMark id={id} />
         <Separator orientation="vertical" className="mx-1 h-5 max-sm:hidden data-vertical:self-center" />
         <IconButton label="Undo" shortcut={keyCombo('Z', { mod: true })} onClick={undo} disabled={!canUndo}>
           <Undo2 />
@@ -227,6 +262,15 @@ export function TopBar() {
             <DropdownMenuItem onClick={() => exportDiagramJson(currentDiagram())}>
               <FileJson /> Diagram file (JSON)
             </DropdownMenuItem>
+            {isDesktop() && (
+              <DropdownMenuItem
+                onClick={() =>
+                  void saveAsFile((diagramId) => void navigate({ to: '/d/$diagramId', params: { diagramId } }))
+                }
+              >
+                <FolderOutput /> Save as a file…
+              </DropdownMenuItem>
+            )}
             {canOpenInApp() && (
               <>
                 <DropdownMenuSeparator />

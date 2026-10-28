@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
-import { app, session, shell } from 'electron'
+import { app, dialog, session, shell } from 'electron'
 import electronUpdater from 'electron-updater'
 import {
   AGENT_ENDPOINT,
@@ -9,6 +9,7 @@ import {
   CLAUDE_MARKETPLACE_FOLDER,
   DEEP_LINK_SCHEME,
   DEV_ORIGINS,
+  DIAGRAM_FILE_SUFFIX,
   HANDOFF_TTL_MS,
   WEBSITE_ORIGIN,
 } from '@/desktop/constants'
@@ -24,7 +25,9 @@ import { registerIpc } from './ipc'
 import { configurePaths, diagramsFolder, iconPath, rendererFolder } from './paths'
 import { createRendererRpc } from './renderer-rpc'
 import { createDiagramFiles } from './storage/diagram-files'
-import { watchDiagramFolder } from './storage/watcher'
+import { committedText } from './storage/git'
+import { createLinkedFiles, isLinkedId } from './storage/linked-files'
+import { watchDiagramFolder, watchLinkedFiles } from './storage/watcher'
 import { createUpdates, updatePolicy, type UpdatePolicy } from './updates'
 import {
   createMainWindow,
@@ -117,6 +120,13 @@ async function start() {
   const files = createDiagramFiles(diagramsFolder(), { trash: (file) => shell.trashItem(file) })
   const rpc = createRendererRpc()
   const watcher = watchDiagramFolder(files, (change) => rpc.emit('files.changed', change))
+  const linked = createLinkedFiles(path.join(userData, 'linked-files.json'))
+  const linkedWatcher = watchLinkedFiles(linked, (change) => rpc.emit('files.changed', change))
+  const linkedPath = (id: string) => {
+    const file = linked.pathOf(id)
+    if (!file) throw new Error('This diagram is not a linked file.')
+    return file
+  }
   const skills = loadSkills(bundledSkillFiles())
   let token = loadToken(userData)
   let agent: AgentInfo = {
@@ -160,15 +170,51 @@ async function start() {
 
   registerIpc(
     {
-      'files.list': async () => ({ folder: files.folder, files: await files.readAll() }),
+      'files.list': async () => {
+        const [inFolder, outside] = await Promise.all([files.readAll(), linked.readAll()])
+        linkedWatcher.sync()
+        return { folder: files.folder, files: [...inFolder, ...outside] }
+      },
       'files.write': async ({ id, text }) => {
-        await files.write(id, text)
+        await (isLinkedId(id) ? linked.write(id, text) : files.write(id, text))
         return null
       },
       'files.remove': async ({ id, trash }) => {
-        await files.remove(id, { trash })
+        await (isLinkedId(id) ? linked.unlink(id) : files.remove(id, { trash }))
+        linkedWatcher.sync()
         return null
       },
+      'files.open': async () => {
+        const window = currentWindow()
+        const options = {
+          title: 'Open diagram files',
+          properties: ['openFile', 'multiSelections'] as ('openFile' | 'multiSelections')[],
+          filters: [{ name: 'Diagram files', extensions: ['json'] }],
+        }
+        const picked = window ? await dialog.showOpenDialog(window, options) : await dialog.showOpenDialog(options)
+        if (picked.canceled) return []
+        const opened = await Promise.all(picked.filePaths.map((file) => linked.link(file)))
+        linkedWatcher.sync()
+        return opened
+      },
+      'files.saveAs': async ({ name, text }) => {
+        const window = currentWindow()
+        const options = {
+          title: 'Save the diagram as a file',
+          defaultPath: `${name.replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'Diagram'}${DIAGRAM_FILE_SUFFIX}`,
+          filters: [{ name: 'Diagram files', extensions: ['json'] }],
+        }
+        const picked = window ? await dialog.showSaveDialog(window, options) : await dialog.showSaveDialog(options)
+        if (picked.canceled || !picked.filePath) return null
+        const created = await linked.create(picked.filePath, text)
+        linkedWatcher.sync()
+        return created
+      },
+      'files.show': async ({ id }) => {
+        shell.showItemInFolder(linkedPath(id))
+        return null
+      },
+      'files.committed': async ({ id }) => ({ text: await committedText(linkedPath(id)) }),
       'files.reveal': async () => {
         await shell.openPath(files.folder)
         return null
@@ -199,15 +245,19 @@ async function start() {
     attach: (contents) => rpc.attach(contents),
     beforeClose: async () => {
       await rpc.call('app.flush', null, { timeoutMs: FLUSH_TIMEOUT_MS }).catch(() => undefined)
-      await files.drain()
+      await Promise.all([files.drain(), linked.drain()])
     },
-    focused: () => watcher.rescan(),
+    focused: () => {
+      watcher.rescan()
+      linkedWatcher.rescan()
+    },
     navigated: (state) => rpc.emit('window.navigation', state),
   })
 
   app.on('will-quit', () => {
     updates.stop()
     watcher.stop()
+    linkedWatcher.stop()
     void server.stop()
   })
 
