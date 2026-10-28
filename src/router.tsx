@@ -23,7 +23,7 @@ const editorRoute = createRoute({
 const playerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/p/$diagramId',
-  validateSearch: z.object({ flow: z.string().optional() }),
+  validateSearch: z.object({ flow: z.string().optional(), from: z.string().optional() }),
   component: lazyRouteComponent(() => import('./player/PlayerPage'), 'PlayerPage'),
 })
 

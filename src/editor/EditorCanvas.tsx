@@ -35,6 +35,8 @@ import { editorFit, NARROW_SCREEN_PX } from './fit'
 import { bindInsertProjection } from './insert'
 import { lastPointer } from './pointer'
 import { ZoomControls } from './ZoomControls'
+import { useNavigate } from '@tanstack/react-router'
+import { flushPendingSave } from '@/store/document'
 
 function isDefaultViewport(viewport: Viewport): boolean {
   return viewport.x === 0 && viewport.y === 0 && viewport.zoom === 1
@@ -67,6 +69,14 @@ export function EditorCanvas() {
   const [dragging, setDragging] = useState(false)
   const [contextTarget, setContextTarget] = useState<ContextTarget>({ kind: 'pane' })
   const { screenToFlowPosition } = useReactFlow()
+  const navigate = useNavigate()
+  const openDiagram = useCallback(
+    (diagramId: string) => {
+      flushPendingSave()
+      void navigate({ to: '/d/$diagramId', params: { diagramId } })
+    },
+    [navigate],
+  )
 
   useEffect(() => {
     bindInsertProjection(screenToFlowPosition)
@@ -154,6 +164,7 @@ export function EditorCanvas() {
           theme={theme}
           resolvedTheme={resolvedTheme}
           editable={!previewing}
+          onOpenDiagram={openDiagram}
           showCaption={false}
           defaultViewport={initialViewport}
           fitView={nodes.length > 0 && isDefaultViewport(initialViewport) && !narrow}

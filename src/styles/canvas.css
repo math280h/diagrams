@@ -1186,3 +1186,29 @@
     center / contain no-repeat;
   pointer-events: none;
 }
+
+.dg-open {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-left: auto;
+  padding: 0;
+  color: var(--dg-muted);
+  background: none;
+  border: 1px solid var(--dg-line);
+  border-radius: 5px;
+  cursor: pointer;
+}
+.dg-open:hover {
+  color: var(--dg-text);
+  background: var(--dg-raised);
+}
+.dg-open svg {
+  width: 12px;
+  height: 12px;
+}
+.dg-canvas[data-export] .dg-open {
+  display: none;
+}

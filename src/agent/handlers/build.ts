@@ -17,6 +17,7 @@ import {
   newId,
 } from '@/model/defaults'
 import { safeLinkUrl } from '@/model/details'
+import { loadDiagramOrNull } from '@/persistence/active-repository'
 import { DEFAULT_NODE_SIZE, ELEMENT_Z } from '@/model/graph'
 import { fieldIssues, fieldsFromExample, mergeFields, PayloadJsonError, type PayloadPart } from '@/model/payload'
 import { defaultShapeSize } from '@/model/presets'
@@ -43,10 +44,10 @@ const OPPOSITE: Record<Side, Side> = { top: 'bottom', bottom: 'top', left: 'righ
 const DETAIL_FIELDS = ['description', 'owner', 'links'] as const
 
 const FIELDS_BY_KIND = {
-  card: ['form', 'lines', 'badge', 'status', 'color', 'pinned', ...DETAIL_FIELDS],
+  card: ['form', 'lines', 'badge', 'status', 'color', 'pinned', 'opens', ...DETAIL_FIELDS],
   shape: ['shape', 'color', 'pinned', ...DETAIL_FIELDS],
   text: ['textSize', 'pinned'],
-  group: ['boundary', 'detail', 'color', 'pinned', ...DETAIL_FIELDS],
+  group: ['boundary', 'detail', 'color', 'pinned', 'opens', ...DETAIL_FIELDS],
 } as const satisfies Record<DiagramNode['type'], readonly (keyof NodeInput)[]>
 
 const KIND_FIELDS = new Set(Object.values(FIELDS_BY_KIND).flat())
@@ -119,6 +120,18 @@ function detailsFrom(
   }
 }
 
+/**
+ * Returns the data field for the diagram that a node opens, or no field if the diagram does not exist. An empty string
+ * opens nothing.
+ */
+function opensField(opens: string | null | undefined, label: string, warnings: string[]): { opens?: string } {
+  if (opens === undefined) return {}
+  if (opens === null) return { opens: '' }
+  if (loadDiagramOrNull(opens)) return { opens }
+  warnings.push(`No diagram has the id "${opens}", so "${label}" opens nothing. Find ids with list_diagrams.`)
+  return {}
+}
+
 function pinnedField(pinned: boolean | undefined): { pinned?: boolean } {
   return pinned === undefined ? {} : { pinned }
 }
@@ -163,6 +176,7 @@ export function buildNode(
           color: nodeColor(input.color) ?? 'neutral',
           details: detailsFrom(input, emptyDetails(), input.label, warnings) ?? emptyDetails(),
           ...pinnedField(input.pinned),
+          ...opensField(input.opens, input.label, warnings),
         }),
       }
     case 'shape': {
@@ -212,6 +226,7 @@ export function buildNode(
           color: input.color ?? 'auto',
           details: detailsFrom(input, emptyDetails(), input.label, warnings) ?? emptyDetails(),
           ...pinnedField(input.pinned),
+          ...opensField(input.opens, input.label, warnings),
         }),
       }
     }
@@ -238,6 +253,7 @@ export function nodeDataPatch(
         color: nodeColor(patch.color),
         details: detailsFrom(patch, node.data.details, nodeLabel(node), warnings),
         ...pinnedField(patch.pinned),
+        ...opensField(patch.opens, nodeLabel(node), warnings),
       })
     case 'shape':
       return definedFields({
@@ -261,6 +277,7 @@ export function nodeDataPatch(
         color: patch.color,
         details: detailsFrom(patch, node.data.details, nodeLabel(node), warnings),
         ...pinnedField(patch.pinned),
+        ...opensField(patch.opens, nodeLabel(node), warnings),
       })
     }
   }

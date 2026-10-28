@@ -9,14 +9,20 @@ import { PlayerStage } from './PlayerStage'
 
 export function PlayerPage() {
   const { diagramId } = useParams({ from: '/p/$diagramId' })
-  const { flow } = useSearch({ from: '/p/$diagramId' })
+  const { flow, from } = useSearch({ from: '/p/$diagramId' })
   const navigate = useNavigate()
   const diagram = useMemo(() => loadDiagramOrNull(diagramId), [diagramId])
   const exit = useCallback(() => void navigate({ to: '/d/$diagramId', params: { diagramId } }), [navigate, diagramId])
+  const parent = useMemo(() => (from ? loadDiagramOrNull(from) : null), [from])
+  const openDiagram = useCallback(
+    (childId: string) =>
+      void navigate({ to: '/p/$diagramId', params: { diagramId: childId }, search: { from: diagramId } }),
+    [navigate, diagramId],
+  )
   const changeFlow = useCallback(
     (flowId: string) =>
-      void navigate({ to: '/p/$diagramId', params: { diagramId }, search: { flow: flowId }, replace: true }),
-    [navigate, diagramId],
+      void navigate({ to: '/p/$diagramId', params: { diagramId }, search: { flow: flowId, from }, replace: true }),
+    [navigate, diagramId, from],
   )
 
   if (!diagram) {
@@ -35,9 +41,23 @@ export function PlayerPage() {
   }
 
   return (
-    <ReactFlowProvider>
+    <ReactFlowProvider key={diagram.id}>
       <EngineProvider>
-        <PlayerStage diagram={diagram} flowId={flow} onFlowChange={changeFlow} onExit={exit} />
+        <PlayerStage
+          diagram={diagram}
+          flowId={flow}
+          onFlowChange={changeFlow}
+          onExit={exit}
+          onOpenDiagram={openDiagram}
+          back={
+            parent
+              ? {
+                  label: parent.name,
+                  onClick: () => void navigate({ to: '/p/$diagramId', params: { diagramId: parent.id } }),
+                }
+              : undefined
+          }
+        />
       </EngineProvider>
     </ReactFlowProvider>
   )

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { COLORS } from './colors'
 
-export const DIAGRAM_VERSION = 10
+export const DIAGRAM_VERSION = 11
 
 const colorSchema = z.enum(COLORS)
 
@@ -34,6 +34,9 @@ export type NodeDetails = z.infer<typeof nodeDetailsSchema>
 /** If true, a layout keeps the node in its place and arranges the other nodes around it. */
 const pinnedSchema = z.boolean().optional()
 
+/** The id of a diagram that shows the inside of the part, for example the components of a container. */
+const opensSchema = z.string().optional()
+
 export const CARD_FORMS = ['service', 'datastore', 'queue', 'client', 'external', 'function'] as const
 export type CardForm = (typeof CARD_FORMS)[number]
 
@@ -62,6 +65,7 @@ export const cardDataSchema = z.object({
   badge: z.string(),
   details: nodeDetailsSchema,
   pinned: pinnedSchema,
+  opens: opensSchema,
 })
 export type CardData = z.infer<typeof cardDataSchema>
 
@@ -110,6 +114,7 @@ export const groupDataSchema = z.object({
   tint: z.boolean(),
   details: nodeDetailsSchema,
   pinned: pinnedSchema,
+  opens: opensSchema,
 })
 export type GroupData = z.infer<typeof groupDataSchema>
 

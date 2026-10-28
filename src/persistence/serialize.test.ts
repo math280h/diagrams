@@ -148,6 +148,16 @@ describe('migrate', () => {
     expect(migrated.edges[0]!.data.request).toBeUndefined()
   })
 
+  it('reads version 10 diagrams as they are, and keeps the inside links of version 11', () => {
+    const base = createDiagram()
+    const node = { id: 'api', type: 'card', position: { x: 0, y: 0 }, data: defaultCardData() }
+    expect(
+      migrate(JSON.parse(JSON.stringify({ ...base, version: 10, nodes: [node] }))).nodes[0]!.data,
+    ).not.toHaveProperty('opens')
+    const v11 = { ...base, nodes: [{ ...node, data: { ...node.data, opens: 'd_inside' } }] }
+    expect(migrate(JSON.parse(JSON.stringify(v11))).nodes[0]!.data).toMatchObject({ opens: 'd_inside' })
+  })
+
   it('reads version 9 diagrams as they are, and keeps the pins of version 10', () => {
     const base = createDiagram()
     const node = { id: 'api', type: 'card', position: { x: 0, y: 0 }, data: defaultCardData() }

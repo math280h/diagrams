@@ -6,6 +6,7 @@ import { Icon } from '@/canvas/icon'
 import { useCanvasMode } from '@/canvas/mode'
 import { useZoomScopeRef } from '@/canvas/zoom-scope'
 import { EditableText } from './EditableText'
+import { OpenButton } from './OpenButton'
 import { isIdentifier, renderHighlighted } from './highlight'
 import { WidthResizer } from './resize'
 import { SideHandles } from './SideHandles'
@@ -35,6 +36,7 @@ export function CardNode({ id, data, selected }: NodeProps<CardNodeType>) {
           />
           {data.status !== 'none' && <span className="dg-status" data-status={data.status} />}
           {data.badge && <span className="dg-card-badge dg-mono">{data.badge}</span>}
+          <OpenButton diagramId={data.opens} nodeId={id} />
         </div>
         {data.lines.length > 0 && (
           <div className="dg-card-lines">
