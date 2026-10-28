@@ -21,6 +21,7 @@ import {
   SwitchField,
   TextInput,
 } from './controls'
+import { DetailsFields } from './DetailsFields'
 import { IconPicker } from './IconPicker'
 import { NodeLinks } from './NodeLinks'
 
@@ -334,14 +335,25 @@ export function NodeInspector({ node }: { node: DiagramNode }) {
       return (
         <>
           <CardFields node={node} />
+          <DetailsFields node={node} />
           <NodeLinks node={node} />
         </>
       )
     case 'shape':
-      return <ShapeFields node={node} />
+      return (
+        <>
+          <ShapeFields node={node} />
+          <DetailsFields node={node} />
+        </>
+      )
     case 'text':
       return <TextFields node={node} />
     case 'group':
-      return <GroupFields node={node} />
+      return (
+        <>
+          <GroupFields node={node} />
+          <DetailsFields node={node} />
+        </>
+      )
   }
 }

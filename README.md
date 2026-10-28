@@ -12,12 +12,14 @@ computer.
 - **Node kinds with their own outlines**: services, data stores, queues, clients, external systems and functions.
   Shapes, text and boundaries for AWS, Azure, Google Cloud, Kubernetes and custom groupings, coloured by kind or in
   one colour. Give nodes a colour to group them, for example by team. Metrics and meters are optional.
+- **Details on hover**: give a node an owner, a description and links to its code, docs or dashboards. Readers see
+  them when they point at the node in Present and on an exported web page.
 - **Real icons**: the official AWS, Azure, Google Cloud and Kubernetes architecture icons, and 220 software logos.
   Search them in the insert menu or the icon picker.
 - **Moving connections**: dots, comets, dashes or pulses that flow along a connection. Turn them on for one
   connection or for all.
 - **Flows**: record a path through the diagram, add captions, and play it back with a camera that follows the user.
-  A timeline adds camera paths and fades.
+  Read a flow as a log or as a sequence diagram. A timeline adds camera paths and fades.
 - **Traces as flows**: import an OpenTelemetry, Jaeger or Zipkin trace, and watch the real request move through your
   diagram with each operation, latency and status in the log. Services use the cards with the same name.
 - **Request and response bodies**: list the JSON fields that a connection carries, or paste an example body to fill
@@ -25,7 +27,7 @@ computer.
 - **Present and export**: present in full screen, or export PNG, SVG, MP4, WebM or GIF. Video export is exact to the
   frame. Export a web page to share a diagram that plays its flows in any browser, as one HTML file with no network.
 - **Mermaid import and export**: paste a Mermaid flowchart and get a laid-out diagram, or copy a diagram as a
-  Mermaid flowchart for Markdown. Node colours go both ways.
+  Mermaid flowchart for Markdown. Node colours go both ways. Copy a flow as a Mermaid sequence diagram.
 - **Version history**: see how a diagram looked earlier, including each change that an agent made, and restore any
   version.
 - **Local first**: the website keeps diagrams in your browser. Export a diagram file (JSON) to move it to another

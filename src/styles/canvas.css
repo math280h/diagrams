@@ -1071,3 +1071,91 @@
 .dg-preview .react-flow__node-text {
   opacity: 0 !important;
 }
+
+.dg-canvas[data-details] .react-flow__node.dg-has-details {
+  cursor: pointer;
+}
+.dg-canvas[data-details] .react-flow__node.dg-has-details::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--dg-muted);
+  box-shadow: 0 0 0 2px var(--dg-ground);
+  pointer-events: none;
+}
+
+.dg-details-card {
+  position: absolute;
+  z-index: 8;
+  box-sizing: border-box;
+  overflow: auto;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--dg-text);
+  background: var(--dg-chrome);
+  border: 1px solid var(--dg-line);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.24);
+  cursor: auto;
+}
+.dg-details-card a {
+  color: var(--dg-text);
+  text-decoration: underline;
+  text-decoration-color: var(--dg-muted);
+  text-underline-offset: 2px;
+}
+.dg-details-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.dg-details-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+}
+.dg-details-close {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin: -2px -6px 0 0;
+  color: var(--dg-muted);
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.dg-details-close:hover {
+  color: var(--dg-text);
+  background: var(--dg-raised);
+}
+.dg-details-owner {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--dg-muted);
+}
+.dg-details-description {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.dg-details-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.dg-details-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  overflow-wrap: anywhere;
+}
