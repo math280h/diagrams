@@ -5,6 +5,7 @@ import {
   Copy,
   Download,
   FileUp,
+  Megaphone,
   MoreHorizontal,
   Pencil,
   Play,
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { isDesktop } from '@/desktop/bridge'
 import {
   Dialog,
   DialogContent,
@@ -285,6 +287,17 @@ export function LibraryPage() {
         <span className="text-[15px] font-medium tracking-[-0.02em]">Diagrams</span>
         <div className="ml-auto flex items-center gap-1 sm:gap-1.5">
           <AgentButton labelled={!agentIntroVisible} />
+          {!isDesktop() && (
+            <Button
+              variant="ghost"
+              aria-label="What’s new"
+              className="max-sm:hidden"
+              nativeButton={false}
+              render={<Link to="/releases" />}
+            >
+              <Megaphone /> <span className="hidden md:inline">What’s new</span>
+            </Button>
+          )}
           <Tooltip>
             <TooltipTrigger
               render={
@@ -398,6 +411,13 @@ export function LibraryPage() {
                 </div>
               </section>
             </>
+          )}
+          {!isDesktop() && (
+            <footer className="mt-16 border-t pt-6 text-sm text-muted-foreground">
+              <Link to="/releases" className="hover:text-foreground">
+                What’s new in Diagrams
+              </Link>
+            </footer>
           )}
         </div>
       </div>

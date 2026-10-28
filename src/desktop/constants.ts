@@ -9,6 +9,7 @@ export const REPOSITORY_URL = 'https://github.com/math280h/diagrams'
 /** GitHub redirects this address to the newest published release that is not a pre-release. */
 export const DESKTOP_DOWNLOAD_URL = `${REPOSITORY_URL}/releases/latest`
 export const LATEST_RELEASE_API_URL = 'https://api.github.com/repos/math280h/diagrams/releases/latest'
+export const RELEASES_API_URL = 'https://api.github.com/repos/math280h/diagrams/releases?per_page=30'
 export const RELEASE_ASSET_URL_PREFIX = `${REPOSITORY_URL}/releases/download/`
 
 export const HANDOFF_PATH = '/handoff'
