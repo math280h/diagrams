@@ -7,10 +7,37 @@ import { DESKTOP_DOWNLOAD_URL, REPOSITORY_URL } from '@/desktop/constants'
 import { errorMessage } from '@/lib/error-message'
 import { cleanReleaseHtml } from './clean-html'
 import { isPreviewSite, loadReleases, type Release } from './releases'
+import type { UnreleasedChanges } from './unreleased'
 
 type State = { kind: 'loading' } | { kind: 'failed'; message: string } | { kind: 'loaded'; releases: Release[] }
 
 const DATE_FORMAT = new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+
+function UnreleasedNotes({ changes }: { changes: UnreleasedChanges }) {
+  return (
+    <div className="dg-release-notes mt-4">
+      <p>The changes on main after {changes.base}. They come in the next release.</p>
+      <ul>
+        {changes.changes.map((change) => (
+          <li key={change.sha}>
+            {change.title}{' '}
+            <a
+              href={
+                change.pullRequest === null
+                  ? `${REPOSITORY_URL}/commit/${change.sha}`
+                  : `${REPOSITORY_URL}/pull/${change.pullRequest}`
+              }
+              target="_blank"
+              rel="noreferrer"
+            >
+              {change.pullRequest === null ? change.sha.slice(0, 7) : `#${change.pullRequest}`}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
 
 function ReleaseNotes({ release }: { release: Release }) {
   const notesRef = useRef<HTMLDivElement>(null)
@@ -36,7 +63,9 @@ function ReleaseNotes({ release }: { release: Release }) {
           {DATE_FORMAT.format(release.publishedAt)}
         </time>
       </div>
-      {empty ? (
+      {release.unreleased ? (
+        <UnreleasedNotes changes={release.unreleased} />
+      ) : empty ? (
         <p className="mt-4 text-sm text-muted-foreground">This release has no notes.</p>
       ) : (
         <div ref={notesRef} className="dg-release-notes mt-4" />
@@ -47,7 +76,8 @@ function ReleaseNotes({ release }: { release: Release }) {
         rel="noreferrer"
         className="mt-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
       >
-        {release.tag} on GitHub <ExternalLink className="size-3.5" />
+        {release.unreleased ? `Compare ${release.unreleased.base} with main on GitHub` : `${release.tag} on GitHub`}{' '}
+        <ExternalLink className="size-3.5" />
       </a>
     </article>
   )
@@ -82,7 +112,7 @@ export function ReleasesPage() {
             <h1 className="dg-display text-4xl leading-[1.04] sm:text-5xl">What’s new</h1>
             <p className="mt-4 max-w-xl text-base leading-6 text-pretty text-muted-foreground">
               {isPreviewSite()
-                ? 'The changes in each release of Diagrams. This preview site runs the newest work on main, so it is ahead of the releases. Pre-releases show until a full release replaces them.'
+                ? 'The changes in each release of Diagrams. This preview site runs main, so it also shows the changes that are not in a release yet.'
                 : 'The changes in each release of Diagrams. The website runs the newest release, and the desktop app updates itself to it.'}
             </p>
           </div>

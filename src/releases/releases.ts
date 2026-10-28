@@ -1,5 +1,6 @@
-import builtReleases from 'virtual:release-notes'
+import builtReleases, { unreleased } from 'virtual:release-notes'
 import { RELEASES_API_URL, REPOSITORY_URL } from '@/desktop/constants'
+import type { UnreleasedChanges } from './unreleased'
 
 const LOOKUP_TIMEOUT_MS = 8000
 
@@ -13,6 +14,8 @@ export interface Release {
   url: string
   /** True for a pre-release, which only the preview website lists. */
   preview: boolean
+  /** Only on the entry of the preview website for the changes on `main` that no release has yet. */
+  unreleased?: UnreleasedChanges
 }
 
 interface GitHubRelease {
@@ -61,6 +64,20 @@ export function parseReleases(data: unknown, previews = false): Release[] {
   return releases.filter((release) => !release.preview || (previews && release.publishedAt > newestFull))
 }
 
+/** Returns the entry for the changes on `main` after the newest release, or `null` without changes. */
+export function nextRelease(changes: UnreleasedChanges): Release | null {
+  if (changes.changes.length === 0) return null
+  return {
+    tag: 'main',
+    name: 'Next release',
+    publishedAt: Math.max(...changes.changes.map((change) => change.committedAt)),
+    html: '',
+    url: `${REPOSITORY_URL}/compare/${encodeURIComponent(changes.base)}...main`,
+    preview: true,
+    unreleased: changes,
+  }
+}
+
 export class ReleaseLookupError extends Error {}
 
 /**
@@ -69,7 +86,11 @@ export class ReleaseLookupError extends Error {}
  * @throws ReleaseLookupError If GitHub does not answer or answers with an error.
  */
 export async function loadReleases(): Promise<Release[]> {
-  if (builtReleases) return parseReleases(builtReleases, isPreviewSite())
+  if (builtReleases) {
+    const releases = parseReleases(builtReleases, isPreviewSite())
+    const next = isPreviewSite() && unreleased ? nextRelease(unreleased) : null
+    return next ? [next, ...releases] : releases
+  }
   let response: Response
   try {
     response = await fetch(RELEASES_API_URL, {
