@@ -189,7 +189,8 @@ function StorageNote({ usageBytes }: { usageBytes: number }) {
   if (location.kind === 'browser') {
     return (
       <p className="mt-4 text-[13px] text-muted-foreground tabular-nums">
-        {formatBytes(usageBytes)} of {formatBytes(location.budgetBytes)} used in this browser
+        {formatBytes(usageBytes)} of {formatBytes(location.budgetBytes)} used in this browser. Clearing the site data of
+        this browser deletes them, so export a diagram file to keep a copy.
       </p>
     )
   }
