@@ -15,8 +15,8 @@ export interface FramingOptions {
 }
 
 /**
- * Sets the viewport of the React Flow instance around it to the {@link readableViewport} after React Flow measures the
- * nodes.
+ * Sets the viewport of the React Flow instance around it to the {@link readableViewport} after the fonts load and React
+ * Flow measures the nodes, and again when the measured sizes change.
  *
  * @returns True after the first viewport change.
  */
@@ -34,9 +34,25 @@ export function useReadableFraming({
   const width = useStore((state) => state.width)
   const height = useStore((state) => state.height)
   const [framed, setFramed] = useState(false)
+  const [fontsReady, setFontsReady] = useState(false)
+  const measuredSize = useStore((state) => {
+    let total = 0
+    for (const node of state.nodeLookup.values()) total += (node.measured.width ?? 0) + (node.measured.height ?? 0)
+    return total
+  })
 
   useEffect(() => {
-    if (!initialized || width === 0 || height === 0 || (once && framed)) return
+    let cancelled = false
+    void document.fonts.ready.then(() => {
+      if (!cancelled) setFontsReady(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!fontsReady || !initialized || measuredSize === 0 || width === 0 || height === 0 || (once && framed)) return
     const { nodes, nodeLookup } = store.getState()
     const framedNodes = nodes.filter((node) => node.type !== 'text')
     const bounds = getNodesBounds(framedNodes.length > 0 ? framedNodes : nodes, { nodeLookup })
@@ -62,7 +78,22 @@ export function useReadableFraming({
     )
     const frame = requestAnimationFrame(() => setFramed(true))
     return () => cancelAnimationFrame(frame)
-  }, [initialized, width, height, store, setViewport, edges, paddingPx, minZoom, maxZoom, bottomInsetPx, once, framed])
+  }, [
+    fontsReady,
+    initialized,
+    measuredSize,
+    width,
+    height,
+    store,
+    setViewport,
+    edges,
+    paddingPx,
+    minZoom,
+    maxZoom,
+    bottomInsetPx,
+    once,
+    framed,
+  ])
 
   return framed
 }
