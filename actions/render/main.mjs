@@ -42,6 +42,7 @@ const inputs = {
   version: env.INPUT_VERSION || 'latest',
   app: env.INPUT_APP ?? '',
   baseApp: env.INPUT_BASE_APP ?? '',
+  baseRoot: env.INPUT_BASE_ROOT ?? '',
   token: env.INPUT_TOKEN ?? '',
 }
 const temp = env.RUNNER_TEMP || path.resolve('.diagrams-render')
@@ -136,9 +137,9 @@ function render(command, input, output) {
   throw new ActionError(`${input}: ${reason}`)
 }
 
-function diagramFiles({ untracked = false } = {}) {
+function diagramFiles({ untracked = false, cwd } = {}) {
   const which = untracked ? ['--cached', '--others', '--exclude-standard'] : []
-  const out = run('git', ['ls-files', '-z', ...which, '--', ...pathspecs(inputs.patterns)]).stdout
+  const out = run('git', ['ls-files', '-z', ...which, '--', ...pathspecs(inputs.patterns)], { cwd }).stdout
   return [...new Set(out.split('\0').filter(Boolean))]
 }
 
@@ -266,6 +267,9 @@ function compareApps(command, baseCommand) {
   const event = env.GITHUB_EVENT_PATH ? JSON.parse(readFileSync(env.GITHUB_EVENT_PATH, 'utf8')) : {}
   const commit = event.pull_request?.head?.sha ?? run('git', ['rev-parse', 'HEAD']).stdout.trim()
   const files = diagramFiles({ untracked: true })
+  const baseFiles = inputs.baseRoot ? diagramFiles({ untracked: true, cwd: inputs.baseRoot }) : files
+  const baseFile = (file) => (inputs.baseRoot ? path.join(inputs.baseRoot, file) : file)
+  const removed = baseFiles.filter((file) => !files.includes(file))
   const previews = path.join(temp, 'diagram-previews')
   setOutput('previews', [previews])
   const entries = []
@@ -273,8 +277,13 @@ function compareApps(command, baseCommand) {
     const after = `${index + 1}/after.${inputs.format}`
     const before = `${index + 1}/before.${inputs.format}`
     render(command, file, path.join(previews, after))
+    if (!baseFiles.includes(file)) {
+      console.log(`New diagram: ${file}`)
+      entries.push({ file, after })
+      return
+    }
     try {
-      render(baseCommand, file, path.join(previews, before))
+      render(baseCommand, baseFile(file), path.join(previews, before))
     } catch (error) {
       if (!(error instanceof ActionError)) throw error
       console.log(`::warning::The base app could not render ${file}. ${error.message}`)
@@ -285,15 +294,27 @@ function compareApps(command, baseCommand) {
     console.log(`${same ? 'Same image' : 'Different image'}: ${file}`)
     if (!same) entries.push({ file, before, after })
   })
+  removed.forEach((file, index) => {
+    const before = `${files.length + index + 1}/before.${inputs.format}`
+    try {
+      render(baseCommand, baseFile(file), path.join(previews, before))
+      console.log(`Removed diagram: ${file}`)
+      entries.push({ file, before })
+    } catch (error) {
+      if (!(error instanceof ActionError)) throw error
+      console.log(`::warning::The base app could not render the removed diagram ${file}. ${error.message}`)
+    }
+  })
+  const total = files.length + removed.length
   summary(
     [
       '### Diagram images',
       '',
-      `${entries.length} of ${files.length} diagrams look different with the app of this commit.`,
+      `${entries.length} of ${total} diagrams look different with this commit.`,
       ...entries.map((entry) => `- \`${entry.file}\``),
     ].join('\n'),
   )
-  const compared = `It compares ${files.length} diagrams with the app of the base commit.`
+  const compared = `It compares ${total} diagrams with the ${inputs.baseRoot ? 'base commit' : 'app of the base commit'}.`
   const intro =
     entries.length > 0
       ? `The diagrams that look different with this pull request, as of ${shortSha(commit)}. ${compared}`
