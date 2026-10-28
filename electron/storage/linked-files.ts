@@ -81,6 +81,7 @@ export function createLinkedFiles(registryFile: string) {
   return {
     async readAll(): Promise<StoredFile[]> {
       await ready()
+      await queue.drain()
       const files = await Promise.all([...links.keys()].map(read))
       return files.filter((file): file is StoredFile => file !== null)
     },

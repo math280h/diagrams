@@ -622,7 +622,9 @@ the handoff from the website, and updates from GitHub Releases.
   and the existing order "save, navigate, load" keeps working. Writes go to the main process in the
   background.
 - Main writes each file atomically: a temporary file, then a rename. Windows antivirus and OneDrive
-  can hold a file for a moment, so the rename retries.
+  can hold a file for a moment, so the rename retries. A list of the files waits for the writes that are still in the
+  queue: a page that reloads right after a change saves it as it unloads, and a slow rename then let the new page read
+  the old file and save it again.
 - A folder watcher reports changes from other programs. What the app knows of each file (content
   digest, size and change time) separates them from the writes of the app; a file with the known
   size and change time counts as unchanged without a read. A rescan runs when the window gets the

@@ -50,6 +50,15 @@ describe('createDiagramFiles', () => {
     expect(await files.readAll()).toEqual([{ id: 'd_one', text: '{"name":"One"}' }])
   })
 
+  it('reads the folder after its own pending writes', async () => {
+    const files = createDiagramFiles(folder)
+    await files.write('d_one', 'old')
+    vi.mocked(fsPromises.rename).mockRejectedValueOnce(busy())
+    const pending = files.write('d_one', 'new')
+    expect(await files.readAll()).toEqual([{ id: 'd_one', text: 'new' }])
+    await pending
+  })
+
   it('writes only the latest of several quick saves', async () => {
     const files = createDiagramFiles(folder)
     const writes = [files.write('d_one', 'first'), files.write('d_one', 'second'), files.write('d_one', 'third')]
