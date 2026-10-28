@@ -43,10 +43,10 @@ const OPPOSITE: Record<Side, Side> = { top: 'bottom', bottom: 'top', left: 'righ
 const DETAIL_FIELDS = ['description', 'owner', 'links'] as const
 
 const FIELDS_BY_KIND = {
-  card: ['form', 'lines', 'badge', 'status', 'color', ...DETAIL_FIELDS],
-  shape: ['shape', 'color', ...DETAIL_FIELDS],
-  text: ['textSize'],
-  group: ['boundary', 'detail', 'color', ...DETAIL_FIELDS],
+  card: ['form', 'lines', 'badge', 'status', 'color', 'pinned', ...DETAIL_FIELDS],
+  shape: ['shape', 'color', 'pinned', ...DETAIL_FIELDS],
+  text: ['textSize', 'pinned'],
+  group: ['boundary', 'detail', 'color', 'pinned', ...DETAIL_FIELDS],
 } as const satisfies Record<DiagramNode['type'], readonly (keyof NodeInput)[]>
 
 const KIND_FIELDS = new Set(Object.values(FIELDS_BY_KIND).flat())
@@ -119,6 +119,10 @@ function detailsFrom(
   }
 }
 
+function pinnedField(pinned: boolean | undefined): { pinned?: boolean } {
+  return pinned === undefined ? {} : { pinned }
+}
+
 function nodeColor(color: NodeInput['color']): Color | undefined {
   return color === 'auto' ? 'neutral' : color
 }
@@ -158,6 +162,7 @@ export function buildNode(
           status: input.status ?? 'none',
           color: nodeColor(input.color) ?? 'neutral',
           details: detailsFrom(input, emptyDetails(), input.label, warnings) ?? emptyDetails(),
+          ...pinnedField(input.pinned),
         }),
       }
     case 'shape': {
@@ -176,6 +181,7 @@ export function buildNode(
           icon: icon ?? '',
           color: nodeColor(input.color) ?? 'neutral',
           details: detailsFrom(input, emptyDetails(), input.label, warnings) ?? emptyDetails(),
+          ...pinnedField(input.pinned),
         }),
       }
     }
@@ -186,7 +192,7 @@ export function buildNode(
         position,
         ...(input.width !== undefined ? { width: input.width } : {}),
         zIndex: ELEMENT_Z,
-        data: defaultTextData({ text: input.label, size: input.textSize ?? 'md' }),
+        data: defaultTextData({ text: input.label, size: input.textSize ?? 'md', ...pinnedField(input.pinned) }),
       }
     case 'group': {
       const boundary = groupKind(input.boundary, warnings)
@@ -205,6 +211,7 @@ export function buildNode(
           tint: TINTED_TIERS.has(boundary.tier),
           color: input.color ?? 'auto',
           details: detailsFrom(input, emptyDetails(), input.label, warnings) ?? emptyDetails(),
+          ...pinnedField(input.pinned),
         }),
       }
     }
@@ -230,6 +237,7 @@ export function nodeDataPatch(
         status: patch.status,
         color: nodeColor(patch.color),
         details: detailsFrom(patch, node.data.details, nodeLabel(node), warnings),
+        ...pinnedField(patch.pinned),
       })
     case 'shape':
       return definedFields({
@@ -238,9 +246,10 @@ export function nodeDataPatch(
         shape: patch.shape,
         color: nodeColor(patch.color),
         details: detailsFrom(patch, node.data.details, nodeLabel(node), warnings),
+        ...pinnedField(patch.pinned),
       })
     case 'text':
-      return definedFields({ text: patch.label, size: patch.textSize })
+      return definedFields({ text: patch.label, size: patch.textSize, ...pinnedField(patch.pinned) })
     case 'group': {
       const boundary = patch.boundary !== undefined ? groupKind(patch.boundary, warnings) : null
       return definedFields({
@@ -251,6 +260,7 @@ export function nodeDataPatch(
         icon: icon ?? boundary?.icon,
         color: patch.color,
         details: detailsFrom(patch, node.data.details, nodeLabel(node), warnings),
+        ...pinnedField(patch.pinned),
       })
     }
   }

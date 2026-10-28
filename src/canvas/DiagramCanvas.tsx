@@ -63,9 +63,15 @@ export function DiagramCanvas({
   const [hover] = useState(createDetailsHover)
   const nodes = useMemo(() => {
     const layered = flowProps.nodes && layerNodes(flowProps.nodes)
-    if (!details || !layered) return layered
-    return layered.map((node) => (nodeHasDetails(node) ? { ...node, className: 'dg-has-details' } : node))
-  }, [flowProps.nodes, details])
+    if ((!details && !editable) || !layered) return layered
+    return layered.map((node) => {
+      const marks = [
+        details && nodeHasDetails(node) && 'dg-has-details',
+        editable && node.data.pinned === true && 'dg-pinned',
+      ].filter(Boolean)
+      return marks.length > 0 ? { ...node, className: marks.join(' ') } : node
+    })
+  }, [flowProps.nodes, details, editable])
 
   return (
     <CanvasModeContext value={mode}>

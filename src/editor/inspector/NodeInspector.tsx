@@ -8,7 +8,7 @@ import { BOUNDARY_KINDS, BOUNDARY_PROVIDERS, boundaryKind, boundaryKindLabel } f
 import { CARD_FORM_LABELS, PRESET_BY_ID } from '@/model/presets'
 import { CARD_FORMS, SHAPES, type CardData, type GroupData, type ShapeData, type TextData } from '@/model/schema'
 import type { CardNodeType, DiagramNode, GroupNodeType, ShapeNodeType, TextNodeType } from '@/model/types'
-import { updateNodeData } from '@/store/actions'
+import { pinNodes, updateNodeData } from '@/store/actions'
 import { useState } from 'react'
 import {
   BoundaryColorPicker,
@@ -329,7 +329,20 @@ function GroupFields({ node }: { node: GroupNodeType }) {
   )
 }
 
-export function NodeInspector({ node }: { node: DiagramNode }) {
+function LayoutFields({ node }: { node: DiagramNode }) {
+  return (
+    <Section title="Layout">
+      <SwitchField
+        label="Pin position"
+        checked={node.data.pinned === true}
+        onChange={(pinned) => pinNodes([node.id], pinned)}
+      />
+      <p className="text-xs text-muted-foreground">Tidy up and agents keep a pinned node in its place.</p>
+    </Section>
+  )
+}
+
+function TypeFields({ node }: { node: DiagramNode }) {
   switch (node.type) {
     case 'card':
       return (
@@ -356,4 +369,13 @@ export function NodeInspector({ node }: { node: DiagramNode }) {
         </>
       )
   }
+}
+
+export function NodeInspector({ node }: { node: DiagramNode }) {
+  return (
+    <>
+      <TypeFields node={node} />
+      <LayoutFields node={node} />
+    </>
+  )
 }

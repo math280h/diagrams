@@ -12,6 +12,8 @@ import {
   Maximize,
   MousePointerSquareDashed,
   Palette,
+  Pin,
+  PinOff,
   Scissors,
   Trash2,
   Ungroup,
@@ -40,6 +42,7 @@ import {
   deleteSelection,
   duplicateSelection,
   groupSelection,
+  pinNodes,
   reverseEdge,
   selectAll,
   ungroupSelection,
@@ -68,6 +71,12 @@ export function CanvasContextMenu({ target, children }: { target: ContextTarget;
     (state) => target.kind === 'node' && state.nodes.some((node) => node.id === target.id && node.type === 'group'),
   )
   const onElement = target.kind !== 'pane'
+  const selectedIds = useDoc(useShallow((state) => state.nodes.filter((node) => node.selected).map((node) => node.id)))
+  const allPinned = useDoc(
+    (state) =>
+      selectedIds.length > 0 &&
+      state.nodes.every((node) => !selectedIds.includes(node.id) || node.data.pinned === true),
+  )
 
   return (
     <ContextMenu>
@@ -102,6 +111,9 @@ export function CanvasContextMenu({ target, children }: { target: ContextTarget;
                   </ContextMenuItem>
                 )}
                 <ColorMenu />
+                <ContextMenuItem onClick={() => pinNodes(selectedIds, !allPinned)}>
+                  {allPinned ? <PinOff /> : <Pin />} {allPinned ? 'Unpin position' : 'Pin position'}
+                </ContextMenuItem>
               </>
             )}
             {target.kind === 'edge' && (

@@ -2,6 +2,7 @@ import { boundaryKind, boundaryKindLabel } from '@/model/boundaries'
 import { estimateSize, sortParentsFirst } from '@/model/graph'
 import type { DiagramEdge, DiagramNode, GroupNodeType } from '@/model/types'
 import { withRoute } from './apply-layout'
+import { keepPinned } from './pinned'
 import type { LayoutWorkerReply, LayoutWorkerRequest } from './layout.worker'
 import type { LayoutDirection, LayoutRequest, LayoutResponse } from './types'
 
@@ -78,7 +79,8 @@ function runLayout(request: LayoutRequest): Promise<LayoutResponse> {
  * Computes new positions, group sizes and edge routes in a worker.
  *
  * Text nodes keep their positions. Group nodes get a new size around their children. Each edge between two laid out
- * nodes gets an orthogonal route in canvas coordinates, or loses its old route if the layout found none.
+ * nodes gets an orthogonal route in canvas coordinates, or loses its old route if the layout found none. Pinned nodes
+ * keep their places, as {@link keepPinned} describes.
  */
 export async function layoutDiagram(
   nodes: DiagramNode[],
@@ -102,7 +104,7 @@ export async function layoutDiagram(
   const placed = new Map(response.nodes.map((node) => [node.id, node]))
   const routedIds = new Set(layoutEdges.map((edge) => edge.id))
 
-  return {
+  const laidOutGraph = {
     nodes: sortParentsFirst(
       nodes.map((node) => {
         const position = placed.get(node.id)
@@ -117,4 +119,5 @@ export async function layoutDiagram(
     ),
     edges: edges.map((edge) => (routedIds.has(edge.id) ? withRoute(edge, response.routes[edge.id]) : edge)),
   }
+  return keepPinned(nodes, edges, laidOutGraph)
 }

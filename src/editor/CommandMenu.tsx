@@ -18,6 +18,7 @@ import {
   LayoutList,
   Maximize,
   Moon,
+  Pin,
   Play,
   Redo2,
   RefreshCw,
@@ -48,6 +49,8 @@ import {
   deleteSelection,
   duplicateSelection,
   groupSelection,
+  pinNodes,
+  selectionPinned,
   updateEdgesTraffic,
 } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
@@ -112,6 +115,17 @@ export function CommandMenu() {
           </CommandItem>
           <CommandItem onSelect={run(fit)}>
             <Maximize /> Fit to screen <CommandShortcut>{FIT_KEYS}</CommandShortcut>
+          </CommandItem>
+          <CommandItem
+            onSelect={run(() => {
+              const ids = useDoc
+                .getState()
+                .nodes.filter((node) => node.selected)
+                .map((node) => node.id)
+              pinNodes(ids, !selectionPinned())
+            })}
+          >
+            <Pin /> Pin or unpin the selection
           </CommandItem>
           <CommandItem onSelect={run(() => void tidyUp('RIGHT', fit))}>
             <LayoutGrid /> Tidy up, left to right
