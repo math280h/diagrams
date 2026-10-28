@@ -887,9 +887,14 @@ and offers the same text in four ways:
 
 - the server instructions, which point to the skills (Claude Code shows 4,096 characters);
 - `skill://diagrams/<skill>/<file>` resources, in the file layout of the MCP skills extension;
-- the prompts `draw-architecture`, `animate-flow` and `review-diagram`;
+- the prompts `draw-architecture`, `animate-flow`, `diagram-from-code` and `review-diagram`;
 - a local plugin marketplace in the user data folder, written at start with the app version, for
   `claude plugin install`.
+
+The `infrastructure` skill builds a diagram from Terraform, Compose or Kubernetes files, or checks a diagram against
+them. The agent reads the files with the tools of its client; the app has no parser for them, because each format
+changes often and the agent already reads code. Each node keeps its source as a link (`Source: <resource address>`
+to the file on the code host), so that a later check matches nodes to resources by address and not by name.
 
 The `skills/list` and `skills/get` methods of the MCP skills extension (SEP-2640) wait until
 ViteMCP can declare extensions. Tests fail when a skill names a tool or an icon that does not exist.
