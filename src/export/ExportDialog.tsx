@@ -30,6 +30,7 @@ import { HtmlExport } from './HtmlExport'
 import { LinkExport } from './LinkExport'
 import { MermaidExport } from './MermaidExport'
 import { describeDiagram, svgWithDescription } from './describe'
+import { ReadmeExport } from './ReadmeExport'
 import { TextExport } from './TextExport'
 import { usePainted } from './use-painted'
 import { ExportAbortedError, recordStage, type VideoFormat } from './video'
@@ -595,7 +596,9 @@ export function ExportDialog() {
                     ? 'Copy the diagram as a Mermaid flowchart. GitHub draws Mermaid in Markdown, for example in a README.'
                     : kind === 'text'
                       ? 'Copy a text description of the diagram, for example as the alt text of an image.'
-                      : 'Save a PNG or SVG for READMEs, pull requests and slides.'}
+                      : kind === 'readme'
+                        ? 'Save a dark and a light image, and copy a snippet that shows the one that fits the page.'
+                        : 'Save a PNG or SVG for READMEs, pull requests and slides.'}
           </DialogDescription>
         </DialogHeader>
         <Tabs value={kind ?? 'image'} onValueChange={(value) => setUi({ exportOpen: value as ExportKind })}>
@@ -606,6 +609,7 @@ export function ExportDialog() {
             <TabsTrigger value="link">Link</TabsTrigger>
             <TabsTrigger value="mermaid">Mermaid</TabsTrigger>
             <TabsTrigger value="text">Text</TabsTrigger>
+            <TabsTrigger value="readme">README</TabsTrigger>
           </TabsList>
         </Tabs>
         {kind === 'image' && <ImageExport onClose={close} />}
@@ -614,6 +618,7 @@ export function ExportDialog() {
         {kind === 'link' && <LinkExport />}
         {kind === 'mermaid' && <MermaidExport />}
         {kind === 'text' && <TextExport />}
+        {kind === 'readme' && <ReadmeExport />}
       </DialogContent>
     </Dialog>
   )

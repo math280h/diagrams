@@ -555,6 +555,18 @@ An image tells nothing to a screen reader, and the same text serves as alt text 
 - The parts and the connections follow `readingOrder` (`src/model/graph.ts`), the same order as the Mermaid
   flowchart: along the main direction of the edges.
 
+### README export
+
+The README tab saves a dark and a light image of the diagram and writes a `picture` element that shows the image for
+the colour scheme of the reader (`src/export/readme.ts`). GitHub supports `prefers-color-scheme` in a `source` element
+of a README, so one snippet serves both themes.
+
+- The images come from the same functions as `render_image`: `renderDiagramImage` for a PNG of the whole diagram and
+  `renderDiagramVideo` for a GIF of a flow or of the traffic. The tab renders the dark image first, then the light one.
+- The alt text is the text description as one paragraph (`descriptionParagraph`): an empty line ends an HTML block in
+  Markdown, so the alt text has no line breaks.
+- The paths in the snippet are URL encoded, because `srcset` splits its value at spaces.
+
 ### Web page export
 
 The Web page tab saves one HTML file that plays the diagram with no other files and no network

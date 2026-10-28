@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { fromDiagram } from '@/persistence/serialize'
 import { TEMPLATES } from '@/templates'
 import { DiagramBuilder, edgeStep, nodeStep } from '@/templates/builder'
-import { describeDiagram, descriptionText, svgWithDescription } from './describe'
+import { describeDiagram, descriptionParagraph, descriptionText, svgWithDescription } from './describe'
 
 function shop() {
   const b = new DiagramBuilder()
@@ -108,6 +108,25 @@ describe('describeDiagram', () => {
       ).toEqual(diagram.flows.map((flow) => flow.steps.length))
       expect(descriptionText(description), template.id).not.toContain('Missing node')
     }
+  })
+})
+
+describe('descriptionParagraph', () => {
+  it('writes the description as one paragraph', () => {
+    const diagram = shop()
+    const paragraph = descriptionParagraph(
+      describeDiagram({ ...fromDiagram(diagram), name: diagram.name, flows: diagram.flows }),
+    )
+    expect(paragraph).not.toContain('\n')
+    expect(paragraph).toContain(
+      'Shop. The diagram has 5 parts, 1 boundary, 5 connections and 2 flows. Notes: How an order reaches the warehouse. ',
+    )
+    expect(paragraph).toContain('Parts: Browser: client, checkout.shop.dev; Orders API: service,')
+    expect(paragraph).toContain(
+      'Flow “Place an order”: 1. Browser: POST /orders — The shopper presses Pay. 2. Browser → Orders API: HTTPS (38 ms). ',
+    )
+    expect(paragraph).toContain('Path “Shopper leaves” of “Place an order”, after step 1: Then the flow ends. ')
+    expect(paragraph.endsWith('Flow “Empty”: The flow has no steps.')).toBe(true)
   })
 })
 

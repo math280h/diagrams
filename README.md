@@ -31,6 +31,8 @@ computer.
   Or copy a share link that carries the whole diagram, so nothing is uploaded.
 - **Text description**: every diagram has a text description of its parts, connections and flows. Screen readers
   read it on the canvas and in Present, SVG exports carry it, and you can copy it as alt text for an image.
+- **README images**: save a dark and a light PNG or GIF, and copy a `<picture>` snippet that shows the one that
+  matches the reader's theme on GitHub, with the text description as alt text.
 - **Mermaid import and export**: paste a Mermaid flowchart and get a laid-out diagram, or copy a diagram as a
   Mermaid flowchart for Markdown. Node colours go both ways. Copy a flow as a Mermaid sequence diagram.
 - **Version history**: see how a diagram looked earlier, including each change that an agent made, and restore any
