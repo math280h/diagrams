@@ -587,6 +587,13 @@ An image tells nothing to a screen reader, and the same text serves as alt text 
   the command line, carries the name as its `title` element and the text as its `desc` element.
 - The parts and the connections follow `readingOrder` (`src/model/graph.ts`), the same order as the Mermaid
   flowchart: along the main direction of the edges.
+- Each node and edge on the canvas has its own name through the `ariaLabel` of React Flow (`src/canvas/aria.ts`):
+  a node is its title and its kind ("Postgres, data store", "AWS VPC payments, boundary"), and an edge names its ends
+  in its direction and its label ("Browser to API gateway, HTTPS"). Without them, React Flow names an edge by the
+  internal ids of its nodes. A focused edge draws in the selection colour, wider.
+- Every page sits in a `main` landmark, and each page sets the tab title (`useDocumentTitle`), for example "Order
+  system – Diagrams". The controls of a properties row take the row label as their name (`aria-labelledby`), so a
+  screen reader says "Name" and not only "edit text".
 
 ### README export
 

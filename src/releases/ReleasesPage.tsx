@@ -8,6 +8,7 @@ import { errorMessage } from '@/lib/error-message'
 import { cleanReleaseHtml } from './clean-html'
 import { isPreviewSite, loadReleases, type Download, type Release } from './releases'
 import type { UnreleasedChanges } from './unreleased'
+import { useDocumentTitle } from '@/lib/use-document-title'
 
 type State = { kind: 'loading' } | { kind: 'failed'; message: string } | { kind: 'loaded'; releases: Release[] }
 
@@ -101,6 +102,7 @@ function ReleaseNotes({ release }: { release: Release }) {
 
 export function ReleasesPage() {
   const [state, setState] = useState<State>({ kind: 'loading' })
+  useDocumentTitle('What’s new')
 
   useEffect(() => {
     let active = true

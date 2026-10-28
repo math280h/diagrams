@@ -15,6 +15,7 @@ import { hasDetails } from '@/model/details'
 import type { DiagramDescription } from '@/export/describe'
 import type { DataCrossing } from '@/model/threats'
 import { CanvasDescription } from './CanvasDescription'
+import { edgeAriaLabel, nodeAriaLabel, nodeName } from './aria'
 import { FlowEdge } from './edges/FlowEdge'
 import { FlowCaption, FlowToken } from './FlowOverlay'
 import { GRID_DOT_PX } from './grid'
@@ -78,15 +79,19 @@ export function DiagramCanvas({
   const [hover] = useState(createDetailsHover)
   const nodes = useMemo(() => {
     const layered = flowProps.nodes && layerNodes(flowProps.nodes)
-    if ((!details && !editable) || !layered) return layered
-    return layered.map((node) => {
+    return layered?.map((node) => {
       const marks = [
         details && nodeHasDetails(node) && 'dg-has-details',
         editable && node.data.pinned === true && 'dg-pinned',
       ].filter(Boolean)
-      return marks.length > 0 ? { ...node, className: marks.join(' ') } : node
+      return { ...node, ariaLabel: nodeAriaLabel(node), ...(marks.length > 0 ? { className: marks.join(' ') } : {}) }
     })
   }, [flowProps.nodes, details, editable])
+  const edges = useMemo(() => {
+    const names = new Map(flowProps.nodes?.map((node) => [node.id, nodeName(node)]))
+    const nameOf = (id: string) => names.get(id) ?? 'a missing node'
+    return flowProps.edges?.map((edge) => ({ ...edge, ariaLabel: edgeAriaLabel(edge, nameOf) }))
+  }, [flowProps.nodes, flowProps.edges])
 
   return (
     <CanvasModeContext value={mode}>
@@ -144,6 +149,7 @@ export function DiagramCanvas({
               }
             : {})}
           nodes={nodes}
+          edges={edges}
         >
           {theme.background === 'dots' && (
             <Background variant={BackgroundVariant.Dots} gap={GRID_PX} size={GRID_DOT_PX} color="var(--dg-grid)" />

@@ -16,6 +16,7 @@ import type { Flow } from '@/model/schema'
 import type { DiagramEdge } from '@/model/types'
 import { saveImported, templateCopies } from '@/persistence/library-actions'
 import { fromDiagram } from '@/persistence/serialize'
+import { useDocumentTitle } from '@/lib/use-document-title'
 import { TEMPLATES, type Template } from '@/templates'
 import { useReadableFraming } from './use-readable-framing'
 
@@ -25,6 +26,7 @@ function Preview({ template }: { template: Template }) {
   const navigate = useNavigate()
   const diagram = useMemo(() => template.build(), [template])
   const initial = useMemo(() => fromDiagram(diagram), [diagram])
+  useDocumentTitle(`${template.name} template`)
   const [nodes, onNodesChange] = useLocalNodes(initial.nodes)
   const [edges, setEdges] = useState<DiagramEdge[]>(initial.edges)
   const [activeFlowId, setActiveFlowId] = useState<string | null>(null)

@@ -10,6 +10,8 @@ import { ImportDialog } from '@/io/ImportDialog'
 import { TraceImportDialog } from './flow/TraceImportDialog'
 import { saveImported } from '@/persistence/library-actions'
 import { storageCopy } from '@/persistence/storage-copy'
+import { useDocumentTitle } from '@/lib/use-document-title'
+import { useDoc } from '@/store/doc-store'
 import { useDiagramDocument } from '@/store/document'
 import { useSettings } from '@/store/settings-store'
 import { setUi, useUi } from '@/store/ui-store'
@@ -128,6 +130,8 @@ export function EditorPage() {
   const { diagramId } = useParams({ from: '/d/$diagramId' })
   const status = useDiagramDocument(diagramId)
   const previewing = useVersions((state) => state.previewId !== null)
+  const name = useDoc((state) => (status.kind === 'ready' ? state.name : null))
+  useDocumentTitle(name)
 
   if (status.kind === 'loading') return null
   if (status.kind === 'missing') {
