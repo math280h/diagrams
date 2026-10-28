@@ -3,7 +3,7 @@ import { RELEASES_API_URL } from '../src/desktop/constants.ts'
 import { fetchReleaseNotes } from './release-notes.ts'
 
 describe('release notes at build time', () => {
-  it('asks for HTML notes with the token and keeps the fields that the page reads', async () => {
+  it('asks for HTML notes and keeps the fields that the page reads', async () => {
     const fetchImpl = vi.fn(async () =>
       Response.json([
         {
@@ -19,10 +19,10 @@ describe('release notes at build time', () => {
         },
       ]),
     )
-    const notes = await fetchReleaseNotes('secret', fetchImpl)
+    const notes = await fetchReleaseNotes(fetchImpl)
     const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toBe(RELEASES_API_URL)
-    expect(init.headers).toEqual({ Accept: 'application/vnd.github.html+json', Authorization: 'Bearer secret' })
+    expect(init.headers).toEqual({ Accept: 'application/vnd.github.html+json' })
     expect(notes).toEqual([
       {
         tag_name: 'v0.2.0',
@@ -36,10 +36,8 @@ describe('release notes at build time', () => {
     ])
   })
 
-  it('sends no token without one, and fails on an error answer', async () => {
+  it('fails on an error answer', async () => {
     const fetchImpl = vi.fn(async () => Response.json({ message: 'API rate limit exceeded' }, { status: 403 }))
-    await expect(fetchReleaseNotes(undefined, fetchImpl)).rejects.toThrow('GitHub answered with status 403.')
-    const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit]
-    expect(init.headers).toEqual({ Accept: 'application/vnd.github.html+json' })
+    await expect(fetchReleaseNotes(fetchImpl)).rejects.toThrow('GitHub answered with status 403.')
   })
 })

@@ -534,8 +534,8 @@ before it.
 
 - The build loads the releases once and puts them in the page (`scripts/release-notes.ts`, module
   `virtual:release-notes`), so visitors do not call GitHub. Without a token, GitHub allows 60 API calls an hour from
-  each address, and a visitor over that limit gets no notes. The build sends `GITHUB_TOKEN` when it is set, and
-  keeps only the fields that the page reads. Notes that change after a deploy show after the next deploy.
+  each address, and a visitor over that limit gets no notes; a build makes one call and needs no token. It keeps only
+  the fields that the page reads. Notes that change after a deploy show after the next deploy.
 - On the dev server, and after a build could not load the releases, the page loads them from GitHub when it opens.
 
 - `cleanReleaseHtml` rebuilds the notes from an allowlist of text elements. It drops every attribute except a link
