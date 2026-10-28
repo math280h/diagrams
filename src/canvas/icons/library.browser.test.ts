@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BOUNDARY_KINDS } from '@/model/boundaries'
-import { TEMPLATES } from '@/templates'
+import { TEMPLATES, templateDiagrams } from '@/templates'
 import { iconSourceOf, loadIconSets } from './library'
 
 describe('icon sets', () => {
@@ -21,8 +21,8 @@ describe('icon sets', () => {
     const known = new Set(sets.flatMap((set) => set.entries.map((entry) => entry.id)))
     const used = [
       ...BOUNDARY_KINDS.map((kind) => kind.icon),
-      ...TEMPLATES.flatMap((template) =>
-        template.build().nodes.map((node) => ('icon' in node.data ? node.data.icon : '')),
+      ...TEMPLATES.flatMap(templateDiagrams).flatMap((diagram) =>
+        diagram.nodes.map((node) => ('icon' in node.data ? node.data.icon : '')),
       ),
     ].filter((name) => iconSourceOf(name) !== null)
     expect(used.length).toBeGreaterThan(30)

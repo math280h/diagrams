@@ -6,7 +6,7 @@ import { nodeLabel } from '@/model/labels'
 import { useDoc } from '@/store/doc-store'
 import { withWarnings } from '@/agent/warnings'
 import { createDiagram } from '@/model/defaults'
-import { deleteDiagram, withFreshIdentity } from '@/persistence/library-actions'
+import { deleteDiagram, templateCopies } from '@/persistence/library-actions'
 import { setName, setTheme } from '@/store/actions'
 import { repository } from '@/persistence/active-repository'
 import { untilStored } from '@/persistence/until-stored'
@@ -29,7 +29,10 @@ export const createDiagramHandler: ToolHandler<'create_diagram'> = async ({ name
       const ids = ctx.templates.map((candidate) => `"${candidate.id}"`).join(', ')
       throw new ToolError(`No template "${template}". Templates: ${ids}.`)
     }
-    diagram = withFreshIdentity(source.build(), name)
+    const [copy, ...inside] = templateCopies(source, name)
+    throwIfCancelled(ctx)
+    for (const part of inside) await store(part)
+    diagram = copy!
   }
   throwIfCancelled(ctx)
   await store(diagram)

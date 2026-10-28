@@ -348,7 +348,7 @@ export const TOOL_DEFINITIONS = {
   create_diagram: {
     title: 'Create diagram',
     description:
-      'Create a diagram and open it in the editor. It is blank, or a copy of a template such as "order-system", "event-pipeline", "checkout-flow", "multi-cloud" or "collaborative-editor".',
+      'Create a diagram and open it in the editor. It is blank, or a copy of a template such as "order-system", "event-pipeline", "checkout-flow", "multi-cloud", "collaborative-editor", "rag-assistant", "mcp-agent", "c4-context" or "c4-containers". A copy of "c4-context" also copies the containers diagram that its system card opens.',
     input: z.object({
       name: z.string().describe('The diagram name, in sentence case.'),
       template: z.string().optional().describe('A template id to copy.'),

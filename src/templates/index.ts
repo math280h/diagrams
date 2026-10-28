@@ -9,6 +9,16 @@ export interface Template {
   name: string
   description: string
   build: () => Diagram
+  /**
+   * Builds the diagrams that the nodes of the template open. Each one has a fixed id, and the `opens` field of a
+   * node names it. A copy of the template copies them too.
+   */
+  inside?: () => Diagram[]
+}
+
+/** Returns the diagram of a template, then the diagrams that it opens. */
+export function templateDiagrams(template: Template): Diagram[] {
+  return [template.build(), ...(template.inside?.() ?? [])]
 }
 
 const STILL = { enabled: false, direction: 'forward', style: 'dots', density: 1.4, speed: 80, size: 1.5 } as const
@@ -1406,6 +1416,515 @@ function collaborativeEditor(): Diagram {
   return b.build('Collaborative editor')
 }
 
+function ragAssistant(): Diagram {
+  const b = new DiagramBuilder()
+  const account = b.group(48, 0, 952, 640, boundary('aws.account', 'assistant', '210987654321'))
+  const confluence = b.card(-288, -48, {
+    form: 'external',
+    title: 'Confluence',
+    icon: 'logo:confluence',
+    lines: ['ENG space'],
+  })
+  const github = b.card(-288, 80, {
+    form: 'external',
+    title: 'GitHub',
+    icon: 'logo:github',
+    lines: ['docs in 40 repos'],
+  })
+  const engineer = b.card(-288, 528, { form: 'client', title: 'Engineer', icon: 'user', lines: ['web chat'] })
+  const ingest = b.card(
+    368,
+    80,
+    {
+      title: 'Ingest worker',
+      icon: 'logo:python',
+      lines: ['parse, chunk, embed'],
+      details: details(
+        'Platform AI team',
+        'Splits each changed document into chunks of about 800 tokens, embeds them and writes them to both indexes.',
+        [],
+      ),
+    },
+    216,
+    account,
+  )
+  const answers = b.card(
+    368,
+    528,
+    {
+      title: 'Answer API',
+      icon: 'logo:fastapi',
+      lines: ['FastAPI'],
+      details: details(
+        'Platform AI team',
+        'Searches both indexes, reranks the results and asks Claude for an answer with sources. It searches only the documents that the user can read.',
+        [],
+      ),
+    },
+    216,
+    account,
+  )
+  const vectors = b.card(
+    48,
+    304,
+    { form: 'datastore', title: 'Vector store', icon: 'logo:postgresql', lines: ['pgvector, HNSW'] },
+    216,
+    account,
+  )
+  const models = b.card(368, 304, { title: 'Bedrock', icon: 'aws:bedrock', lines: ['embed and rerank'] }, 216, account)
+  const keywords = b.card(
+    688,
+    304,
+    { form: 'datastore', title: 'Keyword index', icon: 'logo:opensearch', lines: ['OpenSearch, BM25'] },
+    216,
+    account,
+  )
+  const claude = b.card(1080, 528, { form: 'external', title: 'Claude', icon: 'logo:claude', lines: ['Messages API'] })
+
+  const edge = { traffic: STILL, markerEnd: 'arrow' } as const
+  b.edge(confluence, ingest, { ...edge, label: 'sync every 15 min', protocol: 'data', stroke: 'dashed' }, [
+    'right',
+    'top',
+  ])
+  const hook = b.edge(github, ingest, { ...edge, label: 'webhook', protocol: 'http' })
+  const embed = b.edge(ingest, models, { ...edge, label: 'embed', protocol: 'http' })
+  const upsert = b.edge(ingest, vectors, { ...edge, label: 'SQL' })
+  const index = b.edge(ingest, keywords, { ...edge, label: 'bulk index', protocol: 'data' })
+  const ask = b.edge(engineer, answers, {
+    ...edge,
+    label: 'HTTPS',
+    request: body({ question: 'How do I replay a failed payout?' }),
+    response: body({ answer: 'Run payouts replay with the payout id.', sources: ['docs/runbooks/payouts.md#L40'] }),
+  })
+  const rank = b.edge(answers, models, { ...edge, label: 'embed, rerank', protocol: 'http' })
+  const vectorSearch = b.edge(answers, vectors, { ...edge, label: 'SQL' })
+  const keywordSearch = b.edge(answers, keywords, { ...edge, label: 'search', protocol: 'data' })
+  const prompt = b.edge(answers, claude, { ...edge, label: 'HTTPS' })
+
+  b.text(-288, -192, { text: 'RAG assistant', size: 'xl' })
+  b.text(-288, -144, { text: 'Answers about internal docs, with the sources it used.', size: 'sm', tone: 'muted' })
+
+  b.flow(
+    'Index a document',
+    [
+      nodeStep(github, 'A merged pull request changes the payouts runbook.', 1300, 'fit', 1, { event: 'push main' }),
+      edgeStep(hook, '', 1200, 'follow', 1.1, { event: 'POST /hooks/github', latencyMs: 40 }),
+      nodeStep(ingest, 'The worker parses the Markdown and splits it into 14 chunks.', 1500, 'follow', 1.1, {
+        event: 'chunk 14',
+      }),
+      edgeStep(embed, '', 1200, 'follow', 1.1, { event: 'InvokeModel titan-embed-text-v2', latencyMs: 210 }),
+      nodeStep(models, 'Bedrock returns one vector of 1024 numbers for each chunk.', 1400, 'follow', 1.1, {
+        event: 'embeddings 14 × 1024',
+      }),
+      edgeStep(embed, '', 1100, 'follow', 1.1, { event: '200 OK' }),
+      {
+        ...edgeStep(
+          upsert,
+          'The chunks go to the vector store and the keyword index at the same time.',
+          1500,
+          'fit',
+          1,
+          {
+            event: 'upsert 14 chunks',
+            latencyMs: 35,
+          },
+        ),
+        parallel: [{ kind: 'edge', id: index }],
+      },
+      {
+        ...nodeStep(vectors, 'Both indexes hold the new text a minute after the merge.', 1800, 'fit', 1, {
+          event: 'COMMIT',
+        }),
+        parallel: [{ kind: 'node', id: keywords }],
+      },
+    ],
+    { token: { label: 'Runbook', icon: 'file-text', shape: 'chip' } },
+  )
+  const question = b.flow(
+    'Answer a question',
+    [
+      nodeStep(engineer, 'An engineer asks how to replay a failed payout.', 1300, 'fit', 1, { event: 'ask' }),
+      edgeStep(ask, '', 1200, 'follow', 1.1, { event: 'POST /v1/answers', latencyMs: 30 }),
+      nodeStep(
+        answers,
+        'The API keeps only the spaces and repositories that the engineer can read.',
+        1500,
+        'follow',
+        1.1,
+        {
+          event: 'authorize',
+        },
+      ),
+      edgeStep(rank, '', 1100, 'follow', 1.1, { event: 'embed question', latencyMs: 45 }),
+      edgeStep(rank, '', 1100, 'follow', 1.1, { event: '200 vector' }),
+      {
+        ...edgeStep(vectorSearch, 'Vector search and keyword search run at the same time.', 1500, 'fit', 1, {
+          event: 'top 40',
+          latencyMs: 28,
+        }),
+        parallel: [{ kind: 'edge', id: keywordSearch }],
+      },
+      {
+        ...edgeStep(vectorSearch, 'The API merges both lists into one ranking.', 1400, 'fit', 1, {
+          event: '40 chunks',
+        }),
+        parallel: [{ kind: 'edge', id: keywordSearch }],
+      },
+      edgeStep(rank, '', 1100, 'follow', 1.1, { event: 'rerank 40', latencyMs: 90 }),
+      edgeStep(rank, 'The reranker keeps the six best chunks.', 1300, 'follow', 1.1, { event: 'top 6' }),
+      edgeStep(prompt, 'The prompt holds the question and the six chunks with their sources.', 1500, 'follow', 1.1, {
+        event: 'POST /v1/messages',
+        latencyMs: 1900,
+      }),
+      edgeStep(prompt, '', 1300, 'follow', 1.1, { event: 'answer with 3 citations' }),
+      edgeStep(ask, '', 1200, 'follow', 1.1, { event: '200 OK', latencyMs: 2300 }),
+      nodeStep(engineer, 'The answer links to the runbook lines that it used.', 1800, 'fit', 1, {
+        event: 'answer shown',
+      }),
+    ],
+    { token: { label: 'Question', icon: 'message-square', shape: 'chip' } },
+  )
+  b.path(question, 'Nothing relevant', 8, [
+    nodeStep(answers, 'Every score is below 0.3, so the API does not ask the model.', 1600, 'follow', 1.1, {
+      event: 'no context',
+      level: 'warn',
+    }),
+    edgeStep(ask, '', 1200, 'follow', 1.1, { event: '200 not found', level: 'warn' }),
+    nodeStep(engineer, 'The engineer gets "Not in the docs" and a link to the help channel.', 1900, 'fit', 1, {
+      event: 'no answer',
+      level: 'warn',
+    }),
+  ])
+  return b.build('RAG assistant')
+}
+
+function mcpAgent(): Diagram {
+  const b = new DiagramBuilder()
+  const host = b.group(352, 208, 840, 416, boundary('general.app', 'Ops agent', 'MCP host', undefined, 'bot'))
+  const engineer = b.card(0, 304, { form: 'client', title: 'On-call engineer', icon: 'user', lines: ['Slack'] })
+  const claude = b.card(664, 48, {
+    form: 'external',
+    title: 'Claude',
+    icon: 'logo:claude',
+    lines: ['Messages API, tool use'],
+  })
+  const agent = b.card(
+    312,
+    96,
+    {
+      title: 'Agent',
+      icon: 'logo:typescript',
+      lines: ['agent loop, MCP client'],
+      details: details(
+        'SRE team',
+        'Sends the question and the tools of its MCP servers to Claude, runs the tools that Claude asks for, and asks a person before a tool that writes.',
+        [['Model Context Protocol', 'https://modelcontextprotocol.io']],
+      ),
+    },
+    216,
+    host,
+  )
+  const database = b.card(
+    48,
+    304,
+    { title: 'Postgres MCP', icon: 'logo:postgresql', lines: ['stdio, read-only'] },
+    216,
+    host,
+  )
+  const runbooks = b.card(
+    576,
+    304,
+    { title: 'Runbooks MCP', icon: 'book-open', lines: ['stdio, 230 runbooks'] },
+    216,
+    host,
+  )
+  const github = b.card(1264, 208, {
+    form: 'external',
+    title: 'GitHub MCP',
+    icon: 'logo:github',
+    lines: ['remote, OAuth'],
+  })
+  const sentry = b.card(1264, 400, {
+    form: 'external',
+    title: 'Sentry MCP',
+    icon: 'logo:sentry',
+    lines: ['remote, OAuth'],
+  })
+  const audit = b.card(
+    312,
+    304,
+    { form: 'datastore', title: 'Audit log', icon: 'scroll-text', lines: ['SQLite, every tool call'] },
+    216,
+    host,
+  )
+
+  const edge = { traffic: STILL, markerEnd: 'arrow' } as const
+  const ask = b.edge(engineer, agent, { ...edge, label: 'Slack events', protocol: 'http' })
+  const model = b.edge(agent, claude, { ...edge, label: 'HTTPS' })
+  const toGithub = b.edge(agent, github, { ...edge, label: 'MCP, HTTP', protocol: 'rpc' })
+  const toSentry = b.edge(agent, sentry, { ...edge, label: 'MCP, HTTP', protocol: 'rpc' })
+  const toDatabase = b.edge(agent, database, { ...edge, label: 'MCP, stdio', protocol: 'rpc' })
+  const toRunbooks = b.edge(agent, runbooks, { ...edge, label: 'MCP, stdio', protocol: 'rpc' })
+  const log = b.edge(agent, audit, { ...edge, label: 'append', protocol: 'data', stroke: 'dashed' })
+
+  b.text(0, -96, { text: 'Agent with MCP tools', size: 'xl' })
+  b.text(0, -48, { text: 'An ops agent that asks Claude and calls tools on MCP servers.', size: 'sm', tone: 'muted' })
+
+  const flow = b.flow(
+    'Investigate an alert',
+    [
+      nodeStep(engineer, 'The on-call engineer asks why checkout errors went up.', 1400, 'fit', 1, {
+        event: '@ops-agent why are 500s up?',
+      }),
+      edgeStep(ask, '', 1200, 'follow', 1.1, { event: 'app_mention', latencyMs: 25 }),
+      nodeStep(
+        agent,
+        'The agent sends the question and the tools of its MCP servers to the model.',
+        1500,
+        'follow',
+        1.1,
+        {
+          event: 'tools/list 14 tools',
+        },
+      ),
+      edgeStep(model, '', 1200, 'follow', 1.1, { event: 'POST /v1/messages', latencyMs: 2100 }),
+      edgeStep(model, 'The model asks for two tools at once.', 1300, 'follow', 1.1, { event: 'tool_use × 2' }),
+      {
+        ...edgeStep(toSentry, 'The agent calls both MCP servers at the same time.', 1400, 'fit', 1, {
+          event: 'tools/call',
+          latencyMs: 340,
+        }),
+        parallel: [{ kind: 'edge', id: toDatabase }],
+      },
+      {
+        ...nodeStep(
+          sentry,
+          'Sentry finds a new timeout in the payment client, and a read-only query counts 4% failed payments.',
+          2000,
+          'fit',
+          1,
+          { event: 'search issues, run query' },
+        ),
+        parallel: [{ kind: 'node', id: database }],
+      },
+      {
+        ...edgeStep(toSentry, '', 1300, 'fit', 1, { event: 'results' }),
+        parallel: [{ kind: 'edge', id: toDatabase }],
+      },
+      edgeStep(model, '', 1200, 'follow', 1.1, { event: 'tool_result × 2', latencyMs: 1800 }),
+      edgeStep(model, 'The model asks for the runbook for payment timeouts.', 1300, 'follow', 1.1, {
+        event: 'tool_use search_runbooks',
+      }),
+      edgeStep(toRunbooks, '', 1200, 'follow', 1.1, { event: 'tools/call', latencyMs: 60 }),
+      edgeStep(toRunbooks, '', 1200, 'follow', 1.1, { event: 'runbook PAY-12' }),
+      edgeStep(model, '', 1200, 'follow', 1.1, { event: 'tool_result', latencyMs: 3400 }),
+      edgeStep(model, 'The model writes the cause and the next steps from the runbook.', 1400, 'follow', 1.1, {
+        event: 'end_turn',
+      }),
+      {
+        ...edgeStep(ask, 'The agent answers in the thread and keeps each tool call in the audit log.', 1500, 'fit', 1, {
+          event: 'chat.postMessage',
+        }),
+        parallel: [{ kind: 'edge', id: log }],
+      },
+      nodeStep(engineer, 'The engineer has the cause and the runbook in two minutes.', 1800, 'fit', 1, {
+        event: 'reply in thread',
+      }),
+    ],
+    { token: { label: 'Question', icon: 'message-square', shape: 'chip' } },
+  )
+  b.path(flow, 'Revert with approval', 15, [
+    edgeStep(ask, '', 1200, 'follow', 1.1, { event: 'revert the 14:00 deploy' }),
+    edgeStep(model, '', 1200, 'follow', 1.1, { event: 'POST /v1/messages', latencyMs: 1600 }),
+    edgeStep(model, 'The model asks for a tool that writes.', 1300, 'follow', 1.1, {
+      event: 'tool_use create_pull_request',
+    }),
+    nodeStep(agent, 'A person must approve each tool that writes, so the agent asks first.', 1600, 'follow', 1.1, {
+      event: 'approval required',
+      level: 'warn',
+    }),
+    edgeStep(ask, '', 1200, 'follow', 1.1, { event: 'Approve the revert?' }),
+    nodeStep(engineer, 'The engineer approves in Slack.', 1400, 'follow', 1.1, { event: 'approve' }),
+    edgeStep(ask, '', 1200, 'follow', 1.1, { event: 'approved' }),
+    edgeStep(toGithub, '', 1300, 'follow', 1.1, { event: 'tools/call create_pull_request', latencyMs: 900 }),
+    edgeStep(toGithub, 'GitHub opens the revert as a pull request for review.', 1600, 'follow', 1.1, {
+      event: 'pull request 4821',
+    }),
+  ])
+  return b.build('Agent with MCP tools')
+}
+
+const STAYBOOK_CONTAINERS_ID = 'template-staybook-containers'
+
+function c4Context(): Diagram {
+  const b = new DiagramBuilder()
+  const guest = b.card(0, 0, { form: 'client', title: 'Guest', icon: 'user', lines: ['books stays'] })
+  const host = b.card(352, 0, { form: 'client', title: 'Host', icon: 'user', lines: ['lists homes'] })
+  const support = b.card(704, 0, { form: 'client', title: 'Support agent', icon: 'headset', lines: ['Staybook staff'] })
+  const staybook = b.card(352, 240, {
+    title: 'Staybook',
+    icon: 'house',
+    lines: ['web and mobile apps'],
+    details: details(
+      'Product team',
+      'Lets guests find and book homes, and lets hosts list their homes and get paid. Open it to see its containers.',
+      [],
+    ),
+    opens: STAYBOOK_CONTAINERS_ID,
+  })
+  const email = b.card(0, 480, { form: 'external', title: 'Resend', icon: 'logo:resend', lines: ['email'] })
+  const payments = b.card(352, 480, {
+    form: 'external',
+    title: 'Stripe',
+    icon: 'logo:stripe',
+    lines: ['payments, payouts'],
+  })
+  const identity = b.card(704, 480, { form: 'external', title: 'Auth0', icon: 'logo:auth0', lines: ['sign-in'] })
+
+  const edge = { traffic: STILL, markerEnd: 'arrow' } as const
+  const book = b.edge(guest, staybook, { ...edge, label: 'books stays', protocol: 'http' })
+  const list = b.edge(host, staybook, { ...edge, label: 'lists homes', protocol: 'http' })
+  b.edge(support, staybook, { ...edge, label: 'helps guests', protocol: 'http' })
+  const charge = b.edge(staybook, payments, { ...edge, label: 'charges cards, pays hosts', protocol: 'http' })
+  b.edge(staybook, identity, { ...edge, label: 'signs users in', protocol: 'http' })
+  const send = b.edge(staybook, email, { ...edge, label: 'sends email', protocol: 'http' })
+  const deliver = b.edge(email, guest, { ...edge, label: 'emails', protocol: 'none', stroke: 'dashed' })
+
+  b.text(0, -144, { text: 'Staybook: system context', size: 'xl' })
+  b.text(0, -96, {
+    text: 'Who uses Staybook and the systems it needs. Open Staybook to see its containers.',
+    size: 'sm',
+    tone: 'muted',
+  })
+
+  b.flow(
+    'Book a stay',
+    [
+      nodeStep(guest, 'A guest books three nights in Lisbon.', 1300, 'fit', 1, { event: 'book' }),
+      edgeStep(book, '', 1200, 'follow', 1.1, { event: 'HTTPS' }),
+      nodeStep(staybook, 'Staybook holds the dates for the guest.', 1400, 'follow', 1.1, { event: 'hold dates' }),
+      edgeStep(charge, '', 1200, 'follow', 1.1, { event: 'charge card', latencyMs: 380 }),
+      edgeStep(charge, 'Stripe charges the card.', 1300, 'follow', 1.1, { event: 'paid' }),
+      {
+        ...edgeStep(send, 'Staybook confirms the booking and tells the host.', 1500, 'fit', 1, {
+          event: 'send confirmation',
+        }),
+        parallel: [{ kind: 'edge', id: list }],
+      },
+      edgeStep(deliver, '', 1200, 'follow', 1.1, { event: 'email' }),
+      nodeStep(guest, 'The guest has the confirmation a few seconds later.', 1800, 'fit', 1, {
+        event: 'booking confirmed',
+      }),
+    ],
+    { token: { label: 'Booking', icon: 'calendar', shape: 'chip' } },
+  )
+  return b.build('Staybook: system context')
+}
+
+function c4Containers(): Diagram {
+  const b = new DiagramBuilder()
+  const system = b.group(0, 160, 1032, 784, boundary('general.system', 'Staybook', 'containers'))
+  const guest = b.card(64, -128, { form: 'client', title: 'Guest', icon: 'user', lines: ['books stays'] })
+  const host = b.card(416, -128, { form: 'client', title: 'Host', icon: 'user', lines: ['lists homes'] })
+  const web = b.card(
+    64,
+    96,
+    { form: 'client', title: 'Web app', icon: 'logo:nextdotjs', lines: ['Next.js'] },
+    216,
+    system,
+  )
+  const mobile = b.card(
+    416,
+    96,
+    { form: 'client', title: 'Mobile app', icon: 'smartphone', lines: ['iOS and Android'] },
+    216,
+    system,
+  )
+  const api = b.card(416, 288, { title: 'API', icon: 'logo:go', lines: ['Go, REST'] }, 216, system)
+  const database = b.card(
+    64,
+    480,
+    { form: 'datastore', title: 'Database', icon: 'logo:postgresql', lines: ['bookings, listings'] },
+    216,
+    system,
+  )
+  const search = b.card(
+    416,
+    480,
+    { form: 'datastore', title: 'Search', icon: 'logo:elasticsearch', lines: ['listings index'] },
+    216,
+    system,
+  )
+  const bus = b.card(
+    768,
+    480,
+    { form: 'queue', title: 'booking.confirmed', icon: 'logo:rabbitmq', lines: ['RabbitMQ'] },
+    216,
+    system,
+  )
+  const notifier = b.card(768, 672, { title: 'Notifier', icon: 'logo:nodedotjs', lines: ['Node 22'] }, 216, system)
+  const identity = b.card(1120, 256, { form: 'external', title: 'Auth0', icon: 'logo:auth0', lines: ['sign-in'] })
+  const payments = b.card(1120, 448, {
+    form: 'external',
+    title: 'Stripe',
+    icon: 'logo:stripe',
+    lines: ['payments, payouts'],
+  })
+  const email = b.card(1120, 832, { form: 'external', title: 'Resend', icon: 'logo:resend', lines: ['email'] })
+
+  const edge = { traffic: STILL, markerEnd: 'arrow' } as const
+  const open = b.edge(guest, web, { ...edge, label: 'HTTPS' })
+  b.edge(host, mobile, { ...edge, label: 'uses', protocol: 'none' })
+  const call = b.edge(web, api, { ...edge, label: 'JSON over HTTPS', protocol: 'http' }, ['right', 'left'])
+  b.edge(mobile, api, { ...edge, label: 'JSON over HTTPS', protocol: 'http' })
+  const sql = b.edge(api, database, { ...edge, label: 'SQL' }, ['bottom', 'top'])
+  b.edge(api, search, { ...edge, label: 'query', protocol: 'data' }, ['bottom', 'top'])
+  const publish = b.edge(api, bus, { ...edge, label: 'publish' }, ['bottom', 'top'])
+  const consume = b.edge(bus, notifier, { ...edge, label: 'consume' })
+  const charge = b.edge(api, payments, { ...edge, label: 'HTTPS' })
+  b.edge(mobile, identity, { ...edge, label: 'sign-in, OIDC', protocol: 'http' })
+  const send = b.edge(notifier, email, { ...edge, label: 'HTTPS' })
+
+  b.text(0, -288, { text: 'Staybook: containers', size: 'xl' })
+  b.text(0, -240, { text: 'The apps, services and data stores inside Staybook.', size: 'sm', tone: 'muted' })
+
+  const flow = b.flow(
+    'Book a stay',
+    [
+      nodeStep(guest, 'The guest picks dates and presses Book.', 1300, 'fit', 1, { event: 'click Book' }),
+      edgeStep(open, '', 1100, 'follow', 1.1, { event: 'HTTPS' }),
+      edgeStep(call, '', 1200, 'follow', 1.1, { event: 'POST /bookings', latencyMs: 45 }),
+      nodeStep(api, 'The API checks the dates against the calendar of the home.', 1500, 'follow', 1.1, {
+        event: 'check availability',
+      }),
+      edgeStep(sql, '', 1100, 'follow', 1.1, { event: 'SELECT … FOR UPDATE', latencyMs: 6 }),
+      edgeStep(sql, '', 1100, 'follow', 1.1, { event: 'dates free' }),
+      edgeStep(charge, '', 1200, 'follow', 1.1, { event: 'POST /v1/payment_intents', latencyMs: 380 }),
+      edgeStep(charge, 'Stripe charges the card.', 1300, 'follow', 1.1, { event: '200 succeeded' }),
+      {
+        ...edgeStep(sql, 'The API saves the booking and publishes an event at the same time.', 1500, 'fit', 1, {
+          event: 'INSERT booking',
+          latencyMs: 5,
+        }),
+        parallel: [{ kind: 'edge', id: publish }],
+      },
+      edgeStep(consume, '', 1200, 'follow', 1.1, { event: 'consume booking.confirmed' }),
+      edgeStep(send, '', 1200, 'follow', 1.1, { event: 'POST /emails', latencyMs: 120 }),
+      nodeStep(email, 'Resend sends the confirmation to the guest.', 1800, 'fit', 1, { event: 'delivered' }),
+    ],
+    { token: { label: 'Booking', icon: 'calendar', shape: 'chip' } },
+  )
+  b.path(flow, 'Card declined', 6, [
+    edgeStep(charge, '', 1300, 'follow', 1.1, { event: '402 card_declined', level: 'error' }),
+    edgeStep(call, '', 1200, 'follow', 1.1, { event: '409 payment failed', level: 'error' }),
+    nodeStep(web, 'The guest sees that the card was declined and tries another card.', 1800, 'fit', 1, {
+      event: 'show error',
+      level: 'warn',
+    }),
+  ])
+  return b.build('Staybook: containers', { id: STAYBOOK_CONTAINERS_ID })
+}
+
 export const TEMPLATES: Template[] = [
   {
     id: 'multi-cloud',
@@ -1438,5 +1957,33 @@ export const TEMPLATES: Template[] = [
     name: 'Checkout flow',
     description: "A shopper's path from a search ad to a placed order, with a sign-in branch.",
     build: checkoutFlow,
+  },
+  {
+    id: 'rag-assistant',
+    name: 'RAG assistant',
+    description:
+      'Docs become vectors and keywords, and a question gets an answer with sources from Claude. Two flows: index a document and answer a question.',
+    build: ragAssistant,
+  },
+  {
+    id: 'mcp-agent',
+    name: 'Agent with MCP tools',
+    description:
+      'An ops agent asks Claude, which calls tools on local and remote MCP servers, some at the same time. A path shows a write that needs approval.',
+    build: mcpAgent,
+  },
+  {
+    id: 'c4-context',
+    name: 'C4 system context',
+    description:
+      'Staybook, its users and the systems it needs, as a C4 system context. The Staybook card opens the containers diagram, and a copy brings both.',
+    build: c4Context,
+    inside: () => [c4Containers()],
+  },
+  {
+    id: 'c4-containers',
+    name: 'C4 containers',
+    description: 'The apps, API, data stores and queue inside Staybook, with a booking flow and a declined card.',
+    build: c4Containers,
   },
 ]

@@ -99,6 +99,11 @@ The visual system lives in `DESIGN.md` at the repository root.
   Present the camera zooms into the node, the stage fades, and Present of the inner diagram opens with a way back
   (`from` in the address). Exported pages, share links and image exports carry no other diagrams, so they show no
   zoom button. An empty `opens` opens nothing.
+- A template can bring the diagrams that its nodes open (`Template.inside`), for example the C4 containers behind
+  the system of the C4 system context. Those diagrams have fixed ids, and `templateCopies` gives every copy a new id
+  and points `opens` at the new ids, so a template can be copied many times. The template tests and
+  `scripts/template-files.mjs` check the inner diagrams too (`templateDiagrams`). The template page shows only the
+  template, and its node has no zoom button, because the inner diagram is not in the library until a copy.
 - Cards and shapes can take a colour, so people can group nodes by team or by kind of part across
   boundaries. The colours are the boundary palette (`COLORS` in `src/model/colors.ts`), so a node
   and a boundary of one team can share a hue, and the palette has no saturated blue. Neutral is the
