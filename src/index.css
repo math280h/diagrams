@@ -242,6 +242,38 @@
   outline-offset: -1px;
 }
 
+.dg-seq-row {
+  --dg-seq-ink: var(--muted-foreground);
+  &[data-level='warn'] {
+    --dg-seq-ink: var(--warn);
+  }
+  &[data-level='error'] {
+    --dg-seq-ink: var(--destructive);
+  }
+  &[data-state='pending'] {
+    --dg-seq-ink: var(--faint);
+  }
+  &[data-state='active'] {
+    --dg-seq-ink: var(--flow);
+  }
+  & .dg-seq-line {
+    fill: none;
+    stroke: var(--dg-seq-ink);
+    stroke-width: 1.25;
+  }
+  & .dg-seq-head {
+    fill: var(--dg-seq-ink);
+  }
+  & .dg-seq-note {
+    border-color: var(--dg-seq-ink);
+    background: var(--panel);
+  }
+}
+
+.dg-seq-lifeline {
+  background: linear-gradient(var(--panel-border) 60%, transparent 0) 0 0 / 1px 6px repeat-y;
+}
+
 .dg-art {
   flex: none;
   object-fit: contain;
