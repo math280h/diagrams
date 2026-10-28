@@ -517,7 +517,9 @@ and the flows still play, which an image or a video cannot do.
 
 The What’s new page (`#/releases`) lists the published releases with their notes, so people on the website see
 what changed. It reads the GitHub releases API at runtime in the HTML media type, so GitHub renders the notes,
-mentions and pull request links. Drafts and pre-releases stay out, because the live site deploys only full releases.
+mentions and pull request links. Drafts stay out. The live site deploys only full releases, so it lists no pre-releases. The preview site
+is built with `VITE_RELEASE_CHANNEL=preview`, deploys `main`, and also lists the pre-releases that are newer than the
+newest full release, marked Preview; a full release replaces the pre-releases before it.
 
 - `cleanReleaseHtml` rebuilds the notes from an allowlist of text elements. It drops every attribute except a link
   target with an `http`, `https` or `mailto` address, and drops scripts, frames and every element outside the HTML

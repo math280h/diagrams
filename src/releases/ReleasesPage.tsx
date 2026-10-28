@@ -6,7 +6,7 @@ import { Separator } from '@/components/ui/separator'
 import { DESKTOP_DOWNLOAD_URL, REPOSITORY_URL } from '@/desktop/constants'
 import { errorMessage } from '@/lib/error-message'
 import { cleanReleaseHtml } from './clean-html'
-import { loadReleases, type Release } from './releases'
+import { isPreviewSite, loadReleases, type Release } from './releases'
 
 type State = { kind: 'loading' } | { kind: 'failed'; message: string } | { kind: 'loaded'; releases: Release[] }
 
@@ -24,8 +24,13 @@ function ReleaseNotes({ release }: { release: Release }) {
   return (
     <article aria-labelledby={`release-${release.tag}`} className="border-b py-8 last:border-b-0">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 id={`release-${release.tag}`} className="text-xl font-medium tracking-[-0.015em]">
+        <h2 id={`release-${release.tag}`} className="flex items-baseline gap-2 text-xl font-medium tracking-[-0.015em]">
           {release.name}
+          {release.preview && (
+            <span className="rounded-full border px-2 py-0.5 text-xs font-normal tracking-normal text-muted-foreground">
+              Preview
+            </span>
+          )}
         </h2>
         <time dateTime={new Date(release.publishedAt).toISOString()} className="text-sm text-muted-foreground">
           {DATE_FORMAT.format(release.publishedAt)}
@@ -76,8 +81,9 @@ export function ReleasesPage() {
           <div className="pt-8 pb-2 sm:pt-12">
             <h1 className="dg-display text-4xl leading-[1.04] sm:text-5xl">What’s new</h1>
             <p className="mt-4 max-w-xl text-base leading-6 text-pretty text-muted-foreground">
-              The changes in each release of Diagrams. The website runs the newest release, and the desktop app updates
-              itself to it.
+              {isPreviewSite()
+                ? 'The changes in each release of Diagrams. This preview site runs the newest work on main, so it is ahead of the releases. Pre-releases show until a full release replaces them.'
+                : 'The changes in each release of Diagrams. The website runs the newest release, and the desktop app updates itself to it.'}
             </p>
           </div>
           {state.kind === 'loading' && (

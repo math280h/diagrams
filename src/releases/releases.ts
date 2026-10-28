@@ -10,6 +10,8 @@ export interface Release {
   /** The release notes as HTML from GitHub, before {@link cleanReleaseHtml}. */
   html: string
   url: string
+  /** True for a pre-release, which only the preview website lists. */
+  preview: boolean
 }
 
 interface GitHubRelease {
@@ -26,12 +28,22 @@ function text(value: unknown): string {
   return typeof value === 'string' ? value : ''
 }
 
-/** Returns the published releases that are not pre-releases, the newest first. */
-export function parseReleases(data: unknown): Release[] {
+/** Returns true on the preview website, which deploys `main` and also lists the newest pre-releases. */
+export function isPreviewSite(): boolean {
+  return import.meta.env.VITE_RELEASE_CHANNEL === 'preview'
+}
+
+/**
+ * Returns the published releases, the newest first.
+ *
+ * @param previews - If true, the list also holds the pre-releases that are newer than the newest full release. A full
+ *   release replaces the pre-releases before it.
+ */
+export function parseReleases(data: unknown, previews = false): Release[] {
   if (!Array.isArray(data)) return []
-  return (data as GitHubRelease[])
-    .filter((release) => release.draft !== true && release.prerelease !== true && text(release.tag_name))
-    .map((release) => {
+  const releases = (data as GitHubRelease[])
+    .filter((release) => release.draft !== true && text(release.tag_name))
+    .map((release): Release => {
       const tag = text(release.tag_name)
       const url = text(release.html_url)
       return {
@@ -40,9 +52,12 @@ export function parseReleases(data: unknown): Release[] {
         publishedAt: Date.parse(text(release.published_at)) || 0,
         html: text(release.body_html),
         url: url.startsWith(`${REPOSITORY_URL}/releases/`) ? url : `${REPOSITORY_URL}/releases/tag/${tag}`,
+        preview: release.prerelease === true,
       }
     })
     .toSorted((a, b) => b.publishedAt - a.publishedAt)
+  const newestFull = releases.find((release) => !release.preview)?.publishedAt ?? 0
+  return releases.filter((release) => !release.preview || (previews && release.publishedAt > newestFull))
 }
 
 export class ReleaseLookupError extends Error {}
@@ -63,5 +78,5 @@ export async function loadReleases(): Promise<Release[]> {
     throw new ReleaseLookupError('GitHub did not answer.')
   }
   if (!response.ok) throw new ReleaseLookupError(`GitHub answered with status ${response.status}.`)
-  return parseReleases(await response.json())
+  return parseReleases(await response.json(), isPreviewSite())
 }
