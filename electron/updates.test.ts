@@ -19,11 +19,19 @@ function setup(policy: UpdatePolicy = INSTALL, updater: FakeUpdater | null = new
 }
 
 describe('updatePolicy', () => {
-  const build = { packaged: true, platform: 'win32' as const, packageType: null, appImage: false, macSigned: false }
+  const build = {
+    packaged: true,
+    platform: 'win32' as const,
+    packageType: null,
+    appImage: false,
+    macSigned: false,
+    preview: false,
+  }
 
-  it('installs on quit on Windows, and never updates a build from source', () => {
+  it('installs on quit on Windows, and never updates a build from source or a preview build', () => {
     expect(updatePolicy(build)).toEqual({ kind: 'install', onQuit: true })
     expect(updatePolicy({ ...build, packaged: false })).toEqual({ kind: 'none' })
+    expect(updatePolicy({ ...build, preview: true })).toEqual({ kind: 'none' })
   })
 
   it('only tells the user about a new version on a macOS build without a signature', () => {

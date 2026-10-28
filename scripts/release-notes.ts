@@ -1,5 +1,5 @@
 import type { Plugin } from 'vite'
-import { RELEASES_API_URL, REPOSITORY_API_URL } from '../src/desktop/constants.ts'
+import { PREVIEW_APP_TAG, RELEASES_API_URL, REPOSITORY_API_URL } from '../src/desktop/constants.ts'
 import type { UnreleasedChange, UnreleasedChanges } from '../src/releases/unreleased.ts'
 
 const MODULE_ID = 'virtual:release-notes'
@@ -31,15 +31,25 @@ function messageOf(error: unknown): string {
 export async function fetchReleaseNotes(fetchImpl: typeof fetch = fetch): Promise<unknown[]> {
   const data = await getJson(RELEASES_API_URL, 'application/vnd.github.html+json', fetchImpl)
   if (!Array.isArray(data)) throw new Error('GitHub did not answer with a list of releases.')
-  return data.map((release: Record<string, unknown>) =>
-    Object.fromEntries(KEPT_FIELDS.map((field) => [field, release[field]])),
-  )
+  return data.map((release: Record<string, unknown>) => ({
+    ...Object.fromEntries(KEPT_FIELDS.map((field) => [field, release[field]])),
+    assets: Array.isArray(release.assets)
+      ? (release.assets as Record<string, unknown>[]).map((asset) => ({
+          name: asset.name,
+          browser_download_url: asset.browser_download_url,
+        }))
+      : [],
+  }))
 }
 
 /** Returns the tag of the newest published release, a pre-release too, or `null` without one. */
 export function newestReleaseTag(releases: unknown[]): string | null {
   const published = (releases as Record<string, unknown>[]).filter(
-    (release) => release.draft !== true && typeof release.tag_name === 'string' && release.tag_name,
+    (release) =>
+      release.draft !== true &&
+      typeof release.tag_name === 'string' &&
+      release.tag_name &&
+      release.tag_name !== PREVIEW_APP_TAG,
   )
   const time = (release: Record<string, unknown>) => Date.parse(String(release.published_at)) || 0
   const [newest] = published.toSorted((a, b) => time(b) - time(a))

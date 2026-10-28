@@ -6,14 +6,14 @@ import { Separator } from '@/components/ui/separator'
 import { DESKTOP_DOWNLOAD_URL, REPOSITORY_URL } from '@/desktop/constants'
 import { errorMessage } from '@/lib/error-message'
 import { cleanReleaseHtml } from './clean-html'
-import { isPreviewSite, loadReleases, type Release } from './releases'
+import { isPreviewSite, loadReleases, type Download, type Release } from './releases'
 import type { UnreleasedChanges } from './unreleased'
 
 type State = { kind: 'loading' } | { kind: 'failed'; message: string } | { kind: 'loaded'; releases: Release[] }
 
 const DATE_FORMAT = new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
 
-function UnreleasedNotes({ changes }: { changes: UnreleasedChanges }) {
+function UnreleasedNotes({ changes, downloads }: { changes: UnreleasedChanges; downloads: Download[] }) {
   return (
     <div className="dg-release-notes mt-4">
       <p>The changes on main after {changes.base}. They come in the next release.</p>
@@ -35,6 +35,22 @@ function UnreleasedNotes({ changes }: { changes: UnreleasedChanges }) {
           </li>
         ))}
       </ul>
+      {downloads.length > 0 && (
+        <>
+          <h3>Try them in the desktop app</h3>
+          <p>
+            A build of the newest work on main. It does not update itself: download it again for newer changes, or
+            install a release to get updates.
+          </p>
+          <ul>
+            {downloads.map((download) => (
+              <li key={download.url}>
+                <a href={download.url}>{download.label}</a>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </div>
   )
 }
@@ -64,7 +80,7 @@ function ReleaseNotes({ release }: { release: Release }) {
         </time>
       </div>
       {release.unreleased ? (
-        <UnreleasedNotes changes={release.unreleased} />
+        <UnreleasedNotes changes={release.unreleased} downloads={release.downloads ?? []} />
       ) : empty ? (
         <p className="mt-4 text-sm text-muted-foreground">This release has no notes.</p>
       ) : (

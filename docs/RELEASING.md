@@ -40,6 +40,20 @@ environment and publishes it as a GitHub pre-release when all three jobs pass.
 Installed apps with a normal version never get a preview. An app that runs a preview updates to the next preview or
 release, whichever is newer. An app on a beta preview skips alpha previews.
 
+## Builds of main
+
+Each push to `main` that changes more than Markdown and `docs/` runs the Preview app workflow. Nobody needs to start
+or approve it. It builds the installers without signatures, tests the packaged app, and puts them on the pre-release
+with the tag `preview`, which it creates the first time and then moves to the newest commit.
+
+- The files have fixed names, such as `Diagrams-preview-win-x64.exe` and `Diagrams-preview-mac-arm64.dmg`, so a link
+  to them always gives the newest build.
+- A build has the version `<next patch>-preview.<run>`, for example `0.1.5-preview.57`, and does not update itself.
+  Download it again for newer changes, or install a release to get updates.
+- The What’s new page of the preview website links these installers under Next release. The release lists and the
+  comparison with `main` leave the `preview` pre-release out, and the website deploy skips it like every pre-release.
+- A newer push cancels a build that still runs, so the pre-release holds the newest build that passed.
+
 ## Who can release
 
 Only repository admins can create, move or delete `v*` tags (the "Release tags" ruleset), so only they can start a

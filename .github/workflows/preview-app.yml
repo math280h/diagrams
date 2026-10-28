@@ -1,0 +1,105 @@
+name: Preview app
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**/*.md', 'docs/**']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-app
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    name: Prepare the preview release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Choose the version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          latest=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)
+          IFS=. read -r major minor patch <<< "${latest#v}"
+          echo "version=$major.$minor.$((patch + 1))-preview.$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"
+      - name: Create the preview release if it is missing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view preview --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1 && exit 0
+          gh release create preview --repo "$GITHUB_REPOSITORY" --prerelease --latest=false --target "$GITHUB_SHA" \
+            --title Preview --notes 'Installers of the newest build of main.'
+
+  package:
+    name: Package for ${{ matrix.os }}
+    needs: prepare
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: --win
+          - os: macos-latest
+            target: --mac
+          - os: ubuntu-latest
+            target: --linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: package.json
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm desktop:build
+      - name: Package the app
+        shell: bash
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          pnpm exec electron-builder ${{ matrix.target }} --publish never -c.extraMetadata.version="$VERSION" \
+            -c.artifactName='Diagrams-preview-${os}-${arch}.${ext}'
+      - name: Allow the Electron sandbox
+        if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Test the packaged app
+        if: runner.os != 'Linux'
+        run: node scripts/smoke-package.mjs
+      - name: Test the packaged app
+        if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum node scripts/smoke-package.mjs
+      - name: Upload the installers
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          find release -maxdepth 1 -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.AppImage' -o -name '*.deb' \) \
+            -print0 | xargs -0 gh release upload preview --repo "$GITHUB_REPOSITORY" --clobber
+
+  finish:
+    name: Point the preview release at the commit
+    needs: [prepare, package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Move the tag and describe the build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/preview" -f sha="$GITHUB_SHA" -F force=true
+          gh release edit preview --repo "$GITHUB_REPOSITORY" --prerelease --notes \
+            "Installers of the newest build of main: $VERSION, from $GITHUB_SHA. A preview build does not update itself."

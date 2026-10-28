@@ -1,7 +1,28 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+const { PREVIEW } = vi.hoisted(() => ({ PREVIEW: 'https://github.com/math280h/diagrams/releases/download/preview' }))
+
 vi.mock('virtual:release-notes', () => ({
-  default: [{ tag_name: 'v0.2.0', published_at: '2026-10-28T09:00:00Z', body_html: '<p>Notes</p>' }],
+  default: [
+    { tag_name: 'v0.2.0', published_at: '2026-10-28T09:00:00Z', body_html: '<p>Notes</p>' },
+    {
+      tag_name: 'preview',
+      prerelease: true,
+      published_at: '2026-10-29T11:00:00Z',
+      assets: [
+        {
+          name: 'Diagrams-preview-linux-amd64.deb',
+          browser_download_url: `${PREVIEW}/Diagrams-preview-linux-amd64.deb`,
+        },
+        { name: 'Diagrams-preview-win-x64.exe', browser_download_url: `${PREVIEW}/Diagrams-preview-win-x64.exe` },
+        {
+          name: 'Diagrams-preview-mac-x64.dmg',
+          browser_download_url: 'https://example.com/Diagrams-preview-mac-x64.dmg',
+        },
+        { name: 'latest.yml', browser_download_url: `${PREVIEW}/latest.yml` },
+      ],
+    },
+  ],
   unreleased: {
     base: 'v0.2.0',
     changes: [
@@ -37,6 +58,10 @@ describe('loadReleases', () => {
       url: 'https://github.com/math280h/diagrams/compare/v0.2.0...main',
     })
     expect(next?.unreleased?.changes.map((change) => change.title)).toEqual(['Pin nodes', 'Share links'])
+    expect(next?.downloads).toEqual([
+      { label: 'Windows', url: `${PREVIEW}/Diagrams-preview-win-x64.exe` },
+      { label: 'Linux (deb)', url: `${PREVIEW}/Diagrams-preview-linux-amd64.deb` },
+    ])
     expect(release?.tag).toBe('v0.2.0')
   })
 

@@ -550,6 +550,9 @@ every release. It also lists, marked Preview:
   deploy.
 - On the dev server, and after a build could not load the releases, the page loads them from GitHub when it opens,
   without the Next release entry.
+- The Next release entry links the installers of the newest build of `main` on the `preview` pre-release, which the
+  Preview app workflow replaces at each push (see `docs/RELEASING.md`). The lists and the comparison leave that
+  pre-release out. A link must point into `releases/download/preview/`.
 - `cleanReleaseHtml` rebuilds the notes from an allowlist of text elements. It drops every attribute except a link
   target with an `http`, `https` or `mailto` address, and drops scripts, frames and every element outside the HTML
   namespace with their content. The page inserts the rebuilt nodes; it never sets HTML from a string.
@@ -732,6 +735,9 @@ the handoff from the website, and updates from GitHub Releases.
     certificate, the app only says that a version is out and links to it (`macSigned` in the
     packaged `package.json`).
   - A build from source, or a package without `app-update.yml`, does not update itself.
+  - A build of `main` from the `preview` pre-release (version `x.y.z-preview.n`) does not update itself.
+    electron-updater allows pre-releases for any version with a pre-release part, and the `preview` tag is not a
+    version that it can compare.
 - The download button on the website asks the GitHub API for the latest release and links the
   installer for the system of the visitor (client hints, then the user agent). Safari and Firefox
   report an Intel Mac also on Apple silicon, so a Mac without the architecture hint, other systems

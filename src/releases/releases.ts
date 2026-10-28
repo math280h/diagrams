@@ -1,5 +1,5 @@
 import builtReleases, { unreleased } from 'virtual:release-notes'
-import { RELEASES_API_URL, REPOSITORY_URL } from '@/desktop/constants'
+import { PREVIEW_APP_TAG, RELEASE_ASSET_URL_PREFIX, RELEASES_API_URL, REPOSITORY_URL } from '@/desktop/constants'
 import type { UnreleasedChanges } from './unreleased'
 
 const LOOKUP_TIMEOUT_MS = 8000
@@ -16,7 +16,22 @@ export interface Release {
   preview: boolean
   /** Only on the entry of the preview website for the changes on `main` that no release has yet. */
   unreleased?: UnreleasedChanges
+  /** With `unreleased`: the installers of the newest build of `main`. */
+  downloads?: Download[]
 }
+
+export interface Download {
+  label: string
+  url: string
+}
+
+const PREVIEW_INSTALLERS: { label: string; pattern: RegExp }[] = [
+  { label: 'Windows', pattern: /-win-x64\.exe$/ },
+  { label: 'macOS (Apple silicon)', pattern: /-mac-arm64\.dmg$/ },
+  { label: 'macOS (Intel)', pattern: /-mac-x64\.dmg$/ },
+  { label: 'Linux (AppImage)', pattern: /\.AppImage$/ },
+  { label: 'Linux (deb)', pattern: /\.deb$/ },
+]
 
 interface GitHubRelease {
   tag_name?: unknown
@@ -26,6 +41,7 @@ interface GitHubRelease {
   published_at?: unknown
   body_html?: unknown
   html_url?: unknown
+  assets?: { name?: unknown; browser_download_url?: unknown }[]
 }
 
 function text(value: unknown): string {
@@ -46,7 +62,7 @@ export function isPreviewSite(): boolean {
 export function parseReleases(data: unknown, previews = false): Release[] {
   if (!Array.isArray(data)) return []
   const releases = (data as GitHubRelease[])
-    .filter((release) => release.draft !== true && text(release.tag_name))
+    .filter((release) => release.draft !== true && text(release.tag_name) && release.tag_name !== PREVIEW_APP_TAG)
     .map((release): Release => {
       const tag = text(release.tag_name)
       const url = text(release.html_url)
@@ -64,8 +80,24 @@ export function parseReleases(data: unknown, previews = false): Release[] {
   return releases.filter((release) => !release.preview || (previews && release.publishedAt > newestFull))
 }
 
+/** Returns the installers on the pre-release of the newest build of `main`, in a fixed order. */
+export function previewDownloads(data: unknown): Download[] {
+  if (!Array.isArray(data)) return []
+  const preview = (data as GitHubRelease[]).find((release) => release.tag_name === PREVIEW_APP_TAG)
+  const assets = (preview?.assets ?? []).filter(
+    (asset): asset is { name: string; browser_download_url: string } =>
+      typeof asset.name === 'string' &&
+      typeof asset.browser_download_url === 'string' &&
+      asset.browser_download_url.startsWith(`${RELEASE_ASSET_URL_PREFIX}${PREVIEW_APP_TAG}/`),
+  )
+  return PREVIEW_INSTALLERS.flatMap(({ label, pattern }) => {
+    const asset = assets.find((candidate) => pattern.test(candidate.name))
+    return asset ? [{ label, url: asset.browser_download_url }] : []
+  })
+}
+
 /** Returns the entry for the changes on `main` after the newest release, or `null` without changes. */
-export function nextRelease(changes: UnreleasedChanges): Release | null {
+export function nextRelease(changes: UnreleasedChanges, downloads: Download[] = []): Release | null {
   if (changes.changes.length === 0) return null
   return {
     tag: 'main',
@@ -75,6 +107,7 @@ export function nextRelease(changes: UnreleasedChanges): Release | null {
     url: `${REPOSITORY_URL}/compare/${encodeURIComponent(changes.base)}...main`,
     preview: true,
     unreleased: changes,
+    downloads,
   }
 }
 
@@ -88,7 +121,7 @@ export class ReleaseLookupError extends Error {}
 export async function loadReleases(): Promise<Release[]> {
   if (builtReleases) {
     const releases = parseReleases(builtReleases, isPreviewSite())
-    const next = isPreviewSite() && unreleased ? nextRelease(unreleased) : null
+    const next = isPreviewSite() && unreleased ? nextRelease(unreleased, previewDownloads(builtReleases)) : null
     return next ? [next, ...releases] : releases
   }
   let response: Response
