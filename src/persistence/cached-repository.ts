@@ -25,7 +25,8 @@ interface Entry {
   meta: DiagramMeta
 }
 
-function metaFromText(id: string, text: string): DiagramMeta {
+function metaFromText(id: string, text: string, path: string | undefined): DiagramMeta {
+  const where = path ? { path } : {}
   try {
     const raw = JSON.parse(text) as Partial<Diagram>
     return {
@@ -34,18 +35,37 @@ function metaFromText(id: string, text: string): DiagramMeta {
       updatedAt: typeof raw.updatedAt === 'number' ? raw.updatedAt : 0,
       nodeCount: Array.isArray(raw.nodes) ? raw.nodes.length : 0,
       flowCount: Array.isArray(raw.flows) ? raw.flows.length : 0,
+      ...where,
     }
   } catch {
-    return { id, name: id, updatedAt: 0, nodeCount: 0, flowCount: 0 }
+    return { id, name: id, updatedAt: 0, nodeCount: 0, flowCount: 0, ...where }
   }
 }
 
-function entryFromText(id: string, text: string): Entry {
-  return { text, meta: metaFromText(id, text) }
+function entryFromText(id: string, text: string, path: string | undefined): Entry {
+  return { text, meta: metaFromText(id, text, path) }
 }
 
+const DECIMALS = 100
+
+/**
+ * Returns the text of a diagram file: indented JSON with numbers to two decimals, so that a change shows as a few lines
+ * in a diff.
+ */
 export function serializeDiagram(diagram: Diagram) {
-  return `${JSON.stringify(diagram, null, 2)}\n`
+  const rounded = JSON.stringify(
+    diagram,
+    (_key, value: unknown) =>
+      typeof value === 'number' && !Number.isInteger(value) ? Math.round(value * DECIMALS) / DECIMALS : value,
+    2,
+  )
+  return `${rounded}\n`
+}
+
+/** Returns the content of a diagram file without the fields that change on a pan, a zoom, a measure or any save. */
+function lastingContent(text: string): string {
+  const { viewport: _viewport, rev: _rev, updatedAt: _updatedAt, nodes, ...rest } = JSON.parse(text) as Diagram
+  return JSON.stringify({ ...rest, nodes: nodes.map(({ measured: _measured, ...node }) => node) })
 }
 
 /**
@@ -58,7 +78,7 @@ export function createCachedRepository(options: {
   files: StoredFile[]
   sink: RepositorySink
 }): CachedRepository {
-  const entries = new Map(options.files.map((file) => [file.id, entryFromText(file.id, file.text)]))
+  const entries = new Map(options.files.map((file) => [file.id, entryFromText(file.id, file.text, file.path)]))
   const listeners = new Set<(event: RepositoryEvent) => void>()
   const pending = new Set<Promise<void>>()
 
@@ -95,8 +115,12 @@ export function createCachedRepository(options: {
 
     save(diagram) {
       const text = serializeDiagram(diagram)
-      entries.set(diagram.id, { text, meta: diagramMeta(diagram) })
-      track(diagram.id, options.sink.write({ id: diagram.id, text }), 'save')
+      const current = entries.get(diagram.id)
+      const path = current?.meta.path
+      entries.set(diagram.id, { text, meta: { ...diagramMeta(diagram), ...(path ? { path } : {}) } })
+      const unchanged =
+        path !== undefined && current !== undefined && lastingContent(current.text) === lastingContent(text)
+      track(diagram.id, unchanged ? Promise.resolve() : options.sink.write({ id: diagram.id, text }), 'save')
       return { ok: true }
     },
 
@@ -127,7 +151,7 @@ export function createCachedRepository(options: {
         return
       }
       if (current?.text === change.text) return
-      entries.set(change.id, entryFromText(change.id, change.text))
+      entries.set(change.id, entryFromText(change.id, change.text, change.path ?? current?.meta.path))
       emit({ kind: 'changed', id: change.id })
     },
 

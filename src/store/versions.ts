@@ -157,6 +157,14 @@ export function recordVersion(diagram: Diagram, now = Date.now()) {
   run(() => save(meta, diagram))
 }
 
+/** The id of the preview that shows a diagram file as the last commit of its repository holds it. */
+export const COMMIT_PREVIEW_ID = 'commit'
+
+/** Shows a diagram that the history does not hold, for example the version in the last commit, on the canvas. */
+export function previewDiagram(id: string, diagram: Diagram) {
+  useVersions.setState({ previewId: id, preview: { id, diagram }, previewFailed: false })
+}
+
 /** Shows a version on the canvas, or the current diagram again with `null`. */
 export function previewVersion(id: string | null) {
   if (id === null) {

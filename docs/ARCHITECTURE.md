@@ -631,6 +631,18 @@ the handoff from the website, and updates from GitHub Releases.
   desktop the file does not go to the trash. People who opened a new diagram and went back found
   empty "Untitled diagram" cards in the library. The window keeps the marks in memory, so a reload
   keeps the diagram.
+- Diagram files can also live outside the diagrams folder, for example in `docs/` of a repository, so a diagram
+  changes in the same commit as the code that it shows. Open file links such a file (`electron/storage/linked-files.ts`)
+  and Save as a file writes a copy and links it. A linked file keeps its place: its id is `link-` and a hash of its
+  path, the list of links lives in `linked-files.json` in the user data folder, and removing it from the library only
+  unlinks it. The atomic write queue (`file-queue.ts`) serves the folder and the linked files alike. A watcher on
+  the folder of each linked file and the rescan on focus report changes from git or an editor.
+- Diagram files are indented JSON with numbers to two decimals, so a change shows as a few lines in a diff. A linked
+  file is not written again when only the viewport, the save counter, the time or measured sizes change; a pan or a
+  zoom would otherwise change the file in the repository.
+- For a linked file in a git repository, the version history can show the last commit (`git show HEAD:./<file>`
+  through `files.committed`) over the canvas, with a summary of the changes since then, and restore it as one undo
+  step. Git must be on the PATH.
 - If the diagrams folder cannot be read at start, the window shows the reason and a "Try again"
   button, and agent calls fail at once with that reason.
 - A `changed` event for the open diagram means that another tab or another program changed it, so

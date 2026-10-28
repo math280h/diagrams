@@ -1,5 +1,6 @@
 import { ReactFlowProvider, useReactFlow, type Viewport } from '@xyflow/react'
-import { History } from 'lucide-react'
+import { GitCommitHorizontal, History } from 'lucide-react'
+import { toast } from 'sonner'
 import { useEffect, useMemo, useState } from 'react'
 import { useCanvasTheme } from '@/canvas/canvas-theme'
 import { useLocalNodes } from '@/canvas/use-local-nodes'
@@ -9,7 +10,11 @@ import { cn } from '@/lib/utils'
 import { EngineProvider } from '@/engine/context'
 import type { Diagram } from '@/model/schema'
 import { fromDiagram } from '@/persistence/serialize'
-import { previewVersion, useVersions } from '@/store/versions'
+import { describeChange } from '@/model/diagram-diff'
+import { restoreContent } from '@/store/actions'
+import { currentDiagram, flushPendingSave } from '@/store/document'
+import { undo } from '@/store/history'
+import { asVersionAuthor, COMMIT_PREVIEW_ID, previewVersion, useVersions } from '@/store/versions'
 import { versionAuthor, versionMoment } from './format'
 import { restoreVersion } from './restore'
 
@@ -61,6 +66,7 @@ function PreviewLayer({ id }: { id: string }) {
           </ReactFlowProvider>
         </div>
       )}
+      {id === COMMIT_PREVIEW_ID && preview?.id === id && <CommitStatus diagram={preview.diagram} />}
       {meta && (
         <div
           role="status"
@@ -82,6 +88,38 @@ function PreviewLayer({ id }: { id: string }) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function CommitStatus({ diagram }: { diagram: Diagram }) {
+  const summary = useMemo(() => describeChange(diagram, currentDiagram()), [diagram])
+  const restore = () => {
+    asVersionAuthor({ author: 'restore' }, () => {
+      restoreContent(diagram)
+      flushPendingSave()
+    })
+    previewVersion(null)
+    toast.success('Restored the version from the last commit', { action: { label: 'Undo', onClick: undo } })
+  }
+  return (
+    <div
+      role="status"
+      className="dg-chrome absolute inset-x-3 top-3 z-10 mx-auto flex w-fit max-w-full flex-wrap items-center gap-x-3 gap-y-2 py-1.5 pr-1.5 pl-3"
+    >
+      <GitCommitHorizontal aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+      <p className="min-w-0 text-[13px]">
+        <span className="font-medium">Last commit</span>
+        <span className="text-muted-foreground">. Since then: {summary}</span>
+      </p>
+      <div className="flex items-center gap-1">
+        <Button size="sm" onClick={restore}>
+          Restore this version
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => previewVersion(null)}>
+          Back to current
+        </Button>
+      </div>
     </div>
   )
 }

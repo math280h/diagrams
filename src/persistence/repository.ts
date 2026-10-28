@@ -9,6 +9,8 @@ const diagramMetaSchema = z.object({
   updatedAt: z.number(),
   nodeCount: z.number(),
   flowCount: z.number(),
+  /** The file of a desktop diagram that lives outside the diagrams folder, for example in a repository. */
+  path: z.string().optional(),
 })
 
 export type DiagramMeta = z.infer<typeof diagramMetaSchema>

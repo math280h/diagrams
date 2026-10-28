@@ -63,3 +63,21 @@ test('leaves the current diagram alone while an older version shows', async ({ p
   await expect(editorNodes).toHaveCount(1)
   await expect(page.getByPlaceholder('Insert a node')).toHaveCount(0)
 })
+
+test('keeps an older version on the canvas when an edit from just before saves', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'New diagram' }).first().click()
+  await expect(page.getByLabel('Diagram name')).toHaveValue('Untitled diagram')
+  await page.getByRole('button', { name: 'Version history' }).click()
+  const versions = page.getByRole('listbox', { name: 'Versions' })
+  await expect(versions.getByRole('option', { name: /First opened/ })).toBeVisible()
+
+  await page.getByLabel('Diagram name').fill('Renamed diagram')
+  await page.getByLabel('Diagram name').press('Enter')
+  await versions.getByRole('option', { name: /First opened/ }).click()
+  const status = page.locator('[data-history-preview]').getByRole('status')
+  await expect(status).toContainText('First opened')
+  await expect(versions.getByRole('option', { name: /Renamed the diagram/ })).toBeVisible()
+  await page.waitForTimeout(1000)
+  await expect(status).toContainText('First opened')
+})

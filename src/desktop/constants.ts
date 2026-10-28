@@ -23,6 +23,8 @@ export const RANDOM_KEY_PATTERN = /^[\w-]{43}$/
 export const HEX_COLOR_PATTERN = /^#[\da-f]{6}$/i
 
 export const DIAGRAM_FILE_SUFFIX = '.diagram.json'
+/** The start of the id of a diagram file that lives outside the diagrams folder. */
+export const LINKED_ID_PREFIX = 'link-'
 
 export const CLAUDE_MARKETPLACE_FOLDER = 'claude-marketplace'
 export const CLAUDE_MARKETPLACE_NAME = 'diagrams'

@@ -38,7 +38,9 @@ computer.
 
 ## Desktop app
 
-The desktop app runs on Windows, macOS and Linux and keeps diagrams as files in `Documents/Diagrams`. Download it
+The desktop app runs on Windows, macOS and Linux and keeps diagrams as files in `Documents/Diagrams`. It can also open
+a diagram file anywhere, for example in `docs/` of a repository, and save it where it is, so the diagram changes in
+the same commit as the code. The version history compares such a file with its last git commit. Download it
 from [GitHub Releases](https://github.com/math280h/diagrams/releases/latest):
 
 - **Windows**: `Diagrams-<version>-win-x64.exe`.

@@ -1,16 +1,36 @@
-import { Bot, Circle, FileDiff, FilePlus, PenLine, RotateCcw, X, type LucideIcon } from 'lucide-react'
+import {
+  Bot,
+  Circle,
+  FileDiff,
+  FilePlus,
+  GitCommitHorizontal,
+  PenLine,
+  RotateCcw,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
+import { toast } from 'sonner'
+import { committedDiagram } from '@/desktop/linked-files'
+import { errorMessage } from '@/lib/error-message'
+import { useLibrary } from '@/store/library-store'
 import { memo, useEffect, useMemo, type KeyboardEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { storageCopy } from '@/persistence/storage-copy'
 import type { VersionAuthor, VersionMeta } from '@/persistence/version-store'
+import { flushPendingSave } from '@/store/document'
 import { setUi } from '@/store/ui-store'
-import { MAX_VERSIONS, previewVersion, useVersions } from '@/store/versions'
+import { COMMIT_PREVIEW_ID, MAX_VERSIONS, previewDiagram, previewVersion, useVersions } from '@/store/versions'
 import { INSPECTOR_WIDTH } from '@/editor/fit'
 import { groupByDay, versionAuthor, versionSummary, versionTime } from './format'
 
 const CURRENT = 'current'
+
+function showVersion(id: string | null) {
+  if (id !== null) flushPendingSave()
+  previewVersion(id)
+}
 
 const AUTHOR_ICONS: Record<VersionAuthor, LucideIcon> = {
   you: PenLine,
@@ -31,6 +51,7 @@ const Row = memo(function Row({
   time,
   summary,
   selected,
+  onSelect,
 }: {
   id: string
   icon: LucideIcon
@@ -38,13 +59,15 @@ const Row = memo(function Row({
   time?: string
   summary: string
   selected: boolean
+  /** Shows the row on the canvas. Without it, the row shows the version with its id. */
+  onSelect?: () => void
 }) {
   return (
     <div
       role="option"
       id={optionId(id)}
       aria-selected={selected}
-      onClick={() => previewVersion(id === CURRENT ? null : id)}
+      onClick={onSelect ?? (() => showVersion(id === CURRENT ? null : id))}
       className={cn(
         'grid cursor-default grid-cols-[16px_1fr] gap-x-2.5 rounded-lg px-2.5 py-2 hover:bg-accent/60',
         selected && 'bg-accent hover:bg-accent',
@@ -70,6 +93,16 @@ export function HistoryPanel() {
   const selected = previewId ?? CURRENT
   const groups = useMemo(() => groupByDay(items), [items])
   const order = [CURRENT, ...items.map((meta) => meta.id)]
+  const diagramId = useVersions((state) => state.diagramId)
+  const linkedFile = useLibrary((state) => state.items.find((item) => item.id === diagramId)?.path)
+  const showCommit = () => {
+    if (!diagramId) return
+    flushPendingSave()
+    committedDiagram(diagramId).then(
+      (diagram) => previewDiagram(COMMIT_PREVIEW_ID, diagram),
+      (error: unknown) => toast.error('The last commit could not be read.', { description: errorMessage(error) }),
+    )
+  }
 
   useEffect(() => () => previewVersion(null), [])
 
@@ -93,7 +126,7 @@ export function HistoryPanel() {
               : undefined
     if (target !== undefined) {
       event.preventDefault()
-      previewVersion(target === CURRENT ? null : target)
+      showVersion(target === CURRENT ? null : target)
     } else if (event.key === 'Escape') {
       event.preventDefault()
       if (previewId) previewVersion(null)
@@ -129,6 +162,16 @@ export function HistoryPanel() {
             summary="The diagram as it is now. Select a version below to see it on the canvas."
             selected={selected === CURRENT}
           />
+          {linkedFile && (
+            <Row
+              id={COMMIT_PREVIEW_ID}
+              icon={GitCommitHorizontal}
+              title="Last commit"
+              summary="The file as the last commit of its git repository holds it, to compare with the current version."
+              selected={selected === COMMIT_PREVIEW_ID}
+              onSelect={showCommit}
+            />
+          )}
           {groups.map((group) => (
             <div key={group.day} role="group" aria-label={group.day}>
               <div role="presentation" className="px-2.5 pt-3 pb-1 text-xs text-muted-foreground">

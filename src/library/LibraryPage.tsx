@@ -5,6 +5,7 @@ import {
   Copy,
   Download,
   FileUp,
+  FolderOpen,
   Megaphone,
   MoreHorizontal,
   Pencil,
@@ -64,6 +65,9 @@ import { storageCopy } from '@/persistence/storage-copy'
 import { useLibrary } from '@/store/library-store'
 import { TEMPLATES, type Template } from '@/templates'
 import { LivePreview } from './LivePreview'
+import { toast } from 'sonner'
+import { errorMessage } from '@/lib/error-message'
+import { openDiagramFiles, showDiagramFile } from '@/desktop/linked-files'
 
 const FEATURED_ID = 'order-system'
 
@@ -94,6 +98,11 @@ function PreviewFrame({ diagram, playing }: { diagram: Diagram; playing: boolean
       </div>
     </div>
   )
+}
+
+/** Returns the end of a file path, with its folder, for example `docs/orders.diagram.json`. */
+function fileLabel(file: string): string {
+  return file.split(/[\\/]/).slice(-2).join('/')
 }
 
 function DiagramCard({ meta, onRename, onDelete }: { meta: DiagramMeta; onRename: () => void; onDelete: () => void }) {
@@ -131,6 +140,11 @@ function DiagramCard({ meta, onRename, onDelete }: { meta: DiagramMeta; onRename
             {openedInApp && <span className="truncate">Opened in app</span>}
             <span className="ml-auto truncate">{relativeTime(meta.updatedAt)}</span>
           </p>
+          {meta.path && (
+            <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground" title={meta.path}>
+              {fileLabel(meta.path)}
+            </p>
+          )}
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Diagram actions" />}>
@@ -154,9 +168,14 @@ function DiagramCard({ meta, onRename, onDelete }: { meta: DiagramMeta; onRename
                 <AppWindow /> Open in desktop app
               </DropdownMenuItem>
             )}
+            {meta.path && (
+              <DropdownMenuItem onClick={() => showDiagramFile(meta.id)}>
+                <FolderOpen /> Show in folder
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onClick={onDelete}>
-              <Trash2 /> Delete
+              <Trash2 /> {meta.path ? 'Remove from library' : 'Delete'}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -259,6 +278,13 @@ export function LibraryPage() {
   const [renaming, setRenaming] = useState<DiagramMeta | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [deleting, setDeleting] = useState<DiagramMeta | null>(null)
+  const openFiles = () =>
+    void openDiagramFiles().then(
+      (ids) => {
+        if (ids.length === 1) void navigate({ to: '/d/$diagramId', params: { diagramId: ids[0]! } })
+      },
+      (error: unknown) => toast.error('The file could not be opened.', { description: errorMessage(error) }),
+    )
   const templates = useMemo(() => TEMPLATES.map((template) => ({ ...template, preview: template.build() })), [])
   const agentIntroVisible = useAgentIntroVisible()
 
@@ -315,6 +341,11 @@ export function LibraryPage() {
             <TooltipContent>Source code on GitHub</TooltipContent>
           </Tooltip>
           <ThemeToggle />
+          {isDesktop() && (
+            <Button variant="ghost" aria-label="Open a diagram file" onClick={openFiles}>
+              <FolderOpen /> <span className="hidden sm:inline">Open file</span>
+            </Button>
+          )}
           <Button variant="ghost" aria-label="Import" onClick={() => setImportOpen(true)}>
             <FileUp /> <span className="hidden sm:inline">Import</span>
           </Button>
@@ -465,8 +496,12 @@ export function LibraryPage() {
       <Dialog open={deleting !== null} onOpenChange={(value) => !value && setDeleting(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Delete “{deleting?.name}”?</DialogTitle>
-            <DialogDescription>{storageCopy().deleteDetail}</DialogDescription>
+            <DialogTitle>
+              {deleting?.path ? `Remove “${deleting.name}” from the library?` : `Delete “${deleting?.name}”?`}
+            </DialogTitle>
+            <DialogDescription>
+              {deleting?.path ? `The file stays where it is: ${deleting.path}` : storageCopy().deleteDetail}
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setDeleting(null)}>
@@ -479,7 +514,7 @@ export function LibraryPage() {
                 setDeleting(null)
               }}
             >
-              Delete diagram
+              {deleting?.path ? 'Remove from library' : 'Delete diagram'}
             </Button>
           </DialogFooter>
         </DialogContent>
