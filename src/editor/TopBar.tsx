@@ -8,6 +8,7 @@ import {
   FileCode,
   FileJson,
   Globe,
+  Link2,
   History,
   Image,
   Play,
@@ -219,6 +220,9 @@ export function TopBar() {
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setUi({ exportOpen: 'page' })}>
               <Globe /> Web page (HTML)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setUi({ exportOpen: 'link' })}>
+              <Link2 /> Share link
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setUi({ exportOpen: 'mermaid' })}>
               <FileCode /> Mermaid flowchart

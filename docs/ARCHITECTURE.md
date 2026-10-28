@@ -198,6 +198,7 @@ src/
   io/           import dialog (diagram file, Mermaid and trace)
   layout/       ELK layers, group grid and edge router, run in a worker
   library/      library page, live previews and their framing
+  share/        share links and the page that plays them
   player/       presentation page and the player stage that it shares with the web page export
   standalone/   entry of the standalone player that a web page export carries
   templates/    starter diagrams
@@ -493,6 +494,24 @@ and the flows still play, which an image or a video cannot do.
 - The page ends with the licence texts of the player packages and of the fonts, because the MIT and OFL licences ask
   for them in every copy.
 - A page of the Order system is about 1.3 MB.
+
+### Share links
+
+The Link tab of the export dialog makes a link that carries the whole diagram, so people share a diagram that
+plays without an account, a server or a file (`src/share/share-link.ts`).
+
+- The data after `#/s/` is the diagram JSON without its id, timestamps and save counter, compressed with raw deflate
+  (`CompressionStream`) and written in base64url. The first character names the encoding (`z`), so a later encoding
+  can come in next to it.
+- Random ids such as `n_4k2j9x0q7a` do not compress, and a diagram names each node many times: in edges, flow steps
+  and parents. The link writes short ids such as `n_3` in the id fields (`id`, `source`, `target`, `parentId`) only,
+  so text that looks like an id stays as it is. The Order system link has about 2,600 characters, and the largest
+  template about 8,100. Above 8,000 characters the tab says that some chat apps and mail programs cut such links.
+- The data is in the fragment, so a browser never sends it to the site. The shared page decodes it, brings it
+  through the migrations and plays it in `PlayerStage`; Save a copy stores it as a new diagram. A cut-off or damaged
+  link says so.
+- The desktop app makes links to the website (`WEBSITE_ORIGIN`); the website makes links to its own address, so the
+  preview site shares preview links.
 
 ## Desktop app
 
