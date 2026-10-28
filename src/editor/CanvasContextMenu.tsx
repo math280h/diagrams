@@ -1,3 +1,4 @@
+import { useNavigate } from '@tanstack/react-router'
 import { useReactFlow } from '@xyflow/react'
 import {
   ArrowDownToLine,
@@ -17,6 +18,7 @@ import {
   Scissors,
   Trash2,
   Ungroup,
+  ZoomIn,
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { useShallow } from 'zustand/react/shallow'
@@ -50,6 +52,8 @@ import {
 import { useDoc } from '@/store/doc-store'
 import { useResolvedAppTheme } from '@/store/settings-store'
 import { useUi } from '@/store/ui-store'
+import { flushPendingSave } from '@/store/document'
+import { useLibrary } from '@/store/library-store'
 import { copySelection, cutSelection, paste } from './clipboard'
 import { appendNodeToFlow, appendTargetToFlow } from './flow/record'
 import { tidyUp } from './layout-command'
@@ -71,6 +75,13 @@ export function CanvasContextMenu({ target, children }: { target: ContextTarget;
     (state) => target.kind === 'node' && state.nodes.some((node) => node.id === target.id && node.type === 'group'),
   )
   const onElement = target.kind !== 'pane'
+  const navigate = useNavigate()
+  const inside = useLibrary((state) => {
+    if (target.kind !== 'node') return undefined
+    const node = useDoc.getState().nodes.find((candidate) => candidate.id === target.id)
+    const opens = node && (node.type === 'card' || node.type === 'group') ? node.data.opens : undefined
+    return state.items.find((item) => item.id === opens)
+  })
   const selectedIds = useDoc(useShallow((state) => state.nodes.filter((node) => node.selected).map((node) => node.id)))
   const allPinned = useDoc(
     (state) =>
@@ -91,6 +102,19 @@ export function CanvasContextMenu({ target, children }: { target: ContextTarget;
           <>
             {target.kind !== 'edge' && (
               <>
+                {inside && (
+                  <>
+                    <ContextMenuItem
+                      onClick={() => {
+                        flushPendingSave()
+                        void navigate({ to: '/d/$diagramId', params: { diagramId: inside.id } })
+                      }}
+                    >
+                      <ZoomIn /> Open {inside.name}
+                    </ContextMenuItem>
+                    <ContextMenuSeparator />
+                  </>
+                )}
                 <ContextMenuItem onClick={() => copySelection()}>
                   <Copy /> Copy <ContextMenuShortcut>{keyCombo('C', { mod: true })}</ContextMenuShortcut>
                 </ContextMenuItem>

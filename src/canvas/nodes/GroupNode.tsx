@@ -11,6 +11,7 @@ import { useCanvasMode } from '@/canvas/mode'
 import { useZoomScopeRef } from '@/canvas/zoom-scope'
 import { EditableText } from './EditableText'
 import { BoxResizer } from './resize'
+import { OpenButton } from './OpenButton'
 
 export function GroupNode({ id, data, selected, positionAbsoluteX, positionAbsoluteY }: NodeProps<GroupNodeType>) {
   const { editable, background } = useCanvasMode()
@@ -52,6 +53,7 @@ export function GroupNode({ id, data, selected, positionAbsoluteX, positionAbsol
               />
             )}
             {data.detail && <span className="dg-group-detail dg-mono">{data.detail}</span>}
+            <OpenButton diagramId={data.opens} nodeId={id} />
           </span>
         </div>
       </div>

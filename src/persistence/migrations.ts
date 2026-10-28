@@ -141,6 +141,11 @@ function toVersion10(raw: Record<string, unknown>): Record<string, unknown> {
   return raw
 }
 
+/** Version 11 adds the optional `opens` field to cards and groups, so earlier data needs no change. */
+function toVersion11(raw: Record<string, unknown>): Record<string, unknown> {
+  return raw
+}
+
 /** The migration at index `n` converts a diagram from version `n + 1` to version `n + 2`. */
 const MIGRATIONS: Migration[] = [
   toVersion2,
@@ -152,6 +157,7 @@ const MIGRATIONS: Migration[] = [
   toVersion8,
   toVersion9,
   toVersion10,
+  toVersion11,
 ]
 
 export class DiagramFormatError extends Error {}

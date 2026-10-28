@@ -56,7 +56,8 @@ The visual system lives in `DESIGN.md` at the repository root.
   diagrams on `atkinson` to it, and added `protocol` to edges and `protocolColors` to the theme.
   Version 7 added the `request` and `response` bodies to edges and `bodies` to flows; the migration
   turns `bodies` on. Version 8 added `color` to cards and shapes and removed the `accent` fields. Version 9 added `details`
-  (description, owner and links) to cards, shapes and groups. Version 10 added the optional `pinned` flag to the data of every node.
+  (description, owner and links) to cards, shapes and groups. Version 10 added the optional `pinned` flag to the data of every node. Version 11 added the
+  optional `opens` field, the id of another diagram, to cards and groups.
 - Groups are boundaries. A group's `kind` points into the catalogue in `src/model/boundaries.ts`:
   AWS, Azure, Google Cloud, Kubernetes and general kinds, plus the custom group. Each kind has a
   family (scope, logical, location, zone, network, subnet, security, runtime) that sets its line
@@ -91,6 +92,12 @@ The visual system lives in `DESIGN.md` at the repository root.
   text keeps its size at any zoom. The hover state lives outside React (`details-hover.ts`), so a hover renders only
   the card. A link opens only an `http`, `https` or `mailto` address (`safeLinkUrl`), because exported pages carry
   the links to readers who did not write them; a bare host such as `github.com/acme/api` gets `https://`.
+- A card or a boundary can open another diagram (`opens`), so one diagram can show the inside of a part, for
+  example the components of a container. The node gets a zoom button where the canvas can open diagrams
+  (`CanvasMode.openDiagram`) and the diagram exists in the library. In the editor it opens that diagram's editor; in
+  Present the camera zooms into the node, the stage fades, and Present of the inner diagram opens with a way back
+  (`from` in the address). Exported pages, share links and image exports carry no other diagrams, so they show no
+  zoom button. An empty `opens` opens nothing.
 - Cards and shapes can take a colour, so people can group nodes by team or by kind of part across
   boundaries. The colours are the boundary palette (`COLORS` in `src/model/colors.ts`), so a node
   and a boundary of one team can share a hue, and the palette has no saturated blue. Neutral is the

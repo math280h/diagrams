@@ -287,6 +287,26 @@ describe('agent tools', () => {
     expect(nodeByLabel('API').data.pinned).toBe(false)
   })
 
+  it('links a card to the diagram of its inside, warns about a missing diagram and removes the link', async () => {
+    const inside = await call('create_diagram', { name: 'Orders inside' })
+    await call('create_diagram', { name: 'Shop' })
+    const added = await call('add_elements', {
+      nodes: [
+        { label: 'Orders', opens: String(inside.diagramId) },
+        { label: 'Ghost', opens: 'd_missing' },
+      ],
+    })
+    expect(added.warnings).toEqual([
+      'No diagram has the id "d_missing", so "Ghost" opens nothing. Find ids with list_diagrams.',
+    ])
+    expect(nodeByLabel('Orders').data).toMatchObject({ opens: inside.diagramId })
+    expect((await call('get_diagram', {})).nodes).toEqual(
+      expect.arrayContaining([expect.objectContaining({ label: 'Orders', opens: inside.diagramId })]),
+    )
+    await call('update_elements', { nodes: [{ node: 'Orders', opens: null }] })
+    expect(nodeByLabel('Orders').data).toMatchObject({ opens: '' })
+  })
+
   it('places a new node next to the existing node it connects to', async () => {
     await call('create_diagram', { name: 'Shop' })
     await call('add_elements', { nodes: [{ label: 'API', x: 0, y: 0 }] })

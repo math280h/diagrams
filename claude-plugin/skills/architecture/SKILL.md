@@ -44,6 +44,7 @@ For icon names, see [references/icons.md](references/icons.md).
 
 ## Change a diagram
 
+- For a large system, keep one overview diagram and one diagram for the inside of each big part. Set `opens` on the card or boundary to the id of the inner diagram, so readers can zoom in.
 - `layout_diagram` keeps pinned nodes in their places. When the user has placed nodes by hand, pin them with `pinned: true` before a layout, or ask first.
 - To rename, change an icon, move or reparent a node, call `update_elements`. To remove a node or an edge, call `delete_elements`.
 - When the user says "this" or "the selected one", call `get_editor_state` and use the selection.

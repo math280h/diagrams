@@ -40,6 +40,8 @@ export interface DiagramCanvasProps extends Omit<ReactFlowProps<DiagramNode, Dia
   exportMode?: boolean
   /** Shows the details of a node on hover and on click, and marks the nodes that have details. */
   details?: boolean
+  /** Opens the diagram that a node leads to. Without it, nodes show no open button. */
+  onOpenDiagram?: (diagramId: string, nodeId: string) => void
   showCaption?: boolean
   overlay?: ReactNode
   rootRef?: React.RefObject<HTMLDivElement | null>
@@ -51,6 +53,7 @@ export function DiagramCanvas({
   editable,
   exportMode,
   details = false,
+  onOpenDiagram,
   showCaption = true,
   overlay,
   children,
@@ -59,7 +62,10 @@ export function DiagramCanvas({
 }: DiagramCanvasProps) {
   const ownRef = useRef<HTMLDivElement>(null)
   const rootRef = givenRef ?? ownRef
-  const mode = useMemo(() => ({ editable, background: theme.background }), [editable, theme.background])
+  const mode = useMemo(
+    () => ({ editable, background: theme.background, openDiagram: onOpenDiagram }),
+    [editable, theme.background, onOpenDiagram],
+  )
   const [hover] = useState(createDetailsHover)
   const nodes = useMemo(() => {
     const layered = flowProps.nodes && layerNodes(flowProps.nodes)

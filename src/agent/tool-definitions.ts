@@ -80,6 +80,13 @@ const nodeFields = {
     .describe(
       'Cards, shapes and groups. Links to the code, docs, runbook or dashboard of the part. They replace the links of the node.',
     ),
+  opens: z
+    .string()
+    .nullable()
+    .optional()
+    .describe(
+      'Cards and groups. The id of a diagram that shows the inside of the part, for example the components of a container. The node gets a zoom button, and in Present readers zoom into it. null removes the link.',
+    ),
   pinned: z
     .boolean()
     .optional()

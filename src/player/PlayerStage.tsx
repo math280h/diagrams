@@ -1,4 +1,4 @@
-import { applyEdgeChanges, type EdgeChange } from '@xyflow/react'
+import { applyEdgeChanges, useReactFlow, type EdgeChange } from '@xyflow/react'
 import {
   ArrowLeft,
   ChevronDown,
@@ -36,6 +36,7 @@ import { fromDiagram } from '@/persistence/serialize'
 import { Scrubber } from './Scrubber'
 
 const IDLE_HIDE_MS = 2600
+const OPEN_ZOOM_MS = 650
 
 async function toggleFullscreen() {
   if (document.fullscreenElement) await document.exitFullscreen()
@@ -83,10 +84,14 @@ export interface PlayerStageProps {
   onExit?: () => void
   /** Buttons at the end of the header, before the full screen button. */
   actions?: ReactNode
+  /** Opens the diagram that a node leads to, after the camera zooms into the node. */
+  onOpenDiagram?: (diagramId: string) => void
+  /** A way back to the diagram that led here. */
+  back?: { label: string; onClick: () => void }
 }
 
 /** Plays the flows of a diagram on a read-only canvas, with controls that hide while a flow plays. */
-export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions }: PlayerStageProps) {
+export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, onOpenDiagram, back }: PlayerStageProps) {
   const engine = useEngine()
   const playback = usePlaybackState()
   const initial = useMemo(() => fromDiagram(diagram), [diagram])
@@ -97,6 +102,27 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions }: 
   const hideTimer = useRef<number | undefined>(undefined)
   const flow = diagram.flows.find((candidate) => candidate.id === flowId) ?? diagram.flows[0]
   const resolvedTheme = useCanvasTheme(diagram.theme.mode)
+  const { fitBounds, getInternalNode } = useReactFlow()
+  const [leaving, setLeaving] = useState(false)
+
+  const openDiagram = useCallback(
+    (diagramId: string, nodeId: string) => {
+      if (!onOpenDiagram) return
+      engine.playback.pause()
+      const node = getInternalNode(nodeId)
+      const durationMs = prefersReducedMotion() || !node ? 0 : OPEN_ZOOM_MS
+      if (node) {
+        const { x, y } = node.internals.positionAbsolute
+        void fitBounds(
+          { x, y, width: node.measured.width ?? 0, height: node.measured.height ?? 0 },
+          { duration: durationMs, padding: 0.02 },
+        )
+      }
+      setLeaving(true)
+      window.setTimeout(() => onOpenDiagram(diagramId), durationMs)
+    },
+    [engine, fitBounds, getInternalNode, onOpenDiagram],
+  )
 
   useEffect(() => {
     if (!flow) {
@@ -167,7 +193,13 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions }: 
   }
 
   return (
-    <div className={cn('relative h-full w-full', !showControls && 'cursor-none')}>
+    <div
+      className={cn(
+        'relative h-full w-full transition-opacity duration-300',
+        !showControls && 'cursor-none',
+        leaving && 'opacity-0',
+      )}
+    >
       <DiagramCanvas
         nodes={nodes}
         edges={edges}
@@ -175,6 +207,7 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions }: 
         resolvedTheme={resolvedTheme}
         editable={false}
         details
+        onOpenDiagram={onOpenDiagram ? openDiagram : undefined}
         fitView
         fitViewOptions={{ padding: 0.14, maxZoom: 1.2 }}
         onNodesChange={onNodesChange}
@@ -197,6 +230,11 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions }: 
           </Button>
         ) : (
           <h1 className="max-w-64 truncate px-2 text-sm font-medium max-sm:hidden">{diagram.name}</h1>
+        )}
+        {back && (
+          <Button variant="ghost" size="sm" onClick={back.onClick} className="max-w-48">
+            <ArrowLeft /> <span className="truncate">{back.label}</span>
+          </Button>
         )}
         <div className={cn('mx-1 h-5 w-px bg-border', !onExit && 'max-sm:hidden')} />
         {flow ? (

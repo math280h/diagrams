@@ -22,6 +22,7 @@ import {
   TextInput,
 } from './controls'
 import { DetailsFields } from './DetailsFields'
+import { OpensFields } from './OpensFields'
 import { IconPicker } from './IconPicker'
 import { NodeLinks } from './NodeLinks'
 
@@ -349,6 +350,7 @@ function TypeFields({ node }: { node: DiagramNode }) {
         <>
           <CardFields node={node} />
           <DetailsFields node={node} />
+          <OpensFields node={node} />
           <NodeLinks node={node} />
         </>
       )
@@ -366,6 +368,7 @@ function TypeFields({ node }: { node: DiagramNode }) {
         <>
           <GroupFields node={node} />
           <DetailsFields node={node} />
+          <OpensFields node={node} />
         </>
       )
   }
