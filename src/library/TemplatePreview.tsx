@@ -14,7 +14,7 @@ import { useEngine, usePlaybackState } from '@/engine/hooks'
 import { ZoomControls } from '@/editor/ZoomControls'
 import type { Flow } from '@/model/schema'
 import type { DiagramEdge } from '@/model/types'
-import { saveImported, withFreshIdentity } from '@/persistence/library-actions'
+import { saveImported, templateCopies } from '@/persistence/library-actions'
 import { fromDiagram } from '@/persistence/serialize'
 import { TEMPLATES, type Template } from '@/templates'
 import { useReadableFraming } from './use-readable-framing'
@@ -50,9 +50,9 @@ function Preview({ template }: { template: Template }) {
   }
 
   const use = () => {
-    const copy = withFreshIdentity(template.build())
-    if (!saveImported(copy).ok) return
-    void navigate({ to: '/d/$diagramId', params: { diagramId: copy.id } })
+    const [copy, ...inside] = templateCopies(template)
+    if (!inside.every((part) => saveImported(part).ok) || !saveImported(copy!).ok) return
+    void navigate({ to: '/d/$diagramId', params: { diagramId: copy!.id } })
   }
 
   useEffect(() => {

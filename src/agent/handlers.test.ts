@@ -136,6 +136,17 @@ describe('agent tools', () => {
     ])
   })
 
+  it('copies the diagram that a template card opens with the template', async () => {
+    const result = await call('create_diagram', { name: 'Bookings', template: 'c4-context' })
+    const { diagrams } = (await call('list_diagrams', {})) as { diagrams: { id: string; name: string }[] }
+    const inside = diagrams.find((diagram) => diagram.name === 'Staybook: containers')
+    expect(diagrams).toHaveLength(2)
+    expect(inside?.id).not.toBe('template-staybook-containers')
+    const staybook = nodeByLabel('Staybook')
+    expect(staybook.type === 'card' && staybook.data.opens).toBe(inside?.id)
+    expect(open).toBe(result.diagramId)
+  })
+
   it('adds nodes, a boundary and edges in one undo step', async () => {
     await call('create_diagram', { name: 'Shop' })
     const result = await call('add_elements', {

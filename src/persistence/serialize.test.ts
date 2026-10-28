@@ -9,13 +9,13 @@ import {
   defaultTextData,
 } from '@/model/defaults'
 import { DIAGRAM_VERSION, diagramSchema } from '@/model/schema'
-import { TEMPLATES } from '@/templates'
+import { TEMPLATES, templateDiagrams } from '@/templates'
 import { DiagramFormatError, migrate, migrateElements } from './migrations'
 import { fromDiagram, toDiagram } from './serialize'
 
 describe('templates', () => {
   it.each(TEMPLATES.map((template) => [template.name, template] as const))('%s matches the schema', (_, template) => {
-    expect(() => diagramSchema.parse(template.build())).not.toThrow()
+    for (const diagram of templateDiagrams(template)) expect(() => diagramSchema.parse(diagram)).not.toThrow()
   })
 })
 

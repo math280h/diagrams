@@ -2,6 +2,7 @@ import { DIAGRAM_FILE_SUFFIX } from '@/desktop/constants'
 import { forgetOpenedInApp } from '@/desktop/open-in-app'
 import { createDiagram, DEFAULT_DIAGRAM_NAME, newId } from '@/model/defaults'
 import type { Diagram } from '@/model/schema'
+import { templateDiagrams, type Template } from '@/templates'
 import { downloadBlob } from '@/lib/download'
 import { safeFileName } from '@/lib/format'
 import { closeDiagramSession, openDiagramId } from '@/store/document'
@@ -13,6 +14,23 @@ import type { RemoveOptions, SaveResult } from './repository'
 export function withFreshIdentity(diagram: Diagram, name = diagram.name): Diagram {
   const now = Date.now()
   return { ...diagram, id: newId('d'), name, rev: 0, createdAt: now, updatedAt: now }
+}
+
+/**
+ * Copies a template and the diagrams that it opens with new ids, and points the `opens` fields at the copies.
+ *
+ * @returns The copy of the template first.
+ */
+export function templateCopies(template: Template, name?: string): Diagram[] {
+  const diagrams = templateDiagrams(template)
+  const copies = diagrams.map((diagram, index) => withFreshIdentity(diagram, index === 0 ? name : undefined))
+  const newIds = new Map(diagrams.map((diagram, index) => [diagram.id, copies[index]!.id]))
+  for (const node of copies.flatMap((copy) => copy.nodes)) {
+    if ((node.type === 'card' || node.type === 'group') && node.data.opens !== undefined) {
+      node.data.opens = newIds.get(node.data.opens) ?? node.data.opens
+    }
+  }
+  return copies
 }
 
 const newBlankIds = new Set<string>()
