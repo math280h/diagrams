@@ -219,7 +219,7 @@ components:
     backgroundColor: '{colors.ground}'
     textColor: '{colors.text}'
     rounded: '{rounded.stage}'
-    height: 'clamp(420px, 62vh, 620px)'
+    height: 'clamp(360px, calc(100dvh - 360px), 620px)'
   log-row:
     backgroundColor: 'transparent'
     textColor: '{colors.text}'
@@ -377,8 +377,8 @@ Diagram canvases default to the `host` pair. A diagram may switch its canvas pai
 ## Layout
 
 - **Top bar:** 44px, chrome fill, hairline below, 6px side padding in the editor and Present, 12px in the library. Library: mark, wordmark, the agent button (desktop app only), a GitHub link, theme, Import (ghost), New diagram (primary).
-- **Library, first run:** a centred column up to 1152px. The display headline and one line of support, then a full-width stage (clamp 420px to 620px tall, 16px corners) where the Order system flow plays in a loop with its caption strip, then the other four templates as live cards, two in a row from 640px.
-- **Library, returning:** the agent introduction, "Your diagrams" with a count and a 256px search, a 1, 2 or 3 column card grid, a storage line, then the live template cards (1, 2 or 3 columns) under a "Templates" title with the same hint as the first run. Grid gaps are 16px. On the first run the agent introduction sits between the support line and the templates.
+- **Library, first run:** a centred column up to 1152px. The display headline and one line of support, then a full-width stage (the window height less 360px, from 360px to 620px, so that the stage and its caption strip fit on a 1280 × 720 screen; 16px corners) where the Order system flow plays in a loop with its caption strip, then the other four templates as live cards, two in a row from 640px.
+- **Library, returning:** the agent introduction, "Your diagrams" with a count and a 256px search, a 1, 2 or 3 column card grid, a storage line, then the live template cards (1, 2 or 3 columns) under a "Templates" title with the same hint as the first run. Grid gaps are 16px. On the first run the agent introduction comes after the templates, so that the playing stage is the first thing below the headline.
 - **Previews:** read-only canvases at 16:10, with the grid off. Cards fit the whole diagram with 16px padding at any zoom, so nothing is cropped. The stage and the template page use `readableViewport`: the whole diagram if it fits at zoom 0.5, else a crop around the node with the most connections and its neighbours. A card plays its first flow on hover or focus.
 - **Editor:** the canvas fills everything under the bar. The log pane docks under the canvas when Flows is open: a transport row, a sticky 28px column header and 24px rows. Floating chrome on the canvas (zoom, hints, the selection tools) uses the chrome fill, a hairline and 8px corners, inset 12px.
 - **Present:** the canvas fills the screen. The top bar docks to the top and fades out after idle while playing; the caption strip docks to the bottom. Playback starts after 700ms unless the user prefers reduced motion.

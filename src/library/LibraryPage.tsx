@@ -238,7 +238,7 @@ function FeaturedTemplate({ template, diagram }: { template: Template; diagram: 
   return (
     <div
       ref={ref}
-      className="flex h-[clamp(420px,62vh,620px)] flex-col overflow-hidden rounded-2xl border bg-background"
+      className="flex h-[clamp(360px,calc(100dvh-360px),620px)] flex-col overflow-hidden rounded-2xl border bg-background"
     >
       <div className="flex h-12 shrink-0 items-center gap-3 border-b bg-panel pr-2 pl-4">
         <span className="truncate text-sm font-medium">{template.name}</span>
@@ -367,7 +367,6 @@ export function LibraryPage() {
                   Architecture diagrams that move, for docs, pull requests and talks. {storageCopy().promise}
                 </p>
               </div>
-              <AgentIntro className="mb-10" />
               <section aria-labelledby="templates-heading">
                 <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                   <h2 id="templates-heading" className="text-xl font-medium tracking-[-0.015em]">
@@ -384,6 +383,7 @@ export function LibraryPage() {
                   ))}
                 </div>
               </section>
+              <AgentIntro className="mt-12" />
             </>
           ) : (
             <>
