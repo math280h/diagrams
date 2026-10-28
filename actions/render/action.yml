@@ -35,6 +35,12 @@ inputs:
   app:
     description: A command that starts Diagrams, for example a build from source. With it, the action downloads nothing.
     default: ''
+  base-app:
+    description: >-
+      In compare mode, a command that starts the Diagrams app of the base commit. With it, the action renders every
+      matched diagram, also files that git does not track yet, with both apps, and comments with the diagrams that look
+      different.
+    default: ''
   token:
     description: The token that downloads the app, pushes the images and comments.
     default: ${{ github.token }}
@@ -63,4 +69,5 @@ runs:
         INPUT_PREVIEW_BRANCH: ${{ inputs.preview-branch }}
         INPUT_VERSION: ${{ inputs.version }}
         INPUT_APP: ${{ inputs.app }}
+        INPUT_BASE_APP: ${{ inputs.base-app }}
         INPUT_TOKEN: ${{ inputs.token }}
