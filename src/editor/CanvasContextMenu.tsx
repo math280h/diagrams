@@ -59,7 +59,7 @@ import { copySelection, cutSelection, paste } from './clipboard'
 import { appendNodeToFlow, appendTargetToFlow } from './flow/record'
 import { tidyUp } from './layout-command'
 import { useFitToScreen } from './fit'
-import { DELETE_KEY, FIT_KEYS, keyCombo } from './shortcuts'
+import { KEYS } from '@/lib/shortcut-keys'
 
 export type ContextTarget =
   | { kind: 'pane' }
@@ -121,22 +121,21 @@ export function CanvasContextMenu({ target, children }: { target: ContextTarget;
                   </>
                 )}
                 <ContextMenuItem onClick={() => copySelection()}>
-                  <Copy /> Copy <ContextMenuShortcut>{keyCombo('C', { mod: true })}</ContextMenuShortcut>
+                  <Copy /> Copy <ContextMenuShortcut>{KEYS.copy}</ContextMenuShortcut>
                 </ContextMenuItem>
                 <ContextMenuItem onClick={() => cutSelection()}>
-                  <Scissors /> Cut <ContextMenuShortcut>{keyCombo('X', { mod: true })}</ContextMenuShortcut>
+                  <Scissors /> Cut <ContextMenuShortcut>{KEYS.cut}</ContextMenuShortcut>
                 </ContextMenuItem>
                 <ContextMenuItem onClick={duplicateSelection}>
-                  <CopyPlus /> Duplicate <ContextMenuShortcut>{keyCombo('D', { mod: true })}</ContextMenuShortcut>
+                  <CopyPlus /> Duplicate <ContextMenuShortcut>{KEYS.duplicate}</ContextMenuShortcut>
                 </ContextMenuItem>
                 <ContextMenuSeparator />
                 <ContextMenuItem onClick={() => groupSelection()}>
-                  <Group /> Group <ContextMenuShortcut>{keyCombo('G', { mod: true })}</ContextMenuShortcut>
+                  <Group /> Group <ContextMenuShortcut>{KEYS.group}</ContextMenuShortcut>
                 </ContextMenuItem>
                 {isGroup && (
                   <ContextMenuItem onClick={ungroupSelection}>
-                    <Ungroup /> Ungroup{' '}
-                    <ContextMenuShortcut>{keyCombo('G', { mod: true, shift: true })}</ContextMenuShortcut>
+                    <Ungroup /> Ungroup <ContextMenuShortcut>{KEYS.ungroup}</ContextMenuShortcut>
                   </ContextMenuItem>
                 )}
                 <ColorMenu />
@@ -169,7 +168,7 @@ export function CanvasContextMenu({ target, children }: { target: ContextTarget;
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem variant="destructive" onClick={deleteSelection}>
-              <Trash2 /> Delete <ContextMenuShortcut>{DELETE_KEY}</ContextMenuShortcut>
+              <Trash2 /> Delete <ContextMenuShortcut>{KEYS.delete}</ContextMenuShortcut>
             </ContextMenuItem>
           </>
         )}
@@ -179,11 +178,10 @@ export function CanvasContextMenu({ target, children }: { target: ContextTarget;
               <Plus /> Insert a node here <ContextMenuShortcut>N</ContextMenuShortcut>
             </ContextMenuItem>
             <ContextMenuItem onClick={() => paste(undefined, point)}>
-              <ClipboardPaste /> Paste here <ContextMenuShortcut>{keyCombo('V', { mod: true })}</ContextMenuShortcut>
+              <ClipboardPaste /> Paste here <ContextMenuShortcut>{KEYS.paste}</ContextMenuShortcut>
             </ContextMenuItem>
             <ContextMenuItem onClick={selectAll}>
-              <MousePointerSquareDashed /> Select all{' '}
-              <ContextMenuShortcut>{keyCombo('A', { mod: true })}</ContextMenuShortcut>
+              <MousePointerSquareDashed /> Select all <ContextMenuShortcut>{KEYS.selectAll}</ContextMenuShortcut>
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => tidyUp('RIGHT', fitToScreen)}>
@@ -193,7 +191,7 @@ export function CanvasContextMenu({ target, children }: { target: ContextTarget;
               <LayoutGrid className="rotate-90" /> Tidy up, top to bottom
             </ContextMenuItem>
             <ContextMenuItem onClick={fitToScreen}>
-              <Maximize /> Fit to screen <ContextMenuShortcut>{FIT_KEYS}</ContextMenuShortcut>
+              <Maximize /> Fit to screen <ContextMenuShortcut>{KEYS.fit}</ContextMenuShortcut>
             </ContextMenuItem>
           </>
         )}

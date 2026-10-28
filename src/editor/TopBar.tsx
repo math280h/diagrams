@@ -4,6 +4,7 @@ import {
   BookOpen,
   ChevronDown,
   Command,
+  Search,
   Download,
   Film,
   FileCode,
@@ -51,7 +52,7 @@ import { setUi, useUi } from '@/store/ui-store'
 import { useVersions } from '@/store/versions'
 import { StylePanel } from './inspector/DiagramInspector'
 import { openInsertAtCenter } from './insert'
-import { keyCombo } from './shortcuts'
+import { IS_MAC, KEYS } from '@/lib/shortcut-keys'
 import { toast } from 'sonner'
 import { errorMessage } from '@/lib/error-message'
 import { isDesktop } from '@/desktop/bridge'
@@ -176,15 +177,10 @@ export function TopBar() {
         <NameField />
         <LinkedFileMark id={id} />
         <Separator orientation="vertical" className="mx-1 h-5 max-sm:hidden data-vertical:self-center" />
-        <IconButton label="Undo" shortcut={keyCombo('Z', { mod: true })} onClick={undo} disabled={!canUndo}>
+        <IconButton label="Undo" shortcut={KEYS.undo} onClick={undo} disabled={!canUndo}>
           <Undo2 />
         </IconButton>
-        <IconButton
-          label="Redo"
-          shortcut={keyCombo('Z', { mod: true, shift: true })}
-          onClick={redo}
-          disabled={!canRedo}
-        >
+        <IconButton label="Redo" shortcut={KEYS.redo} onClick={redo} disabled={!canRedo}>
           <Redo2 />
         </IconButton>
         <Separator orientation="vertical" className="mx-1 h-5 max-sm:hidden data-vertical:self-center" />
@@ -200,12 +196,8 @@ export function TopBar() {
       <div className="ml-auto flex items-center gap-1">
         <AgentButton />
         <div inert={previewing} className="hidden items-center gap-1 sm:flex inert:opacity-50">
-          <IconButton
-            label="Command menu"
-            shortcut={keyCombo('K', { mod: true })}
-            onClick={() => setUi({ commandOpen: true })}
-          >
-            <Command />
+          <IconButton label="Command menu" shortcut={KEYS.commandMenu} onClick={() => setUi({ commandOpen: true })}>
+            {IS_MAC ? <Command /> : <Search />}
           </IconButton>
           <Popover>
             <Tooltip>

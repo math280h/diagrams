@@ -3,7 +3,7 @@ import { Maximize, Minus, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useFitToScreen } from './fit'
-import { FIT_KEYS } from './shortcuts'
+import { KEYS } from '@/lib/shortcut-keys'
 
 export function ZoomControls() {
   const { zoom } = useViewport()
@@ -41,7 +41,7 @@ export function ZoomControls() {
         </TooltipTrigger>
         <TooltipContent>
           Fit to screen
-          <span className="ml-2 text-muted-foreground">{FIT_KEYS}</span>
+          <span className="ml-2 text-muted-foreground">{KEYS.fit}</span>
         </TooltipContent>
       </Tooltip>
     </div>

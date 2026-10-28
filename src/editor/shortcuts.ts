@@ -9,48 +9,6 @@ import { copySelection, cutSelection, paste } from './clipboard'
 import { openInsertAtPointer } from './insert'
 import { useFitToScreen } from './fit'
 
-const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
-export const DELETE_KEY = isMac ? '⌫' : 'Delete'
-
-/**
- * Returns a key combination in the notation of the platform, for example "⇧⌘Z" on a Mac and "Ctrl+Shift+Z" on
- * other systems.
- */
-export function keyCombo(key: string, { mod = false, shift = false } = {}): string {
-  if (isMac) return `${shift ? '⇧' : ''}${mod ? '⌘' : ''}${key}`
-  return [mod && 'Ctrl', shift && 'Shift', key].filter(Boolean).join('+')
-}
-
-export const FIT_KEYS = keyCombo('1', { shift: true })
-const SHIFT_NAME = isMac ? '⇧' : 'Shift'
-
-export const SHORTCUTS: { keys: string; label: string }[] = [
-  { keys: keyCombo('K', { mod: true }), label: 'Open the command menu' },
-  { keys: 'N', label: 'Insert a node at the pointer' },
-  { keys: 'Double-click', label: 'Insert a node on the canvas' },
-  { keys: keyCombo('Z', { mod: true }), label: 'Undo' },
-  { keys: keyCombo('Z', { mod: true, shift: true }), label: 'Redo' },
-  {
-    keys: ['C', 'X', 'V'].map((key) => keyCombo(key, { mod: true })).join(' / '),
-    label: 'Copy, cut, paste',
-  },
-  { keys: keyCombo('D', { mod: true }), label: 'Duplicate the selection' },
-  {
-    keys: `${keyCombo('G', { mod: true })} / ${keyCombo('G', { mod: true, shift: true })}`,
-    label: 'Group, ungroup',
-  },
-  { keys: keyCombo('A', { mod: true }), label: 'Select all' },
-  { keys: DELETE_KEY, label: 'Delete the selection' },
-  { keys: '← ↑ → ↓', label: `Move the selection 1 px (${SHIFT_NAME} for 10 px)` },
-  { keys: 'Space', label: 'Play or pause the flow' },
-  { keys: FIT_KEYS, label: 'Fit to screen' },
-  { keys: isMac ? '⇧ drag' : 'Shift+drag', label: 'Select an area' },
-  { keys: 'Drag from the side of a node', label: 'Connect, or drop on empty canvas to add a connected node' },
-  { keys: 'Drag, scroll, middle-drag', label: 'Move the canvas' },
-  { keys: `${isMac ? '⌘ scroll' : 'Ctrl+scroll'}, pinch`, label: 'Zoom' },
-  { keys: '?', label: 'Show the shortcuts' },
-]
-
 function isTyping(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false
   return (

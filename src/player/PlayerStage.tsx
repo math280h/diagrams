@@ -25,6 +25,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Kbd } from '@/components/ui/kbd'
+import { ShortcutTooltip } from '@/components/ShortcutTooltip'
+import { KEYS } from '@/lib/shortcut-keys'
 import { useEngine, usePlaybackState } from '@/engine/hooks'
 import { compileFlow } from '@/engine/flow/compile'
 import { stepFlow } from '@/engine/flow/step'
@@ -318,20 +320,26 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
             >
               <SkipBack />
             </Button>
-            <Button variant="ghost" size="icon-sm" aria-label="Previous step" onClick={() => step(-1)}>
-              <ChevronLeft />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              aria-label={playback.playing ? 'Pause' : 'Play'}
-              onClick={() => engine.playback.toggle()}
-            >
-              {playback.playing ? <Pause /> : <Play />}
-            </Button>
-            <Button variant="ghost" size="icon-sm" aria-label="Next step" onClick={() => step(1)}>
-              <ChevronRight />
-            </Button>
+            <ShortcutTooltip label="Previous step" keys={KEYS.previousStep}>
+              <Button variant="ghost" size="icon-sm" aria-label="Previous step" onClick={() => step(-1)}>
+                <ChevronLeft />
+              </Button>
+            </ShortcutTooltip>
+            <ShortcutTooltip label={playback.playing ? 'Pause' : 'Play'} keys={KEYS.playPause}>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                aria-label={playback.playing ? 'Pause' : 'Play'}
+                onClick={() => engine.playback.toggle()}
+              >
+                {playback.playing ? <Pause /> : <Play />}
+              </Button>
+            </ShortcutTooltip>
+            <ShortcutTooltip label="Next step" keys={KEYS.nextStep}>
+              <Button variant="ghost" size="icon-sm" aria-label="Next step" onClick={() => step(1)}>
+                <ChevronRight />
+              </Button>
+            </ShortcutTooltip>
             <StepCount className="ml-1 max-sm:hidden" />
             <div className="mx-2 flex min-w-16 flex-1 sm:min-w-24">
               <Scrubber />
@@ -347,14 +355,16 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
           </span>
         )}
         {actions}
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={fullscreen ? 'Exit full screen' : 'Full screen'}
-          onClick={() => void toggleFullscreen()}
-        >
-          {fullscreen ? <Minimize /> : <Maximize />}
-        </Button>
+        <ShortcutTooltip label={fullscreen ? 'Exit full screen' : 'Full screen'} keys={KEYS.fullScreen}>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={fullscreen ? 'Exit full screen' : 'Full screen'}
+            onClick={() => void toggleFullscreen()}
+          >
+            {fullscreen ? <Minimize /> : <Maximize />}
+          </Button>
+        </ShortcutTooltip>
       </header>
     </div>
   )

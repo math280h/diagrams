@@ -16,6 +16,8 @@ import {
 import { useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { ShortcutTooltip } from '@/components/ShortcutTooltip'
+import { KEYS } from '@/lib/shortcut-keys'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -251,15 +253,17 @@ export function FlowPanel() {
         >
           <SkipBack />
         </Button>
-        <Button
-          variant="outline"
-          size="icon-sm"
-          aria-label={playback.playing ? 'Pause' : 'Play'}
-          onClick={() => engine.playback.toggle()}
-          disabled={!flow || flow.steps.length === 0}
-        >
-          {playback.playing ? <Pause /> : <Play />}
-        </Button>
+        <ShortcutTooltip label={playback.playing ? 'Pause' : 'Play'} keys={KEYS.playPause}>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            aria-label={playback.playing ? 'Pause' : 'Play'}
+            onClick={() => engine.playback.toggle()}
+            disabled={!flow || flow.steps.length === 0}
+          >
+            {playback.playing ? <Pause /> : <Play />}
+          </Button>
+        </ShortcutTooltip>
         <Button
           variant="ghost"
           size="icon-sm"
