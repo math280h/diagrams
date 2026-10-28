@@ -41,6 +41,12 @@ inputs:
       matched diagram, also files that git does not track yet, with both apps, and comments with the diagrams that look
       different.
     default: ''
+  base-root:
+    description: >-
+      With base-app, the folder that holds the diagram files of the base commit at the same paths. The base app renders
+      those files, so a diagram that the pull request adds or removes shows as new or removed, and a pull request that
+      changes the diagram format still gets old images. Without it, both apps render the same files.
+    default: ''
   token:
     description: The token that downloads the app, pushes the images and comments.
     default: ${{ github.token }}
@@ -70,4 +76,5 @@ runs:
         INPUT_VERSION: ${{ inputs.version }}
         INPUT_APP: ${{ inputs.app }}
         INPUT_BASE_APP: ${{ inputs.base-app }}
+        INPUT_BASE_ROOT: ${{ inputs.base-root }}
         INPUT_TOKEN: ${{ inputs.token }}
