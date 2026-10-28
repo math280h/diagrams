@@ -591,7 +591,8 @@ An image tells nothing to a screen reader, and the same text serves as alt text 
   a node is its title and its kind ("Postgres, data store", "AWS VPC payments, boundary"), and an edge names its ends
   in its direction and its label ("Browser to API gateway, HTTPS"). Without them, React Flow names an edge by the
   internal ids of its nodes. A focused edge draws in the selection colour, wider.
-- Every page sits in a `main` landmark, and each page sets the tab title (`useDocumentTitle`), for example "Order
+- The content of each page below its top bar is the `main` landmark, so the top bar stays the `banner`; a `header`
+  inside `main` is not a banner. Each page sets the tab title (`useDocumentTitle`), for example "Order
   system – Diagrams". The controls of a properties row take the row label as their name (`aria-labelledby`), so a
   screen reader says "Name" and not only "edit text".
 

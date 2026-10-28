@@ -20,9 +20,7 @@ export function StandalonePlayer({ diagram }: { diagram: Diagram }) {
     <TooltipProvider delay={350}>
       <ReactFlowProvider>
         <EngineProvider>
-          <main className="h-full">
-            <PlayerStage diagram={diagram} flowId={flowId} onFlowChange={changeFlow} />
-          </main>
+          <PlayerStage diagram={diagram} flowId={flowId} onFlowChange={changeFlow} />
         </EngineProvider>
       </ReactFlowProvider>
     </TooltipProvider>

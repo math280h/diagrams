@@ -12,9 +12,7 @@ export function RootLayout() {
   return (
     <TooltipProvider delay={350}>
       {isDesktop() && <div className="dg-drag-strip" aria-hidden />}
-      <main className="h-full">
-        <Outlet />
-      </main>
+      <Outlet />
       {isDesktop() ? <ConnectAgentDialog /> : <OpenInAppDialog />}
       <Toaster theme={theme} position="top-center" offset={64} />
     </TooltipProvider>

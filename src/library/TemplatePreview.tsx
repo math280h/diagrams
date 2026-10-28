@@ -101,7 +101,7 @@ function Preview({ template }: { template: Template }) {
           </Button>
         </div>
       </header>
-      <div className="relative min-h-0 flex-1">
+      <main className="relative min-h-0 flex-1">
         <DiagramCanvas
           nodes={nodes}
           edges={edges}
@@ -116,7 +116,7 @@ function Preview({ template }: { template: Template }) {
           edgesFocusable={false}
         />
         {!activeFlowId && <ZoomControls />}
-      </div>
+      </main>
     </div>
   )
 }
