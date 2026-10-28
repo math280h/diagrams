@@ -154,17 +154,21 @@ describe('createDiagramFiles', () => {
 })
 
 describe('watchDiagramFolder', () => {
-  it('reports a file that another program adds, and not its own writes', async () => {
+  it('reports a file that another program adds, and not its own writes', { timeout: 20_000 }, async () => {
     const files = createDiagramFiles(folder)
     await files.readAll()
     const changes: FileChange[] = []
     const watcher = watchDiagramFolder(files, (change) => changes.push(change))
     try {
       await files.write('d_mine', 'mine')
-      writeFileSync(path.join(folder, 'd_theirs.diagram.json'), 'theirs')
-      await vi.waitFor(() => expect(changes).toContainEqual({ kind: 'changed', id: 'd_theirs', text: 'theirs' }), {
-        timeout: 5000,
-      })
+      // On macOS, fs.watch can miss a change that occurs immediately after the watch starts.
+      await vi.waitFor(
+        () => {
+          writeFileSync(path.join(folder, 'd_theirs.diagram.json'), 'theirs')
+          expect(changes).toContainEqual({ kind: 'changed', id: 'd_theirs', text: 'theirs' })
+        },
+        { timeout: 15_000, interval: 500 },
+      )
       expect(changes.some((change) => change.id === 'd_mine')).toBe(false)
     } finally {
       watcher.stop()
