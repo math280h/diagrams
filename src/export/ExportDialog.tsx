@@ -378,7 +378,7 @@ function VideoExport({ onClose }: { onClose: () => void }) {
       <div className="grid gap-5 sm:grid-cols-[1fr_256px]">
         <FrameStrip frames={frames} aspect={size.width / size.height} />
         <div className="space-y-3">
-          <Field label="Content" wide>
+          <Field label="Content">
             <Choice
               label="Content"
               value={source}
@@ -390,7 +390,7 @@ function VideoExport({ onClose }: { onClose: () => void }) {
             />
           </Field>
           {paths.length > 0 && (
-            <Field label="Path" wide>
+            <Field label="Path">
               <Choice
                 label="Path"
                 value={pathId ?? MAIN_PATH}

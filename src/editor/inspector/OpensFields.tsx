@@ -33,7 +33,7 @@ export function OpensFields({ node }: { node: CardNodeType | GroupNodeType }) {
 
   return (
     <Section title="Inside">
-      <Field label="Opens" wide>
+      <Field label="Opens">
         <Choice
           label="Opens"
           value={target ? target.id : NOTHING}

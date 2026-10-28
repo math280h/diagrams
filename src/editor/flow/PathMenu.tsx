@@ -52,16 +52,16 @@ function PathSettings({ flow, path }: { flow: Flow; path: FlowPath }) {
         <TooltipContent>Path settings</TooltipContent>
       </Tooltip>
       <PopoverContent className="w-80 space-y-3" align="start" side="top">
-        <Field label="Name" wide>
+        <Field label="Name">
           <TextInput
             value={path.name}
             onChange={(name) => editPath(flow, path.id, (draft) => void (draft.name = name), `path-name:${path.id}`)}
           />
         </Field>
-        <Field label="Starts after" wide>
+        <Field label="Starts after">
           <p className="truncate text-xs text-muted-foreground">{stepLabel(flow, path.fromStep)}</p>
         </Field>
-        <Field label="Then" wide>
+        <Field label="Then">
           <Choice
             label="After the path"
             value={rejoin}

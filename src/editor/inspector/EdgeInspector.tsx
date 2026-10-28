@@ -135,7 +135,7 @@ export function EdgeInspector({ edges }: { edges: DiagramEdge[] }) {
       >
         {single && (
           <>
-            <Field label="Label" wide>
+            <Field label="Label">
               <TextInput
                 mono
                 value={data.label}
@@ -156,7 +156,7 @@ export function EdgeInspector({ edges }: { edges: DiagramEdge[] }) {
             )}
           </>
         )}
-        <Field label="Protocol" wide>
+        <Field label="Protocol">
           <Choice
             label="Protocol"
             value={data.protocol}

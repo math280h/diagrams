@@ -18,7 +18,7 @@ export function DetailsFields({ node }: { node: CardNodeType | ShapeNodeType | G
 
   return (
     <Section title="Details">
-      <Field label="Owner" wide>
+      <Field label="Owner">
         <TextInput
           value={details.owner}
           placeholder="Payments team"

@@ -173,7 +173,7 @@ function FieldEditor({
 }) {
   return (
     <div className="space-y-2 rounded-lg border bg-background/40 p-2">
-      <Field label="Name" wide>
+      <Field label="Name">
         <TextInput
           mono
           autoFocus={field.path === ''}
@@ -187,11 +187,11 @@ function FieldEditor({
           {issue}
         </p>
       )}
-      <Field label="Type" wide>
+      <Field label="Type">
         <Choice label="Type" value={field.type} onChange={(type) => onChange({ type })} options={TYPE_OPTIONS} />
       </Field>
       {hasExample(field.type) && (
-        <Field label="Example" wide>
+        <Field label="Example">
           <TextInput
             mono
             value={field.example}
@@ -200,14 +200,14 @@ function FieldEditor({
           />
         </Field>
       )}
-      <Field label="Note" wide>
+      <Field label="Note">
         <TextInput
           value={field.description}
           placeholder="What the field holds"
           onChange={(description) => onChange({ description }, `payload-description:${field.id}`)}
         />
       </Field>
-      <Field label="Data" wide>
+      <Field label="Data">
         <Choice
           label="Data"
           value={field.sensitive ?? NOT_SENSITIVE}

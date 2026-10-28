@@ -65,13 +65,13 @@ function CardFields({ node }: { node: CardNodeType }) {
   return (
     <>
       <Section title="Content">
-        <Field label="Name" wide>
+        <Field label="Name">
           <TextInput value={data.title} onChange={(title) => set({ title }, `title:${node.id}`)} />
         </Field>
-        <Field label="Kind" wide>
+        <Field label="Kind">
           <Choice label="Kind" value={data.form} onChange={(form) => set({ form })} options={FORM_OPTIONS} />
         </Field>
-        <Field label="Detail" wide>
+        <Field label="Detail">
           <TextInput
             mono
             value={detail?.text ?? ''}
@@ -79,10 +79,10 @@ function CardFields({ node }: { node: CardNodeType }) {
             onChange={setDetail}
           />
         </Field>
-        <Field label="Icon" wide>
+        <Field label="Icon">
           <IconPicker value={data.icon} onChange={(icon) => set({ icon })} allowNone />
         </Field>
-        <Field label="Colour" wide>
+        <Field label="Colour">
           <ColorPicker value={data.color} onChange={(color) => set({ color })} />
         </Field>
       </Section>
@@ -189,10 +189,10 @@ function ShapeFields({ node }: { node: ShapeNodeType }) {
   const set = (patch: Partial<ShapeData>, key?: string) => updateNodeData(node.id, patch, key)
   return (
     <Section title="Content">
-      <Field label="Label" wide>
+      <Field label="Label">
         <TextInput value={data.label} onChange={(label) => set({ label }, `label:${node.id}`)} />
       </Field>
-      <Field label="Form" wide>
+      <Field label="Form">
         <ToggleGroup
           value={[data.shape]}
           onValueChange={(next) => {
@@ -214,7 +214,7 @@ function ShapeFields({ node }: { node: ShapeNodeType }) {
           ))}
         </ToggleGroup>
       </Field>
-      <Field label="Icon" wide>
+      <Field label="Icon">
         <IconPicker value={data.icon} onChange={(icon) => set({ icon })} allowNone />
       </Field>
       <Field label="Fill">
@@ -228,7 +228,7 @@ function ShapeFields({ node }: { node: ShapeNodeType }) {
           ]}
         />
       </Field>
-      <Field label="Colour" wide>
+      <Field label="Colour">
         <ColorPicker value={data.color} onChange={(color) => set({ color })} />
       </Field>
     </Section>
@@ -310,17 +310,17 @@ function GroupFields({ node }: { node: GroupNodeType }) {
 
   return (
     <Section title="Boundary">
-      <Field label="Kind" wide>
+      <Field label="Kind">
         <KindSelect value={kind.id} onChange={changeKind} />
       </Field>
-      <Field label="Name" wide>
+      <Field label="Name">
         <TextInput
           value={data.label}
           placeholder={kind.tier === 'custom' ? 'Group' : 'prod-payments'}
           onChange={(label) => set({ label }, `label:${node.id}`)}
         />
       </Field>
-      <Field label="Detail" wide>
+      <Field label="Detail">
         <TextInput
           mono
           value={data.detail}
@@ -328,7 +328,7 @@ function GroupFields({ node }: { node: GroupNodeType }) {
           onChange={(detail) => set({ detail }, `detail:${node.id}`)}
         />
       </Field>
-      <Field label="Colour" wide>
+      <Field label="Colour">
         <BoundaryColorPicker value={data.color} kindColor={kind.color} onChange={(color) => set({ color })} />
       </Field>
       {kind.tier === 'custom' && (
@@ -344,7 +344,7 @@ function GroupFields({ node }: { node: GroupNodeType }) {
           />
         </Field>
       )}
-      <Field label="Icon" wide>
+      <Field label="Icon">
         <IconPicker value={data.icon} onChange={(icon) => set({ icon })} allowNone />
       </Field>
       <SwitchField label="Tinted area" checked={data.tint} onChange={(tint) => set({ tint })} />
