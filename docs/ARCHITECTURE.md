@@ -56,7 +56,7 @@ The visual system lives in `DESIGN.md` at the repository root.
   diagrams on `atkinson` to it, and added `protocol` to edges and `protocolColors` to the theme.
   Version 7 added the `request` and `response` bodies to edges and `bodies` to flows; the migration
   turns `bodies` on. Version 8 added `color` to cards and shapes and removed the `accent` fields. Version 9 added `details`
-  (description, owner and links) to cards, shapes and groups.
+  (description, owner and links) to cards, shapes and groups. Version 10 added the optional `pinned` flag to the data of every node.
 - Groups are boundaries. A group's `kind` points into the catalogue in `src/model/boundaries.ts`:
   AWS, Azure, Google Cloud, Kubernetes and general kinds, plus the custom group. Each kind has a
   family (scope, logical, location, zone, network, subnet, security, runtime) that sets its line
@@ -383,6 +383,15 @@ swapped while the score improves. The score adds the real edge lengths between n
 groups, costs for edges against or across the layout direction and for crossings, and the extent.
 The grid replaces the layers only when it costs less than 85 % of them. If no level uses a grid, the
 ELK result stays as it is.
+
+Pinned nodes keep their places (`keepPinned` in `src/layout/pinned.ts`, at the end of `layoutDiagram`, so Tidy up,
+`layout_diagram` and every other layout respect them). ELK has no fixed positions in the layered algorithm, so the
+layout runs as usual and the result moves by the median offset of the pinned nodes, so that the arrangement sits
+where the pinned nodes are. Then each pinned node, and everything in a pinned group, goes back to its place. Level by
+level from the deepest group, the other nodes move out of the way of the pinned nodes and of each other, along the
+shorter way out; a group that holds a pinned node does not move and grows around it. An edge keeps its new route only
+if both of its nodes moved by the same distance, and its old route if both are pinned; the rest go back to the
+facing-sides path. In the editor a pinned node shows a pin mark; exports and the player show nothing.
 
 A grid layout needs its own edge routes, because ELK only routes the graphs that it lays out.
 `router.ts` routes on a sparse orthogonal grid: the lines at a clearance from each node, the node

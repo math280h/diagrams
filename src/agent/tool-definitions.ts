@@ -80,6 +80,12 @@ const nodeFields = {
     .describe(
       'Cards, shapes and groups. Links to the code, docs, runbook or dashboard of the part. They replace the links of the node.',
     ),
+  pinned: z
+    .boolean()
+    .optional()
+    .describe(
+      'If true, layout_diagram and Tidy up keep the node in its place and arrange the other nodes around it. Pin nodes that the user placed by hand.',
+    ),
   x: z
     .number()
     .optional()

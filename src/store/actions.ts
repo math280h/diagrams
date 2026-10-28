@@ -544,6 +544,17 @@ export function patchNodesData(patches: ReadonlyMap<string, NodeDataPatch>) {
   })
 }
 
+/** Pins or unpins the nodes, as one undo step. A layout keeps a pinned node in its place. */
+export function pinNodes(ids: Iterable<string>, pinned: boolean) {
+  patchNodesData(new Map([...ids].map((id) => [id, { pinned }])))
+}
+
+/** Returns true if the selection has nodes and all of them are pinned. */
+export function selectionPinned(): boolean {
+  const selected = useDoc.getState().nodes.filter((node) => node.selected)
+  return selected.length > 0 && selected.every((node) => node.data.pinned === true)
+}
+
 /** Gives a colour to the cards and shapes among the nodes, as one undo step. Other node types do not change. */
 export function colorNodes(ids: Iterable<string>, color: Color) {
   const wanted = new Set(ids)
