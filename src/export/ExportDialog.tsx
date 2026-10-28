@@ -46,6 +46,9 @@ const FRAME_SIZE: Record<Frame, { width: number; height: number }> = {
   '9:16': { width: 720, height: 1280 },
 }
 const GIF_MAX_WIDTH = 960
+// A GIF stores the time of each frame in hundredths of a second.
+const GIF_FRAME_RATES = ['10', '20', '25'] as const
+const VIDEO_FRAME_RATES = ['30', '60'] as const
 const FLOW_END_HOLD_MS = 800
 const PREVIEW_SHARES = [0.08, 0.3, 0.52, 0.74, 0.96]
 const PREVIEW_SCALE = 0.3
@@ -254,7 +257,8 @@ function VideoExport({ onClose }: { onClose: () => void }) {
   const [format, setFormat] = useState<VideoFormat>('mp4')
   const [frame, setFrame] = useState<Frame>('16:9')
   const [quality, setQuality] = useState<'720' | '1080'>('1080')
-  const [fps, setFps] = useState(30)
+  const [videoFps, setVideoFps] = useState<(typeof VIDEO_FRAME_RATES)[number]>('30')
+  const [gifFps, setGifFps] = useState<(typeof GIF_FRAME_RATES)[number]>('20')
   const [ambientSeconds, setAmbientSeconds] = useState(6)
   const [themeChoice, setThemeChoice] = useState<ThemeChoice>('canvas')
   const [grid, setGrid] = useState(false)
@@ -268,7 +272,7 @@ function VideoExport({ onClose }: { onClose: () => void }) {
   const size = FRAME_SIZE[frame]
   const gif = format === 'gif'
   const scale = gif ? Math.min(1, GIF_MAX_WIDTH / size.width) : quality === '1080' ? 1.5 : 1
-  const frameRate = gif ? Math.min(fps, 20) : fps
+  const frameRate = Number(gif ? gifFps : videoFps)
   const timeline = useMemo(
     () => (flow ? compileFlow(flow, new Set(content.nodes.map((node) => node.id)), content.edges, pathId) : null),
     [flow, content.nodes, content.edges, pathId],
@@ -433,14 +437,19 @@ function VideoExport({ onClose }: { onClose: () => void }) {
             </Field>
           )}
           <Field label="Frame rate">
-            <Segmented
-              value={String(fps) as '15' | '30' | '60'}
-              onChange={(value) => setFps(Number(value))}
-              options={(gif ? ['15', '20'] : ['30', '60']).map((value) => ({
-                value: value as '15' | '30' | '60',
-                label: `${value} fps`,
-              }))}
-            />
+            {gif ? (
+              <Segmented
+                value={gifFps}
+                onChange={setGifFps}
+                options={GIF_FRAME_RATES.map((value) => ({ value, label: `${value} fps` }))}
+              />
+            ) : (
+              <Segmented
+                value={videoFps}
+                onChange={setVideoFps}
+                options={VIDEO_FRAME_RATES.map((value) => ({ value, label: `${value} fps` }))}
+              />
+            )}
           </Field>
           <Field label="Theme">
             <Segmented
