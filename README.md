@@ -161,12 +161,14 @@ jobs:
 The images of the comments go to the branch `diagram-previews`, because GitHub shows images in a comment only from an
 address. You can delete the branch at any time; the comments then lose their images. A pull request from a fork gets
 no comment, because its token cannot write. Other inputs: `files`, `format` (`png` or `svg`), `theme`, `max-size`,
-`mode` (`write`, `compare` or `auto`), `publish`, `preview-branch`, `version`, `app` and `base-app` (see
+`mode` (`write`, `compare` or `auto`), `publish`, `preview-branch`, `version`, `app`, `base-app` and `base-root` (see
 [`actions/render/action.yml`](actions/render/action.yml)).
 
 With `base-app`, compare mode renders the same diagrams with two builds of the app instead, for example the app of a
-pull request and the app of its base commit, and the comment shows the diagrams that look different. This repository
-does that for pull requests that change how diagrams draw (`.github/workflows/display-previews.yml`).
+pull request and the app of its base commit, and the comment shows the diagrams that look different. With
+`base-root`, the base app renders the base commit's own copies of the files from that folder, so a pull request that
+changes the diagram format still gets old images. This repository does that for pull requests that change how diagrams
+draw (`.github/workflows/display-previews.yml`).
 
 ## Development
 

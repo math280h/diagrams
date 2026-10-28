@@ -900,11 +900,16 @@ images current without a person. `main.mjs` does the work in Node, and `lib.mjs`
 - With `base-app`, compare mode renders every matched diagram with two apps, also files that git does not track yet,
   and keeps only the diagrams whose images differ. Both apps run on the same runner and render at a fixed time, so the
   bytes of an image do not change between runs, and an exact compare is enough. A diagram that the base app cannot
-  open, for example in a newer format, gets a note in place of its old image. The comment also says when no diagram
-  looks different, so a pull request shows that the check ran.
+  open gets a note in place of its old image. The comment also says when no diagram looks different, so a pull
+  request shows that the check ran.
+- With `base-root`, the base app renders the files at the same paths in that folder, and files that only one side has
+  show as new or removed. An app refuses a diagram in a newer format, so without it a pull request that changes the
+  format would get no old images at all.
 - `.github/workflows/display-previews.yml` uses it in this repository. For a pull request from this repository that
   changes drawing code, templates or dependencies, it builds the app of the pull request and the app of the base
-  commit, writes each template as a dark and a light diagram file (`scripts/template-files.mjs`), and compares them.
+  commit, writes each template as a dark and a light diagram file with the code of each commit
+  (`scripts/template-files.mjs` of the pull request into `.diagram-previews/`, the one of the base commit into
+  `base/.diagram-previews/`), and compares them. A change to a template then shows too.
 
 ### Skills
 

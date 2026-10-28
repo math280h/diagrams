@@ -58,8 +58,10 @@ jobs:
           pnpm desktop:build
       - name: Allow the Electron sandbox
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-      - name: Write each template as a diagram file
-        run: node scripts/template-files.mjs .diagram-previews
+      - name: Write each template as a diagram file with the code of both commits
+        run: |
+          node scripts/template-files.mjs .diagram-previews
+          node base/scripts/template-files.mjs base/.diagram-previews
       - name: Compare the images of both apps
         uses: ./actions/render
         with:
@@ -67,3 +69,4 @@ jobs:
           mode: compare
           app: node_modules/.bin/electron .
           base-app: base/node_modules/.bin/electron base
+          base-root: base
