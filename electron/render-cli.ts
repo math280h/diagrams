@@ -121,6 +121,7 @@ export async function runRender(args: RenderArgs): Promise<number> {
         ...(args.maxSizePx !== undefined ? { maxSizePx: args.maxSizePx } : {}),
         ...(args.theme ? { theme: args.theme } : {}),
         ...(args.flow !== undefined ? { flow: args.flow } : {}),
+        ...(args.path !== undefined ? { path: args.path } : {}),
         ...(args.step !== undefined ? { step: args.step } : {}),
       },
       { timeoutMs: RENDER_TIMEOUT_MS },

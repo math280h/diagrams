@@ -19,7 +19,9 @@ computer.
 - **Moving connections**: dots, comets, dashes or pulses that flow along a connection. Turn them on for one
   connection or for all.
 - **Flows**: record a path through the diagram, add captions, and play it back with a camera that follows the user.
-  Read a flow as a log or as a sequence diagram. A timeline adds camera paths and fades.
+  Read a flow as a log or as a sequence diagram. A timeline adds camera paths and fades. A step can reach several
+  nodes at once, for example all consumers of one event, and a flow can have alternate paths, such as what happens
+  when a payment fails.
 - **Traces as flows**: import an OpenTelemetry, Jaeger or Zipkin trace, and watch the real request move through your
   diagram with each operation, latency and status in the log. Services use the cards with the same name.
 - **Request and response bodies**: list the JSON fields that a connection carries, or paste an example body to fill

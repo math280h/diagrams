@@ -1,5 +1,6 @@
 import { useReactFlow, useStore } from '@xyflow/react'
 import { useCallback } from 'react'
+import { lanesText, type LaneName } from '@/model/flow'
 import { nodeName } from '@/model/labels'
 import { stepBody } from '@/model/payload'
 import type { EdgeData } from '@/model/schema'
@@ -53,19 +54,15 @@ export function FlowCaption() {
   if (!caption) return null
   const body = caption.bodies && edgeId ? stepBody(edgeData, caption.reversed) : ''
 
-  let element = ''
-  let event = caption.event
-  if (caption.target.kind === 'node') {
-    element = nodeTitle(getNode(caption.target.id))
-  } else {
-    const edge = getEdge(caption.target.id)
-    if (edge) {
-      const from = nodeTitle(getNode(caption.reversed ? edge.target : edge.source))
-      const to = nodeTitle(getNode(caption.reversed ? edge.source : edge.target))
-      element = `${from} → ${to}`
-      event ||= edge.data?.label ?? ''
-    }
-  }
+  const lanes = caption.lanes.flatMap(({ target, reversed }): LaneName[] => {
+    if (target.kind === 'node') return [{ kind: 'node', from: nodeTitle(getNode(target.id)), to: '' }]
+    const edge = getEdge(target.id)
+    if (!edge) return []
+    const from = nodeTitle(getNode(reversed ? edge.target : edge.source))
+    return [{ kind: 'edge', from, to: nodeTitle(getNode(reversed ? edge.source : edge.target)) }]
+  })
+  const element = lanesText(lanes)
+  const event = caption.event || (caption.target.kind === 'edge' ? (getEdge(caption.target.id)?.data?.label ?? '') : '')
 
   return (
     <div className="dg-caption">

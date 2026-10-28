@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { COLORS } from './colors'
 
-export const DIAGRAM_VERSION = 11
+export const DIAGRAM_VERSION = 12
 
 const colorSchema = z.enum(COLORS)
 
@@ -233,8 +233,25 @@ export const stepSchema = z.object({
   durationMs: z.number().min(100).max(60_000),
   camera: z.enum(['follow', 'fit', 'hold']),
   zoom: z.number().min(0.1).max(4),
+  /** Other nodes or edges that the step reaches at the same time as `target`. Each one gets its own token. */
+  parallel: z.array(targetSchema).optional(),
 })
 export type Step = z.infer<typeof stepSchema>
+
+/**
+ * A different way through the flow, for example the steps after a failed payment.
+ *
+ * The path starts after the step `fromStep` of the main steps and takes the place of the main steps after it.
+ */
+export const flowPathSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  fromStep: z.string(),
+  steps: z.array(stepSchema),
+  /** A later main step where the flow continues after the path. With `null`, the flow ends after the path. */
+  rejoinStep: z.string().nullable(),
+})
+export type FlowPath = z.infer<typeof flowPathSchema>
 
 export const easeSchema = z.enum(['linear', 'inOut', 'hold'])
 export type Ease = z.infer<typeof easeSchema>
@@ -294,6 +311,7 @@ export const flowSchema = z.object({
    * moves back.
    */
   bodies: z.boolean(),
+  paths: z.array(flowPathSchema).optional(),
 })
 export type Flow = z.infer<typeof flowSchema>
 

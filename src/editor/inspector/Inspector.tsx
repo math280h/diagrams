@@ -13,6 +13,7 @@ import { MultiInspector } from './DiagramInspector'
 import { EdgeInspector } from './EdgeInspector'
 import { NodeInspector } from './NodeInspector'
 import { StepInspector } from './StepInspector'
+import { findStep } from '@/model/flow'
 
 const NODE_KIND: Record<DiagramNode['type'], string> = { card: 'Node', shape: 'Shape', text: 'Text', group: 'Boundary' }
 
@@ -29,7 +30,8 @@ export function Inspector() {
   const selectedNodes = nodes.filter((node) => node.selected)
   const selectedEdges = edges.filter((edge) => edge.selected)
   const flow = flows.find((candidate) => candidate.id === activeFlowId)
-  const step = flowPanelOpen && flow ? flow.steps.find((candidate) => candidate.id === selectedStepId) : undefined
+  const place = flowPanelOpen && flow && selectedStepId ? findStep(flow, selectedStepId) : null
+  const step = place?.step
   const hasSelection = selectedNodes.length > 0 || selectedEdges.length > 0
 
   if (!hasSelection && !step) return null
@@ -54,7 +56,7 @@ export function Inspector() {
   let kind: string
   if (step && flow && !hasSelection) {
     content = <StepInspector flow={flow} step={step} />
-    title = `Step ${flow.steps.indexOf(step) + 1}`
+    title = place?.path ? `${place.path.name}, step ${place.index + 1}` : `Step ${(place?.index ?? 0) + 1}`
     kind = flow.name
   } else if (selectedNodes.length === 1 && selectedEdges.length === 0) {
     const node = selectedNodes[0]!

@@ -30,6 +30,7 @@ import type {
   ShapeData,
   Side,
   Step,
+  Target,
   TextData,
 } from '@/model/schema'
 import type { DiagramEdge, DiagramNode } from '@/model/types'
@@ -393,8 +394,13 @@ export function buildEdge(input: EdgeInput, resolver: Resolver, warnings: string
 }
 
 export function applyStepInput(step: Step, input: Partial<StepInput>): Step {
-  const { target: _target, ...fields } = input
+  const { target: _target, parallel: _parallel, ...fields } = input
   return { ...step, ...definedFields(fields) }
+}
+
+function withParallel(step: Step, targets: readonly Target[]): Step {
+  const parallel = targets.filter((target) => target.kind !== step.target.kind || target.id !== step.target.id)
+  return parallel.length > 0 ? { ...step, parallel } : step
 }
 
 /**
@@ -416,20 +422,34 @@ export function buildSteps(
   let tokenAt = startNode
   for (const input of inputs) {
     const target = resolver.target(input.target)
+    const parallel = (input.parallel ?? []).map((reference) => resolver.target(reference))
     if (target.kind === 'node') {
-      if (connect && tokenAt && tokenAt !== target.id) {
-        const path = findEdgePath(tokenAt, target.id, edges)
-        if (path === null) {
-          warnings.push(`No edges connect the previous node to "${input.target}", so the token jumps there.`)
+      const nodes = [target, ...parallel].filter((candidate) => candidate.kind === 'node')
+      if (connect && tokenAt) {
+        const from = tokenAt
+        const routes = nodes.map((node) => (node.id === from ? [] : findEdgePath(from, node.id, edges)))
+        routes.forEach((route, index) => {
+          if (route === null) {
+            const name = index === 0 ? input.target : input.parallel?.[index - 1]
+            warnings.push(`No edges connect the previous node to "${name}", so the token jumps there.`)
+          }
+        })
+        const layers = Math.max(0, ...routes.map((route) => route?.length ?? 0))
+        for (let layer = 0; layer < layers; layer++) {
+          const layerEdges = routes.flatMap((route): Target[] => {
+            const edgeId = route?.[layer]
+            return edgeId ? [{ kind: 'edge', id: edgeId }] : []
+          })
+          const [first, ...rest] = [...new Map(layerEdges.map((edge) => [edge.id, edge])).values()]
+          if (first) steps.push(withParallel(createStep(first), rest))
         }
-        for (const edgeId of path ?? []) steps.push(createStep({ kind: 'edge', id: edgeId }))
       }
       tokenAt = target.id
     } else {
       const edge = edges.find((candidate) => candidate.id === target.id)
       if (edge) tokenAt = edgeTravel(edge, tokenAt).toNode
     }
-    steps.push(applyStepInput(createStep(target, input.caption ?? ''), input))
+    steps.push(withParallel(applyStepInput(createStep(target, input.caption ?? ''), input), parallel))
   }
   return steps
 }

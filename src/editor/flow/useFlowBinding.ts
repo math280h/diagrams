@@ -15,13 +15,14 @@ export function useFlowBinding() {
   const nodes = useDoc((state) => state.nodes)
   const edges = useDoc((state) => state.edges)
   const activeFlowId = useUi((state) => state.activeFlowId)
+  const activePathId = useUi((state) => state.activePathId)
   const open = useUi((state) => state.flowPanelOpen)
 
   useEffect(() => {
     if (!open) return
     const current = useUi.getState().activeFlowId
     if (!current || !flows.some((flow) => flow.id === current)) {
-      useUi.setState({ activeFlowId: flows[0]?.id ?? null, selectedStepId: null })
+      useUi.setState({ activeFlowId: flows[0]?.id ?? null, activePathId: null, selectedStepId: null })
     }
   }, [open, flows])
 
@@ -33,7 +34,7 @@ export function useFlowBinding() {
       engine.playback.load(null, null)
       return
     }
-    const timeline = compileFlow(flow, new Set(nodeIds.split('|')), edges)
+    const timeline = compileFlow(flow, new Set(nodeIds.split('|')), edges, activePathId)
     engine.playback.load(flow.id, timeline)
-  }, [engine, flow, nodeIds, edges])
+  }, [engine, flow, nodeIds, edges, activePathId])
 }

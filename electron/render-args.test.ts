@@ -43,6 +43,28 @@ describe('render arguments', () => {
     })
   })
 
+  it('reads the path of a flow', () => {
+    expect(
+      parseRenderArgs([
+        ...app,
+        '--render',
+        'a.json',
+        '--out',
+        'a.gif',
+        '--flow',
+        'Checkout',
+        '--path',
+        'Card declined',
+      ]),
+    ).toEqual({
+      input: path.resolve('a.json'),
+      output: path.resolve('a.gif'),
+      format: 'gif',
+      flow: 'Checkout',
+      path: 'Card declined',
+    })
+  })
+
   it.each([
     [['--render', 'a.json'], '--out is missing.'],
     [['--render', '--out', 'a.png'], '--render needs a value.'],

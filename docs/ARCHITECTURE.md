@@ -57,7 +57,8 @@ The visual system lives in `DESIGN.md` at the repository root.
   Version 7 added the `request` and `response` bodies to edges and `bodies` to flows; the migration
   turns `bodies` on. Version 8 added `color` to cards and shapes and removed the `accent` fields. Version 9 added `details`
   (description, owner and links) to cards, shapes and groups. Version 10 added the optional `pinned` flag to the data of every node. Version 11 added the
-  optional `opens` field, the id of another diagram, to cards and groups.
+  optional `opens` field, the id of another diagram, to cards and groups. Version 12 added the optional `parallel`
+  targets to flow steps and the optional `paths` to flows.
 - Groups are boundaries. A group's `kind` points into the catalogue in `src/model/boundaries.ts`:
   AWS, Azure, Google Cloud, Kubernetes and general kinds, plus the custom group. Each kind has a
   family (scope, logical, location, zone, network, subnet, security, runtime) that sets its line
@@ -242,8 +243,38 @@ the file name is the id. The `rev` counter detects edits from another tab or ano
 `repository()` returns the store of the build; the rest of the app does not know which one it is.
 
 A `Flow` is an ordered list of steps (a node or an edge, a caption, a duration, a camera mode) plus
-optional keyframe tracks (camera, opacity, traffic). The timeline is computed from the steps and
-never stored.
+optional keyframe tracks (camera, opacity, traffic). A step can have `parallel` targets, and a flow can have `paths`;
+see "Parallel steps and paths". The timeline is computed from the steps and never stored.
+
+### Parallel steps and paths
+
+A real request often reaches several services at once, and it can go another way when something fails. Flows show
+both without a second kind of flow.
+
+- **Parallel targets.** A step has its main `target` and optional `parallel` targets, for example the consumers of
+  one published event. `compileFlow` gives each segment one `Lane` for each target that exists, with its own travel
+  direction: an edge goes against its direction when a token of the previous step rests on its target and none on its
+  source. The fields of a segment repeat its first lane, so code that knows only one token keeps working.
+- `evaluateFlow` returns the main token as before and one `ParallelToken` for each other lane. A node lane enters from
+  the edge lane of the previous step that ends on its node, and a token keeps its way around a node outline in the
+  same manner as one token. The engine draws a parallel token with a copy of the token element, and colours each
+  token after the protocol of its own edge. The camera frames all lanes of a parallel step, also in follow mode, so
+  that no token leaves the view.
+- In the editor, Shift-click while recording adds a node to the last step: the edge from the same source node joins
+  the edge step, and the node joins the node step. The step properties list the parallel candidates as switches: the
+  other edges that leave the same node in the token's direction, or the nodes that the parallel edges of the previous
+  step reach. Log lines, the caption and the sequence name all lanes, for example `Kafka → Enricher, Fraud scoring`.
+- **Paths.** A flow has optional `paths`, for example "Card declined". A path starts after a main step (`fromStep`),
+  plays its own steps in place of the main steps after it, and then ends the flow or continues at a later main step
+  (`rejoinStep`). `pathSteps` gives the steps of one path, and `compileFlow` takes the path to play, so a timeline
+  stays one line of steps and every frame stays a function of the time. The path is a choice of the viewer, like the
+  flow: the flow panel, Present, the web page export, the video export, `render_image` and `--path` on the command
+  line each take one.
+- A path cannot start from another path. Removing a main step moves the start of a path to the main step before it,
+  or removes the path when no step comes before it, and moves a rejoin to the main step after it (`removeStep`).
+- The Mermaid export writes a parallel step as a `par` block and a branch point as an `alt` block: the first section
+  holds the main steps up to the furthest rejoin, and each path a section with its steps and the main steps from its
+  rejoin. A branch point inside a main section gives a nested `alt`.
 
 ### Change the diagram format
 
@@ -266,7 +297,7 @@ The preview website deploys from `main`, so a format that reaches `main` is in s
    language" above.
 3. Run `node scripts/format-sample.mjs`. It writes `src/persistence/formats/v<N>.schema.json` (the
    JSON Schema of the format) and `v<N>.json` (the Order system and Checkout flow templates as this
-   build writes them).
+   build writes them, and from format 12 the Event pipeline template with a parallel step and a path).
 
 `src/persistence/formats.test.ts` fails when the schema differs from the file of the current
 version, or when a sample of format 6 or later does not come through the migrations with the same
@@ -622,7 +653,9 @@ the handoff from the website, and updates from GitHub Releases.
   and the existing order "save, navigate, load" keeps working. Writes go to the main process in the
   background.
 - Main writes each file atomically: a temporary file, then a rename. Windows antivirus and OneDrive
-  can hold a file for a moment, so the rename retries.
+  can hold a file for a moment, so the rename retries. A list of the files waits for the writes that are still in the
+  queue: a page that reloads right after a change saves it as it unloads, and a slow rename then let the new page read
+  the old file and save it again.
 - A folder watcher reports changes from other programs. What the app knows of each file (content
   digest, size and change time) separates them from the writes of the app; a file with the known
   size and change time counts as unchanged without a read. A rescan runs when the window gets the

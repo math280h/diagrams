@@ -17,13 +17,15 @@ For a recorded request, call `import_trace` with the text of an OpenTelemetry (O
    - `level`: `warn` for a retry or a slow path, `error` for a failure. Leave `info` for the rest.
    - `caption`: one short sentence in the present tense about what happens for the person, for example "The shopper presses Pay."
    - Bodies: an edge step shows the `request` body of its edge after the event, or the `response` body when the token moves back along the edge. To show the data of a call, give the edge a body with `update_elements` instead of putting JSON in the event. Set `bodies: false` on the flow to hide them.
+   - `parallel`: other nodes or edges that the step reaches at the same time, each with its own token. Use it when one event reaches several consumers, or one request calls several services at once. A node step with `parallel` nodes and `connect` gets one edge step that reaches all of them.
 4. **Set the camera.** The flow opens on the whole diagram, and the steps follow the token. Use `camera: "fit"` for a step whose node or edge must be fully in view. Keep the default durations unless a step needs more time to read.
 5. **Name the token.** Set the `token` label to what moves, for example "Order", "Request" or "User", and give it an icon.
-6. **Check it.** Call `render_image` with the `flow` and a `step` to see a moment of the flow.
+6. **Check it.** Call `render_image` with the `flow` and a `step` to see a moment of the flow. Add `path` to see a step of a path.
 
 ## Good flows
 
 - Tell one story in each flow, in 6 to 14 steps. Make a second flow for a different story.
-- Show a failure as its own steps: a `warn` retry, then the recovery. Or make a separate flow, such as "Payment declined".
+- Show a failure as a path of the flow: give `add_flow` or `update_flow` a `paths` entry with a `name` such as "Card declined", the index of the main step after which it starts (`from`), its own `steps`, and a `rejoin` index when the flow goes on afterwards. The viewer picks the path, and the main steps stay the happy path. A path with no `rejoin` ends the flow.
+- Show a short recovery as its own steps on the main path instead: a `warn` retry, then the success.
 - Keep `spotlight` on for walkthroughs, so that the parts the flow has not reached yet look dim.
 - To change steps later, call `update_flow`. It can replace all steps, append steps, change a step by index or remove steps by index.

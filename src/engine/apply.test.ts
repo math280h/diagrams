@@ -8,6 +8,7 @@ function frame(segmentIndex: number, emphasis: [ElementKey, number][] = []): Flo
     token: { x: segmentIndex * 10, y: 0 },
     tokenLift: 0,
     tokenLabel: 1,
+    parallelTokens: [],
     activeNodes: new Set(),
     activeEdges: new Set(),
     visitedNodes: new Set(),

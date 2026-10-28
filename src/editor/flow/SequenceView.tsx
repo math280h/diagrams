@@ -8,6 +8,7 @@ import { selectOnly } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
 import { setUi, useUi } from '@/store/ui-store'
 import { markOnCanvas, useSegmentIndex } from './hooks'
+import { findPath, stepTargets } from '@/model/flow'
 
 const COLUMN_PX = 168
 const ROW_PX = 32
@@ -89,19 +90,25 @@ export function SequenceView({ flow }: { flow: Flow }) {
   const nodes = useDoc((state) => state.nodes)
   const edges = useDoc((state) => state.edges)
   const selectedStepId = useUi((state) => state.selectedStepId)
+  const pathId =
+    findPath(
+      flow,
+      useUi((state) => state.activePathId),
+    )?.id ?? null
   const current = useSegmentIndex()
-  const sequence = useMemo(() => flowSequence(flow, { nodes, edges }), [flow, nodes, edges])
+  const sequence = useMemo(() => flowSequence(flow, { nodes, edges }, pathId), [flow, nodes, edges, pathId])
   const scrollRef = useRef<HTMLDivElement>(null)
   const width = sequence.participants.length * COLUMN_PX
+  const pathStepIds = new Set(findPath(flow, pathId)?.steps.map((step) => step.id))
 
   useEffect(() => {
     const scroller = scrollRef.current
-    const row = scroller?.querySelector<HTMLElement>(`[data-index="${current}"]`)
+    const row = scroller?.querySelector<HTMLElement>(`[data-index="${current}"][data-lane="0"]`)
     if (!scroller || !row) return
     scroller.scrollTo({ top: Math.max(0, row.offsetTop - HEADER_PX - ROW_PX), behavior: 'smooth' })
   }, [current])
 
-  useEffect(() => () => markOnCanvas(null), [])
+  useEffect(() => () => markOnCanvas([]), [])
 
   if (sequence.rows.length === 0) {
     return (
@@ -133,8 +140,8 @@ export function SequenceView({ flow }: { flow: Flow }) {
               style={{ width: COLUMN_PX - 16 }}
               title={participant.title}
               onClick={() => selectOnly([participant.nodeId])}
-              onPointerEnter={() => markOnCanvas({ kind: 'node', id: participant.nodeId })}
-              onPointerLeave={() => markOnCanvas(null)}
+              onPointerEnter={() => markOnCanvas([{ kind: 'node', id: participant.nodeId }])}
+              onPointerLeave={() => markOnCanvas([])}
             >
               {participant.title}
             </button>
@@ -144,13 +151,15 @@ export function SequenceView({ flow }: { flow: Flow }) {
           const state = row.segmentIndex < current ? 'done' : row.segmentIndex === current ? 'active' : 'pending'
           return (
             <button
-              key={row.step.id}
+              key={`${row.step.id}:${row.lane}`}
               type="button"
               data-index={row.segmentIndex}
+              data-lane={row.lane}
+              data-path={pathStepIds.has(row.step.id) || undefined}
               data-state={state}
               data-level={row.level}
               aria-current={state === 'active' ? 'step' : undefined}
-              aria-label={`Step ${row.segmentIndex + 1}: ${
+              aria-label={`Step ${row.segmentIndex + 1}${row.lanes > 1 ? `, ${row.lane + 1} of ${row.lanes} at the same time` : ''}: ${
                 row.kind === 'message'
                   ? `${sequence.participants[row.from]!.title} to ${sequence.participants[row.to]!.title}`
                   : sequence.participants[row.over]!.title
@@ -161,10 +170,10 @@ export function SequenceView({ flow }: { flow: Flow }) {
                 setUi({ selectedStepId: row.step.id })
                 engine.playback.seek((engine.playback.timeline?.segments[row.segmentIndex]?.startMs ?? 0) + 1)
               }}
-              onPointerEnter={() => markOnCanvas(row.step.target)}
-              onPointerLeave={() => markOnCanvas(null)}
-              onFocus={() => markOnCanvas(row.step.target)}
-              onBlur={() => markOnCanvas(null)}
+              onPointerEnter={() => markOnCanvas(stepTargets(row.step))}
+              onPointerLeave={() => markOnCanvas([])}
+              onFocus={() => markOnCanvas(stepTargets(row.step))}
+              onBlur={() => markOnCanvas([])}
               className={cn(
                 'dg-log-row dg-seq-row relative block w-full',
                 selectedStepId === row.step.id && 'dg-log-row-selected',

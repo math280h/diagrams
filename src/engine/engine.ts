@@ -1,5 +1,5 @@
 import { motionValue } from 'motion'
-import type { LogLevel, Target, Traffic } from '@/model/schema'
+import type { LogLevel, Target, Traffic, XY } from '@/model/schema'
 import { applyFlowFrame, flowStateKey } from './apply'
 import { blendCameras, cameraToViewport, viewportToCamera, type Rect, type ViewSize, type Viewport } from './camera'
 import { createClock } from './clock'
@@ -39,13 +39,18 @@ export interface EngineBindingTarget {
   getViewport: () => Viewport
 }
 
-export interface Caption {
-  text: string
-  index: number
-  total: number
+export interface CaptionLane {
   target: Target
   /** True if the token moves from the edge target to the edge source. */
   reversed: boolean
+}
+
+export interface Caption extends CaptionLane {
+  text: string
+  index: number
+  total: number
+  /** The main target first, then the parallel targets. */
+  lanes: CaptionLane[]
   event: string
   level: LogLevel
   /** True if the log line of an edge step shows the body of the edge. */
@@ -175,6 +180,8 @@ export class Engine {
   readonly tables = new Map<string, ArcTable>()
   private root: HTMLElement | null = null
   private tokenElement: HTMLElement | null = null
+  /** Copies of the token element for the parallel targets of a step. */
+  private parallelTokenElements: HTMLElement[] = []
   private geometry: FlowGeometry | null = null
   private visibleRect: (() => Rect | null) | null = null
   private setViewport: ((viewport: Viewport) => void) | null = null
@@ -248,7 +255,26 @@ export class Engine {
 
   setTokenElement(element: HTMLElement | null) {
     this.tokenElement = element
+    this.removeParallelTokens()
     this.flowDirty = true
+  }
+
+  private removeParallelTokens() {
+    for (const element of this.parallelTokenElements) element.remove()
+    this.parallelTokenElements = []
+  }
+
+  private parallelTokenElement(index: number): HTMLElement | null {
+    const template = this.tokenElement
+    if (!template?.parentElement) return null
+    let element = this.parallelTokenElements[index]
+    if (!element) {
+      element = template.cloneNode(true) as HTMLElement
+      element.dataset.parallel = ''
+      template.after(element)
+      this.parallelTokenElements[index] = element
+    }
+    return element
   }
 
   registerTraffic(edgeId: string, binding: TrafficBinding) {
@@ -380,6 +406,7 @@ export class Engine {
     if (this.root) applyFlowFrame(this.root, null, false)
     this.coverEdgeLabels(false, false)
     if (this.tokenElement) this.tokenElement.style.display = 'none'
+    for (const element of this.parallelTokenElements) element.style.display = 'none'
     this.trafficScale.clear()
     this.setCaption(null)
     this.flowShown = false
@@ -428,6 +455,27 @@ export class Engine {
     return next ? this.edgeProtocol(next.step.target.id) : null
   }
 
+  private laneProtocol(timeline: Timeline, index: number, laneIndex: number): string | null {
+    const lane = timeline.segments[index]?.lanes[laneIndex]
+    if (!lane) return null
+    if (lane.target.kind === 'edge') return this.edgeProtocol(lane.target.id)
+    const entry = timeline.segments[index - 1]?.lanes.find(
+      (candidate) => candidate.target.kind === 'edge' && candidate.toNode === lane.toNode,
+    )
+    return entry ? this.edgeProtocol(entry.target.id) : this.tokenProtocol(timeline, index)
+  }
+
+  private placeToken(element: HTMLElement, protocol: string | null, point: XY, lift: number, label: number) {
+    if ((element.dataset.protocol ?? null) !== protocol) {
+      if (protocol) element.dataset.protocol = protocol
+      else delete element.dataset.protocol
+    }
+    element.style.display = ''
+    element.style.transform = `translate(${point.x.toFixed(2)}px, ${point.y.toFixed(2)}px)`
+    element.style.setProperty('--dg-token-lift', lift.toFixed(3))
+    element.style.setProperty('--dg-token-label', label.toFixed(3))
+  }
+
   private edgeProtocol(edgeId: string): string | null {
     if (!this.edgeProtocols.has(edgeId)) {
       const edge = this.root?.querySelector(`.react-flow__edge[data-id="${CSS.escape(edgeId)}"] .dg-edge`)
@@ -466,7 +514,10 @@ export class Engine {
     if (unchanged && !this.manual) return null
     this.flowDirty = false
     this.lastFlowMs = timeMs
-    if (timeline !== this.lastTimeline) this.shownState = null
+    if (timeline !== this.lastTimeline) {
+      this.shownState = null
+      this.removeParallelTokens()
+    }
     this.lastTimeline = timeline
     const freeView = {
       width: Math.max(1, this.viewSize.width - this.insets.left - this.insets.right),
@@ -489,17 +540,19 @@ export class Engine {
     if (this.tokenElement) {
       if (result.token) {
         const protocol = this.tokenProtocol(timeline, result.segmentIndex)
-        if ((this.tokenElement.dataset.protocol ?? null) !== protocol) {
-          if (protocol) this.tokenElement.dataset.protocol = protocol
-          else delete this.tokenElement.dataset.protocol
-        }
-        this.tokenElement.style.display = ''
-        this.tokenElement.style.transform = `translate(${result.token.x.toFixed(2)}px, ${result.token.y.toFixed(2)}px)`
-        this.tokenElement.style.setProperty('--dg-token-lift', result.tokenLift.toFixed(3))
-        this.tokenElement.style.setProperty('--dg-token-label', result.tokenLabel.toFixed(3))
+        this.placeToken(this.tokenElement, protocol, result.token, result.tokenLift, result.tokenLabel)
       } else {
         this.tokenElement.style.display = 'none'
       }
+    }
+    result.parallelTokens.forEach((token, index) => {
+      const element = this.parallelTokenElement(index)
+      if (!element) return
+      const protocol = this.laneProtocol(timeline, result.segmentIndex, token.lane)
+      this.placeToken(element, protocol, token.point, token.lift, token.label)
+    })
+    for (const element of this.parallelTokenElements.slice(result.parallelTokens.length)) {
+      element.style.display = 'none'
     }
     this.tokenShown = result.token !== null
     this.tokenLabelShown = result.tokenLabel > LABEL_VISIBLE
@@ -537,6 +590,7 @@ export class Engine {
             total: timeline.segments.length,
             target: segment.step.target,
             reversed: segment.reversed,
+            lanes: segment.lanes.map(({ target, reversed }) => ({ target, reversed })),
             event: segment.step.event,
             level: segment.step.level,
             bodies: timeline.flow.bodies,

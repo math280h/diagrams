@@ -26,7 +26,7 @@ import { setUi, useUi } from '@/store/ui-store'
 import { useVersions } from '@/store/versions'
 import { CanvasContextMenu, type ContextTarget } from './CanvasContextMenu'
 import { EmptyCanvas } from './EmptyCanvas'
-import { appendNodeToFlow } from './flow/record'
+import { appendNodeToFlow, appendParallelNode } from './flow/record'
 import { getHelperLines, type HelperLines } from './helper-lines'
 import { PRESET_MIME, presetNodeAt } from './preset-node'
 import { RecoverViewport } from './RecoverViewport'
@@ -181,8 +181,10 @@ export function EditorCanvas() {
           onMoveEnd={(event, viewport) => {
             if (event) setViewport(viewport)
           }}
-          onNodeClick={(_, node) => {
-            if (recording) appendNodeToFlow(node.id)
+          onNodeClick={(event, node) => {
+            if (!recording) return
+            if (event.shiftKey) appendParallelNode(node.id)
+            else appendNodeToFlow(node.id)
           }}
           onPaneContextMenu={() => setContextTarget({ kind: 'pane' })}
           onNodeContextMenu={(_, node) => {

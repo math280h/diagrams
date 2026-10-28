@@ -1,5 +1,5 @@
 import { nodeLabel } from '@/model/labels'
-import type { Flow, Target } from '@/model/schema'
+import type { Flow, FlowPath, Target } from '@/model/schema'
 import type { DiagramEdge, DiagramNode } from '@/model/types'
 import { ToolError } from './errors'
 
@@ -103,6 +103,22 @@ export function createResolver(
 }
 
 /** Finds a flow by id or by name. */
+/**
+ * Finds a path of a flow by its id or its name.
+ *
+ * @throws ToolError If no path or more than one path matches.
+ */
+export function resolvePath(flow: Flow, reference: string): FlowPath {
+  const paths = flow.paths ?? []
+  const direct = paths.find((path) => path.id === reference)
+  if (direct) return direct
+  const matches = paths.filter((path) => normalize(path.name) === normalize(reference))
+  if (matches.length === 1) return matches[0]!
+  const list = paths.map((path) => `"${path.name}" (${path.id})`).join(', ') || 'none'
+  if (matches.length > 1) throw new ToolError(`"${reference}" matches ${matches.length} paths: ${list}. Use an id.`)
+  throw new ToolError(`The flow "${flow.name}" has no path "${reference}". Paths: ${list}.`)
+}
+
 export function resolveFlow(flows: readonly Flow[], reference: string): Flow {
   const direct = flows.find((flow) => flow.id === reference)
   if (direct) return direct

@@ -6,6 +6,7 @@ import { diagramBounds } from './bounds'
 import { canvasBackground, captureBlob, prepareAssets, waitForCommit } from './capture'
 import { mountExportStage } from './mount-stage'
 import { recordStage, type VideoFormat } from './video'
+import { pathSteps } from '@/model/flow'
 
 const PADDING_PX = 48
 const MAX_SCALE = 2
@@ -64,11 +65,12 @@ export async function renderDiagramImage(
     await prepareAssets(nodes, content.flows)
     let timeMs = 0
     if (flow) {
-      const timeline = compileFlow(flow, new Set(nodes.map((node) => node.id)), edges)
+      const pathId = options.pathId ?? null
+      const timeline = compileFlow(flow, new Set(nodes.map((node) => node.id)), edges, pathId)
       await stage.fitView(FLOW_FIT_PADDING)
       stage.engine.playback.load(flow.id, timeline)
       stage.engine.playback.setFollow(true)
-      const stepId = options.step !== undefined ? flow.steps[options.step]?.id : undefined
+      const stepId = options.step !== undefined ? pathSteps(flow, pathId)[options.step]?.id : undefined
       const segment = timeline.segments.find((candidate) => candidate.step.id === stepId)
       timeMs = segment ? segment.startMs + (segment.endMs - segment.startMs) * STEP_MOMENT : 0
       await waitForCommit()
@@ -99,7 +101,7 @@ export async function renderDiagramPng(content: DiagramContent, options: RenderO
  */
 export async function renderDiagramVideo(
   content: DiagramContent,
-  options: { format: VideoFormat; theme?: 'dark' | 'light'; flowId?: string; maxSizePx?: number },
+  options: { format: VideoFormat; theme?: 'dark' | 'light'; flowId?: string; pathId?: string; maxSizePx?: number },
 ): Promise<Blob> {
   const nodes = content.nodes.map((node) => ({ ...node, selected: false, dragging: false }))
   const edges = content.edges.map((edge) => ({ ...edge, selected: false }))
@@ -119,7 +121,7 @@ export async function renderDiagramVideo(
     await stage.fitView(FLOW_FIT_PADDING)
     let durationMs = NO_FLOW_RECORDING_MS
     if (flow) {
-      const timeline = compileFlow(flow, new Set(nodes.map((node) => node.id)), edges)
+      const timeline = compileFlow(flow, new Set(nodes.map((node) => node.id)), edges, options.pathId ?? null)
       stage.engine.playback.load(flow.id, timeline)
       stage.engine.playback.setFollow(true)
       durationMs = timeline.durationMs + LAST_FRAME_HOLD_MS

@@ -18,14 +18,15 @@ export function useSegmentIndex(): number {
   return index
 }
 
-/** Marks one node or edge on the editor canvas. The value `null` removes the mark. */
-export function markOnCanvas(target: { kind: 'node' | 'edge'; id: string } | null) {
+/** Marks nodes and edges on the editor canvas. An empty list removes the marks. */
+export function markOnCanvas(targets: readonly { kind: 'node' | 'edge'; id: string }[]) {
   const root = document.querySelector('[data-editor-canvas]')
   if (!root) return
   for (const element of root.querySelectorAll('[data-hover]')) element.removeAttribute('data-hover')
-  if (!target) return
-  const selector = target.kind === 'node' ? '.react-flow__node' : '.react-flow__edge'
-  root.querySelector(`${selector}[data-id="${CSS.escape(target.id)}"]`)?.setAttribute('data-hover', 'true')
+  for (const target of targets) {
+    const selector = target.kind === 'node' ? '.react-flow__node' : '.react-flow__edge'
+    root.querySelector(`${selector}[data-id="${CSS.escape(target.id)}"]`)?.setAttribute('data-hover', 'true')
+  }
 }
 
 /** Pauses the flow and moves the playhead to the start of the next or the previous node step. */

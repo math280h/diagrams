@@ -2,6 +2,7 @@ import { Waypoints } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { useEngine, usePlaybackState } from '@/engine/hooks'
 import { cn } from '@/lib/utils'
+import { findPath, pathSteps, stepTargets } from '@/model/flow'
 import type { Flow } from '@/model/schema'
 import { selectOnly } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
@@ -25,12 +26,18 @@ export function LogTable({ flow }: { flow: Flow }) {
   const playback = usePlaybackState()
   const recording = useUi((state) => state.recording)
   const selectedStepId = useUi((state) => state.selectedStepId)
+  const path = findPath(
+    flow,
+    useUi((state) => state.activePathId),
+  )
+  const steps = pathSteps(flow, path?.id ?? null)
+  const pathStepIds = new Set(path?.steps.map((step) => step.id))
   const current = useSegmentIndex()
   useDoc((state) => state.nodes)
   useDoc((state) => state.edges)
   const segments = playback.timeline?.segments ?? []
   const listRef = useRef<HTMLDivElement>(null)
-  const showLatency = flow.steps.some((step) => step.latencyMs !== null)
+  const showLatency = steps.some((step) => step.latencyMs !== null)
   const columns = showLatency ? COLUMNS : COLUMNS_WITHOUT_LATENCY
 
   useEffect(() => {
@@ -40,7 +47,18 @@ export function LogTable({ flow }: { flow: Flow }) {
     list.scrollTo({ top: Math.max(0, row.offsetTop - HEADER_HEIGHT_PX - row.offsetHeight), behavior: 'smooth' })
   }, [current])
 
-  useEffect(() => () => markOnCanvas(null), [])
+  useEffect(() => () => markOnCanvas([]), [])
+
+  if (path && path.steps.length === 0) {
+    return (
+      <div className="m-2 flex flex-1 items-center gap-3 rounded-md border border-dashed px-4 text-sm text-muted-foreground">
+        <Waypoints className="size-4 shrink-0" />
+        {recording
+          ? 'Click the node that the path reaches first.'
+          : `Press Record, then click the nodes that “${path.name}” reaches instead of the main steps.`}
+      </div>
+    )
+  }
 
   if (flow.steps.length === 0) {
     return (
@@ -70,7 +88,7 @@ export function LogTable({ flow }: { flow: Flow }) {
         {showLatency && <span className="text-right">Latency</span>}
         <span className="max-lg:hidden">Caption</span>
       </div>
-      {flow.steps.map((step, index) => {
+      {steps.map((step, index) => {
         const segment = segments.find((candidate) => candidate.step.id === step.id)
         const state = !segment
           ? 'skipped'
@@ -79,7 +97,7 @@ export function LogTable({ flow }: { flow: Flow }) {
             : segment.index === current
               ? 'active'
               : 'pending'
-        const line = stepLine(step, segment?.reversed ?? false)
+        const line = stepLine(step, segment?.lanes)
         const { element, event } = line
         const body = flow.bodies ? line.body : ''
         const selected = selectedStepId === step.id
@@ -92,16 +110,17 @@ export function LogTable({ flow }: { flow: Flow }) {
             data-state={state}
             data-kind={step.target.kind}
             data-level={step.level}
+            data-path={pathStepIds.has(step.id) || undefined}
             aria-current={state === 'active' ? 'step' : undefined}
             onClick={() => {
               selectOnly([])
               setUi({ selectedStepId: step.id })
               if (segment) engine.playback.seek(segment.startMs + 1)
             }}
-            onPointerEnter={() => markOnCanvas(step.target)}
-            onPointerLeave={() => markOnCanvas(null)}
-            onFocus={() => markOnCanvas(step.target)}
-            onBlur={() => markOnCanvas(null)}
+            onPointerEnter={() => markOnCanvas(stepTargets(step))}
+            onPointerLeave={() => markOnCanvas([])}
+            onFocus={() => markOnCanvas(stepTargets(step))}
+            onBlur={() => markOnCanvas([])}
             className={cn(
               columns,
               'dg-log-row h-6 w-full items-center gap-x-3 px-3 text-left font-mono text-xs tabular-nums',

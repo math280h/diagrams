@@ -14,6 +14,7 @@ import type {
   Diagram,
   EdgeData,
   Flow,
+  FlowPath,
   GroupData,
   LogLevel,
   ShapeData,
@@ -106,6 +107,23 @@ export class DiagramBuilder {
     const flow: Flow = { ...createFlow(name), ...patch, steps: steps.map((step) => ({ ...step, id: newId('s') })) }
     this.flows.push(flow)
     return flow
+  }
+
+  /**
+   * Adds a path to a flow.
+   *
+   * @param from - The index of the main step after which the path starts.
+   * @param rejoin - The index of the main step where the flow continues after the path. Without it, the flow ends.
+   */
+  path(flow: Flow, name: string, from: number, steps: Omit<Step, 'id'>[], rejoin?: number) {
+    const path: FlowPath = {
+      id: newId('p'),
+      name,
+      fromStep: flow.steps[from]!.id,
+      steps: steps.map((step) => ({ ...step, id: newId('s') })),
+      rejoinStep: rejoin === undefined ? null : flow.steps[rejoin]!.id,
+    }
+    flow.paths = [...(flow.paths ?? []), path]
   }
 
   build(name: string, patch: Partial<Diagram> = {}): Diagram {
