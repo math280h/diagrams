@@ -16,8 +16,13 @@ test('inserts the product that the search names', async ({ page }) => {
 })
 
 test('selects the best match again when the products arrive after the search', async ({ page }) => {
-  await page.route('**/icons/data/logos.json*', async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 3000))
+  let releaseLogos = () => {}
+  const logosReleased = new Promise<void>((resolve) => {
+    releaseLogos = resolve
+  })
+  const logoSet = (url: URL) => url.pathname.endsWith('/logos.json') && url.search === ''
+  await page.route(logoSet, async (route) => {
+    await logosReleased
     await route.continue()
   })
   await page.goto('/')
@@ -26,6 +31,7 @@ test('selects the best match again when the products arrive after the search', a
   await page.keyboard.press('n')
   await page.keyboard.type('postgres')
   await expect(page.getByRole('option').first()).toHaveText('Database')
+  releaseLogos()
   await expect(page.getByRole('option').first()).toContainText('PostgreSQL', { timeout: 10_000 })
   await page.keyboard.press('Enter')
   await expect(page.locator('.react-flow__node', { hasText: 'PostgreSQL' })).toHaveCount(1)
