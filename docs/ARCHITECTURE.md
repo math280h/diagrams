@@ -55,7 +55,8 @@ The visual system lives in `DESIGN.md` at the repository root.
   as a log line. Version 6 made Host Grotesk with Fragment Mono (`host`) the default pair and moved
   diagrams on `atkinson` to it, and added `protocol` to edges and `protocolColors` to the theme.
   Version 7 added the `request` and `response` bodies to edges and `bodies` to flows; the migration
-  turns `bodies` on. Version 8 added `color` to cards and shapes and removed the `accent` fields.
+  turns `bodies` on. Version 8 added `color` to cards and shapes and removed the `accent` fields. Version 9 added `details`
+  (description, owner and links) to cards, shapes and groups.
 - Groups are boundaries. A group's `kind` points into the catalogue in `src/model/boundaries.ts`:
   AWS, Azure, Google Cloud, Kubernetes and general kinds, plus the custom group. Each kind has a
   family (scope, logical, location, zone, network, subnet, security, runtime) that sets its line
@@ -82,6 +83,14 @@ The visual system lives in `DESIGN.md` at the repository root.
   its first hop, use signal blue. In a spotlight flow, idle edges recede to the neutral line.
 - The grid is an editing aid. Present, the library previews and exports (unless the user turns it
   on) do not draw it.
+- Cards, shapes and boundaries can carry details: an owner, a plain-text description and links to code, docs or
+  dashboards. The canvas does not draw them, so a diagram stays readable. In Present and on an exported web page,
+  `DiagramCanvas` with `details` marks the nodes that have details with a dot, and shows a card next to the node on
+  hover, or pinned on a click until Escape or a click on the canvas. The card is one overlay of the canvas that
+  places itself from the node position and the viewport transform, so it follows the camera during a flow and its
+  text keeps its size at any zoom. The hover state lives outside React (`details-hover.ts`), so a hover renders only
+  the card. A link opens only an `http`, `https` or `mailto` address (`safeLinkUrl`), because exported pages carry
+  the links to readers who did not write them; a bare host such as `github.com/acme/api` gets `https://`.
 - Cards and shapes can take a colour, so people can group nodes by team or by kind of part across
   boundaries. The colours are the boundary palette (`COLORS` in `src/model/colors.ts`), so a node
   and a boundary of one team can share a hue, and the palette has no saturated blue. Neutral is the

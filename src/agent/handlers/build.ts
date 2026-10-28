@@ -13,12 +13,24 @@ import {
   defaultPayloadField,
   defaultShapeData,
   defaultTextData,
+  emptyDetails,
   newId,
 } from '@/model/defaults'
+import { safeLinkUrl } from '@/model/details'
 import { DEFAULT_NODE_SIZE, ELEMENT_Z } from '@/model/graph'
 import { fieldIssues, fieldsFromExample, mergeFields, PayloadJsonError, type PayloadPart } from '@/model/payload'
 import { defaultShapeSize } from '@/model/presets'
-import type { CardData, EdgeData, GroupData, Payload, ShapeData, Side, Step, TextData } from '@/model/schema'
+import type {
+  CardData,
+  EdgeData,
+  GroupData,
+  NodeDetails,
+  Payload,
+  ShapeData,
+  Side,
+  Step,
+  TextData,
+} from '@/model/schema'
 import type { DiagramEdge, DiagramNode } from '@/model/types'
 import { nodeLabel } from '@/model/labels'
 import type { HandlerContext } from '@/agent/context'
@@ -28,11 +40,13 @@ import type { EdgeInput, NodeInput, NodePatch, StepInput } from '@/agent/tool-de
 
 const OPPOSITE: Record<Side, Side> = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' }
 
+const DETAIL_FIELDS = ['description', 'owner', 'links'] as const
+
 const FIELDS_BY_KIND = {
-  card: ['form', 'lines', 'badge', 'status', 'color'],
-  shape: ['shape', 'color'],
+  card: ['form', 'lines', 'badge', 'status', 'color', ...DETAIL_FIELDS],
+  shape: ['shape', 'color', ...DETAIL_FIELDS],
   text: ['textSize'],
-  group: ['boundary', 'detail', 'color'],
+  group: ['boundary', 'detail', 'color', ...DETAIL_FIELDS],
 } as const satisfies Record<DiagramNode['type'], readonly (keyof NodeInput)[]>
 
 const KIND_FIELDS = new Set(Object.values(FIELDS_BY_KIND).flat())
@@ -83,6 +97,28 @@ function warnFields(input: NodeInput | NodePatch, kind: DiagramNode['type'], lab
   }
 }
 
+/** Returns the details that the input sets on top of the current details, or `undefined` if it sets none. */
+function detailsFrom(
+  input: Pick<NodeInput, 'description' | 'owner' | 'links'>,
+  current: NodeDetails,
+  label: string,
+  warnings: string[],
+): NodeDetails | undefined {
+  if (input.description === undefined && input.owner === undefined && input.links === undefined) return undefined
+  const links = input.links?.flatMap((link) => {
+    if (safeLinkUrl(link.url) === null) {
+      warnings.push(`The link "${link.url}" of "${label}" is not a web or mail address, so it was left out.`)
+      return []
+    }
+    return [{ id: newId('k'), label: link.label ?? '', url: link.url.trim() }]
+  })
+  return {
+    description: input.description ?? current.description,
+    owner: input.owner ?? current.owner,
+    links: links ?? current.links,
+  }
+}
+
 function nodeColor(color: NodeInput['color']): Color | undefined {
   return color === 'auto' ? 'neutral' : color
 }
@@ -121,6 +157,7 @@ export function buildNode(
           badge: input.badge ?? '',
           status: input.status ?? 'none',
           color: nodeColor(input.color) ?? 'neutral',
+          details: detailsFrom(input, emptyDetails(), input.label, warnings) ?? emptyDetails(),
         }),
       }
     case 'shape': {
@@ -138,6 +175,7 @@ export function buildNode(
           shape,
           icon: icon ?? '',
           color: nodeColor(input.color) ?? 'neutral',
+          details: detailsFrom(input, emptyDetails(), input.label, warnings) ?? emptyDetails(),
         }),
       }
     }
@@ -166,6 +204,7 @@ export function buildNode(
           icon: icon ?? boundary.icon,
           tint: TINTED_TIERS.has(boundary.tier),
           color: input.color ?? 'auto',
+          details: detailsFrom(input, emptyDetails(), input.label, warnings) ?? emptyDetails(),
         }),
       }
     }
@@ -190,9 +229,16 @@ export function nodeDataPatch(
         badge: patch.badge,
         status: patch.status,
         color: nodeColor(patch.color),
+        details: detailsFrom(patch, node.data.details, nodeLabel(node), warnings),
       })
     case 'shape':
-      return definedFields({ icon, label: patch.label, shape: patch.shape, color: nodeColor(patch.color) })
+      return definedFields({
+        icon,
+        label: patch.label,
+        shape: patch.shape,
+        color: nodeColor(patch.color),
+        details: detailsFrom(patch, node.data.details, nodeLabel(node), warnings),
+      })
     case 'text':
       return definedFields({ text: patch.label, size: patch.textSize })
     case 'group': {
@@ -204,6 +250,7 @@ export function nodeDataPatch(
         tint: boundary ? TINTED_TIERS.has(boundary.tier) : undefined,
         icon: icon ?? boundary?.icon,
         color: patch.color,
+        details: detailsFrom(patch, node.data.details, nodeLabel(node), warnings),
       })
     }
   }

@@ -6,6 +6,7 @@ import {
   type EdgeData,
   type Flow,
   type GroupData,
+  type NodeDetails,
   type PayloadField,
   type ShapeData,
   type TextData,
@@ -70,6 +71,10 @@ export function createEdge(
   }
 }
 
+export function emptyDetails(): NodeDetails {
+  return { description: '', owner: '', links: [] }
+}
+
 export function defaultCardData(overrides: Partial<CardData> = {}): CardData {
   return {
     form: 'service',
@@ -81,12 +86,21 @@ export function defaultCardData(overrides: Partial<CardData> = {}): CardData {
     meterText: '',
     status: 'none',
     badge: '',
+    details: emptyDetails(),
     ...overrides,
   }
 }
 
 export function defaultShapeData(overrides: Partial<ShapeData> = {}): ShapeData {
-  return { shape: 'rounded', label: 'Shape', icon: '', color: 'neutral', fill: 'tint', ...overrides }
+  return {
+    shape: 'rounded',
+    label: 'Shape',
+    icon: '',
+    color: 'neutral',
+    fill: 'tint',
+    details: emptyDetails(),
+    ...overrides,
+  }
 }
 
 export function defaultTextData(overrides: Partial<TextData> = {}): TextData {
@@ -109,6 +123,7 @@ export function defaultGroupData(overrides: Partial<GroupData> = {}): GroupData 
     icon: '',
     border: 'dashed',
     tint: true,
+    details: emptyDetails(),
     ...overrides,
   }
 }
