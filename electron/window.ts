@@ -29,6 +29,8 @@ export interface WindowHooks {
   focused(): void
   /** Runs when the page moves in its history. */
   navigated(state: { canGoBack: boolean; canGoForward: boolean }): void
+  /** Runs when the window is minimized or hidden, when it comes back, and after each page load. */
+  visibilityChanged(visible: boolean): void
 }
 
 let hooks: WindowHooks | null = null
@@ -108,6 +110,12 @@ export function createMainWindow(): BrowserWindow {
   }
   window.webContents.on('did-navigate-in-page', reportNavigation)
   window.webContents.on('did-finish-load', reportNavigation)
+  const reportVisibility = () => hooks?.visibilityChanged(windowHidden || (window.isVisible() && !window.isMinimized()))
+  window.on('minimize', reportVisibility)
+  window.on('restore', reportVisibility)
+  window.on('hide', reportVisibility)
+  window.on('show', reportVisibility)
+  window.webContents.on('did-finish-load', reportVisibility)
 
   let closing = false
   window.on('close', (event) => {

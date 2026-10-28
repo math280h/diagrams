@@ -145,6 +145,13 @@ The visual system lives in `DESIGN.md` at the repository root.
   moment (`useIdleMount`), and stays mounted. A React Flow mount takes up to about 100 ms, so a
   mount during a scroll drops frames. The engine of a preview runs its frame loop only while the
   preview plays; otherwise it pauses after one last render (`EngineProvider running`).
+- Every frame loop also pauses while nobody can see the page (`usePageVisible`): a browser tab in the background, or
+  a desktop window that is minimized or hidden. A browser already stops `requestAnimationFrame` in a background tab,
+  but the desktop window turns background throttling off, so that `render_image` works in a minimized window, and
+  with that the page stays visible to the Page Visibility API. So the main process reports `window.visibility` on
+  minimize, restore, hide and show, and after each page load. A restart of the loop starts its frame clock again,
+  so a flow goes on where it stopped and does not jump. Agent renders do not use the frame loop; they render each
+  frame on an export stage.
 - The canvas comes first. Panels open on demand: the insert menu on `N` or a double-click, the
   properties panel only for a selection, and the style menu in the top bar.
 - Metrics, meters, status dots and badges are optional. Templates use them only where they carry

@@ -98,6 +98,8 @@ export interface MainEvents {
   'agent.info': AgentInfo
   'rpc.cancel': { requestId: string }
   'window.navigation': { canGoBack: boolean; canGoForward: boolean }
+  /** False while the window is minimized or hidden. */
+  'window.visibility': { visible: boolean }
   'update.info': UpdateInfo
 }
 

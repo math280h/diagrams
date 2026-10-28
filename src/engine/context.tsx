@@ -4,9 +4,10 @@ import { useReducedMotion } from '@/lib/motion'
 import { Engine } from './engine'
 import { EngineContext } from './engine-context'
 import { useEngine } from './hooks'
+import { usePageVisible } from './page-visible'
 
 /**
- * Gives an engine to the components inside and runs its frame loop.
+ * Gives an engine to the components inside and runs its frame loop. The loop also pauses while nobody can see the page.
  *
  * @param running - If false, the frame loop pauses after one last render.
  */
@@ -20,14 +21,15 @@ export function EngineProvider({
   running?: boolean
 }) {
   const [engine] = useState(() => given ?? new Engine())
+  const visible = usePageVisible()
   useEffect(() => {
-    if (!running) {
+    if (!running || !visible) {
       engine.pause()
       return
     }
     engine.start()
     return () => engine.stop()
-  }, [engine, running])
+  }, [engine, running, visible])
   const reducedMotion = useReducedMotion()
   useEffect(() => {
     if (!engine.manual) engine.setReducedMotion(reducedMotion)
