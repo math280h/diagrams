@@ -22,6 +22,7 @@ reasons behind it.
 | Desktop installer    | `pnpm desktop:package` (electron-builder to `release/`; then `node scripts/smoke-package.mjs`) |
 | Release (maintainer) | `pnpm release:tag patch` (or `minor`, `major`, `beta`; see `docs/RELEASING.md`)                |
 | App icon             | `pnpm app-icon` (renders `build/icon.png` and `icon.ico`)                                      |
+| README image         | `pnpm readme-gif` (records the editor while a flow plays to `docs/images/editor.gif`)          |
 | Diagram format files | `node scripts/format-sample.mjs` (or `<git ref>`; see "Change the diagram format")             |
 
 Run typecheck, lint, format:check, test and e2e before you report work as done. For changes to `electron/`,
