@@ -12,6 +12,8 @@ computer.
 - **Node kinds with their own outlines**: services, data stores, queues, clients, external systems and functions.
   Shapes, text and boundaries for AWS, Azure, Google Cloud, Kubernetes and custom groupings, coloured by kind or in
   one colour. Give nodes a colour to group them, for example by team. Metrics and meters are optional.
+- **Details on hover**: give a node an owner, a description and links to its code, docs or dashboards. Readers see
+  them when they point at the node in Present and on an exported web page.
 - **Real icons**: the official AWS, Azure, Google Cloud and Kubernetes architecture icons, and 220 software logos.
   Search them in the insert menu or the icon picker.
 - **Moving connections**: dots, comets, dashes or pulses that flow along a connection. Turn them on for one
