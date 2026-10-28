@@ -12,13 +12,15 @@ const SKILL_NAME = /^[a-z0-9]+(-[a-z0-9]+)*$/
 const MAX_DESCRIPTION = 1024
 /** The maximum length of server instructions that Claude Code shows, less a margin. */
 const MAX_INSTRUCTIONS = 4000
-const TOOL_WORD = /\b[a-z]+(?:_[a-z]+)+\b/g
+const TOOL_WORD = /\b([a-z]+)(?:_[a-z]+)+\b/g
+/** The first words of the tool names. Other snake case words, such as Terraform resource types, are not tools. */
+const TOOL_VERBS = new Set(Object.keys(TOOL_DEFINITIONS).map((name) => name.split('_')[0]))
 const MARKDOWN_LINK = /\]\(([^)#\s]+)\)/g
 const ICON_NAME = /`((?:aws|azure|gcp|k8s|logo):[\w.-]+)`/g
 
 describe('skills', () => {
-  it('bundles the three skills', () => {
-    expect(skills.map((skill) => skill.name)).toEqual(['architecture', 'flows', 'review'])
+  it('bundles the four skills', () => {
+    expect(skills.map((skill) => skill.name)).toEqual(['architecture', 'flows', 'infrastructure', 'review'])
   })
 
   it('names each skill like its folder and describes it', () => {
@@ -41,7 +43,9 @@ describe('skills', () => {
   it('names only tools that exist', () => {
     const texts = [...Object.values(files), buildInstructions(skills)]
     for (const text of texts) {
-      for (const [word] of text.matchAll(TOOL_WORD)) expect(TOOL_DEFINITIONS, word).toHaveProperty(word)
+      for (const [word, verb] of text.matchAll(TOOL_WORD)) {
+        if (TOOL_VERBS.has(verb)) expect(TOOL_DEFINITIONS, word).toHaveProperty(word)
+      }
     }
   })
 

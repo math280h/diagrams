@@ -114,6 +114,15 @@ const SKILL_PROMPTS = [
     required: true,
   },
   {
+    name: 'diagram-from-code',
+    skill: 'infrastructure',
+    description: 'Draw a diagram from Terraform, docker-compose or Kubernetes files, or check a diagram against them.',
+    argument: 'request',
+    argumentDescription:
+      'What to do, for example "draw the infra folder as a diagram" or "check the open diagram against k8s/".',
+    required: true,
+  },
+  {
     name: 'review-diagram',
     skill: 'review',
     description: 'Review the open diagram and fix layout and clarity problems.',
