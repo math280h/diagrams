@@ -12,6 +12,8 @@ import type { DiagramTheme } from '@/model/schema'
 import { GRID_PX } from '@/model/graph'
 import type { DiagramEdge, DiagramNode } from '@/model/types'
 import { hasDetails } from '@/model/details'
+import type { DiagramDescription } from '@/export/describe'
+import { CanvasDescription } from './CanvasDescription'
 import { FlowEdge } from './edges/FlowEdge'
 import { FlowCaption, FlowToken } from './FlowOverlay'
 import { GRID_DOT_PX } from './grid'
@@ -43,6 +45,8 @@ export interface DiagramCanvasProps extends Omit<ReactFlowProps<DiagramNode, Dia
   /** Opens the diagram that a node leads to. Without it, nodes show no open button. */
   onOpenDiagram?: (diagramId: string, nodeId: string) => void
   showCaption?: boolean
+  /** The text that screen readers read for the diagram. */
+  description?: DiagramDescription
   overlay?: ReactNode
   rootRef?: React.RefObject<HTMLDivElement | null>
 }
@@ -55,6 +59,7 @@ export function DiagramCanvas({
   details = false,
   onOpenDiagram,
   showCaption = true,
+  description,
   overlay,
   children,
   rootRef: givenRef,
@@ -149,6 +154,7 @@ export function DiagramCanvas({
           {details && <NodeDetailsCard hover={hover} nodes={flowProps.nodes} />}
           {children}
         </ReactFlow>
+        {description && <CanvasDescription description={description} />}
         {showCaption && <FlowCaption />}
         {overlay}
       </div>

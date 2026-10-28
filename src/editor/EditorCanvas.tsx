@@ -9,6 +9,7 @@ import {
 import { useCallback, useEffect, useState, type DragEvent } from 'react'
 import { useCanvasTheme } from '@/canvas/canvas-theme'
 import { DiagramCanvas } from '@/canvas/DiagramCanvas'
+import { useDiagramDescription } from '@/export/use-description'
 import type { DiagramNode } from '@/model/types'
 import {
   addNodes,
@@ -63,6 +64,7 @@ export function EditorCanvas() {
   const [initialViewport] = useState(() => useDoc.getState().viewport)
   const [narrow] = useState(() => window.innerWidth < NARROW_SCREEN_PX)
   const resolvedTheme = useCanvasTheme(theme.mode)
+  const description = useDiagramDescription()
   const recording = useUi((state) => state.recording)
   const previewing = useVersions((state) => state.previewId !== null)
   const [lines, setLines] = useState<HelperLines>({})
@@ -166,6 +168,7 @@ export function EditorCanvas() {
           editable={!previewing}
           onOpenDiagram={openDiagram}
           showCaption={false}
+          description={description}
           defaultViewport={initialViewport}
           fitView={nodes.length > 0 && isDefaultViewport(initialViewport) && !narrow}
           fitViewOptions={editorFit()}

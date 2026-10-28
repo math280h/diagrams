@@ -31,5 +31,7 @@ test('opens the diagram inside a card in the editor and zooms into it in Present
   await expect(page).toHaveURL(/#\/p\/[^?]+\?from=/)
   await expect(page.getByText('This diagram has no flow.')).toBeVisible()
   await page.getByRole('button', { name: 'Order system' }).click()
-  await expect(page.getByRole('button', { name: 'Place an order' }).or(page.getByText('Place an order'))).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Place an order' }).or(page.getByText('Place an order', { exact: true })),
+  ).toBeVisible()
 })

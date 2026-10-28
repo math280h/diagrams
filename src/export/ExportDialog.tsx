@@ -29,6 +29,8 @@ import { ExportStage, type StageHandle } from './ExportStage'
 import { HtmlExport } from './HtmlExport'
 import { LinkExport } from './LinkExport'
 import { MermaidExport } from './MermaidExport'
+import { describeDiagram, svgWithDescription } from './describe'
+import { TextExport } from './TextExport'
 import { usePainted } from './use-painted'
 import { ExportAbortedError, recordStage, type VideoFormat } from './video'
 
@@ -123,10 +125,11 @@ function ImageExport({ onClose }: { onClose: () => void }) {
     try {
       stage.engine.render(engine.ambient.time.get(), 0)
       await waitForPaint()
-      const blob = await captureBlob(stage.root, format, {
+      const image = await captureBlob(stage.root, format, {
         scale: format === 'png' ? scale : 1,
         backgroundColor: transparent ? null : canvasBackground(stage.root),
       })
+      const blob = format === 'svg' ? await svgWithDescription(image, describeDiagram(useDoc.getState())) : image
       downloadBlob(blob, `${safeFileName(name)}.${format}`)
       toast.success(`Exported ${FORMAT_NAMES[format]}`)
       onClose()
@@ -209,7 +212,8 @@ function ImageExport({ onClose }: { onClose: () => void }) {
           </p>
           {format === 'svg' && (
             <p className="text-xs text-muted-foreground">
-              The SVG keeps the text and the shapes sharp in browsers. Design tools can show it as one image.
+              The SVG keeps the text and the shapes sharp in browsers. Design tools can show it as one image. It holds
+              the text description for screen readers.
             </p>
           )}
         </div>
@@ -589,7 +593,9 @@ export function ExportDialog() {
                   ? 'Save the diagram as a web page that plays its flows.'
                   : kind === 'mermaid'
                     ? 'Copy the diagram as a Mermaid flowchart. GitHub draws Mermaid in Markdown, for example in a README.'
-                    : 'Save a PNG or SVG for READMEs, pull requests and slides.'}
+                    : kind === 'text'
+                      ? 'Copy a text description of the diagram, for example as the alt text of an image.'
+                      : 'Save a PNG or SVG for READMEs, pull requests and slides.'}
           </DialogDescription>
         </DialogHeader>
         <Tabs value={kind ?? 'image'} onValueChange={(value) => setUi({ exportOpen: value as ExportKind })}>
@@ -599,6 +605,7 @@ export function ExportDialog() {
             <TabsTrigger value="page">Web page</TabsTrigger>
             <TabsTrigger value="link">Link</TabsTrigger>
             <TabsTrigger value="mermaid">Mermaid</TabsTrigger>
+            <TabsTrigger value="text">Text</TabsTrigger>
           </TabsList>
         </Tabs>
         {kind === 'image' && <ImageExport onClose={close} />}
@@ -606,6 +613,7 @@ export function ExportDialog() {
         {kind === 'page' && <HtmlExport onClose={close} />}
         {kind === 'link' && <LinkExport />}
         {kind === 'mermaid' && <MermaidExport />}
+        {kind === 'text' && <TextExport />}
       </DialogContent>
     </Dialog>
   )

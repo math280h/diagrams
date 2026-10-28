@@ -8,6 +8,7 @@ import {
   FileCode,
   FileCode2,
   FileJson,
+  FileText,
   FolderOutput,
   Globe,
   Link2,
@@ -261,6 +262,9 @@ export function TopBar() {
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setUi({ exportOpen: 'mermaid' })}>
               <FileCode /> Mermaid flowchart
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setUi({ exportOpen: 'text' })}>
+              <FileText /> Text description
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => exportDiagramJson(currentDiagram())}>
