@@ -18,6 +18,7 @@ const VIEWPORT_MARGIN_PX = 12
 const ICON_RESULTS = 24
 const ICON_QUERY_MIN = 2
 const SEARCH_RESULTS = 40
+const FIRST_PRESET_ID = PRESETS.find((preset) => preset.category === PRESET_CATEGORIES[0]?.id)?.id ?? ''
 
 function Menu({ request }: { request: InsertRequest }) {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -30,6 +31,16 @@ function Menu({ request }: { request: InsertRequest }) {
     const entries = search.trim().length >= ICON_QUERY_MIN ? searchIcons(iconSets, search, ICON_RESULTS) : []
     return insertResults(search, PRESETS, entries).slice(0, SEARCH_RESULTS)
   }, [iconSets, search])
+  const [picked, setPicked] = useState<{ results: typeof results; value: string } | null>(null)
+  const firstResult = results[0]
+  const first = !searching
+    ? FIRST_PRESET_ID
+    : firstResult
+      ? firstResult.kind === 'preset'
+        ? firstResult.preset.id
+        : firstResult.entry.id
+      : ''
+  const selected = picked?.results === results ? picked.value : first
 
   useEffect(() => {
     let cancelled = false
@@ -74,7 +85,12 @@ function Menu({ request }: { request: InsertRequest }) {
         initialFocus={inputRef}
         className="w-[300px] gap-0 rounded-lg bg-transparent p-0 shadow-none ring-0"
       >
-        <Command className="dg-menu rounded-lg!" shouldFilter={false}>
+        <Command
+          className="dg-menu rounded-lg!"
+          shouldFilter={false}
+          value={selected}
+          onValueChange={(value) => setPicked({ results, value })}
+        >
           <CommandInput
             ref={inputRef}
             autoFocus
@@ -137,7 +153,7 @@ function Menu({ request }: { request: InsertRequest }) {
                   {PRESETS.filter((preset) => preset.category === category.id).map((preset) => (
                     <CommandItem
                       key={preset.id}
-                      value={`${preset.label} ${preset.keywords.join(' ')}`}
+                      value={preset.id}
                       onSelect={() => choose(preset.id)}
                       draggable={!request.sourceId}
                       onDragStart={(event) => {
