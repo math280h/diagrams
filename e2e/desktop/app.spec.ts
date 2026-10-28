@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client'
 import { _electron as electron } from '@playwright/test'
+import { IPC_CHANNELS } from '@/desktop/contract'
 import { AGENT_ENDPOINT } from '@/desktop/constants'
 import { agentUrl, callTool, diagramFile, expect, test } from './fixtures'
 
@@ -126,4 +127,24 @@ test('serves the player files that the web page export puts in a page', async ({
     [200, 'text/plain'],
   ])
   expect(files.every(({ size }) => size > 1000)).toBe(true)
+})
+
+test('holds the playing template while the window is minimized or hidden', async ({ app, window }) => {
+  const report = (visible: boolean) =>
+    app.evaluate(
+      ({ BrowserWindow }, { channel, value }) =>
+        BrowserWindow.getAllWindows()[0]?.webContents.send(channel, {
+          name: 'window.visibility',
+          payload: { visible: value },
+        }),
+      { channel: IPC_CHANNELS.event, value: visible },
+    )
+  const caption = window.locator('.dg-caption').first()
+  await expect(caption).not.toHaveText('', { timeout: 10_000 })
+  await report(false)
+  const held = await caption.textContent()
+  await window.waitForTimeout(2500)
+  await expect(caption).toHaveText(held!)
+  await report(true)
+  await expect(caption).not.toHaveText(held!, { timeout: 6000 })
 })

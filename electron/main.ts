@@ -258,6 +258,7 @@ async function start() {
       linkedWatcher.rescan()
     },
     navigated: (state) => rpc.emit('window.navigation', state),
+    visibilityChanged: (visible) => rpc.emit('window.visibility', { visible }),
   })
 
   app.on('will-quit', () => {
