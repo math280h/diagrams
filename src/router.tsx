@@ -39,7 +39,20 @@ const releasesRoute = createRoute({
   component: lazyRouteComponent(() => import('./releases/ReleasesPage'), 'ReleasesPage'),
 })
 
-const routeTree = rootRoute.addChildren([libraryRoute, editorRoute, playerRoute, templateRoute, releasesRoute])
+const shareRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/s/$data',
+  component: lazyRouteComponent(() => import('./share/SharePage'), 'SharePage'),
+})
+
+const routeTree = rootRoute.addChildren([
+  libraryRoute,
+  editorRoute,
+  playerRoute,
+  templateRoute,
+  releasesRoute,
+  shareRoute,
+])
 
 export const router = createRouter({ routeTree, history: createHashHistory() })
 

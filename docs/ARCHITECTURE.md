@@ -56,7 +56,7 @@ The visual system lives in `DESIGN.md` at the repository root.
   diagrams on `atkinson` to it, and added `protocol` to edges and `protocolColors` to the theme.
   Version 7 added the `request` and `response` bodies to edges and `bodies` to flows; the migration
   turns `bodies` on. Version 8 added `color` to cards and shapes and removed the `accent` fields. Version 9 added `details`
-  (description, owner and links) to cards, shapes and groups.
+  (description, owner and links) to cards, shapes and groups. Version 10 added the optional `pinned` flag to the data of every node.
 - Groups are boundaries. A group's `kind` points into the catalogue in `src/model/boundaries.ts`:
   AWS, Azure, Google Cloud, Kubernetes and general kinds, plus the custom group. Each kind has a
   family (scope, logical, location, zone, network, subnet, security, runtime) that sets its line
@@ -213,6 +213,7 @@ src/
   layout/       ELK layers, group grid and edge router, run in a worker
   library/      library page, live previews and their framing
   releases/     What’s new page from the GitHub releases
+  share/        share links and the page that plays them
   player/       presentation page and the player stage that it shares with the web page export
   standalone/   entry of the standalone player that a web page export carries
   templates/    starter diagrams
@@ -383,6 +384,15 @@ groups, costs for edges against or across the layout direction and for crossings
 The grid replaces the layers only when it costs less than 85 % of them. If no level uses a grid, the
 ELK result stays as it is.
 
+Pinned nodes keep their places (`keepPinned` in `src/layout/pinned.ts`, at the end of `layoutDiagram`, so Tidy up,
+`layout_diagram` and every other layout respect them). ELK has no fixed positions in the layered algorithm, so the
+layout runs as usual and the result moves by the median offset of the pinned nodes, so that the arrangement sits
+where the pinned nodes are. Then each pinned node, and everything in a pinned group, goes back to its place. Level by
+level from the deepest group, the other nodes move out of the way of the pinned nodes and of each other, along the
+shorter way out; a group that holds a pinned node does not move and grows around it. An edge keeps its new route only
+if both of its nodes moved by the same distance, and its old route if both are pinned; the rest go back to the
+facing-sides path. In the editor a pinned node shows a pin mark; exports and the player show nothing.
+
 A grid layout needs its own edge routes, because ELK only routes the graphs that it lays out.
 `router.ts` routes on a sparse orthogonal grid: the lines at a clearance from each node, the node
 centres, and the middle of each gap. A* search with costs for length, bends and segments that
@@ -526,6 +536,24 @@ newest full release, marked Preview; a full release replaces the pre-releases be
   namespace with their content. The page inserts the rebuilt nodes; it never sets HTML from a string.
 - The page links only on the website. The desktop app allows connections only to itself, and it tells about its
   updates through the updater.
+
+### Share links
+
+The Link tab of the export dialog makes a link that carries the whole diagram, so people share a diagram that
+plays without an account, a server or a file (`src/share/share-link.ts`).
+
+- The data after `#/s/` is the diagram JSON without its id, timestamps and save counter, compressed with raw deflate
+  (`CompressionStream`) and written in base64url. The first character names the encoding (`z`), so a later encoding
+  can come in next to it.
+- Random ids such as `n_4k2j9x0q7a` do not compress, and a diagram names each node many times: in edges, flow steps
+  and parents. The link writes short ids such as `n_3` in the id fields (`id`, `source`, `target`, `parentId`) only,
+  so text that looks like an id stays as it is. The Order system link has about 2,600 characters, and the largest
+  template about 8,100. Above 8,000 characters the tab says that some chat apps and mail programs cut such links.
+- The data is in the fragment, so a browser never sends it to the site. The shared page decodes it, brings it
+  through the migrations and plays it in `PlayerStage`; Save a copy stores it as a new diagram. A cut-off or damaged
+  link says so.
+- The desktop app makes links to the website (`WEBSITE_ORIGIN`); the website makes links to its own address, so the
+  preview site shares preview links.
 
 ## Desktop app
 

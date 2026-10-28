@@ -73,6 +73,7 @@ function compactNode(node: DiagramNode, rect: Rect, full: boolean) {
     y: Math.round(rect.y),
     w: Math.round(rect.width),
     h: Math.round(rect.height),
+    ...(node.data.pinned === true ? { pinned: true } : {}),
   }
   switch (node.type) {
     case 'card':

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { COLORS } from './colors'
 
-export const DIAGRAM_VERSION = 9
+export const DIAGRAM_VERSION = 10
 
 const colorSchema = z.enum(COLORS)
 
@@ -31,6 +31,9 @@ export const nodeDetailsSchema = z.object({
 })
 export type NodeDetails = z.infer<typeof nodeDetailsSchema>
 
+/** If true, a layout keeps the node in its place and arranges the other nodes around it. */
+const pinnedSchema = z.boolean().optional()
+
 export const CARD_FORMS = ['service', 'datastore', 'queue', 'client', 'external', 'function'] as const
 export type CardForm = (typeof CARD_FORMS)[number]
 
@@ -58,6 +61,7 @@ export const cardDataSchema = z.object({
   status: z.enum(['none', 'ok', 'warn', 'error']),
   badge: z.string(),
   details: nodeDetailsSchema,
+  pinned: pinnedSchema,
 })
 export type CardData = z.infer<typeof cardDataSchema>
 
@@ -78,6 +82,7 @@ export const shapeDataSchema = z.object({
   color: colorSchema,
   fill: z.enum(['tint', 'solid', 'outline']),
   details: nodeDetailsSchema,
+  pinned: pinnedSchema,
 })
 export type ShapeData = z.infer<typeof shapeDataSchema>
 export type ShapeKind = ShapeData['shape']
@@ -88,6 +93,7 @@ export const textDataSchema = z.object({
   tone: z.enum(['default', 'muted']),
   align: z.enum(['left', 'center', 'right']),
   mono: z.boolean(),
+  pinned: pinnedSchema,
 })
 export type TextData = z.infer<typeof textDataSchema>
 
@@ -103,6 +109,7 @@ export const groupDataSchema = z.object({
   border: z.enum(['dashed', 'solid', 'none']),
   tint: z.boolean(),
   details: nodeDetailsSchema,
+  pinned: pinnedSchema,
 })
 export type GroupData = z.infer<typeof groupDataSchema>
 

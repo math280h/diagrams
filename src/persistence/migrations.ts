@@ -136,6 +136,11 @@ function toVersion9(raw: Record<string, unknown>): Record<string, unknown> {
   }
 }
 
+/** Version 10 adds the optional `pinned` flag to node data, so earlier data needs no change. */
+function toVersion10(raw: Record<string, unknown>): Record<string, unknown> {
+  return raw
+}
+
 /** The migration at index `n` converts a diagram from version `n + 1` to version `n + 2`. */
 const MIGRATIONS: Migration[] = [
   toVersion2,
@@ -146,6 +151,7 @@ const MIGRATIONS: Migration[] = [
   toVersion7,
   toVersion8,
   toVersion9,
+  toVersion10,
 ]
 
 export class DiagramFormatError extends Error {}

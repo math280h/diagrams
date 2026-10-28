@@ -148,6 +148,15 @@ describe('migrate', () => {
     expect(migrated.edges[0]!.data.request).toBeUndefined()
   })
 
+  it('reads version 9 diagrams as they are, and keeps the pins of version 10', () => {
+    const base = createDiagram()
+    const node = { id: 'api', type: 'card', position: { x: 0, y: 0 }, data: defaultCardData() }
+    const v9 = { ...base, version: 9, nodes: [node] }
+    expect(migrate(JSON.parse(JSON.stringify(v9))).nodes[0]!.data).not.toHaveProperty('pinned')
+    const v10 = { ...base, nodes: [{ ...node, data: { ...node.data, pinned: true } }] }
+    expect(migrate(JSON.parse(JSON.stringify(v10))).nodes[0]!.data).toMatchObject({ pinned: true })
+  })
+
   it('gives version 8 cards, shapes and boundaries empty details, and keeps details that a node already has', () => {
     const base = createDiagram()
     const node = (id: string, type: string, data: object) => ({ id, type, position: { x: 0, y: 0 }, data })

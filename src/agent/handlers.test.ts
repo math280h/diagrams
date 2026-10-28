@@ -274,6 +274,19 @@ describe('agent tools', () => {
     ])
   })
 
+  it('pins and unpins nodes and reports pinned nodes', async () => {
+    await call('create_diagram', { name: 'Shop' })
+    await call('add_elements', { nodes: [{ label: 'API', pinned: true }, { label: 'DB' }] })
+    expect(nodeByLabel('API').data.pinned).toBe(true)
+    const read = await call('get_diagram', {})
+    expect(read.nodes).toEqual([
+      expect.objectContaining({ label: 'API', pinned: true }),
+      expect.not.objectContaining({ pinned: true }),
+    ])
+    await call('update_elements', { nodes: [{ node: 'API', pinned: false }] })
+    expect(nodeByLabel('API').data.pinned).toBe(false)
+  })
+
   it('places a new node next to the existing node it connects to', async () => {
     await call('create_diagram', { name: 'Shop' })
     await call('add_elements', { nodes: [{ label: 'API', x: 0, y: 0 }] })
