@@ -236,6 +236,44 @@ describe('agent tools', () => {
     })
   })
 
+  it('gives nodes an owner, a description and links, changes one of them and reads them back', async () => {
+    await call('create_diagram', { name: 'Shop' })
+    const added = await call('add_elements', {
+      nodes: [
+        {
+          label: 'Orders',
+          owner: 'Checkout team',
+          description: 'Takes orders.',
+          links: [{ label: 'Runbook', url: 'wiki.acme.dev/orders' }, { url: 'javascript:alert(1)' }],
+        },
+      ],
+    })
+    expect(added.warnings).toEqual([
+      'The link "javascript:alert(1)" of "Orders" is not a web or mail address, so it was left out.',
+    ])
+    expect(nodeByLabel('Orders').data).toMatchObject({
+      details: {
+        owner: 'Checkout team',
+        description: 'Takes orders.',
+        links: [{ label: 'Runbook', url: 'wiki.acme.dev/orders' }],
+      },
+    })
+
+    await call('update_elements', { nodes: [{ node: 'Orders', owner: 'Payments team' }] })
+    expect(nodeByLabel('Orders').data).toMatchObject({
+      details: { owner: 'Payments team', description: 'Takes orders.' },
+    })
+    const read = await call('get_diagram', { detail: 'full' })
+    expect(read.nodes).toEqual([
+      expect.objectContaining({
+        label: 'Orders',
+        owner: 'Payments team',
+        description: 'Takes orders.',
+        links: [{ label: 'Runbook', url: 'wiki.acme.dev/orders' }],
+      }),
+    ])
+  })
+
   it('places a new node next to the existing node it connects to', async () => {
     await call('create_diagram', { name: 'Shop' })
     await call('add_elements', { nodes: [{ label: 'API', x: 0, y: 0 }] })

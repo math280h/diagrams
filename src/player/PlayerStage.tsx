@@ -174,6 +174,7 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions }: 
         theme={{ ...diagram.theme, background: 'none' }}
         resolvedTheme={resolvedTheme}
         editable={false}
+        details
         fitView
         fitViewOptions={{ padding: 0.14, maxZoom: 1.2 }}
         onNodesChange={onNodesChange}

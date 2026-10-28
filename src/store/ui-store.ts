@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type FlowView = 'steps' | 'timeline'
+export type FlowView = 'steps' | 'sequence' | 'timeline'
 
 /**
  * A request to show the insert menu.

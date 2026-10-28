@@ -59,6 +59,27 @@ const nodeFields = {
     .string()
     .optional()
     .describe('Groups only. A short fact under the name, for example an account id or an address range.'),
+  description: z
+    .string()
+    .optional()
+    .describe(
+      'Cards, shapes and groups. Plain text about what the part does. Readers see it when they point at the node in Present and on an exported web page. Addresses in it show as links.',
+    ),
+  owner: z.string().optional().describe('Cards, shapes and groups. The team or the person that owns the part.'),
+  links: z
+    .array(
+      z.object({
+        label: z
+          .string()
+          .optional()
+          .describe('The link text, for example "Runbook". Leave it out to show the address.'),
+        url: z.string().describe('A web address (https://) or a mail address (mailto:).'),
+      }),
+    )
+    .optional()
+    .describe(
+      'Cards, shapes and groups. Links to the code, docs, runbook or dashboard of the part. They replace the links of the node.',
+    ),
   x: z
     .number()
     .optional()
