@@ -26,6 +26,11 @@ function freePort(): Promise<number> {
 }
 
 export interface DesktopFixtures {
+  /**
+   * How the app window stays hidden. `offscreen` renders at the full frame rate; `native` keeps a native window that
+   * Chromium throttles, as for a minimized window.
+   */
+  hideWindow: 'offscreen' | 'native'
   dirs: { userData: string; data: string }
   agentPort: number
   appEnv: Record<string, string>
@@ -37,6 +42,7 @@ export interface DesktopFixtures {
 }
 
 export const test = base.extend<DesktopFixtures>({
+  hideWindow: ['offscreen', { option: true }],
   dirs: async ({}, use) => {
     const root = mkdtempSync(path.join(tmpdir(), 'diagrams-e2e-'))
     await use({ userData: path.join(root, 'user-data'), data: path.join(root, 'diagrams') })
@@ -45,7 +51,7 @@ export const test = base.extend<DesktopFixtures>({
   agentPort: async ({}, use) => {
     await use(await freePort())
   },
-  appEnv: async ({ dirs, agentPort }, use) => {
+  appEnv: async ({ dirs, agentPort, hideWindow }, use) => {
     const env: Record<string, string> = {}
     for (const [key, value] of Object.entries(process.env)) if (value !== undefined) env[key] = value
     delete env.VITE_DEV_SERVER_URL
@@ -55,6 +61,7 @@ export const test = base.extend<DesktopFixtures>({
       DIAGRAMS_USER_DATA: dirs.userData,
       DIAGRAMS_DATA_DIR: dirs.data,
       DIAGRAMS_AGENT_PORT: String(agentPort),
+      DIAGRAMS_HIDE_WINDOW: hideWindow,
     })
   },
   app: async ({ appEnv }, use) => {

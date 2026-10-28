@@ -13,6 +13,14 @@ const DARK_TITLE_BAR = { color: '#0a0a0a', symbolColor: '#fafafa' }
 const LIGHT_TITLE_BAR = { color: '#ffffff', symbolColor: '#0a0a0a' }
 const MAC_TRAFFIC_LIGHTS = { x: 16, y: 15 }
 
+const HIDE_WINDOW = process.env.DIAGRAMS_HIDE_WINDOW
+
+/**
+ * True when the window never shows, for end-to-end tests. With `offscreen`, the page renders at the full frame rate
+ * without a native window. With `native`, Chromium throttles the frames of the hidden window, as for a minimized one.
+ */
+export const windowHidden = HIDE_WINDOW === 'offscreen' || HIDE_WINDOW === 'native'
+
 export interface WindowHooks {
   /** Runs for the renderer of each new window. */
   attach(contents: WebContents): void
@@ -55,6 +63,7 @@ export function createMainWindow(): BrowserWindow {
     minWidth: 800,
     minHeight: 560,
     show: false,
+    skipTaskbar: windowHidden,
     title: APP_NAME,
     ...(icon && { icon }),
     autoHideMenuBar: true,
@@ -75,9 +84,11 @@ export function createMainWindow(): BrowserWindow {
       nodeIntegration: false,
       backgroundThrottling: false,
       spellcheck: false,
+      offscreen: HIDE_WINDOW === 'offscreen',
     },
   })
   window.once('ready-to-show', () => {
+    if (windowHidden) return
     if (state.fullScreen) window.setFullScreen(true)
     else if (state.maximized) window.maximize()
     window.show()
@@ -132,6 +143,7 @@ export async function prepareQuit() {
 /** Shows the main window in front of other windows, and creates it if it does not exist. */
 export function focusWindow() {
   const window = currentWindow() ?? createMainWindow()
+  if (windowHidden) return window
   if (window.isMinimized()) window.restore()
   window.show()
   window.focus()

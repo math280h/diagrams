@@ -40,6 +40,7 @@ import {
   rendererOrigin,
   setTitleBarColors,
   setWindowHooks,
+  windowHidden,
 } from './window'
 
 const FLUSH_TIMEOUT_MS = 3000
@@ -118,7 +119,8 @@ function restrictPermissions() {
 async function start() {
   restrictPermissions()
   const icon = iconPath()
-  if (icon && process.platform === 'darwin') app.dock?.setIcon(icon)
+  if (windowHidden) app.dock?.hide()
+  else if (icon && process.platform === 'darwin') app.dock?.setIcon(icon)
   const userData = app.getPath('userData')
   const port = agentPort()
   const files = createDiagramFiles(diagramsFolder(), { trash: (file) => shell.trashItem(file) })

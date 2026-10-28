@@ -52,16 +52,20 @@ test('an agent builds a diagram that the user sees and undoes in one step', asyn
   await expect(nodes).toHaveCount(0)
 })
 
-test('renders a PNG, also while the window is minimized', async ({ app, window, mcp }) => {
-  await callTool(mcp, 'create_diagram', { name: 'Rendered', template: 'order-system' })
-  await expect(window.locator('[data-editor-canvas] .react-flow__node').first()).toBeVisible()
+test.describe('with a native window', () => {
+  test.use({ hideWindow: 'native' })
 
-  const first = await callTool(mcp, 'render_image', { maxSizePx: 800 })
-  const image = first.content.find((block) => block.type === 'image')
-  expect(image?.data?.startsWith(PNG_SIGNATURE)).toBe(true)
-  expect(first.json.width).toBe(800)
+  test('renders a PNG, also while the window is minimized', async ({ app, window, mcp }) => {
+    await callTool(mcp, 'create_diagram', { name: 'Rendered', template: 'order-system' })
+    await expect(window.locator('[data-editor-canvas] .react-flow__node').first()).toBeVisible()
 
-  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.minimize())
-  const second = await callTool(mcp, 'render_image', { flow: 'Place an order', step: 2, maxSizePx: 640 })
-  expect(second.content.find((block) => block.type === 'image')?.data?.startsWith(PNG_SIGNATURE)).toBe(true)
+    const first = await callTool(mcp, 'render_image', { maxSizePx: 800 })
+    const image = first.content.find((block) => block.type === 'image')
+    expect(image?.data?.startsWith(PNG_SIGNATURE)).toBe(true)
+    expect(first.json.width).toBe(800)
+
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.minimize())
+    const second = await callTool(mcp, 'render_image', { flow: 'Place an order', step: 2, maxSizePx: 640 })
+    expect(second.content.find((block) => block.type === 'image')?.data?.startsWith(PNG_SIGNATURE)).toBe(true)
+  })
 })
