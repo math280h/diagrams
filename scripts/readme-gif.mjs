@@ -9,7 +9,9 @@ const root = path.join(import.meta.dirname, '..')
 const output = path.join(root, 'docs', 'images', 'editor.gif')
 const VIEWPORT = { width: 1440, height: 900 }
 const TEMPLATE = 'Order system'
-const FPS = 12
+// A GIF stores the time of each frame in hundredths of a second.
+const FPS = 25
+const DEVICE_SCALE_FACTOR = 0.75
 const FRAME_MS = 1000 / FPS
 const MAX_RECORDING_MS = 60_000
 const START_HOLD_MS = 1200
@@ -96,14 +98,22 @@ const server = await createServer({ root, logLevel: 'warn', server: { host: '127
 await server.listen()
 const browser = await chromium.launch()
 try {
-  const page = await browser.newPage({ viewport: VIEWPORT, deviceScaleFactor: 1, colorScheme: 'dark' })
+  const page = await browser.newPage({
+    viewport: VIEWPORT,
+    deviceScaleFactor: DEVICE_SCALE_FACTOR,
+    colorScheme: 'dark',
+  })
   await page.clock.install()
   await openFlow(page, server.resolvedUrls.local[0])
   await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1000)
   await page.getByRole('button', { name: 'Play' }).click()
   await page.mouse.move(VIEWPORT.width / 2, 22)
 
-  const encoder = new Encoder({ width: VIEWPORT.width, height: VIEWPORT.height, maxColors: MAX_COLORS })
+  const encoder = new Encoder({
+    width: Math.round(VIEWPORT.width * DEVICE_SCALE_FACTOR),
+    height: Math.round(VIEWPORT.height * DEVICE_SCALE_FACTOR),
+    maxColors: MAX_COLORS,
+  })
   let pending = null
   let frames = 0
   const add = async (delay) => {
