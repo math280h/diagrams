@@ -12,6 +12,10 @@ export const REPOSITORY_API_URL = 'https://api.github.com/repos/math280h/diagram
 export const LATEST_RELEASE_API_URL = `${REPOSITORY_API_URL}/releases/latest`
 export const RELEASES_API_URL = `${REPOSITORY_API_URL}/releases?per_page=30`
 export const RELEASE_ASSET_URL_PREFIX = `${REPOSITORY_URL}/releases/download/`
+/**
+ * The tag of the pre-release that holds the newest build of `main`. Its app versions look like `0.2.1-preview.57`.
+ */
+export const PREVIEW_APP_TAG = 'preview'
 
 export const HANDOFF_PATH = '/handoff'
 export const HANDOFF_TTL_MS = 60_000

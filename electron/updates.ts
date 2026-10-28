@@ -32,6 +32,7 @@ export type UpdatePolicy = { kind: 'none' } | { kind: 'notify' } | { kind: 'inst
  * @param build.appImage - True if the app runs from an AppImage.
  * @param build.macSigned - True if the macOS build has a Developer ID signature. macOS does not install updates for
  *   other builds.
+ * @param build.preview - True for a build of `main` from the preview pre-release, which a newer build replaces by hand.
  */
 export function updatePolicy(build: {
   packaged: boolean
@@ -39,8 +40,9 @@ export function updatePolicy(build: {
   packageType: string | null
   appImage: boolean
   macSigned: boolean
+  preview: boolean
 }): UpdatePolicy {
-  if (!build.packaged) return { kind: 'none' }
+  if (!build.packaged || build.preview) return { kind: 'none' }
   if (build.platform === 'darwin') return build.macSigned ? { kind: 'install', onQuit: true } : { kind: 'notify' }
   if (build.platform === 'linux') {
     if (build.packageType) return { kind: 'install', onQuit: false }

@@ -15,7 +15,7 @@ describe('release notes at build time', () => {
           html_url: 'https://github.com/math280h/diagrams/releases/tag/v0.2.0',
           body: 'Notes',
           author: { login: 'someone' },
-          assets: [{ name: 'Diagrams-Setup.exe' }],
+          assets: [{ name: 'Diagrams-Setup.exe', browser_download_url: 'https://x/setup.exe', size: 90_000_000 }],
         },
       ]),
     )
@@ -32,6 +32,7 @@ describe('release notes at build time', () => {
         published_at: '2026-10-28T09:00:00Z',
         body_html: '<p>Notes</p>',
         html_url: 'https://github.com/math280h/diagrams/releases/tag/v0.2.0',
+        assets: [{ name: 'Diagrams-Setup.exe', browser_download_url: 'https://x/setup.exe' }],
       },
     ])
   })
@@ -41,13 +42,14 @@ describe('release notes at build time', () => {
     await expect(fetchReleaseNotes(fetchImpl)).rejects.toThrow('GitHub answered with status 403.')
   })
 
-  it('finds the newest published release, a pre-release too', () => {
+  it('finds the newest published release, a pre-release too, but not the build of main', () => {
     expect(
       newestReleaseTag([
         { tag_name: 'v0.1.4', published_at: '2026-10-26T16:03:52Z' },
         { tag_name: 'v0.2.0', draft: true, published_at: '2026-10-29T10:00:00Z' },
         { tag_name: 'v0.2.0-beta.1', prerelease: true, published_at: '2026-10-28T10:00:00Z' },
         { tag_name: 'v0.1.3', published_at: '2026-10-26T04:53:53Z' },
+        { tag_name: 'preview', prerelease: true, published_at: '2026-10-30T10:00:00Z' },
       ]),
     ).toBe('v0.2.0-beta.1')
     expect(newestReleaseTag([])).toBeNull()
