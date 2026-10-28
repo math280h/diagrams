@@ -23,6 +23,8 @@ import { registerAppScheme, serveRenderer } from './app-protocol'
 import { findDeepLink, parseReceiveLink } from './deep-link'
 import { registerIpc } from './ipc'
 import { configurePaths, diagramsFolder, iconPath, rendererFolder } from './paths'
+import { parseRenderArgs, RENDER_USAGE, RenderUsageError, type RenderArgs } from './render-args'
+import { isolateRender, runRender } from './render-cli'
 import { createRendererRpc } from './renderer-rpc'
 import { createDiagramFiles } from './storage/diagram-files'
 import { committedText } from './storage/git'
@@ -279,7 +281,29 @@ async function start() {
   publish(await startAgentServer(server, port))
 }
 
-if (app.requestSingleInstanceLock()) {
+function readRenderArgs(): RenderArgs | null | 'invalid' {
+  try {
+    return parseRenderArgs(process.argv)
+  } catch (error) {
+    if (!(error instanceof RenderUsageError)) throw error
+    process.stderr.write(`${error.message}\n\n${RENDER_USAGE}\n`)
+    return 'invalid'
+  }
+}
+
+const renderArgs = readRenderArgs()
+if (renderArgs === 'invalid') {
+  app.exit(2)
+} else if (renderArgs) {
+  const cleanup = isolateRender()
+  void app
+    .whenReady()
+    .then(() => runRender(renderArgs))
+    .then((code) => {
+      cleanup()
+      app.exit(code)
+    })
+} else if (app.requestSingleInstanceLock()) {
   registerProtocolClient()
   app.on('second-instance', (_event, argv) => {
     const link = findDeepLink(argv)

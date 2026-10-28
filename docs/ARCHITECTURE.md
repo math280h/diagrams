@@ -753,6 +753,22 @@ passes the link to the running app. The website then posts the diagram to the lo
 tries again for 15 seconds while the app starts. Chrome asks once before a website reaches the
 local device.
 
+### Command-line render
+
+`--render <file> --out <file>` makes the desktop app render a diagram file to a PNG, SVG, GIF, MP4 or WebM file and
+quit, so that scripts and CI can redraw diagram images without a person. It uses the export paths of the app:
+`renderDiagramImage` (the path of the agent tool `render_image`) and `renderDiagramVideo` (the video export).
+
+- `electron/render-args.ts` reads the options before the single-instance lock, so a render runs next to an open app.
+  A wrong command line prints the usage and exits with 2; a failed render prints the message and exits with 1.
+- `electron/render-cli.ts` opens a hidden window on `#/render`, an empty page, with background throttling off, and
+  calls the renderer request `render.file` (`src/export/render-file.ts`). The main process gives the window no
+  diagram files, no agent server and no updates, and refuses file writes. On macOS the dock icon hides.
+- The render uses a new temporary user data folder, so it does not touch the settings, the diagrams folder or the
+  agent token of the app. On Windows, Chromium holds files in the folder until the process stops, so the next render
+  deletes folders older than one hour.
+- Chromium needs a display. On Linux CI, run the app under `xvfb-run`.
+
 ### Skills
 
 `claude-plugin/` holds the skills and the Claude Code plugin manifest. The main process bundles it

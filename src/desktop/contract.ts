@@ -39,6 +39,24 @@ export type ToolContent = { type: 'text'; text: string } | { type: 'image'; mime
 
 export type ToolOutcome = { ok: true; content: ToolContent[] } | { ok: false; message: string }
 
+export type RenderFormat = 'png' | 'svg' | 'gif' | 'mp4' | 'webm'
+
+/** A diagram file to render from the command line. */
+export interface RenderRequest {
+  text: string
+  format: RenderFormat
+  theme?: 'dark' | 'light'
+  /** The flow to show or play: its name or its id. */
+  flow?: string
+  /** With `flow` and an image format: the step from 0 to show. */
+  step?: number
+  /**
+   * The longest side of the output, in pixels. Without it, an image is at most 2048 pixels and a video keeps its frame
+   * size.
+   */
+  maxSizePx?: number
+}
+
 /** Requests from the renderer to the main process. */
 export interface MainRequests {
   'files.list': { input: null; output: { folder: string; files: StoredFile[] } }
@@ -68,6 +86,8 @@ export interface RendererRequests {
   'agent.call': { input: { tool: string; args: unknown }; output: ToolOutcome }
   'handoff.open': { input: { text: string }; output: { diagramId: string; name: string } }
   'app.flush': { input: null; output: null }
+  /** Renders a diagram file and returns the image or the video as base64. */
+  'render.file': { input: RenderRequest; output: { data: string } }
 }
 
 /** Events from the main process to the renderer. */

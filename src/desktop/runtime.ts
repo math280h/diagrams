@@ -37,6 +37,14 @@ export function startDesktopRuntime(storageError: string | null = null) {
       return { diagramId: diagram.id, name: diagram.name }
     },
 
+    'render.file': async (request) => {
+      const [{ renderDiagramFile }, { blobToBase64 }] = await Promise.all([
+        import('@/export/render-file'),
+        import('@/export/render-image'),
+      ])
+      return { data: await blobToBase64(await renderDiagramFile(request)) }
+    },
+
     'app.flush': async () => {
       if (storageError !== null) return null
       flushPendingSave()
