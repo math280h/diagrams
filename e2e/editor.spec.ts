@@ -127,7 +127,7 @@ test('wraps the selected nodes in a cloud boundary from the insert menu', async 
   await page.mouse.move(700, 120)
   await page.keyboard.press('n')
   await page.getByPlaceholder('Insert a node').fill('aws account')
-  await expect(page.getByText('AWS, wraps the selection')).toBeVisible()
+  await expect(page.getByRole('option').first()).toHaveText(/AWS account\s*wraps the selection/)
   await page.keyboard.press('Enter')
 
   const account = page.locator('.react-flow__node-group', {

@@ -201,7 +201,11 @@ An icon name is either a Lucide name (`database`) or a set icon with a prefix: `
   subnets; Azure subscription, resource group and virtual network; the Kubernetes logo for a
   cluster).
 - The insert menu searches the sets from two characters and inserts a card with the product name,
-  the icon and the card form of the product. The Mermaid import gives a card an icon when its
+  the icon and the card form of the product. While the user types, the menu shows one list of nodes and products
+  ranked on one scale (`insertResults`): the whole name, then a name that starts with the text, then a name word,
+  then a keyword. So "postgres" puts PostgreSQL before the generic Database node, which lists postgres only as a
+  keyword. Every word of the search must start a word, so "vpc" no longer finds "Cloud service" by its letters,
+  which the fuzzy match of the command menu did. The Mermaid import gives a card an icon when its
   label is an alias of an entry, alone or with one role word ("Redis cache", "Postgres DB"). A
   looser match gave icons to user flow steps such as "Go to checkout".
 

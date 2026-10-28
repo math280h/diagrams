@@ -9,6 +9,7 @@ import { PRESET_CATEGORIES, PRESETS } from '@/model/presets'
 import { addNodes, groupSelection } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
 import { setUi, useUi, type InsertRequest } from '@/store/ui-store'
+import { insertResults } from './insert-search'
 import { PRESET_MIME, presetNodeAt } from './preset-node'
 
 const BOUNDARY_CATEGORIES = new Set<string>(BOUNDARY_PROVIDERS.map((provider) => provider.id))
@@ -16,6 +17,7 @@ const MENU_HEIGHT = 360
 const VIEWPORT_MARGIN_PX = 12
 const ICON_RESULTS = 24
 const ICON_QUERY_MIN = 2
+const SEARCH_RESULTS = 40
 
 function Menu({ request }: { request: InsertRequest }) {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -23,10 +25,11 @@ function Menu({ request }: { request: InsertRequest }) {
   const close = () => setUi({ insert: null })
   const [search, setSearch] = useState('')
   const [iconSets, setIconSets] = useState<IconSet[]>([])
-  const iconResults = useMemo(
-    () => (search.trim().length >= ICON_QUERY_MIN ? searchIcons(iconSets, search, ICON_RESULTS) : []),
-    [iconSets, search],
-  )
+  const searching = search.trim().length > 0
+  const results = useMemo(() => {
+    const entries = search.trim().length >= ICON_QUERY_MIN ? searchIcons(iconSets, search, ICON_RESULTS) : []
+    return insertResults(search, PRESETS, entries).slice(0, SEARCH_RESULTS)
+  }, [iconSets, search])
 
   useEffect(() => {
     let cancelled = false
@@ -71,7 +74,7 @@ function Menu({ request }: { request: InsertRequest }) {
         initialFocus={inputRef}
         className="w-[300px] gap-0 rounded-lg bg-transparent p-0 shadow-none ring-0"
       >
-        <Command className="dg-menu rounded-lg!">
+        <Command className="dg-menu rounded-lg!" shouldFilter={false}>
           <CommandInput
             ref={inputRef}
             autoFocus
@@ -81,56 +84,74 @@ function Menu({ request }: { request: InsertRequest }) {
           />
           <CommandList style={{ maxHeight: MENU_HEIGHT - 48 }}>
             <CommandEmpty>Nothing matches your search.</CommandEmpty>
-            {PRESET_CATEGORIES.map((category) => (
-              <CommandGroup
-                key={category.id}
-                heading={
-                  wraps && BOUNDARY_CATEGORIES.has(category.id)
-                    ? `${category.label}, wraps the selection`
-                    : category.label
-                }
-              >
-                {PRESETS.filter((preset) => preset.category === category.id).map((preset) => (
-                  <CommandItem
-                    key={preset.id}
-                    value={`${preset.label} ${preset.keywords.join(' ')}`}
-                    onSelect={() => choose(preset.id)}
-                    draggable={!request.sourceId}
-                    onDragStart={(event) => {
-                      event.dataTransfer.setData(PRESET_MIME, preset.id)
-                      event.dataTransfer.effectAllowed = 'copy'
-                    }}
-                    onDragEnd={close}
-                  >
-                    <Icon name={preset.icon} className="size-4" strokeWidth={1.75} />
-                    {preset.label}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            ))}
-            {iconResults.length > 0 && (
-              <CommandGroup heading="Cloud services and logos">
-                {iconResults.map((entry) => (
-                  <CommandItem
-                    key={entry.id}
-                    value={`${entry.title} ${entry.aliases.join(' ')} ${entry.keywords.join(' ')} ${entry.id}`}
-                    onSelect={() => choose(entry.id)}
-                    draggable={!request.sourceId}
-                    onDragStart={(event) => {
-                      event.dataTransfer.setData(PRESET_MIME, entry.id)
-                      event.dataTransfer.effectAllowed = 'copy'
-                    }}
-                    onDragEnd={close}
-                  >
-                    <Icon name={entry.id} className="size-4" />
-                    <span className="truncate">{entry.title}</span>
-                    <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
-                      {ICON_SOURCES.find((source) => source.id === iconSourceOf(entry.id))?.label}
-                    </span>
-                  </CommandItem>
-                ))}
+            {searching && (
+              <CommandGroup heading="Best matches">
+                {results.map((result) => {
+                  const id = result.kind === 'preset' ? result.preset.id : result.entry.id
+                  return (
+                    <CommandItem
+                      key={id}
+                      value={id}
+                      onSelect={() => choose(id)}
+                      draggable={!request.sourceId}
+                      onDragStart={(event) => {
+                        event.dataTransfer.setData(PRESET_MIME, id)
+                        event.dataTransfer.effectAllowed = 'copy'
+                      }}
+                      onDragEnd={close}
+                    >
+                      {result.kind === 'preset' ? (
+                        <>
+                          <Icon name={result.preset.icon} className="size-4" strokeWidth={1.75} />
+                          {result.preset.label}
+                          {wraps && BOUNDARY_CATEGORIES.has(result.preset.category) && (
+                            <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
+                              wraps the selection
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <Icon name={id} className="size-4" />
+                          <span className="truncate">{result.entry.title}</span>
+                          <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
+                            {ICON_SOURCES.find((source) => source.id === iconSourceOf(id))?.label}
+                          </span>
+                        </>
+                      )}
+                    </CommandItem>
+                  )
+                })}
               </CommandGroup>
             )}
+            {!searching &&
+              PRESET_CATEGORIES.map((category) => (
+                <CommandGroup
+                  key={category.id}
+                  heading={
+                    wraps && BOUNDARY_CATEGORIES.has(category.id)
+                      ? `${category.label}, wraps the selection`
+                      : category.label
+                  }
+                >
+                  {PRESETS.filter((preset) => preset.category === category.id).map((preset) => (
+                    <CommandItem
+                      key={preset.id}
+                      value={`${preset.label} ${preset.keywords.join(' ')}`}
+                      onSelect={() => choose(preset.id)}
+                      draggable={!request.sourceId}
+                      onDragStart={(event) => {
+                        event.dataTransfer.setData(PRESET_MIME, preset.id)
+                        event.dataTransfer.effectAllowed = 'copy'
+                      }}
+                      onDragEnd={close}
+                    >
+                      <Icon name={preset.icon} className="size-4" strokeWidth={1.75} />
+                      {preset.label}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              ))}
           </CommandList>
         </Command>
       </PopoverContent>

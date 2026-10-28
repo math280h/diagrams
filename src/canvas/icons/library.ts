@@ -113,7 +113,11 @@ function words(text: string): string[] {
     .filter(Boolean)
 }
 
-function entryScore(entry: IconEntry, query: string, tokens: string[]): number {
+/**
+ * Scores how well an entry matches a search: 4 for the whole title or an alias, 3 for a title that starts with the
+ * text, 2 when every word starts a title word, 1 when every word starts a keyword, and 0 for no match.
+ */
+export function entryScore(entry: IconEntry, query: string, tokens: string[] = words(query)): number {
   const title = entry.title.toLowerCase()
   if (entry.aliases.includes(query) || title === query) return 4
   const titleWords = words(entry.title)
