@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { COLORS } from './colors'
 
-export const DIAGRAM_VERSION = 8
+export const DIAGRAM_VERSION = 9
 
 const colorSchema = z.enum(COLORS)
 
@@ -12,6 +12,24 @@ const xySchema = z.object({ x: z.number(), y: z.number() })
 export type XY = z.infer<typeof xySchema>
 
 export const cardLineSchema = z.object({ id: z.string(), text: z.string() })
+
+export const nodeLinkSchema = z.object({
+  id: z.string(),
+  /** The text of the link. An empty string shows the address. */
+  label: z.string(),
+  url: z.string(),
+})
+export type NodeLink = z.infer<typeof nodeLinkSchema>
+
+/** What a reader learns about a part on hover in Present and on an exported page. */
+export const nodeDetailsSchema = z.object({
+  /** Plain text. Addresses in it show as links. */
+  description: z.string(),
+  /** The team or the person that owns the part. */
+  owner: z.string(),
+  links: z.array(nodeLinkSchema),
+})
+export type NodeDetails = z.infer<typeof nodeDetailsSchema>
 
 export const CARD_FORMS = ['service', 'datastore', 'queue', 'client', 'external', 'function'] as const
 export type CardForm = (typeof CARD_FORMS)[number]
@@ -39,6 +57,7 @@ export const cardDataSchema = z.object({
   meterText: z.string(),
   status: z.enum(['none', 'ok', 'warn', 'error']),
   badge: z.string(),
+  details: nodeDetailsSchema,
 })
 export type CardData = z.infer<typeof cardDataSchema>
 
@@ -58,6 +77,7 @@ export const shapeDataSchema = z.object({
   icon: z.string(),
   color: colorSchema,
   fill: z.enum(['tint', 'solid', 'outline']),
+  details: nodeDetailsSchema,
 })
 export type ShapeData = z.infer<typeof shapeDataSchema>
 export type ShapeKind = ShapeData['shape']
@@ -82,6 +102,7 @@ export const groupDataSchema = z.object({
   icon: z.string(),
   border: z.enum(['dashed', 'solid', 'none']),
   tint: z.boolean(),
+  details: nodeDetailsSchema,
 })
 export type GroupData = z.infer<typeof groupDataSchema>
 

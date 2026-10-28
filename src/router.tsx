@@ -33,7 +33,13 @@ const templateRoute = createRoute({
   component: lazyRouteComponent(() => import('./library/TemplatePreview'), 'TemplatePreviewPage'),
 })
 
-const routeTree = rootRoute.addChildren([libraryRoute, editorRoute, playerRoute, templateRoute])
+const releasesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/releases',
+  component: lazyRouteComponent(() => import('./releases/ReleasesPage'), 'ReleasesPage'),
+})
+
+const routeTree = rootRoute.addChildren([libraryRoute, editorRoute, playerRoute, templateRoute, releasesRoute])
 
 export const router = createRouter({ routeTree, history: createHashHistory() })
 

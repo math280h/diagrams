@@ -148,6 +148,38 @@ describe('migrate', () => {
     expect(migrated.edges[0]!.data.request).toBeUndefined()
   })
 
+  it('gives version 8 cards, shapes and boundaries empty details, and keeps details that a node already has', () => {
+    const base = createDiagram()
+    const node = (id: string, type: string, data: object) => ({ id, type, position: { x: 0, y: 0 }, data })
+    const { details: _card, ...card } = defaultCardData()
+    const { details: _shape, ...shape } = defaultShapeData()
+    const { details: _group, ...group } = defaultGroupData()
+    const kept = {
+      description: 'Owns checkout.',
+      owner: 'Payments',
+      links: [{ id: 'k1', label: '', url: 'https://x.dev' }],
+    }
+    const v8 = {
+      ...base,
+      version: 8,
+      nodes: [
+        node('api', 'card', card),
+        node('start', 'shape', shape),
+        node('vpc', 'group', group),
+        node('note', 'text', defaultTextData()),
+        node('db', 'card', { ...card, details: kept }),
+      ],
+    }
+    const migrated = migrate(JSON.parse(JSON.stringify(v8)))
+    const empty = { description: '', owner: '', links: [] }
+    const [api, start, vpc, note, db] = migrated.nodes
+    expect(api!.data).toMatchObject({ details: empty })
+    expect(start!.data).toMatchObject({ details: empty })
+    expect(vpc!.data).toMatchObject({ details: empty })
+    expect(note!.data).not.toHaveProperty('details')
+    expect(db!.data).toMatchObject({ details: kept })
+  })
+
   it('gives version 7 cards and shapes the neutral colour, and drops the accents that the canvas did not draw', () => {
     const base = createDiagram()
     const node = (id: string, type: string, data: Record<string, unknown>) => ({

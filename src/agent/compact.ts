@@ -3,7 +3,7 @@ import { absoluteRect } from '@/model/graph'
 import { nodeLabel } from '@/model/labels'
 import type { Rect } from '@/model/rect'
 import { edgeProtocol } from '@/model/protocols'
-import type { Flow, Payload } from '@/model/schema'
+import type { Flow, NodeDetails, Payload } from '@/model/schema'
 import type { DiagramEdge, DiagramNode } from '@/model/types'
 import type { DocSnapshot } from '@/store/doc-store'
 import { withWarnings } from './warnings'
@@ -53,6 +53,16 @@ export function layoutWarnings(nodes: readonly DiagramNode[]): string[] {
   return warnings
 }
 
+function compactDetails(details: NodeDetails) {
+  return {
+    ...(details.owner ? { owner: details.owner } : {}),
+    ...(details.description ? { description: details.description } : {}),
+    ...(details.links.length > 0
+      ? { links: details.links.map((link) => (link.label ? { label: link.label, url: link.url } : { url: link.url })) }
+      : {}),
+  }
+}
+
 function compactNode(node: DiagramNode, rect: Rect, full: boolean) {
   const base = {
     id: node.id,
@@ -74,6 +84,7 @@ function compactNode(node: DiagramNode, rect: Rect, full: boolean) {
         ...(node.data.status !== 'none' ? { status: node.data.status } : {}),
         ...(node.data.color !== 'neutral' ? { color: node.data.color } : {}),
         ...(full && node.data.lines.length > 0 ? { lines: node.data.lines.map((line) => line.text) } : {}),
+        ...(full ? compactDetails(node.data.details) : {}),
       }
     case 'shape':
       return {
@@ -81,6 +92,7 @@ function compactNode(node: DiagramNode, rect: Rect, full: boolean) {
         shape: node.data.shape,
         ...(node.data.icon ? { icon: node.data.icon } : {}),
         ...(node.data.color !== 'neutral' ? { color: node.data.color } : {}),
+        ...(full ? compactDetails(node.data.details) : {}),
       }
     case 'text':
       return base
@@ -90,6 +102,7 @@ function compactNode(node: DiagramNode, rect: Rect, full: boolean) {
         ...(node.data.kind !== CUSTOM_BOUNDARY ? { boundary: node.data.kind } : {}),
         ...(node.data.detail ? { detail: node.data.detail } : {}),
         ...(node.data.color !== 'auto' ? { color: node.data.color } : {}),
+        ...(full ? compactDetails(node.data.details) : {}),
       }
   }
 }

@@ -1,4 +1,5 @@
-import type { Diagram, Payload } from '@/model/schema'
+import type { Diagram, NodeDetails, Payload } from '@/model/schema'
+import { newId } from '@/model/defaults'
 import { boundaryKind, TINTED_TIERS } from '@/model/boundaries'
 import { fieldsFromExample } from '@/model/payload'
 import { DiagramBuilder, edgeStep, nodeStep } from './builder'
@@ -17,6 +18,10 @@ function body(example: object): Payload {
   return { fields: fieldsFromExample(example) }
 }
 
+function details(owner: string, description: string, links: [label: string, url: string][]): NodeDetails {
+  return { owner, description, links: links.map(([label, url]) => ({ id: newId('k'), label, url })) }
+}
+
 function orderSystem(): Diagram {
   const b = new DiagramBuilder()
   const vpc = b.group(240, 0, 896, 560, {
@@ -32,9 +37,39 @@ function orderSystem(): Diagram {
     { form: 'client', title: 'Browser', icon: 'monitor', lines: ['checkout.shop.dev'] },
     192,
   )
-  const gateway = b.card(40, 214, { title: 'API gateway', icon: 'logo:envoyproxy', lines: ['Envoy'] }, 192, vpc)
+  const gateway = b.card(
+    40,
+    214,
+    {
+      title: 'API gateway',
+      icon: 'logo:envoyproxy',
+      lines: ['Envoy'],
+      details: details(
+        'Platform team',
+        'Ends TLS, checks the session cookie with Auth and routes /orders to the Orders service.',
+        [['Envoy docs', 'https://www.envoyproxy.io/docs']],
+      ),
+    },
+    192,
+    vpc,
+  )
   const auth = b.card(320, 60, { title: 'Auth', icon: 'shield-check', lines: ['OIDC'] }, 192, vpc)
-  const orders = b.card(320, 214, { title: 'Orders', icon: 'logo:go', lines: ['Go · 3 replicas'] }, 192, vpc)
+  const orders = b.card(
+    320,
+    214,
+    {
+      title: 'Orders',
+      icon: 'logo:go',
+      lines: ['Go · 3 replicas'],
+      details: details(
+        'Checkout team',
+        'Validates the cart, charges the card through Stripe, writes the order and publishes order.created.',
+        [],
+      ),
+    },
+    192,
+    vpc,
+  )
   const postgres = b.card(
     620,
     120,
@@ -60,7 +95,15 @@ function orderSystem(): Diagram {
   const stripe = b.card(
     1220,
     214,
-    { form: 'external', title: 'Stripe', icon: 'logo:stripe', lines: ['payments API'] },
+    {
+      form: 'external',
+      title: 'Stripe',
+      icon: 'logo:stripe',
+      lines: ['payments API'],
+      details: details('Checkout team', 'Takes the card payment. A 429 means a rate limit, and Orders retries it.', [
+        ['Payment Intents API', 'https://docs.stripe.com/api/payment_intents'],
+      ]),
+    },
     192,
   )
 

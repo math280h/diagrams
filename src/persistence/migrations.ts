@@ -122,8 +122,31 @@ function toVersion8(raw: Record<string, unknown>): Record<string, unknown> {
   }
 }
 
+const NODES_WITH_DETAILS = new Set(['card', 'shape', 'group'])
+
+function toVersion9(raw: Record<string, unknown>): Record<string, unknown> {
+  const nodes = Array.isArray(raw.nodes) ? raw.nodes : []
+  return {
+    ...raw,
+    nodes: nodes.map((node: Record<string, unknown>) =>
+      NODES_WITH_DETAILS.has(String(node.type)) && typeof node.data === 'object' && node.data !== null
+        ? { ...node, data: { details: { description: '', owner: '', links: [] }, ...node.data } }
+        : node,
+    ),
+  }
+}
+
 /** The migration at index `n` converts a diagram from version `n + 1` to version `n + 2`. */
-const MIGRATIONS: Migration[] = [toVersion2, toVersion3, toVersion4, toVersion5, toVersion6, toVersion7, toVersion8]
+const MIGRATIONS: Migration[] = [
+  toVersion2,
+  toVersion3,
+  toVersion4,
+  toVersion5,
+  toVersion6,
+  toVersion7,
+  toVersion8,
+  toVersion9,
+]
 
 export class DiagramFormatError extends Error {}
 
