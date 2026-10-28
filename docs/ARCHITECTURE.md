@@ -135,7 +135,9 @@ The visual system lives in `DESIGN.md` at the repository root.
   diagram, at any zoom. The featured stage and the template page frame the diagram so that text
   stays readable (`readableViewport`): a diagram that fits at zoom 0.5 or more shows whole, a
   larger one crops around its node with the most connections. The first flow plays on hover and
-  focus. On the first visit, the Order system flow plays in a loop in a full-width stage. Static
+  focus. On the first visit, the Order system flow plays in a loop in a full-width stage, with a Pause button,
+  because motion that starts by itself and lasts more than five seconds needs a way to stop it (WCAG 2.2.2). Pause
+  holds the frame; with reduced motion the stage waits for Play. Static
   wireframe thumbnails hid the motion. Cards that cropped around one node showed a fragment with
   lines that ran off the edge, so people did not recognise their own diagrams.
 - A card preview mounts when it comes within one screen height of the visible part of the library

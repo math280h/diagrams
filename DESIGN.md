@@ -449,7 +449,7 @@ Quiet and compact.
 
 - **Library card:** chrome fill, hairline, 12px corners, a 16:10 live preview over a hairline, then the name (card name type) and a 13px muted meta line with tabular figures. The meta line leaves out the flow count when there are no flows. Hover and focus raise the border to 25% text colour.
 - **Agent introduction:** chrome fill, hairline, 12px corners, 16px by 20px padding; a card-name title "Let an AI agent draw with you", one 13px muted line with an example request, a secondary action and a ghost close button in the top right. In the desktop app the action opens the agent setup, and the strip shows until the first agent call; the bar's agent button then shows its "Connect an agent" label. On the website the action is "Download for Windows" (or macOS or Linux), which starts the installer of the latest release, next to a 13px muted "All downloads" link; when the system is unknown it is "Get the desktop app" and opens the release page. The strip does not show on phones. Closing it hides it permanently.
-- **Featured stage:** ground fill, hairline, 16px corners; a 48px chrome header with the template name, a Signal Blue dot and the flow name, and a small secondary button "Open {template name}" with an arrow; the live canvas with its caption strip fills the rest.
+- **Featured stage:** ground fill, hairline, 16px corners; a 48px chrome header with the template name, a Signal Blue dot and the flow name, a small ghost Pause or Play button, and a small secondary button "Open {template name}" with an arrow; the live canvas with its caption strip fills the rest.
 - **Dialogs:** popover fill, 12px corners, 16px padding, a 1px ring at 10% text colour.
 
 ### Navigation

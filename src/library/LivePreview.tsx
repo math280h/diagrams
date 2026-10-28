@@ -16,6 +16,8 @@ export interface LivePreviewProps {
   diagram: Diagram
   /** If true, the first flow plays in a loop and the traffic moves. */
   playing: boolean
+  /** If true, the flow and the traffic stop where they are. */
+  paused?: boolean
   /**
    * The lowest zoom before the view crops the diagram around its busiest node. At 0, the view always shows the whole
    * diagram.
@@ -27,7 +29,15 @@ export interface LivePreviewProps {
   showCaption?: boolean
 }
 
-function PreviewCanvas({ diagram, playing, minZoom, maxZoom, paddingPx, showCaption }: Required<LivePreviewProps>) {
+function PreviewCanvas({
+  diagram,
+  playing,
+  paused,
+  minZoom,
+  maxZoom,
+  paddingPx,
+  showCaption,
+}: Required<LivePreviewProps>) {
   const engine = useEngine()
   const reducedMotion = useReducedMotion()
   const initial = useMemo(() => fromDiagram(diagram), [diagram])
@@ -43,7 +53,10 @@ function PreviewCanvas({ diagram, playing, minZoom, maxZoom, paddingPx, showCapt
   })
 
   useEffect(() => {
-    engine.ambient.setRunning(playing && !reducedMotion)
+    engine.ambient.setRunning(playing && !paused && !reducedMotion)
+  }, [engine, playing, paused, reducedMotion])
+
+  useEffect(() => {
     if (!playing || !flow) {
       engine.playback.load(null, null)
       return
@@ -51,8 +64,13 @@ function PreviewCanvas({ diagram, playing, minZoom, maxZoom, paddingPx, showCapt
     const looping = { ...flow, loop: true, spotlight: false }
     engine.playback.load(flow.id, compileFlow(looping, new Set(initial.nodes.map((node) => node.id)), initial.edges))
     engine.playback.setFollow(false)
-    engine.playback.play()
-  }, [engine, playing, flow, initial, reducedMotion])
+  }, [engine, playing, flow, initial])
+
+  useEffect(() => {
+    if (!playing || !flow) return
+    if (paused) engine.playback.pause()
+    else engine.playback.play()
+  }, [engine, playing, paused, flow])
 
   return (
     <div className="h-full w-full transition-opacity duration-300" style={{ opacity: framed ? 1 : 0 }}>
@@ -79,6 +97,7 @@ function PreviewCanvas({ diagram, playing, minZoom, maxZoom, paddingPx, showCapt
 export function LivePreview({
   diagram,
   playing,
+  paused = false,
   minZoom = 0.55,
   maxZoom = 1,
   paddingPx = 24,
@@ -91,6 +110,7 @@ export function LivePreview({
           <PreviewCanvas
             diagram={diagram}
             playing={playing}
+            paused={paused}
             minZoom={minZoom}
             maxZoom={maxZoom}
             paddingPx={paddingPx}
