@@ -59,6 +59,7 @@ export function createDiagramFiles(folder: string, options: { trash?: (file: str
     folder,
 
     async readAll(): Promise<StoredFile[]> {
+      await queue.drain()
       await ensureFolder()
       const ids = (await readdir(folder)).map(idOfFile).filter((id): id is string => id !== null)
       const files = await Promise.all(
