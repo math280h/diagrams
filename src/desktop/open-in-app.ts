@@ -18,9 +18,32 @@ type HandoffResult =
   | { ok: true; diagramId: string; name: string }
   | { ok: false; reason: 'unreachable' | 'refused'; message: string }
 
+interface BrowserDevice {
+  userAgent: string
+  maxTouchPoints: number
+  /** True if the primary pointer is a finger, as the `(pointer: coarse)` media query tells. */
+  coarsePointer: boolean
+}
+
+/** Returns true for a browser on a computer that runs the desktop app, and false on phones and tablets. */
+export function isDesktopComputer({ userAgent, maxTouchPoints, coarsePointer }: BrowserDevice): boolean {
+  if (MOBILE.test(userAgent)) return false
+  // iPadOS Safari sends the user agent of a Mac. Chrome on large Android tablets sends that of a Linux computer.
+  if (/Macintosh|Linux/.test(userAgent)) return !(maxTouchPoints > 0 && coarsePointer)
+  return true
+}
+
 /** Returns true where the website can hand a diagram to the desktop app: a desktop browser. */
 export function canOpenInApp() {
-  return !isDesktop() && typeof navigator !== 'undefined' && !MOBILE.test(navigator.userAgent)
+  return (
+    !isDesktop() &&
+    typeof window !== 'undefined' &&
+    isDesktopComputer({
+      userAgent: navigator.userAgent,
+      maxTouchPoints: navigator.maxTouchPoints,
+      coarsePointer: matchMedia('(pointer: coarse)').matches,
+    })
+  )
 }
 
 function newHandoffCode(): string {
