@@ -6,6 +6,7 @@ import { buildArcTable } from '@/engine/path-sampler'
 import { findEdgePath } from '@/engine/route'
 import { compileFlow, segmentIndexAt } from './compile'
 import { evaluateFlow, perimeterPath, type FlowGeometry } from './evaluate'
+import { stepFrames } from './framing'
 import { sampleValueTrack } from './tracks'
 
 const edges = [
@@ -131,7 +132,7 @@ describe('evaluateFlow', () => {
     expect(second.camera).toEqual(first.camera)
   })
 
-  it('follows the token with the camera', () => {
+  it('frames the step when the whole diagram is too small to read', () => {
     const narrow = { width: 200, height: 150 }
     const frame = evaluateFlow(timeline, 4900, geometry, narrow, { camera: true })
     expect(frame.camera!.x).toBeGreaterThan(450)
@@ -228,5 +229,129 @@ describe('findEdgePath', () => {
     expect(findEdgePath('c', 'a', edges)).toEqual(['bc', 'ab'])
     expect(findEdgePath('a', 'a', edges)).toEqual([])
     expect(findEdgePath('a', 'z', edges)).toBeNull()
+  })
+})
+
+describe('step frames', () => {
+  const row = ['a', 'b', 'c', 'd', 'e']
+  const rowRects = Object.fromEntries(row.map((id, index) => [id, { x: index * 300, y: 0, width: 100, height: 50 }]))
+  const rowEdges = row.slice(1).map((id, index) => ({ id: `${row[index]}${id}`, source: row[index]!, target: id }))
+  const rowGeometry = (texts: { x: number; y: number; width: number; height: number }[] = []): FlowGeometry => ({
+    nodeRect: (id) => rowRects[id] ?? null,
+    edgeTable: (id) => {
+      const index = rowEdges.findIndex((edge) => edge.id === id)
+      return index < 0 ? null : buildArcTable(`M${index * 300 + 100},25 L${index * 300 + 300},25`)
+    },
+    bounds: () => unionOf([...Object.values(rowRects), ...texts]),
+    texts: () => texts,
+  })
+  const unionOf = (parts: { x: number; y: number; width: number; height: number }[]) => {
+    const x = Math.min(...parts.map((rect) => rect.x))
+    const y = Math.min(...parts.map((rect) => rect.y))
+    return {
+      x,
+      y,
+      width: Math.max(...parts.map((rect) => rect.x + rect.width)) - x,
+      height: Math.max(...parts.map((rect) => rect.y + rect.height)) - y,
+    }
+  }
+  const walk = row.flatMap((id, index) =>
+    index === 0 ? [step('node', id)] : [step('edge', `${row[index - 1]}${id}`), step('node', id)],
+  )
+  const timeline = compileFlow(flowWith(walk), new Set(row), rowEdges)
+  const middle = (index: number) => (timeline.segments[index]!.startMs + timeline.segments[index]!.endMs) / 2
+  const medium = { width: 800, height: 400 }
+
+  it('holds the whole diagram while it is legible', () => {
+    const frames = stepFrames(timeline, rowGeometry(), { width: 1600, height: 900 })
+    expect(new Set(frames.map((frame) => JSON.stringify(frame))).size).toBe(1)
+  })
+
+  it('moves only when a step leaves the safe area, and then takes in the steps that come next', () => {
+    const frames = stepFrames(timeline, rowGeometry(), medium)
+    expect(frames[0]).toEqual(frames[4])
+    expect(frames[5]).not.toEqual(frames[4])
+    expect(new Set(frames.map((frame) => frame.zoom)).size).toBe(1)
+  })
+
+  it('zooms out for an edge that does not fit, and keeps that zoom while it stays legible', () => {
+    const wide = compileFlow(flowWith([step('node', 'a'), step('edge', 'ac'), step('node', 'c')]), new Set(row), [
+      { id: 'ac', source: 'a', target: 'c' },
+    ])
+    const frames = stepFrames(wide, rowGeometry(), { width: 600, height: 300 })
+    expect(frames[1]!.zoom).toBeLessThan(frames[0]!.zoom)
+    expect(frames[2]!.zoom).toBe(frames[1]!.zoom)
+  })
+
+  it('frames the node that the token goes to when the two ends of an edge are too far apart to read', () => {
+    const long = compileFlow(flowWith([step('node', 'a'), step('edge', 'ae')]), new Set(row), [
+      { id: 'ae', source: 'a', target: 'e' },
+    ])
+    const frames = stepFrames(long, rowGeometry(), { width: 400, height: 300 })
+    expect(frames[1]!.zoom).toBe(frames[0]!.zoom)
+    expect(frames[1]!.x).toBeGreaterThan(1000)
+  })
+
+  it('shows a text whole or not at all', () => {
+    const title = { x: 200, y: -120, width: 500, height: 40 }
+    const frames = stepFrames(timeline, rowGeometry([title]), medium)
+    for (const frame of frames) {
+      const left = frame.x - medium.width / 2 / frame.zoom
+      const right = frame.x + medium.width / 2 / frame.zoom
+      const top = frame.y - medium.height / 2 / frame.zoom
+      const inside = title.x >= left && title.x + title.width <= right && title.y >= top
+      const outside = title.x + title.width <= left || title.x >= right || title.y + title.height <= top
+      expect(inside || outside).toBe(true)
+    }
+  })
+
+  it('reaches the frame sooner with the quick motion than with the slow one', () => {
+    const shape = rowGeometry()
+    const at = timeline.segments[5]!.startMs + 300
+    const target = stepFrames(timeline, shape, medium)[5]!
+    const quick = evaluateFlow(
+      compileFlow(flowWith(walk, { cameraMotion: 'quick' }), new Set(row), rowEdges),
+      at,
+      shape,
+      medium,
+      { camera: true },
+    ).camera!
+    const slow = evaluateFlow(
+      compileFlow(flowWith(walk, { cameraMotion: 'slow' }), new Set(row), rowEdges),
+      at,
+      shape,
+      medium,
+      { camera: true },
+    ).camera!
+    expect(Math.abs(quick.x - target.x)).toBeLessThan(Math.abs(slow.x - target.x))
+  })
+
+  it('tracks the token with the follow camera', () => {
+    const follow = compileFlow(flowWith(walk, { cameraStyle: 'follow' }), new Set(row), rowEdges)
+    const shape = rowGeometry()
+    const edge = follow.segments[5]!
+    const early = evaluateFlow(follow, edge.startMs + 300, shape, medium, { camera: true }).camera!
+    const late = evaluateFlow(follow, edge.endMs - 100, shape, medium, { camera: true }).camera!
+    expect(late.x).toBeGreaterThan(early.x)
+  })
+
+  it('shows the whole diagram and does not move with the still camera', () => {
+    const still = compileFlow(flowWith(walk, { cameraStyle: 'still' }), new Set(row), rowEdges)
+    const shape = rowGeometry()
+    const cameras = [0, middle(3), middle(8)].map(
+      (timeMs) => evaluateFlow(still, timeMs, shape, medium, { camera: true }).camera,
+    )
+    expect(cameras[1]).toEqual(cameras[0])
+    expect(cameras[2]).toEqual(cameras[0])
+  })
+
+  it('cuts with reduced motion, and dips the canvas only where the frame changes', () => {
+    const shape = rowGeometry()
+    const frames = stepFrames(timeline, shape, medium)
+    const at = (timeMs: number) => evaluateFlow(timeline, timeMs, shape, medium, { camera: true, reducedMotion: true })
+    expect(at(middle(5)).camera).toEqual(frames[5])
+    expect(at(timeline.segments[5]!.startMs).viewOpacity).toBeLessThan(0.5)
+    expect(at(timeline.segments[3]!.startMs).viewOpacity).toBe(1)
+    expect(at(middle(5)).viewOpacity).toBe(1)
   })
 })

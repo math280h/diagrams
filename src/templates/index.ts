@@ -150,14 +150,14 @@ function orderSystem(): Diagram {
   b.flow(
     'Place an order',
     [
-      nodeStep(browser, 'The shopper presses Pay.', 1300, 'fit', 1, { event: 'POST /orders' }),
+      nodeStep(browser, 'The shopper presses Pay.', 1300, 'follow', 1, { event: 'POST /orders' }),
       edgeStep(toGateway, '', 1200, 'follow', 1, { event: 'TLS 1.3', latencyMs: 38 }),
-      nodeStep(gateway, 'The gateway checks the session and routes the request.', 1500, 'fit', 1, {
+      nodeStep(gateway, 'The gateway checks the session and routes the request.', 1500, 'follow', 1, {
         event: 'route /orders',
         latencyMs: 4,
       }),
       edgeStep(toOrders, '', 1200, 'follow', 1, { event: 'CreateOrder', latencyMs: 2 }),
-      nodeStep(orders, 'Orders validates the cart.', 1400, 'fit', 1, { event: 'validate cart', latencyMs: 6 }),
+      nodeStep(orders, 'Orders validates the cart.', 1400, 'follow', 1, { event: 'validate cart', latencyMs: 6 }),
       edgeStep(toStripe, 'Stripe rate-limits the first charge, so Orders retries it.', 1600, 'follow', 1, {
         event: 'POST /v1/payment_intents 429',
         latencyMs: 120,
@@ -168,14 +168,14 @@ function orderSystem(): Diagram {
         event: 'INSERT orders',
         latencyMs: 4,
       }),
-      nodeStep(postgres, 'The row is committed.', 1200, 'fit', 1, { event: 'COMMIT', latencyMs: 3 }),
+      nodeStep(postgres, 'The row is committed.', 1200, 'follow', 1, { event: 'COMMIT', latencyMs: 3 }),
       edgeStep(toPostgres, '', 1000, 'follow', 1, { event: 'OK', latencyMs: 1 }),
       edgeStep(toTopic, 'Orders publishes order.created.', 1300, 'follow', 1, {
         event: 'produce order.created',
         latencyMs: 3,
       }),
       edgeStep(toMailer, '', 1300, 'follow', 1, { event: 'consume', latencyMs: 15 }),
-      nodeStep(mailer, 'The email worker sends the confirmation.', 1800, 'fit', 1, {
+      nodeStep(mailer, 'The email worker sends the confirmation.', 1800, 'follow', 1, {
         event: 'send confirmation',
         latencyMs: 120,
       }),
@@ -248,7 +248,7 @@ function eventPipeline(): Diagram {
         event: 'append partition 7',
       }),
       {
-        ...edgeStep(toEnricher, 'Two consumer groups read the same events at the same time.', 1400, 'fit', 1, {
+        ...edgeStep(toEnricher, 'Two consumer groups read the same events at the same time.', 1400, 'follow', 1, {
           event: 'poll events.raw',
         }),
         parallel: [{ kind: 'edge', id: toFraud }],
@@ -258,7 +258,7 @@ function eventPipeline(): Diagram {
           enrich,
           'The enricher adds user and geo data while fraud scoring rates each event.',
           1800,
-          'fit',
+          'follow',
           1,
           {
             event: 'process batch',
@@ -268,7 +268,7 @@ function eventPipeline(): Diagram {
         parallel: [{ kind: 'node', id: fraud }],
       },
       edgeStep(load, '', 1300, 'follow', 1.1, { event: 'load job' }),
-      nodeStep(warehouse, 'Analysts can query the events within five minutes.', 1800, 'fit', 1, {
+      nodeStep(warehouse, 'Analysts can query the events within five minutes.', 1800, 'follow', 1, {
         event: 'INSERT events',
       }),
     ],
@@ -279,7 +279,7 @@ function eventPipeline(): Diagram {
       event: 'POST /v2/enqueue',
       level: 'error',
     }),
-    nodeStep(pager, 'The on-call engineer gets the alert in seconds.', 1800, 'fit', 1, {
+    nodeStep(pager, 'The on-call engineer gets the alert in seconds.', 1800, 'follow', 1, {
       event: 'incident triggered',
       level: 'error',
     }),
@@ -331,7 +331,7 @@ function checkoutFlow(): Diagram {
       edgeStep(e5, 'The session is valid, so sign-in is skipped.', 1300, 'follow', 1.1, { event: '200 signed in' }),
       nodeStep(payment, 'They pay with a saved wallet.', 1600, 'follow', 1.1, { event: 'pay with wallet' }),
       edgeStep(e7, '', 1300, 'follow', 1.1, { event: 'POST /orders' }),
-      nodeStep(done, 'Order placed in 41 seconds.', 2000, 'fit', 1, { event: 'order placed' }),
+      nodeStep(done, 'Order placed in 41 seconds.', 2000, 'follow', 1, { event: 'order placed' }),
     ],
     { token: { label: 'Customer', icon: '', shape: 'chip' } },
   )
@@ -1512,7 +1512,7 @@ function ragAssistant(): Diagram {
   b.flow(
     'Index a document',
     [
-      nodeStep(github, 'A merged pull request changes the payouts runbook.', 1300, 'fit', 1, { event: 'push main' }),
+      nodeStep(github, 'A merged pull request changes the payouts runbook.', 1300, 'follow', 1, { event: 'push main' }),
       edgeStep(hook, '', 1200, 'follow', 1.1, { event: 'POST /hooks/github', latencyMs: 40 }),
       nodeStep(ingest, 'The worker parses the Markdown and splits it into 14 chunks.', 1500, 'follow', 1.1, {
         event: 'chunk 14',
@@ -1527,7 +1527,7 @@ function ragAssistant(): Diagram {
           upsert,
           'The chunks go to the vector store and the keyword index at the same time.',
           1500,
-          'fit',
+          'follow',
           1,
           {
             event: 'upsert 14 chunks',
@@ -1537,7 +1537,7 @@ function ragAssistant(): Diagram {
         parallel: [{ kind: 'edge', id: index }],
       },
       {
-        ...nodeStep(vectors, 'Both indexes hold the new text a minute after the merge.', 1800, 'fit', 1, {
+        ...nodeStep(vectors, 'Both indexes hold the new text a minute after the merge.', 1800, 'follow', 1, {
           event: 'COMMIT',
         }),
         parallel: [{ kind: 'node', id: keywords }],
@@ -1548,7 +1548,7 @@ function ragAssistant(): Diagram {
   const question = b.flow(
     'Answer a question',
     [
-      nodeStep(engineer, 'An engineer asks how to replay a failed payout.', 1300, 'fit', 1, { event: 'ask' }),
+      nodeStep(engineer, 'An engineer asks how to replay a failed payout.', 1300, 'follow', 1, { event: 'ask' }),
       edgeStep(ask, '', 1200, 'follow', 1.1, { event: 'POST /v1/answers', latencyMs: 30 }),
       nodeStep(
         answers,
@@ -1563,14 +1563,14 @@ function ragAssistant(): Diagram {
       edgeStep(rank, '', 1100, 'follow', 1.1, { event: 'embed question', latencyMs: 45 }),
       edgeStep(rank, '', 1100, 'follow', 1.1, { event: '200 vector' }),
       {
-        ...edgeStep(vectorSearch, 'Vector search and keyword search run at the same time.', 1500, 'fit', 1, {
+        ...edgeStep(vectorSearch, 'Vector search and keyword search run at the same time.', 1500, 'follow', 1, {
           event: 'top 40',
           latencyMs: 28,
         }),
         parallel: [{ kind: 'edge', id: keywordSearch }],
       },
       {
-        ...edgeStep(vectorSearch, 'The API merges both lists into one ranking.', 1400, 'fit', 1, {
+        ...edgeStep(vectorSearch, 'The API merges both lists into one ranking.', 1400, 'follow', 1, {
           event: '40 chunks',
         }),
         parallel: [{ kind: 'edge', id: keywordSearch }],
@@ -1583,7 +1583,7 @@ function ragAssistant(): Diagram {
       }),
       edgeStep(prompt, '', 1300, 'follow', 1.1, { event: 'answer with 3 citations' }),
       edgeStep(ask, '', 1200, 'follow', 1.1, { event: '200 OK', latencyMs: 2300 }),
-      nodeStep(engineer, 'The answer links to the runbook lines that it used.', 1800, 'fit', 1, {
+      nodeStep(engineer, 'The answer links to the runbook lines that it used.', 1800, 'follow', 1, {
         event: 'answer shown',
       }),
     ],
@@ -1595,7 +1595,7 @@ function ragAssistant(): Diagram {
       level: 'warn',
     }),
     edgeStep(ask, '', 1200, 'follow', 1.1, { event: '200 not found', level: 'warn' }),
-    nodeStep(engineer, 'The engineer gets "Not in the docs" and a link to the help channel.', 1900, 'fit', 1, {
+    nodeStep(engineer, 'The engineer gets "Not in the docs" and a link to the help channel.', 1900, 'follow', 1, {
       event: 'no answer',
       level: 'warn',
     }),
@@ -1678,7 +1678,7 @@ function mcpAgent(): Diagram {
   const flow = b.flow(
     'Investigate an alert',
     [
-      nodeStep(engineer, 'The on-call engineer asks why checkout errors went up.', 1400, 'fit', 1, {
+      nodeStep(engineer, 'The on-call engineer asks why checkout errors went up.', 1400, 'follow', 1, {
         event: '@ops-agent why are 500s up?',
       }),
       edgeStep(ask, '', 1200, 'follow', 1.1, { event: 'app_mention', latencyMs: 25 }),
@@ -1695,7 +1695,7 @@ function mcpAgent(): Diagram {
       edgeStep(model, '', 1200, 'follow', 1.1, { event: 'POST /v1/messages', latencyMs: 2100 }),
       edgeStep(model, 'The model asks for two tools at once.', 1300, 'follow', 1.1, { event: 'tool_use × 2' }),
       {
-        ...edgeStep(toSentry, 'The agent calls both MCP servers at the same time.', 1400, 'fit', 1, {
+        ...edgeStep(toSentry, 'The agent calls both MCP servers at the same time.', 1400, 'follow', 1, {
           event: 'tools/call',
           latencyMs: 340,
         }),
@@ -1706,14 +1706,14 @@ function mcpAgent(): Diagram {
           sentry,
           'Sentry finds a new timeout in the payment client, and a read-only query counts 4% failed payments.',
           2000,
-          'fit',
+          'follow',
           1,
           { event: 'search issues, run query' },
         ),
         parallel: [{ kind: 'node', id: database }],
       },
       {
-        ...edgeStep(toSentry, '', 1300, 'fit', 1, { event: 'results' }),
+        ...edgeStep(toSentry, '', 1300, 'follow', 1, { event: 'results' }),
         parallel: [{ kind: 'edge', id: toDatabase }],
       },
       edgeStep(model, '', 1200, 'follow', 1.1, { event: 'tool_result × 2', latencyMs: 1800 }),
@@ -1727,12 +1727,19 @@ function mcpAgent(): Diagram {
         event: 'end_turn',
       }),
       {
-        ...edgeStep(ask, 'The agent answers in the thread and keeps each tool call in the audit log.', 1500, 'fit', 1, {
-          event: 'chat.postMessage',
-        }),
+        ...edgeStep(
+          ask,
+          'The agent answers in the thread and keeps each tool call in the audit log.',
+          1500,
+          'follow',
+          1,
+          {
+            event: 'chat.postMessage',
+          },
+        ),
         parallel: [{ kind: 'edge', id: log }],
       },
-      nodeStep(engineer, 'The engineer has the cause and the runbook in two minutes.', 1800, 'fit', 1, {
+      nodeStep(engineer, 'The engineer has the cause and the runbook in two minutes.', 1800, 'follow', 1, {
         event: 'reply in thread',
       }),
     ],
@@ -1805,19 +1812,19 @@ function c4Context(): Diagram {
   b.flow(
     'Book a stay',
     [
-      nodeStep(guest, 'A guest books three nights in Lisbon.', 1300, 'fit', 1, { event: 'book' }),
+      nodeStep(guest, 'A guest books three nights in Lisbon.', 1300, 'follow', 1, { event: 'book' }),
       edgeStep(book, '', 1200, 'follow', 1.1, { event: 'HTTPS' }),
       nodeStep(staybook, 'Staybook holds the dates for the guest.', 1400, 'follow', 1.1, { event: 'hold dates' }),
       edgeStep(charge, '', 1200, 'follow', 1.1, { event: 'charge card', latencyMs: 380 }),
       edgeStep(charge, 'Stripe charges the card.', 1300, 'follow', 1.1, { event: 'paid' }),
       {
-        ...edgeStep(send, 'Staybook confirms the booking and tells the host.', 1500, 'fit', 1, {
+        ...edgeStep(send, 'Staybook confirms the booking and tells the host.', 1500, 'follow', 1, {
           event: 'send confirmation',
         }),
         parallel: [{ kind: 'edge', id: list }],
       },
       edgeStep(deliver, '', 1200, 'follow', 1.1, { event: 'email' }),
-      nodeStep(guest, 'The guest has the confirmation a few seconds later.', 1800, 'fit', 1, {
+      nodeStep(guest, 'The guest has the confirmation a few seconds later.', 1800, 'follow', 1, {
         event: 'booking confirmed',
       }),
     ],
@@ -1896,7 +1903,7 @@ function c4Containers(): Diagram {
   const flow = b.flow(
     'Book a stay',
     [
-      nodeStep(guest, 'The guest picks dates and presses Book.', 1300, 'fit', 1, { event: 'click Book' }),
+      nodeStep(guest, 'The guest picks dates and presses Book.', 1300, 'follow', 1, { event: 'click Book' }),
       edgeStep(open, '', 1100, 'follow', 1.1, { event: 'HTTPS' }),
       edgeStep(call, '', 1200, 'follow', 1.1, { event: 'POST /bookings', latencyMs: 45 }),
       nodeStep(api, 'The API checks the dates against the calendar of the home.', 1500, 'follow', 1.1, {
@@ -1907,7 +1914,7 @@ function c4Containers(): Diagram {
       edgeStep(charge, '', 1200, 'follow', 1.1, { event: 'POST /v1/payment_intents', latencyMs: 380 }),
       edgeStep(charge, 'Stripe charges the card.', 1300, 'follow', 1.1, { event: '200 succeeded' }),
       {
-        ...edgeStep(sql, 'The API saves the booking and publishes an event at the same time.', 1500, 'fit', 1, {
+        ...edgeStep(sql, 'The API saves the booking and publishes an event at the same time.', 1500, 'follow', 1, {
           event: 'INSERT booking',
           latencyMs: 5,
         }),
@@ -1915,14 +1922,14 @@ function c4Containers(): Diagram {
       },
       edgeStep(consume, '', 1200, 'follow', 1.1, { event: 'consume booking.confirmed' }),
       edgeStep(send, '', 1200, 'follow', 1.1, { event: 'POST /emails', latencyMs: 120 }),
-      nodeStep(email, 'Resend sends the confirmation to the guest.', 1800, 'fit', 1, { event: 'delivered' }),
+      nodeStep(email, 'Resend sends the confirmation to the guest.', 1800, 'follow', 1, { event: 'delivered' }),
     ],
     { token: { label: 'Booking', icon: 'calendar', shape: 'chip' } },
   )
   b.path(flow, 'Card declined', 6, [
     edgeStep(charge, '', 1300, 'follow', 1.1, { event: '402 card_declined', level: 'error' }),
     edgeStep(call, '', 1200, 'follow', 1.1, { event: '409 payment failed', level: 'error' }),
-    nodeStep(web, 'The guest sees that the card was declined and tries another card.', 1800, 'fit', 1, {
+    nodeStep(web, 'The guest sees that the card was declined and tries another card.', 1800, 'follow', 1, {
       event: 'show error',
       level: 'warn',
     }),

@@ -59,7 +59,8 @@ The visual system lives in `DESIGN.md` at the repository root.
   (description, owner and links) to cards, shapes and groups. Version 10 added the optional `pinned` flag to the data of every node. Version 11 added the
   optional `opens` field, the id of another diagram, to cards and groups. Version 12 added the optional `parallel`
   targets to flow steps and the optional `paths` to flows. Version 13 added the optional `sensitive` mark (`personal`
-  or `secret`) to body fields.
+  or `secret`) to body fields. Version 14 added `cameraStyle` (`frame`, `follow` or `still`) and `cameraMotion`
+  (`gentle`, `quick` or `slow`) to flows; the migration gives earlier flows the frame camera with the gentle motion.
 - Groups are boundaries. A group's `kind` points into the catalogue in `src/model/boundaries.ts`:
   AWS, Azure, Google Cloud, Kubernetes and general kinds, plus the custom group. Each kind has a
   family (scope, logical, location, zone, network, subnet, security, runtime) that sets its line
@@ -277,8 +278,8 @@ both without a second kind of flow.
 - `evaluateFlow` returns the main token as before and one `ParallelToken` for each other lane. A node lane enters from
   the edge lane of the previous step that ends on its node, and a token keeps its way around a node outline in the
   same manner as one token. The engine draws a parallel token with a copy of the token element, and colours each
-  token after the protocol of its own edge. The camera frames all lanes of a parallel step, also in follow mode, so
-  that no token leaves the view.
+  token after the protocol of its own edge. The camera frames all lanes of a parallel step, so that no token leaves
+  the view.
 - In the editor, Shift-click while recording adds a node to the last step: the edge from the same source node joins
   the edge step, and the node joins the node step. The step properties list the parallel candidates as switches: the
   other edges that leave the same node in the token's direction, or the nodes that the parallel edges of the previous
@@ -425,14 +426,37 @@ diagram with its real operations, latencies and statuses.
   the values that it reads, so a mutable playback object kept the play button on Play while a flow played.
 - `evaluateFlow(timeline, t, geometry, view)` is pure. Token position, node and edge state,
   caption and camera depend only on `t`. Scrubbing and export use the same function.
-- The step camera is a weighted mean of the step targets over a time window around `t` (1 s for
-  the position, 1.6 s for the zoom). Constant targets add their exact share of the window weight,
-  and follow targets add samples, so the camera starts to move before a step starts and has no
-  jumps. Explicit blends of 300 to 700 ms with `interpolateZoom` made the zoom pump on short steps.
-- A step zooms in by at most 1.35 times over the step before it; a follow step also zooms out by at
-  most that ratio. The flow opens from the overview with `interpolateZoom` over 1.5 s.
-- With `prefers-reduced-motion`, the camera cuts to each step and Present does not start on its
-  own. Exports always use the full motion.
+- A flow chooses its camera (`cameraStyle`): `frame` (the default), `follow` or `still`. Different
+  walkthroughs want different cameras: a calm explainer, a camera that rides along with the request, or a fixed view
+  for a slide. Still always shows the overview. Follow (`src/engine/flow/follow-camera.ts`) is the camera of format 13
+  and earlier: a weighted mean of the step targets over a window around `t` (1 s for the position, 1.6 s for the
+  zoom), so it starts to move before a step and has no jumps; a step zooms in by at most 1.35 times over the step
+  before it.
+- The frame camera does not follow the token. `stepFrames` (`src/engine/flow/framing.ts`) gives each step one
+  frame, in step order:
+  - A follow step (Auto in the step properties) holds the overview while the whole diagram is legible: the overview
+    zoom is at least 0.7 of the median step zoom of the flow. The step zoom is the reading zoom, scaled down on views
+    narrower than 1000 px to no less than 0.7 of it.
+  - Otherwise the frame keeps its zoom while the step fits and the zoom stays between 0.7 and 1.25 of the step zoom.
+    It moves only when the nodes of the step leave the safe area (12 % of the view at each side), and then as little
+    as possible to take in the step and as many next steps as fit. So the camera moves in a few large moves and not
+    on each step.
+  - An edge whose two ends do not fit at a legible zoom gets the frame of the node that the token goes to. Earlier, a
+    camera that showed both ends of a long edge zoomed out until no text could be read.
+  - A frame never cuts a text node: it moves to show the text whole or not at all, and zooms out to no less than the
+    legible zoom when no move can do it. Cut titles were the most visible fault of the camera that followed the token.
+  - Fit (Frame) centres on the step and zooms in to the step zoom. Hold keeps the frame of the step before.
+- `framedCameraAt` moves into the frame of each step around the start of the step, in a span of the flow's
+  `cameraMotion` (only for the frame camera): gentle (1 s, sine ease), quick (550 ms, cubic ease) or slow (1.6 s,
+  sine ease). The spans do not
+  overlap. A move at the same zoom is a straight pan; a move that changes the zoom uses `interpolateZoom`. A camera
+  that followed the token at a fixed zoom panned on every step and cropped medium diagrams, also when the whole
+  diagram fitted at a legible zoom.
+- With `prefers-reduced-motion`, the camera cuts to each step frame, and the canvas fades to 15 % and back in 360 ms
+  around each cut (`viewOpacity` of the flow frame, the `--dg-view-opacity` variable on the canvas). Present does not
+  start on its own. Exports always use the full motion.
+- Present counts its top bar and its caption strip as insets, so that no frame puts the diagram title under the
+  top bar.
 - In the editor, the preview and Present, play and seek glide from the current viewport to the
   flow camera over 700 ms of wall time. This handoff is outside `evaluateFlow` and the export
   engine does not use it. In the editor the camera centres inside the area that the panels leave

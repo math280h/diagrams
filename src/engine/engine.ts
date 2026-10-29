@@ -179,6 +179,7 @@ export class Engine {
   readonly playback = new Playback()
   readonly tables = new Map<string, ArcTable>()
   private root: HTMLElement | null = null
+  private viewOpacity = 1
   private tokenElement: HTMLElement | null = null
   /** Copies of the token element for the parallel targets of a step. */
   private parallelTokenElements: HTMLElement[] = []
@@ -404,6 +405,7 @@ export class Engine {
 
   clearFlow() {
     if (this.root) applyFlowFrame(this.root, null, false)
+    this.setViewOpacity(1)
     this.coverEdgeLabels(false, false)
     if (this.tokenElement) this.tokenElement.style.display = 'none'
     for (const element of this.parallelTokenElements) element.style.display = 'none'
@@ -484,6 +486,13 @@ export class Engine {
     return this.edgeProtocols.get(edgeId)!
   }
 
+  private setViewOpacity(opacity: number) {
+    if (opacity === this.viewOpacity) return
+    this.viewOpacity = opacity
+    if (opacity === 1) this.root?.style.removeProperty('--dg-view-opacity')
+    else this.root?.style.setProperty('--dg-view-opacity', opacity.toFixed(3))
+  }
+
   /** Makes the next frame write the flow state again. Call it after the diagram changes. */
   invalidate() {
     this.flowDirty = true
@@ -536,6 +545,7 @@ export class Engine {
       this.shownState = state
     }
     this.trafficScale = result.trafficScale
+    this.setViewOpacity(result.viewOpacity)
 
     if (this.tokenElement) {
       if (result.token) {

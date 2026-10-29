@@ -928,6 +928,9 @@
   transition: opacity 240ms ease;
 }
 
+.dg-canvas .react-flow__viewport {
+  opacity: var(--dg-view-opacity, 1);
+}
 .dg-token {
   position: absolute;
   left: 0;
