@@ -1,11 +1,9 @@
 import { toast } from 'sonner'
 import { z } from 'zod'
-import { absolutePosition } from '@/model/graph'
 import { DIAGRAM_VERSION, type StoredEdge, type StoredNode } from '@/model/schema'
 import { DiagramFormatError, migrateElements } from '@/persistence/migrations'
 import { toStoredEdge, toStoredNode } from '@/persistence/serialize'
-import { addNodes, cloneSubgraph, deleteSelection, selectionSubgraph } from '@/store/actions'
-import { useDoc } from '@/store/doc-store'
+import { addNodes, cloneSubgraph, deleteSelection, detachedSelection } from '@/store/actions'
 
 const MARKER = 'diagrams/clipboard@1'
 const PASTE_OFFSET = 32
@@ -29,19 +27,12 @@ let memory: ClipboardPayload | null = null
 let pasteCount = 0
 
 function payloadFromSelection(): ClipboardPayload | null {
-  const { nodes, edges } = selectionSubgraph()
+  const { nodes, edges } = detachedSelection()
   if (nodes.length === 0) return null
-  const all = new Map(useDoc.getState().nodes.map((node) => [node.id, node]))
-  const included = new Set(nodes.map((node) => node.id))
-  const detached = nodes.map((node) =>
-    node.parentId && !included.has(node.parentId)
-      ? { ...node, parentId: undefined, position: absolutePosition(node, all) }
-      : node,
-  )
   return {
     marker: MARKER,
     version: DIAGRAM_VERSION,
-    nodes: detached.map(toStoredNode),
+    nodes: nodes.map(toStoredNode),
     edges: edges.map(toStoredEdge).filter((edge): edge is StoredEdge => edge !== null),
   }
 }

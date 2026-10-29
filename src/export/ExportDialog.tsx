@@ -1,4 +1,4 @@
-import { Download, Loader2, X } from 'lucide-react'
+import { Copy, Download, Loader2, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useCanvasTheme } from '@/canvas/canvas-theme'
@@ -17,8 +17,10 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useEngine } from '@/engine/hooks'
 import { compileFlow } from '@/engine/flow/compile'
 import { downloadBlob } from '@/lib/download'
-import { formatSeconds, safeFileName } from '@/lib/format'
+import { formatBytes, formatSeconds, plural, safeFileName } from '@/lib/format'
+import { detachedSelection } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
+import { useSettings } from '@/store/settings-store'
 import { setUi, useUi, type ExportKind } from '@/store/ui-store'
 import { Choice, Field, Segmented, SliderField, SwitchField } from '@/editor/inspector/controls'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -30,6 +32,8 @@ import { HtmlExport } from './HtmlExport'
 import { LinkExport } from './LinkExport'
 import { MermaidExport } from './MermaidExport'
 import { describeDiagram, svgWithDescription } from './describe'
+import { pngWithDiagram, svgWithDiagram } from './embed'
+import { diagramToEmbed, writeImageToClipboard } from './image-copy'
 import { ReadmeExport } from './ReadmeExport'
 import { TextExport } from './TextExport'
 import { usePainted } from './use-painted'
@@ -53,6 +57,11 @@ const FLOW_END_HOLD_MS = 800
 const PREVIEW_SHARES = [0.08, 0.3, 0.52, 0.74, 0.96]
 const PREVIEW_SCALE = 0.3
 const PREVIEW_CYCLE_MS = 1100
+/** The size of the image preview box in CSS pixels. */
+const PREVIEW_BOX_PX = { width: 480, height: 384 }
+const MAX_PREVIEW_SCALE = 2
+/** The share of the export after which the time that is left has a stable estimate. */
+const ESTIMATE_AFTER_SHARE = 0.05
 const STAGE_FIT_PADDING = 0.12
 const FORMAT_NAMES: Record<'png' | 'svg' | VideoFormat, string> = {
   png: 'PNG',
@@ -62,14 +71,15 @@ const FORMAT_NAMES: Record<'png' | 'svg' | VideoFormat, string> = {
   gif: 'GIF',
 }
 
-function useStageContent(themeChoice: ThemeChoice, grid: boolean) {
+function useStageContent(themeChoice: ThemeChoice, grid: boolean, selectionOnly = false) {
   const nodes = useDoc((state) => state.nodes)
   const edges = useDoc((state) => state.edges)
   const theme = useDoc((state) => state.theme)
   const canvasTheme = useCanvasTheme(theme.mode)
+  const shown = useMemo(() => (selectionOnly ? detachedSelection() : { nodes, edges }), [selectionOnly, nodes, edges])
   return {
-    nodes: useMemo(() => nodes.map((node) => ({ ...node, selected: false, dragging: false })), [nodes]),
-    edges: useMemo(() => edges.map((edge) => ({ ...edge, selected: false })), [edges]),
+    nodes: useMemo(() => shown.nodes.map((node) => ({ ...node, selected: false, dragging: false })), [shown]),
+    edges: useMemo(() => shown.edges.map((edge) => ({ ...edge, selected: false })), [shown]),
     theme: useMemo(() => (grid ? theme : { ...theme, background: 'none' as const }), [theme, grid]),
     resolvedTheme: themeChoice === 'canvas' ? canvasTheme : themeChoice,
   }
@@ -86,13 +96,25 @@ function ImageExport({ onClose }: { onClose: () => void }) {
   const [padding, setPadding] = useState(64)
   const [grid, setGrid] = useState(false)
   const [ready, setReady] = useState<{ key: string; stage: StageHandle } | null>(null)
-  const [preview, setPreview] = useState<string | null>(null)
+  const [preview, setPreview] = useState<{ url: string; bytes: number; scale: number } | null>(null)
+  const [svgBytes, setSvgBytes] = useState<{ key: string; bytes: number } | null>(null)
   const [busy, setBusy] = useState(false)
-  const content = useStageContent(themeChoice, grid)
+  const selectedCount = useDoc((state) => state.nodes.filter((node) => node.selected).length)
+  const [selectionChoice, setSelectionChoice] = useState(true)
+  const selectionOnly = selectionChoice && selectedCount > 0
+  const embed = useSettings((state) => state.embedDiagram)
+  const setEmbed = useSettings((state) => state.setEmbedDiagram)
+  const content = useStageContent(themeChoice, grid, selectionOnly)
   const bounds = useMemo(() => diagramBounds(content.nodes), [content.nodes])
   const transparent = background === 'transparent'
-  const stageKey = `${themeChoice}|${padding}|${transparent}|${grid}`
+  const stageKey = `${themeChoice}|${padding}|${transparent}|${grid}|${selectionOnly}`
   const stage = ready?.key === stageKey ? ready.stage : null
+  const width = Math.ceil(bounds.width + padding * 2)
+  const height = Math.ceil(bounds.height + padding * 2)
+  const previewScale = Math.min(
+    MAX_PREVIEW_SCALE,
+    Math.min(PREVIEW_BOX_PX.width / width, PREVIEW_BOX_PX.height / height) * window.devicePixelRatio,
+  )
 
   useEffect(() => {
     if (!stage) return
@@ -102,18 +124,33 @@ function ImageExport({ onClose }: { onClose: () => void }) {
       stage.engine.render(engine.ambient.time.get(), 0)
       await waitForPaint()
       const blob = await captureBlob(stage.root, 'png', {
-        scale: 0.6,
+        scale: previewScale,
         backgroundColor: transparent ? null : canvasBackground(stage.root),
       })
       if (cancelled) return
       url = URL.createObjectURL(blob)
-      setPreview(url)
+      setPreview({ url, bytes: blob.size, scale: previewScale })
     })()
     return () => {
       cancelled = true
       if (url) URL.revokeObjectURL(url)
     }
-  }, [stage, engine, transparent])
+  }, [stage, engine, transparent, previewScale])
+
+  useEffect(() => {
+    if (!stage || format !== 'svg') return
+    let cancelled = false
+    void (async () => {
+      const blob = await captureBlob(stage.root, 'svg', {
+        scale: 1,
+        backgroundColor: transparent ? null : canvasBackground(stage.root),
+      })
+      if (!cancelled) setSvgBytes({ key: stageKey, bytes: blob.size })
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [stage, format, transparent, stageKey])
 
   const onReady = useCallback(
     async (handle: StageHandle) => {
@@ -123,17 +160,43 @@ function ImageExport({ onClose }: { onClose: () => void }) {
     [stageKey],
   )
 
+  const render = async (handle: StageHandle) => {
+    handle.engine.render(engine.ambient.time.get(), 0)
+    await waitForPaint()
+    const image = await captureBlob(handle.root, format, {
+      scale: format === 'png' ? scale : 1,
+      backgroundColor: transparent ? null : canvasBackground(handle.root),
+    })
+    const described =
+      format === 'svg'
+        ? await svgWithDescription(
+            image,
+            describeDiagram({ ...useDoc.getState(), ...content, ...(selectionOnly ? { flows: [] } : {}) }),
+          )
+        : image
+    if (!embed) return described
+    const diagram = diagramToEmbed(selectionOnly)
+    return format === 'svg' ? svgWithDiagram(described, diagram) : pngWithDiagram(described, diagram)
+  }
+
+  const copy = async () => {
+    if (!stage) return
+    setBusy(true)
+    try {
+      await writeImageToClipboard(format, render(stage))
+      toast.success(`Copied the ${FORMAT_NAMES[format]}`)
+    } catch (error) {
+      toast.error('The image could not be copied.', { description: errorMessage(error) })
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const save = async () => {
     if (!stage) return
     setBusy(true)
     try {
-      stage.engine.render(engine.ambient.time.get(), 0)
-      await waitForPaint()
-      const image = await captureBlob(stage.root, format, {
-        scale: format === 'png' ? scale : 1,
-        backgroundColor: transparent ? null : canvasBackground(stage.root),
-      })
-      const blob = format === 'svg' ? await svgWithDescription(image, describeDiagram(useDoc.getState())) : image
+      const blob = await render(stage)
       downloadBlob(blob, `${safeFileName(name)}.${format}`)
       toast.success(`Exported ${FORMAT_NAMES[format]}`)
       onClose()
@@ -144,15 +207,21 @@ function ImageExport({ onClose }: { onClose: () => void }) {
     }
   }
 
-  const width = Math.ceil(bounds.width + padding * 2)
-  const height = Math.ceil(bounds.height + padding * 2)
+  const estimatedBytes =
+    format === 'svg'
+      ? svgBytes?.key === stageKey
+        ? svgBytes.bytes
+        : null
+      : preview
+        ? preview.bytes * (scale / preview.scale) ** 2
+        : null
 
   return (
     <>
       <div className="grid gap-5 sm:grid-cols-[1fr_240px]">
-        <div className="dg-thumb-grid grid min-h-56 place-items-center overflow-hidden rounded-xl border p-3">
+        <div className="dg-thumb-grid grid h-64 place-items-center overflow-hidden rounded-xl border p-3 sm:h-96">
           {preview && stage ? (
-            <img src={preview} alt="Export preview" className="max-h-72 w-auto max-w-full rounded-sm" />
+            <img src={preview.url} alt="Export preview" className="max-h-full max-w-full rounded-sm object-contain" />
           ) : (
             <Loader2 className="size-5 animate-spin text-muted-foreground" />
           )}
@@ -202,6 +271,14 @@ function ImageExport({ onClose }: { onClose: () => void }) {
             />
           </Field>
           <SwitchField label="Show the grid" checked={grid && !transparent} onChange={setGrid} />
+          {selectedCount > 0 && (
+            <SwitchField
+              label={`Only the selection (${plural(selectedCount, 'node')})`}
+              checked={selectionOnly}
+              onChange={setSelectionChoice}
+            />
+          )}
+          <SwitchField label="Keep the diagram in the file" checked={embed} onChange={setEmbed} />
           <SliderField
             label="Padding"
             value={padding}
@@ -213,7 +290,14 @@ function ImageExport({ onClose }: { onClose: () => void }) {
           />
           <p className="text-xs text-muted-foreground tabular-nums">
             {format === 'png' ? `${width * scale} × ${height * scale} px` : `${width} × ${height} vector frame`}
+            {estimatedBytes !== null && `, about ${formatBytes(estimatedBytes)}`}
           </p>
+          {embed && (
+            <p className="text-xs text-muted-foreground">
+              Import can open the image again as a diagram. Anyone with the file can read the diagram, with its details
+              and bodies.
+            </p>
+          )}
           {format === 'svg' && (
             <p className="text-xs text-muted-foreground">
               The SVG keeps the text and the shapes sharp in browsers. Design tools can show it as one image. It holds
@@ -225,6 +309,9 @@ function ImageExport({ onClose }: { onClose: () => void }) {
       <DialogFooter>
         <Button variant="ghost" onClick={onClose}>
           Cancel
+        </Button>
+        <Button variant="outline" onClick={copy} disabled={!stage || busy}>
+          <Copy /> Copy {FORMAT_NAMES[format]}
         </Button>
         <Button onClick={save} disabled={!stage || busy}>
           {busy ? <Loader2 className="animate-spin" /> : <Download />} Export {FORMAT_NAMES[format]}
@@ -266,6 +353,7 @@ function VideoExport({ onClose }: { onClose: () => void }) {
   const [progress, setProgress] = useState<number | null>(null)
   const [captured, setCaptured] = useState<{ key: string; frames: { timeMs: number; url: string }[] } | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const [timeLeftMs, setTimeLeftMs] = useState<number | null>(null)
   const content = useStageContent(themeChoice, grid)
   const flow = flows.find((candidate) => candidate.id === source)
   const pathId = flow?.paths?.some((path) => path.id === pathChoice) ? pathChoice : null
@@ -336,6 +424,8 @@ function VideoExport({ onClose }: { onClose: () => void }) {
     if (!stage) return
     const controller = new AbortController()
     abortRef.current = controller
+    const startedAt = performance.now()
+    setTimeLeftMs(null)
     setProgress(0)
     try {
       if (flow && timeline) {
@@ -353,7 +443,10 @@ function VideoExport({ onClose }: { onClose: () => void }) {
         ambientStartMs: engine.ambient.time.get(),
         scale,
         signal: controller.signal,
-        onProgress: setProgress,
+        onProgress: (share) => {
+          setProgress(share)
+          setTimeLeftMs(share >= ESTIMATE_AFTER_SHARE ? ((performance.now() - startedAt) * (1 - share)) / share : null)
+        },
       })
       downloadBlob(blob, `${safeFileName(flow ? `${name} ${flow.name}` : name)}.${format}`)
       toast.success(`Exported ${FORMAT_NAMES[format]}`)
@@ -487,7 +580,10 @@ function VideoExport({ onClose }: { onClose: () => void }) {
                   style={{ width: `${progress * 100}%` }}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">Rendering frame by frame. Keep this tab visible.</p>
+              <p className="text-xs text-muted-foreground">
+                Rendering frame by frame. Keep this tab visible.
+                {timeLeftMs !== null && ` About ${formatSeconds(timeLeftMs)} left.`}
+              </p>
             </div>
           )}
         </div>
@@ -591,7 +687,7 @@ export function ExportDialog() {
   const close = () => setUi({ exportOpen: null })
   return (
     <Dialog open={kind !== null} onOpenChange={(open) => !open && close()}>
-      <DialogContent className="top-[max(1rem,8dvh)] max-h-[calc(100dvh-max(1rem,8dvh)-1rem)] translate-y-0 grid-cols-[minmax(0,1fr)] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="top-[max(1rem,8dvh)] max-h-[calc(100dvh-max(1rem,8dvh)-1rem)] translate-y-0 grid-cols-[minmax(0,1fr)] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Export</DialogTitle>
         </DialogHeader>

@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { copyDiagramAsPng } from '@/export/image-copy'
 import type { Engine } from '@/engine/engine'
 import { duplicateSelection, groupSelection, nudgeSelection, selectAll, ungroupSelection } from '@/store/actions'
 import { shortcutLetter } from '@/lib/keys'
@@ -62,6 +63,11 @@ export function useEditorShortcuts(engine: Engine) {
       }
       if (mod) return
 
+      if (event.altKey && event.shiftKey && event.code === 'KeyC') {
+        event.preventDefault()
+        copyDiagramAsPng()
+        return
+      }
       if (key === 'n' && !event.altKey) {
         event.preventDefault()
         openInsertAtPointer()

@@ -4,9 +4,9 @@ export const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test
  * Returns a key combination in the notation of the platform, for example "⇧⌘Z" on a Mac and "Ctrl+Shift+Z" on
  * other systems.
  */
-export function keyCombo(key: string, { mod = false, shift = false } = {}): string {
-  if (IS_MAC) return `${shift ? '⇧' : ''}${mod ? '⌘' : ''}${key}`
-  return [mod && 'Ctrl', shift && 'Shift', key].filter(Boolean).join('+')
+export function keyCombo(key: string, { mod = false, alt = false, shift = false } = {}): string {
+  if (IS_MAC) return `${alt ? '⌥' : ''}${shift ? '⇧' : ''}${mod ? '⌘' : ''}${key}`
+  return [mod && 'Ctrl', alt && 'Alt', shift && 'Shift', key].filter(Boolean).join('+')
 }
 
 const SHIFT_NAME = IS_MAC ? '⇧' : 'Shift'
@@ -20,6 +20,7 @@ export const KEYS = {
   copy: keyCombo('C', { mod: true }),
   cut: keyCombo('X', { mod: true }),
   paste: keyCombo('V', { mod: true }),
+  copyImage: keyCombo('C', { alt: true, shift: true }),
   duplicate: keyCombo('D', { mod: true }),
   group: keyCombo('G', { mod: true }),
   ungroup: keyCombo('G', { mod: true, shift: true }),
@@ -51,6 +52,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: KEYS.undo, label: 'Undo' },
       { keys: KEYS.redo, label: 'Redo' },
       { keys: [KEYS.copy, KEYS.cut, KEYS.paste].join(' / '), label: 'Copy, cut, paste' },
+      { keys: KEYS.copyImage, label: 'Copy the selection or the diagram as a PNG' },
       { keys: KEYS.duplicate, label: 'Duplicate the selection' },
       { keys: `${KEYS.group} / ${KEYS.ungroup}`, label: 'Group, ungroup' },
       { keys: KEYS.selectAll, label: 'Select all' },

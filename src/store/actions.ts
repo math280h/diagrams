@@ -283,6 +283,24 @@ export function selectionSubgraph() {
   }
 }
 
+/**
+ * Returns {@link selectionSubgraph} as a diagram of its own: a node whose parent is not part of it takes its absolute
+ * position and no parent.
+ */
+export function detachedSelection(): { nodes: DiagramNode[]; edges: DiagramEdge[] } {
+  const { nodes, edges } = selectionSubgraph()
+  const all = new Map(useDoc.getState().nodes.map((node) => [node.id, node]))
+  const included = new Set(nodes.map((node) => node.id))
+  return {
+    nodes: nodes.map((node) =>
+      node.parentId && !included.has(node.parentId)
+        ? { ...node, parentId: undefined, position: absolutePosition(node, all) }
+        : node,
+    ),
+    edges,
+  }
+}
+
 export function duplicateSelection() {
   const subgraph = selectionSubgraph()
   if (subgraph.nodes.length === 0) return

@@ -30,6 +30,9 @@ const MERMAID_SAMPLE = `flowchart LR
   pay -. no .-> mail[Email worker]
   orders --> cache[(Redis cache)]`
 
+const NO_DIAGRAM_IN_IMAGE =
+  'This image holds no diagram. Export it again with "Keep the diagram in the file" on, or open the JSON file.'
+
 interface ImportDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -44,12 +47,20 @@ export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogPro
   const [traceSource, setTraceSource] = useState('')
   const parsedTrace = useParsedTrace(traceSource)
 
-  const importJson = async () => {
+  const importFile = async () => {
     setError(null)
-    const file = await pickFile('application/json,.json')
+    const file = await pickFile('application/json,.json,image/png,.png,image/svg+xml,.svg')
     if (!file) return
     try {
-      onImported(parseDiagramJson(await file.text()))
+      const image = /\.(png|svg)$/i.test(file.name) || file.type.startsWith('image/')
+      if (!image) {
+        onImported(parseDiagramJson(await file.text()))
+        return
+      }
+      const { embeddedDiagramText } = await import('@/export/embed')
+      const text = await embeddedDiagramText(file)
+      if (!text) throw new Error(NO_DIAGRAM_IN_IMAGE)
+      onImported(parseDiagramJson(text))
     } catch (cause) {
       setError(errorMessage(cause))
     }
@@ -96,7 +107,7 @@ export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogPro
         <DialogHeader>
           <DialogTitle>Import a diagram</DialogTitle>
           <DialogDescription>
-            Paste a Mermaid flowchart or a trace, or open a JSON file exported from Diagrams.
+            Paste a Mermaid flowchart or a trace, or open a diagram file or an image exported from Diagrams.
           </DialogDescription>
         </DialogHeader>
         <Tabs value={tab} onValueChange={(value) => setTab(String(value))}>
@@ -108,7 +119,7 @@ export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogPro
               <Activity /> Trace
             </TabsTrigger>
             <TabsTrigger value="json">
-              <FileJson /> Diagram file (JSON)
+              <FileJson /> Diagram file
             </TabsTrigger>
           </TabsList>
           <TabsContent value="mermaid" className="mt-3 space-y-2">
@@ -130,10 +141,10 @@ export function ImportDialog({ open, onOpenChange, onImported }: ImportDialogPro
           <TabsContent value="json" className="mt-3">
             <Button
               variant="outline"
-              onClick={importJson}
+              onClick={importFile}
               className="h-40 w-full border-dashed font-normal text-muted-foreground hover:bg-accent dark:bg-transparent"
             >
-              Choose a .diagram.json file
+              Choose a .diagram.json file, or a PNG or SVG that holds a diagram
             </Button>
           </TabsContent>
         </Tabs>
