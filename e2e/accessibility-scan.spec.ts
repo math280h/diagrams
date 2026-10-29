@@ -63,6 +63,17 @@ for (const colorScheme of ['dark', 'light'] as const) {
       await expectNoViolations(page, 'present')
     })
 
+    test('passes the WCAG checks with the minimap and in Explore', async ({ page }) => {
+      await page.goto('/')
+      await copyTemplate(page, 'Multi-cloud')
+      await expect(page.locator('.react-flow__minimap')).toBeVisible()
+      await expectNoViolations(page, 'minimap')
+      await page.getByRole('button', { name: 'Present' }).click()
+      await page.getByRole('button', { name: 'Explore' }).click()
+      await expect(page.getByRole('navigation', { name: 'Neighbours' })).toBeVisible()
+      await expectNoViolations(page, 'explore')
+    })
+
     test('passes the WCAG checks on a phone', async ({ page }) => {
       await page.setViewportSize({ width: 390, height: 844 })
       await page.goto('/')
