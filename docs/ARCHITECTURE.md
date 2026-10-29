@@ -869,6 +869,16 @@ the handoff from the website, and updates from GitHub Releases.
   it as one undo step (`oneStep`) that saves at once. Just before the commit, `commitEdit` checks
   that the call is not cancelled and that the editor still shows the diagram. Otherwise the tool
   makes no change and says why, because a change to a diagram that no editor shows would not save.
+- `commitEdit` also writes what the call changed, in the words of the version history
+  (`describeChange`), and the runtime adds it to the result as a `Changes:` line, for example "Added 4 nodes and 2
+  connections." An agent then sees what its call did without a second read.
+- Agents check their own work without reading the whole diagram (`src/agent/graph-checks.ts`). `query_graph` lists
+  the incomers, the outgoers or the neighbours of a node with their edges, or the shortest chain of edges between two
+  nodes (`findEdgePath`, the same route that flows take). `lint_diagram` returns issues with the nodes and edges that
+  they name: `warning` for overlaps, nodes outside their group, nodes without edges, service, data and queue cards
+  without a technology line, flow steps that lost their target, and C4 diagrams (a card with a C4 type badge) with an
+  element without a badge or without a key; `info` for edges without a label, empty boundaries and cards with the same
+  label, which a template can have on purpose. A unit test keeps the templates free of warnings.
 - A tool that saves, removes or changes a diagram waits until the write reaches storage
   (`untilStored`): at once in the browser, after the file write on the desktop. A failed write
   becomes a tool error, so the agent can tell the user; the change stays in the editor. The

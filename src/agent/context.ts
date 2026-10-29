@@ -30,6 +30,8 @@ export interface HandlerContext {
   signal: AbortSignal
   /** The title of the tool that runs, which names the version that its change makes. */
   toolTitle: string
+  /** The sentences that describe the changes of the call. The runtime adds them to the result. */
+  changes: string[]
   /** Returns the id of the diagram that the editor shows, or `null` on other pages. */
   openDiagramId(): string | null
   /** Shows the diagram in the editor and resolves after the editor loads it. */

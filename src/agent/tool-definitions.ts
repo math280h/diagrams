@@ -350,6 +350,27 @@ export const TOOL_DEFINITIONS = {
     annotations: READ,
     timeoutMs: SHORT_MS,
   },
+  query_graph: {
+    title: 'Query graph',
+    description:
+      'Answer a question about the connections of a diagram without reading all of it: the nodes that have an edge to a node (incomers), the nodes it has an edge to (outgoers), all its neighbours, or the shortest chain of edges from one node to another (path). Each result names the edge with its label and protocol.',
+    input: z.object({
+      diagramId,
+      query: z.enum(['incomers', 'outgoers', 'neighbours', 'path']),
+      node: z.string().describe('The node: its id, ref or unique label.'),
+      to: z.string().optional().describe('With path: the node to reach, by id, ref or unique label.'),
+    }),
+    annotations: READ,
+    timeoutMs: SHORT_MS,
+  },
+  lint_diagram: {
+    title: 'Lint diagram',
+    description:
+      'Check a diagram for common problems before you show it: edges without a label, service and data cards without a technology line, overlapping nodes, nodes without edges, empty boundaries, cards with the same label, and flow steps whose node or edge is gone. For a C4 diagram it also checks that each element has a type badge and that the diagram has a key. Each issue names its nodes and edges, so you can fix them with update_elements.',
+    input: z.object({ diagramId }),
+    annotations: READ,
+    timeoutMs: SHORT_MS,
+  },
   search_icons: {
     title: 'Search icons',
     description:

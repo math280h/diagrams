@@ -46,7 +46,7 @@ References: [Terraform](references/terraform.md), [Compose](references/compose.m
 
 1. Call `get_diagram` with `detail: "full"`. Collect the source of each node from its links or its description.
 2. Read the code and make the two lists.
-3. Match the parts to the nodes. A node matches the part that its source names. A node without a source matches a part with the same name and kind; tell the user that it has no source.
+3. Match the parts to the nodes. To compare connections, call `query_graph` with `incomers` or `outgoers` for a node instead of reading all edges, and `path` to check that a request can reach a part. A node matches the part that its source names. A node without a source matches a part with the same name and kind; tell the user that it has no source.
 4. Report the differences in short lists. Nodes without a source that match nothing, such as people and outside services, are not differences, so leave them out.
    - **Missing from the diagram:** parts in the code that no node shows.
    - **Gone from the code:** nodes whose source names an address that the code no longer has.

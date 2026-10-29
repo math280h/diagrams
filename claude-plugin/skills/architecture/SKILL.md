@@ -12,7 +12,7 @@ The Diagrams app shows every change while you make it, and each call that change
 3. **Choose icons and boundaries.** Call `search_icons` once for each product the user names, for example "postgres", "lambda" or "kafka". If the system runs in a cloud account, a network or a cluster, call `list_boundary_kinds`.
 4. **Add everything in one call.** Send all nodes and edges in one `add_elements` call. Give each node a `ref` and use the refs in `from`, `to` and `parent`. Do not give `x` and `y`. The app places new nodes.
 5. **Lay it out.** After you add more than four nodes, call `layout_diagram`. Use `RIGHT` for request paths and `DOWN` for layered stacks.
-6. **Check your work.** Call `render_image` and look at the image. Fix overlaps, nodes outside their boundary and long labels with `update_elements`. Then render again.
+6. **Check your work.** Call `lint_diagram` and fix each `warning` with `update_elements`; label the edges it lists where the label helps the reader. Then call `render_image` and look at the image. Fix overlaps, nodes outside their boundary and long labels with `update_elements`. Then render again.
 
 ## Nodes
 
