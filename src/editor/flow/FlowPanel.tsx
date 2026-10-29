@@ -3,6 +3,7 @@ import {
   Copy,
   FileCode,
   FileInput,
+  Ellipsis,
   Play,
   Pause,
   Plus,
@@ -21,7 +22,9 @@ import { KEYS } from '@/lib/shortcut-keys'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
@@ -40,6 +43,10 @@ import { Field, Segmented, SwitchField, TextInput } from '@/editor/inspector/con
 import { IconPicker } from '@/editor/inspector/IconPicker'
 import { appendNodeToFlow } from './record'
 import { FLOW_PANEL_HEIGHT } from './layout'
+import { ResizeHandle } from '@/components/ResizeHandle'
+import { useElementWidth } from '@/lib/use-element-width'
+import { useWindowSize } from '@/lib/use-window-size'
+import { useSettings } from '@/store/settings-store'
 import { StepCount } from '@/components/StepCount'
 import { stepFlow } from '@/engine/flow/step'
 import { flowToMermaidSequence } from '@/export/sequence'
@@ -247,6 +254,66 @@ function FlowMenu({ flows, flow }: { flows: Flow[]; flow: Flow | undefined }) {
   )
 }
 
+const MIN_PANEL_HEIGHT_PX = 120
+const MAX_PANEL_WINDOW_SHARE = 0.6
+/** Below this toolbar width, the view switch and the recording controls move into the More menu. */
+const FULL_TOOLBAR_PX = 1180
+/** Below this toolbar width, the step count and the time readout hide. */
+const NARROW_TOOLBAR_PX = 720
+
+const VIEWS = [
+  { value: 'steps', label: 'Log' },
+  { value: 'sequence', label: 'Sequence' },
+  { value: 'timeline', label: 'Timeline' },
+] as const
+
+function MoreMenu({
+  view,
+  recording,
+  canRecord,
+  canAddSelected,
+}: {
+  view: (typeof VIEWS)[number]['value']
+  recording: boolean
+  canRecord: boolean
+  canAddSelected: boolean
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="More flow controls" />}>
+        <Ellipsis />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-52" side="top" align="end">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>View</DropdownMenuLabel>
+          <DropdownMenuRadioGroup value={view} onValueChange={(flowView) => setUi({ flowView })}>
+            {VIEWS.map((option) => (
+              <DropdownMenuRadioItem key={option.value} value={option.value}>
+                {option.label}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem disabled={!canRecord} onClick={() => setUi({ recording: !recording })}>
+          <span className={cn('mx-1 size-2 rounded-full', recording ? 'bg-destructive' : 'bg-muted-foreground')} />
+          {recording ? 'Stop recording' : 'Record steps'}
+        </DropdownMenuItem>
+        {canAddSelected && (
+          <DropdownMenuItem
+            onClick={() => {
+              const node = useDoc.getState().nodes.find((candidate) => candidate.selected)
+              if (node) appendNodeToFlow(node.id)
+            }}
+          >
+            <Plus /> Add the selected node
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 export function FlowPanel() {
   const engine = useEngine()
   const playback = usePlaybackState()
@@ -256,14 +323,34 @@ export function FlowPanel() {
   const recording = useUi((state) => state.recording)
   const flow = flows.find((candidate) => candidate.id === activeFlowId)
   const selectedNodes = useDoc((state) => state.nodes.filter((node) => node.selected).length)
+  const storedHeight = useSettings((state) => state.flowPanelHeight)
+  const setStoredHeight = useSettings((state) => state.setFlowPanelHeight)
+  const viewport = useWindowSize()
+  const toolbarRef = useRef<HTMLDivElement>(null)
+  const toolbarWidth = useElementWidth(toolbarRef)
+  const compact = toolbarWidth > 0 && toolbarWidth < FULL_TOOLBAR_PX
+  const narrow = toolbarWidth > 0 && toolbarWidth < NARROW_TOOLBAR_PX
+  const canAddSelected = !!flow && selectedNodes === 1 && !recording
+  const maxHeight = Math.max(MIN_PANEL_HEIGHT_PX, Math.round(viewport.height * MAX_PANEL_WINDOW_SHARE))
+  const height = Math.min(maxHeight, Math.max(MIN_PANEL_HEIGHT_PX, storedHeight ?? FLOW_PANEL_HEIGHT[view]))
 
   return (
-    <section
-      aria-label="Flow"
-      className="z-10 flex shrink-0 flex-col border-t bg-panel"
-      style={{ height: FLOW_PANEL_HEIGHT[view] }}
-    >
-      <div className="flex h-10 shrink-0 items-center gap-1 overflow-x-auto border-b px-1.5 [scrollbar-width:none] [&>*]:shrink-0">
+    <section aria-label="Flow" className="relative z-10 flex shrink-0 flex-col border-t bg-panel" style={{ height }}>
+      <ResizeHandle
+        label="Resize the flow panel"
+        orientation="horizontal"
+        value={height}
+        min={MIN_PANEL_HEIGHT_PX}
+        max={maxHeight}
+        defaultValue={FLOW_PANEL_HEIGHT[view]}
+        direction={-1}
+        onChange={setStoredHeight}
+        className="-top-0.5"
+      />
+      <div
+        ref={toolbarRef}
+        className="flex h-10 shrink-0 items-center gap-1 overflow-x-auto border-b px-1.5 [scrollbar-width:none] [&>*]:shrink-0"
+      >
         <FlowMenu flows={flows} flow={flow} />
         {flow && <FlowSettings flow={flow} />}
         {flow && <PathMenu flow={flow} />}
@@ -297,53 +384,51 @@ export function FlowPanel() {
         >
           <SkipForward />
         </Button>
-        <StepCount className="ml-1" />
-        <div className="mx-2 flex min-w-48 flex-1 items-center gap-3">
+        {!narrow && <StepCount className="ml-1" />}
+        <div className={cn('mx-2 flex flex-1 items-center gap-3', narrow ? 'min-w-24' : 'min-w-48')}>
           <Scrubber />
-          <TimeReadout />
+          {!narrow && <TimeReadout />}
         </div>
         <div className="mx-1 h-5 w-px bg-border" />
-        <Tooltip>
-          <TooltipTrigger
-            render={
+        {compact ? (
+          <MoreMenu view={view} recording={recording} canRecord={!!flow} canAddSelected={canAddSelected} />
+        ) : (
+          <>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant={recording ? 'secondary' : 'ghost'}
+                    size="sm"
+                    disabled={!flow}
+                    onClick={() => setUi({ recording: !recording })}
+                  />
+                }
+              >
+                <span className={cn('size-2 rounded-full', recording ? 'bg-destructive' : 'bg-muted-foreground')} />
+                {recording ? 'Recording' : 'Record'}
+              </TooltipTrigger>
+              <TooltipContent>
+                {recording
+                  ? 'Click nodes to add steps. Shift-click to reach a node at the same time. Press Esc to stop.'
+                  : 'Add steps by clicking nodes'}
+              </TooltipContent>
+            </Tooltip>
+            {canAddSelected && (
               <Button
-                variant={recording ? 'secondary' : 'ghost'}
+                variant="ghost"
                 size="sm"
-                disabled={!flow}
-                onClick={() => setUi({ recording: !recording })}
-              />
-            }
-          >
-            <span className={cn('size-2 rounded-full', recording ? 'bg-destructive' : 'bg-muted-foreground')} />
-            {recording ? 'Recording' : 'Record'}
-          </TooltipTrigger>
-          <TooltipContent>
-            {recording
-              ? 'Click nodes to add steps. Shift-click to reach a node at the same time. Press Esc to stop.'
-              : 'Add steps by clicking nodes'}
-          </TooltipContent>
-        </Tooltip>
-        {flow && selectedNodes === 1 && !recording && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              const node = useDoc.getState().nodes.find((candidate) => candidate.selected)
-              if (node) appendNodeToFlow(node.id)
-            }}
-          >
-            <Plus /> Add selected
-          </Button>
+                onClick={() => {
+                  const node = useDoc.getState().nodes.find((candidate) => candidate.selected)
+                  if (node) appendNodeToFlow(node.id)
+                }}
+              >
+                <Plus /> Add selected
+              </Button>
+            )}
+            <Segmented value={view} onChange={(flowView) => setUi({ flowView })} options={[...VIEWS]} />
+          </>
         )}
-        <Segmented
-          value={view}
-          onChange={(flowView) => setUi({ flowView })}
-          options={[
-            { value: 'steps', label: 'Log' },
-            { value: 'sequence', label: 'Sequence' },
-            { value: 'timeline', label: 'Timeline' },
-          ]}
-        />
         <Button
           variant="ghost"
           size="icon-sm"

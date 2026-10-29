@@ -78,7 +78,7 @@ function EditorShell() {
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
       <TopBar />
-      <main className="relative flex min-h-0 flex-1">
+      <main className="relative flex min-h-0 flex-1 max-md:flex-col">
         {sensitiveView && <SensitiveDataPanel />}
         <div className="relative flex min-w-0 flex-1 flex-col">
           <div className="relative min-h-0 flex-1">

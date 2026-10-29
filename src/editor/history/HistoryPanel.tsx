@@ -22,7 +22,7 @@ import type { VersionAuthor, VersionMeta } from '@/persistence/version-store'
 import { flushPendingSave } from '@/store/document'
 import { setUi } from '@/store/ui-store'
 import { COMMIT_PREVIEW_ID, MAX_VERSIONS, previewDiagram, previewVersion, useVersions } from '@/store/versions'
-import { INSPECTOR_WIDTH } from '@/editor/fit'
+import { SidePanel } from '@/editor/SidePanel'
 import { groupByDay, versionAuthor, versionSummary, versionTime } from './format'
 
 const CURRENT = 'current'
@@ -135,11 +135,7 @@ export function HistoryPanel() {
   }
 
   return (
-    <aside
-      aria-label="Version history"
-      className="z-10 flex shrink-0 flex-col overflow-hidden bg-panel max-md:absolute max-md:inset-x-0 max-md:bottom-0 max-md:h-[55%] max-md:border-t md:h-full md:w-(--inspector-width) md:border-l"
-      style={{ '--inspector-width': `${INSPECTOR_WIDTH}px` } as React.CSSProperties}
-    >
+    <SidePanel side="right" label="Version history">
       <header className="flex h-10 shrink-0 items-center gap-2 border-b pr-1 pl-3">
         <h2 className="text-[13px] font-medium">Version history</h2>
         <Button variant="ghost" size="icon-sm" className="ml-auto" aria-label="Close version history" onClick={close}>
@@ -198,6 +194,6 @@ export function HistoryPanel() {
       <p className="shrink-0 border-t px-3 py-2.5 text-xs leading-[18px] text-muted-foreground">
         Versions stay {storageCopy().versionsPlace}. The newest {MAX_VERSIONS} versions of each diagram are kept.
       </p>
-    </aside>
+    </SidePanel>
   )
 }

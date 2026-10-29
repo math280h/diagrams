@@ -8,7 +8,7 @@ import { selectOnly } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
 import { setUi } from '@/store/ui-store'
 import type { DiagramEdge, DiagramNode } from '@/model/types'
-import { INSPECTOR_WIDTH } from './fit'
+import { SidePanel } from './SidePanel'
 
 function edgeName(edgeId: string, nodes: readonly DiagramNode[], edges: readonly DiagramEdge[]): string {
   const edge = edges.find((candidate) => candidate.id === edgeId)
@@ -35,11 +35,7 @@ export function SensitiveDataPanel() {
       Number(b.kind === 'secret') - Number(a.kind === 'secret'),
   )
   return (
-    <aside
-      aria-label="Sensitive data"
-      className="z-10 flex shrink-0 flex-col overflow-hidden bg-panel max-md:absolute max-md:inset-x-0 max-md:top-0 max-md:h-[45%] max-md:border-b md:h-full md:w-(--inspector-width) md:border-r"
-      style={{ '--inspector-width': `${INSPECTOR_WIDTH}px` } as React.CSSProperties}
-    >
+    <SidePanel side="left" label="Sensitive data">
       <header className="flex h-10 shrink-0 items-center gap-2 border-b pr-1 pl-3">
         <ShieldAlert className="size-4 text-warn" aria-hidden />
         <h2 className="text-[13px] font-medium">Sensitive data</h2>
@@ -102,6 +98,6 @@ export function SensitiveDataPanel() {
           </ul>
         </>
       )}
-    </aside>
+    </SidePanel>
   )
 }
