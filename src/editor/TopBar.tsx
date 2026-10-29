@@ -6,6 +6,7 @@ import {
   Command,
   Search,
   Download,
+  Ellipsis,
   Film,
   FileCode,
   FileCode2,
@@ -31,6 +32,7 @@ import { Input } from '@/components/ui/input'
 import { Kbd } from '@/components/ui/kbd'
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -151,6 +153,52 @@ async function saveAsFile(navigateTo: (id: string) => void) {
   }
 }
 
+function PhoneMenu({
+  canUndo,
+  canRedo,
+  flowPanelOpen,
+  sensitiveView,
+  historyOpen,
+}: {
+  canUndo: boolean
+  canRedo: boolean
+  flowPanelOpen: boolean
+  sensitiveView: boolean
+  historyOpen: boolean
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label="More" className="sm:hidden" />}>
+        <Ellipsis />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuItem disabled={!canUndo} onClick={undo}>
+          <Undo2 /> Undo
+        </DropdownMenuItem>
+        <DropdownMenuItem disabled={!canRedo} onClick={redo}>
+          <Redo2 /> Redo
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={openInsertAtCenter}>
+          <Plus /> Insert a node
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuCheckboxItem
+          checked={flowPanelOpen}
+          onCheckedChange={(open) => setUi({ flowPanelOpen: open, ...(open ? {} : { recording: false }) })}
+        >
+          Flows
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem checked={sensitiveView} onCheckedChange={(open) => setUi({ sensitiveView: open })}>
+          Sensitive data
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem checked={historyOpen} onCheckedChange={(open) => setUi({ historyOpen: open })}>
+          Version history
+        </DropdownMenuCheckboxItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 export function TopBar() {
   const navigate = useNavigate()
   const id = useDoc((state) => state.id)
@@ -176,21 +224,23 @@ export function TopBar() {
       <div inert={previewing} className="flex min-w-0 items-center gap-1 max-sm:flex-1 inert:opacity-50">
         <NameField />
         <LinkedFileMark id={id} />
-        <Separator orientation="vertical" className="mx-1 h-5 max-sm:hidden data-vertical:self-center" />
-        <IconButton label="Undo" shortcut={KEYS.undo} onClick={undo} disabled={!canUndo}>
-          <Undo2 />
-        </IconButton>
-        <IconButton label="Redo" shortcut={KEYS.redo} onClick={redo} disabled={!canRedo}>
-          <Redo2 />
-        </IconButton>
-        <Separator orientation="vertical" className="mx-1 h-5 max-sm:hidden data-vertical:self-center" />
-        <Tooltip>
-          <TooltipTrigger render={<Button variant="ghost" aria-label="Insert" onClick={openInsertAtCenter} />}>
-            <Plus /> <span className="hidden md:inline">Insert</span>
-            <Kbd className="hidden md:inline-flex">N</Kbd>
-          </TooltipTrigger>
-          <TooltipContent>Insert a node</TooltipContent>
-        </Tooltip>
+        <div className="flex items-center gap-1 max-sm:hidden">
+          <Separator orientation="vertical" className="mx-1 h-5 data-vertical:self-center" />
+          <IconButton label="Undo" shortcut={KEYS.undo} onClick={undo} disabled={!canUndo}>
+            <Undo2 />
+          </IconButton>
+          <IconButton label="Redo" shortcut={KEYS.redo} onClick={redo} disabled={!canRedo}>
+            <Redo2 />
+          </IconButton>
+          <Separator orientation="vertical" className="mx-1 h-5 data-vertical:self-center" />
+          <Tooltip>
+            <TooltipTrigger render={<Button variant="ghost" aria-label="Insert" onClick={openInsertAtCenter} />}>
+              <Plus /> <span className="hidden md:inline">Insert</span>
+              <Kbd className="hidden md:inline-flex">N</Kbd>
+            </TooltipTrigger>
+            <TooltipContent>Insert a node</TooltipContent>
+          </Tooltip>
+        </div>
       </div>
 
       <div className="ml-auto flex items-center gap-1">
@@ -216,24 +266,39 @@ export function TopBar() {
           </Popover>
           <Separator orientation="vertical" className="mx-1 h-5 data-vertical:self-center" />
         </div>
-        <IconButton
-          label="Sensitive data"
-          pressed={sensitiveView}
-          onClick={() => setUi({ sensitiveView: !sensitiveView })}
-        >
-          <ShieldAlert />
-        </IconButton>
-        <IconButton label="Version history" pressed={historyOpen} onClick={() => setUi({ historyOpen: !historyOpen })}>
-          <History />
-        </IconButton>
-        <Button
-          variant={flowPanelOpen ? 'secondary' : 'ghost'}
-          aria-label="Flows"
-          aria-pressed={flowPanelOpen}
-          onClick={() => setUi({ flowPanelOpen: !flowPanelOpen })}
-        >
-          <Waypoints /> <span className="hidden md:inline">Flows</span>
-        </Button>
+        <div className="flex items-center gap-1 max-sm:hidden">
+          <IconButton
+            label="Sensitive data"
+            pressed={sensitiveView}
+            onClick={() => setUi({ sensitiveView: !sensitiveView })}
+          >
+            <ShieldAlert />
+          </IconButton>
+          <IconButton
+            label="Version history"
+            pressed={historyOpen}
+            onClick={() => setUi({ historyOpen: !historyOpen })}
+          >
+            <History />
+          </IconButton>
+          <Button
+            variant={flowPanelOpen ? 'secondary' : 'ghost'}
+            aria-label="Flows"
+            aria-pressed={flowPanelOpen}
+            onClick={() => setUi({ flowPanelOpen: !flowPanelOpen })}
+          >
+            <Waypoints /> <span className="hidden md:inline">Flows</span>
+          </Button>
+        </div>
+        <div inert={previewing} className="contents inert:opacity-50">
+          <PhoneMenu
+            canUndo={canUndo}
+            canRedo={canRedo}
+            flowPanelOpen={flowPanelOpen}
+            sensitiveView={sensitiveView}
+            historyOpen={historyOpen}
+          />
+        </div>
         <Button
           variant="ghost"
           aria-label="Present"

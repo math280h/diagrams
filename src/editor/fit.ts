@@ -1,8 +1,6 @@
 import { useReactFlow } from '@xyflow/react'
 import { useCallback } from 'react'
 
-export const INSPECTOR_WIDTH = 288
-
 export const NARROW_SCREEN_PX = 768
 export const NARROW_MIN_ZOOM = 0.5
 

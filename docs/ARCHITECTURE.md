@@ -154,6 +154,17 @@ The visual system lives in `DESIGN.md` at the repository root.
   frame on an export stage.
 - The canvas comes first. Panels open on demand: the insert menu on `N` or a double-click, the
   properties panel only for a selection, and the style menu in the top bar.
+- Every panel docks next to the canvas, so the canvas, its fit and the flow camera get only the free
+  area. The side panels (`SidePanel`: properties, version history, sensitive data) share one width,
+  and the flow panel has its own height. Both have a handle (`ResizeHandle`, a `separator` that also
+  takes the arrow keys, Home, End and Enter or a double-click for the default), and the settings keep
+  the sizes. Below 768 px the side panels stack above and below the canvas instead of over it. On a
+  1280 × 720 laptop with properties and flows open, the canvas had 47 % of the screen and the flow
+  toolbar scrolled out of view.
+- The flow toolbar measures its own width (`useElementWidth`). Below 1180 px the view switch,
+  Record and Add the selected node move into a More menu, and below 720 px the step count and the
+  time readout hide. On a phone (below 640 px) the top bar keeps the name, Present and Export, and
+  the editing controls move into a More menu, so that the name stays readable.
 - Metrics, meters, status dots and badges are optional. Templates use them only where they carry
   data, such as a connection pool size or a port.
 - Cards, shapes and text always draw above boundaries (`ELEMENT_Z`). React Flow puts a child node

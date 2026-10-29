@@ -8,10 +8,18 @@ interface SettingsState {
   theme: AppTheme
   ambientMotion: boolean
   inspectorOpen: boolean
+  /** The width of the panels at the sides of the editor canvas, in pixels. */
+  sidePanelWidth: number
+  /** The height of the flow panel in pixels. `null` takes the height of its view. */
+  flowPanelHeight: number | null
   setTheme: (theme: AppTheme) => void
   setAmbientMotion: (value: boolean) => void
   setInspectorOpen: (value: boolean) => void
+  setSidePanelWidth: (value: number) => void
+  setFlowPanelHeight: (value: number | null) => void
 }
+
+export const DEFAULT_SIDE_PANEL_WIDTH = 288
 
 export const useSettings = create<SettingsState>()(
   persist(
@@ -19,14 +27,24 @@ export const useSettings = create<SettingsState>()(
       theme: 'system',
       ambientMotion: true,
       inspectorOpen: true,
+      sidePanelWidth: DEFAULT_SIDE_PANEL_WIDTH,
+      flowPanelHeight: null,
       setTheme: (theme) => set({ theme }),
       setAmbientMotion: (ambientMotion) => set({ ambientMotion }),
       setInspectorOpen: (inspectorOpen) => set({ inspectorOpen }),
+      setSidePanelWidth: (sidePanelWidth) => set({ sidePanelWidth }),
+      setFlowPanelHeight: (flowPanelHeight) => set({ flowPanelHeight }),
     }),
     {
       name: 'dg:settings',
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ theme, ambientMotion, inspectorOpen }) => ({ theme, ambientMotion, inspectorOpen }),
+      partialize: ({ theme, ambientMotion, inspectorOpen, sidePanelWidth, flowPanelHeight }) => ({
+        theme,
+        ambientMotion,
+        inspectorOpen,
+        sidePanelWidth,
+        flowPanelHeight,
+      }),
     },
   ),
 )

@@ -8,7 +8,7 @@ import type { DiagramNode } from '@/model/types'
 import { useDoc } from '@/store/doc-store'
 import { useSettings } from '@/store/settings-store'
 import { useUi } from '@/store/ui-store'
-import { INSPECTOR_WIDTH } from '@/editor/fit'
+import { SidePanel } from '@/editor/SidePanel'
 import { MultiInspector } from './DiagramInspector'
 import { EdgeInspector } from './EdgeInspector'
 import { NodeInspector } from './NodeInspector'
@@ -74,11 +74,7 @@ export function Inspector() {
   }
 
   return (
-    <aside
-      aria-label="Properties"
-      className="z-10 flex shrink-0 flex-col overflow-hidden bg-panel max-md:absolute max-md:inset-x-0 max-md:bottom-0 max-md:h-[55%] max-md:border-t md:h-full md:w-(--inspector-width) md:border-l"
-      style={{ '--inspector-width': `${INSPECTOR_WIDTH}px` } as React.CSSProperties}
-    >
+    <SidePanel side="right" label="Properties">
       <header className="flex h-10 shrink-0 items-center gap-2 border-b pr-1 pl-3">
         <h2 className="min-w-0 truncate text-[13px] font-medium">{title}</h2>
         {kind && <span className="shrink-0 truncate text-xs text-muted-foreground">{kind}</span>}
@@ -93,6 +89,6 @@ export function Inspector() {
         </Button>
       </header>
       <ScrollArea className="min-h-0 flex-1">{content}</ScrollArea>
-    </aside>
+    </SidePanel>
   )
 }
