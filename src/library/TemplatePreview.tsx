@@ -31,7 +31,7 @@ function Preview({ template }: { template: Template }) {
   const [edges, setEdges] = useState<DiagramEdge[]>(initial.edges)
   const [activeFlowId, setActiveFlowId] = useState<string | null>(null)
   const resolvedTheme = useCanvasTheme(diagram.theme.mode)
-  useReadableFraming({ edges: initial.edges, paddingPx: 48, minZoom: 0.5, maxZoom: 1.1, once: true })
+  useReadableFraming({ edges: initial.edges, paddingPx: 48, minZoom: 0, maxZoom: 1.1, once: true, withText: true })
 
   const play = (flow: Flow) => {
     if (activeFlowId === flow.id) {

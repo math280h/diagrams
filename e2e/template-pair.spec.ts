@@ -7,5 +7,5 @@ test('copies the containers diagram with the C4 context and opens it from the sy
   await expect(page.getByLabel('Diagram name')).toHaveValue('Staybook: system context')
   await page.getByRole('button', { name: 'Open Staybook: containers' }).click()
   await expect(page.getByLabel('Diagram name')).toHaveValue('Staybook: containers')
-  await expect(page.locator('[data-editor-canvas] .react-flow__node')).toHaveCount(15)
+  await expect(page.locator('[data-editor-canvas] .react-flow__node')).toHaveCount(16)
 })

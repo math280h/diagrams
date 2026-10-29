@@ -1770,41 +1770,72 @@ const STAYBOOK_CONTAINERS_ID = 'template-staybook-containers'
 
 function c4Context(): Diagram {
   const b = new DiagramBuilder()
-  const guest = b.card(0, 0, { form: 'client', title: 'Guest', icon: 'user', lines: ['books stays'] })
-  const host = b.card(352, 0, { form: 'client', title: 'Host', icon: 'user', lines: ['lists homes'] })
-  const support = b.card(704, 0, { form: 'client', title: 'Support agent', icon: 'headset', lines: ['Staybook staff'] })
-  const staybook = b.card(352, 240, {
-    title: 'Staybook',
-    icon: 'house',
-    lines: ['web and mobile apps'],
-    details: details(
-      'Product team',
-      'Lets guests find and book homes, and lets hosts list their homes and get paid. Open it to see its containers.',
-      [],
-    ),
-    opens: STAYBOOK_CONTAINERS_ID,
+  const guest = b.card(0, 0, { form: 'client', title: 'Guest', icon: 'user', badge: 'Person', lines: ['books stays'] })
+  const host = b.card(352, 0, { form: 'client', title: 'Host', icon: 'user', badge: 'Person', lines: ['lists homes'] })
+  const support = b.card(704, 0, {
+    form: 'client',
+    title: 'Support agent',
+    icon: 'headset',
+    badge: 'Person',
+    lines: ['Staybook staff'],
   })
-  const email = b.card(0, 480, { form: 'external', title: 'Resend', icon: 'logo:resend', lines: ['email'] })
+  const staybook = b.card(
+    324,
+    240,
+    {
+      title: 'Staybook',
+      icon: 'house',
+      badge: 'Software system',
+      lines: ['web and mobile apps'],
+      details: details(
+        'Product team',
+        'Lets guests find and book homes, and lets hosts list their homes and get paid. Open it to see its containers.',
+        [],
+      ),
+      opens: STAYBOOK_CONTAINERS_ID,
+    },
+    272,
+  )
+  const email = b.card(0, 480, {
+    form: 'external',
+    title: 'Resend',
+    icon: 'logo:resend',
+    badge: 'External system',
+    lines: ['email'],
+  })
   const payments = b.card(352, 480, {
     form: 'external',
     title: 'Stripe',
     icon: 'logo:stripe',
+    badge: 'External system',
     lines: ['payments, payouts'],
   })
-  const identity = b.card(704, 480, { form: 'external', title: 'Auth0', icon: 'logo:auth0', lines: ['sign-in'] })
+  const identity = b.card(704, 480, {
+    form: 'external',
+    title: 'Auth0',
+    icon: 'logo:auth0',
+    badge: 'External system',
+    lines: ['sign-in'],
+  })
 
   const edge = { traffic: STILL, markerEnd: 'arrow' } as const
-  const book = b.edge(guest, staybook, { ...edge, label: 'books stays', protocol: 'http' })
-  const list = b.edge(host, staybook, { ...edge, label: 'lists homes', protocol: 'http' })
-  b.edge(support, staybook, { ...edge, label: 'helps guests', protocol: 'http' })
-  const charge = b.edge(staybook, payments, { ...edge, label: 'charges cards, pays hosts', protocol: 'http' })
-  b.edge(staybook, identity, { ...edge, label: 'signs users in', protocol: 'http' })
-  const send = b.edge(staybook, email, { ...edge, label: 'sends email', protocol: 'http' })
+  const book = b.edge(guest, staybook, { ...edge, label: 'books stays', protocol: 'none' })
+  const list = b.edge(host, staybook, { ...edge, label: 'lists homes', protocol: 'none' })
+  b.edge(support, staybook, { ...edge, label: 'helps guests', protocol: 'none' })
+  const charge = b.edge(staybook, payments, { ...edge, label: 'charges cards, pays hosts', protocol: 'none' })
+  b.edge(staybook, identity, { ...edge, label: 'signs users in', protocol: 'none' })
+  const send = b.edge(staybook, email, { ...edge, label: 'sends email', protocol: 'none' })
   const deliver = b.edge(email, guest, { ...edge, label: 'emails', protocol: 'none', stroke: 'dashed' })
 
   b.text(0, -144, { text: 'Staybook: system context', size: 'xl' })
   b.text(0, -96, {
     text: 'Who uses Staybook and the systems it needs. Open Staybook to see its containers.',
+    size: 'sm',
+    tone: 'muted',
+  })
+
+  b.text(0, 624, {
+    text: 'Key: the badge on each box names its type. Dashed boxes are outside Staybook. Each arrow says what one does with the other, and the dashed arrow is an email.',
     size: 'sm',
     tone: 'muted',
   })
@@ -1836,69 +1867,118 @@ function c4Context(): Diagram {
 function c4Containers(): Diagram {
   const b = new DiagramBuilder()
   const system = b.group(0, 160, 1032, 784, boundary('general.system', 'Staybook', 'containers'))
-  const guest = b.card(64, -128, { form: 'client', title: 'Guest', icon: 'user', lines: ['books stays'] })
-  const host = b.card(416, -128, { form: 'client', title: 'Host', icon: 'user', lines: ['lists homes'] })
+  const guest = b.card(64, -128, {
+    form: 'client',
+    title: 'Guest',
+    icon: 'user',
+    badge: 'Person',
+    lines: ['books stays'],
+  })
+  const host = b.card(416, -128, {
+    form: 'client',
+    title: 'Host',
+    icon: 'user',
+    badge: 'Person',
+    lines: ['lists homes'],
+  })
   const web = b.card(
     64,
     96,
-    { form: 'client', title: 'Web app', icon: 'logo:nextdotjs', lines: ['Next.js'] },
+    { form: 'client', title: 'Web app', icon: 'logo:nextdotjs', badge: 'Container', lines: ['Next.js'] },
     216,
     system,
   )
   const mobile = b.card(
     416,
     96,
-    { form: 'client', title: 'Mobile app', icon: 'smartphone', lines: ['iOS and Android'] },
+    { form: 'client', title: 'Mobile app', icon: 'smartphone', badge: 'Container', lines: ['iOS and Android'] },
     216,
     system,
   )
-  const api = b.card(416, 288, { title: 'API', icon: 'logo:go', lines: ['Go, REST'] }, 216, system)
+  const api = b.card(416, 288, { title: 'API', icon: 'logo:go', badge: 'Container', lines: ['Go, REST'] }, 216, system)
   const database = b.card(
     64,
     480,
-    { form: 'datastore', title: 'Database', icon: 'logo:postgresql', lines: ['bookings, listings'] },
+    {
+      form: 'datastore',
+      title: 'Database',
+      icon: 'logo:postgresql',
+      badge: 'Container',
+      lines: ['PostgreSQL', 'bookings, listings'],
+    },
     216,
     system,
   )
   const search = b.card(
     416,
     480,
-    { form: 'datastore', title: 'Search', icon: 'logo:elasticsearch', lines: ['listings index'] },
+    {
+      form: 'datastore',
+      title: 'Search',
+      icon: 'logo:elasticsearch',
+      badge: 'Container',
+      lines: ['Elasticsearch', 'listings index'],
+    },
     216,
     system,
   )
   const bus = b.card(
     768,
     480,
-    { form: 'queue', title: 'booking.confirmed', icon: 'logo:rabbitmq', lines: ['RabbitMQ'] },
+    { form: 'queue', title: 'booking.confirmed', icon: 'logo:rabbitmq', badge: 'Container', lines: ['RabbitMQ'] },
+    248,
+    system,
+  )
+  const notifier = b.card(
+    768,
+    672,
+    { title: 'Notifier', icon: 'logo:nodedotjs', badge: 'Container', lines: ['Node 22'] },
     216,
     system,
   )
-  const notifier = b.card(768, 672, { title: 'Notifier', icon: 'logo:nodedotjs', lines: ['Node 22'] }, 216, system)
-  const identity = b.card(1120, 256, { form: 'external', title: 'Auth0', icon: 'logo:auth0', lines: ['sign-in'] })
+  const identity = b.card(1120, 256, {
+    form: 'external',
+    title: 'Auth0',
+    icon: 'logo:auth0',
+    badge: 'External system',
+    lines: ['sign-in'],
+  })
   const payments = b.card(1120, 448, {
     form: 'external',
     title: 'Stripe',
     icon: 'logo:stripe',
+    badge: 'External system',
     lines: ['payments, payouts'],
   })
-  const email = b.card(1120, 832, { form: 'external', title: 'Resend', icon: 'logo:resend', lines: ['email'] })
+  const email = b.card(1120, 832, {
+    form: 'external',
+    title: 'Resend',
+    icon: 'logo:resend',
+    badge: 'External system',
+    lines: ['email'],
+  })
 
   const edge = { traffic: STILL, markerEnd: 'arrow' } as const
-  const open = b.edge(guest, web, { ...edge, label: 'HTTPS' })
-  b.edge(host, mobile, { ...edge, label: 'uses', protocol: 'none' })
-  const call = b.edge(web, api, { ...edge, label: 'JSON over HTTPS', protocol: 'http' }, ['right', 'left'])
-  b.edge(mobile, api, { ...edge, label: 'JSON over HTTPS', protocol: 'http' })
-  const sql = b.edge(api, database, { ...edge, label: 'SQL' }, ['bottom', 'top'])
-  b.edge(api, search, { ...edge, label: 'query', protocol: 'data' }, ['bottom', 'top'])
-  const publish = b.edge(api, bus, { ...edge, label: 'publish' }, ['bottom', 'top'])
-  const consume = b.edge(bus, notifier, { ...edge, label: 'consume' })
-  const charge = b.edge(api, payments, { ...edge, label: 'HTTPS' })
-  b.edge(mobile, identity, { ...edge, label: 'sign-in, OIDC', protocol: 'http' })
-  const send = b.edge(notifier, email, { ...edge, label: 'HTTPS' })
+  const open = b.edge(guest, web, { ...edge, label: 'books stays, HTTPS' })
+  b.edge(host, mobile, { ...edge, label: 'lists homes', protocol: 'none' })
+  const call = b.edge(web, api, { ...edge, label: 'calls, JSON over HTTPS', protocol: 'http' }, ['right', 'left'])
+  b.edge(mobile, api, { ...edge, label: 'calls, JSON over HTTPS', protocol: 'http' })
+  const sql = b.edge(api, database, { ...edge, label: 'reads and writes, SQL' }, ['bottom', 'top'])
+  b.edge(api, search, { ...edge, label: 'searches listings', protocol: 'data' }, ['bottom', 'top'])
+  const publish = b.edge(api, bus, { ...edge, label: 'publishes bookings' }, ['bottom', 'top'])
+  const consume = b.edge(bus, notifier, { ...edge, label: 'consumes' })
+  const charge = b.edge(api, payments, { ...edge, label: 'charges cards, HTTPS' })
+  b.edge(mobile, identity, { ...edge, label: 'signs users in, OIDC', protocol: 'http' })
+  const send = b.edge(notifier, email, { ...edge, label: 'sends email, HTTPS' })
 
   b.text(0, -288, { text: 'Staybook: containers', size: 'xl' })
   b.text(0, -240, { text: 'The apps, services and data stores inside Staybook.', size: 'sm', tone: 'muted' })
+
+  b.text(0, 1008, {
+    text: 'Key: the badge on each box names its type. Dashed boxes are outside Staybook. The colour of a line shows its protocol, and each label says what the call does.',
+    size: 'sm',
+    tone: 'muted',
+  })
 
   const flow = b.flow(
     'Book a stay',

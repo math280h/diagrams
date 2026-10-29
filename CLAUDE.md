@@ -24,6 +24,7 @@ reasons behind it.
 | App icon             | `pnpm app-icon` (renders `build/icon.png` and `icon.ico`)                                      |
 | README image         | `pnpm readme-gif` (records the editor while a flow plays to `docs/images/editor.gif`)          |
 | Diagram format files | `node scripts/format-sample.mjs` (or `<git ref>`; see "Change the diagram format")             |
+| Template icons       | `node scripts/template-icons.mjs` (after a template or icon set change)                        |
 
 Run typecheck, lint, format:check, test and e2e before you report work as done. For changes to `electron/`,
 `src/desktop/` or `src/agent/`, also run `pnpm desktop:build` and `pnpm e2e:desktop`.
