@@ -4,8 +4,16 @@ import { copyTemplate } from './helpers'
 
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 
+// WCAG 1.4.3 does not apply to text of inactive parts, such as the nodes that Explore dims on purpose.
+const DIMMED_IN_EXPLORE = [
+  '.dg-canvas[data-exploring] .react-flow__node:not(.dg-explore-near)',
+  '.dg-canvas[data-exploring] .react-flow__edge:not(.dg-explore-near)',
+]
+
 async function expectNoViolations(page: Page, screen: string) {
-  const { violations } = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze()
+  let builder = new AxeBuilder({ page }).withTags(WCAG_TAGS)
+  for (const selector of DIMMED_IN_EXPLORE) builder = builder.exclude(selector)
+  const { violations } = await builder.analyze()
   const found = violations.map(
     (violation) =>
       `${screen}: ${violation.id} (${violation.impact}) ${violation.help} at ${violation.nodes

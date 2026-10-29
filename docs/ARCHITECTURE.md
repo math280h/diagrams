@@ -1046,7 +1046,9 @@ images current without a person. `main.mjs` does the work in Node, and `lib.mjs`
   screen.
 - `e2e/accessibility-scan.spec.ts` runs axe (`@axe-core/playwright`, the WCAG 2.2 A and AA rules) over the library, a
   template page, the editor with a selection and the flow panel, the command menu, the insert menu, the shortcut
-  sheet, the image export, the minimap, Present with Explore, and the phone library and editor, in both themes. Any violation fails the end-to-end
+  sheet, the image export, the minimap, Present with Explore, and the phone library and editor, in both themes. The scan
+  of Explore leaves out the nodes and edges that Explore dims on purpose, because WCAG 1.4.3 does not apply to
+  inactive parts, and their text is faded to 16 % while the fade runs. Any violation fails the end-to-end
   run. The first scan found nodes with a label and no role on read-only canvases (every node now has the `group`
   role), controls whose label did not hold their visible text (the zoom readout, Insert, the path pickers and the log
   rows, which now take their name from their text), a padding slider without a name, and a scrolling list that the
