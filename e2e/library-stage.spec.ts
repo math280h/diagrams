@@ -56,3 +56,15 @@ test('draws the templates on the first visit with the small icon file and no ful
   await page.waitForTimeout(1500)
   expect(new Set(iconFiles)).toEqual(new Set(['templates.json']))
 })
+
+test('shows how diagrams live with code on the first visit', async ({ page }) => {
+  await page.goto('/')
+  const section = page.getByRole('region', { name: 'Keep diagrams with your code' })
+  await expect(section.getByRole('link', { name: /Set up the action/ })).toHaveAttribute(
+    'href',
+    /#keep-diagram-images-up-to-date-with-github-actions$/,
+  )
+  const sequence = section.getByLabel('The start of the sequence diagram of the template above')
+  await expect(sequence).toContainText('sequenceDiagram')
+  await expect(sequence).toContainText('->>')
+})

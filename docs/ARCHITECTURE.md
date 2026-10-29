@@ -141,7 +141,12 @@ The visual system lives in `DESIGN.md` at the repository root.
   a template of 40 to 60 nodes fitted whole read as a dark smear. The template page opens on the
   whole diagram with its text nodes (`withText`), so the user sees the whole system and its title
   first; a page that opened on a crop around one node hid the rest of the system, and a framing
-  without the text nodes cut the title. The first flow plays on hover and focus. On the first visit, the Order system flow plays in a loop in a full-width stage, with a Pause button,
+  without the text nodes cut the title. The first flow plays on hover and focus.
+- After the templates, the first visit shows how diagrams live with code (`DocsAsCode`): the GitHub Action that
+  renders diagram files and comments on pull requests, flows as Mermaid sequence diagrams, and share links that carry
+  the diagram. The sequence card shows the first messages of the featured template's flow, made by
+  `flowToMermaidSequence` when the page loads, so it shows the real export and stays in step with it. The copy names
+  no other product: it says what a team keeps (a JSON file in its repository, no account, no hosted copy). On the first visit, the Order system flow plays in a loop in a full-width stage, with a Pause button,
   because motion that starts by itself and lasts more than five seconds needs a way to stop it (WCAG 2.2.2). Pause
   holds the frame; with reduced motion the stage waits for Play. Static
   wireframe thumbnails hid the motion. Cards that cropped around one node showed a fragment with

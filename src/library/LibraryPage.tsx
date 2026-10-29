@@ -65,6 +65,7 @@ import type { DiagramMeta } from '@/persistence/repository'
 import { storageCopy } from '@/persistence/storage-copy'
 import { useLibrary } from '@/store/library-store'
 import { TEMPLATES, type Template } from '@/templates'
+import { DocsAsCode } from './DocsAsCode'
 import { LivePreview } from './LivePreview'
 import { toast } from 'sonner'
 import { errorMessage } from '@/lib/error-message'
@@ -394,6 +395,7 @@ export function LibraryPage() {
                   ))}
                 </div>
               </section>
+              <DocsAsCode diagram={featured?.preview} className="mt-12" />
               <AgentIntro className="mt-12" />
             </>
           ) : (
