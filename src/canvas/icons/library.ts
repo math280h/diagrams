@@ -4,6 +4,8 @@ import azureUrl from './data/azure.json?url'
 import gcpUrl from './data/gcp.json?url'
 import k8sUrl from './data/k8s.json?url'
 import logosUrl from './data/logos.json?url'
+import templatesUrl from './data/templates.json?url'
+import type { IconSetData } from './subset'
 
 export const ICON_SOURCES = [
   { id: 'aws', label: 'AWS' },
@@ -14,6 +16,15 @@ export const ICON_SOURCES = [
 ] as const
 
 export type IconSourceId = (typeof ICON_SOURCES)[number]['id']
+
+/** The file of each icon set in `src/canvas/icons/data`. */
+export const ICON_SET_FILES: Record<IconSourceId, string> = {
+  aws: 'aws.json',
+  azure: 'azure.json',
+  gcp: 'gcp.json',
+  k8s: 'k8s.json',
+  logo: 'logos.json',
+}
 
 const SET_URLS: Record<IconSourceId, string> = {
   aws: awsUrl,
@@ -53,6 +64,8 @@ export interface IconSet {
 
 const sets = new Map<IconSourceId, IconSet>()
 const pending = new Map<IconSourceId, Promise<IconSet>>()
+const templateEntries = new Map<string, IconEntry>()
+let templateSets: Promise<Map<IconSourceId, IconSet>> | null = null
 
 const SOURCE_IDS: ReadonlySet<string> = new Set(ICON_SOURCES.map((source) => source.id))
 
@@ -68,7 +81,7 @@ export function loadIconSet(source: IconSourceId): Promise<IconSet> {
     job = fetch(SET_URLS[source])
       .then((response) => response.json() as Promise<{ entries: IconEntry[]; art?: Record<string, IconArt> }>)
       .then(({ entries, art = {} }) => {
-        const set: IconSet = { source, entries, art, byId: new Map(entries.map((entry) => [entry.id, entry])) }
+        const set = toIconSet(source, { entries, art })
         sets.set(source, set)
         return set
       })
@@ -76,6 +89,45 @@ export function loadIconSet(source: IconSourceId): Promise<IconSet> {
     pending.set(source, job)
   }
   return job
+}
+
+function toIconSet(source: IconSourceId, { entries, art = {} }: IconSetData): IconSet {
+  return { source, entries, art, byId: new Map(entries.map((entry) => [entry.id, entry])) }
+}
+
+function loadTemplateSets(): Promise<Map<IconSourceId, IconSet>> {
+  if (!templateSets) {
+    const job = fetch(templatesUrl)
+      .then((response) => response.json() as Promise<Partial<Record<IconSourceId, IconSetData>>>)
+      .then((data) => {
+        const result = new Map<IconSourceId, IconSet>()
+        for (const [source, set] of Object.entries(data) as [IconSourceId, IconSetData][]) {
+          result.set(source, toIconSet(source, set))
+          for (const entry of set.entries) templateEntries.set(entry.id, entry)
+        }
+        return result
+      })
+    job.catch(() => {
+      templateSets = null
+    })
+    templateSets = job
+  }
+  return templateSets
+}
+
+/**
+ * Returns a set that holds the icon: the full set if the app has it, or else the small set of the icons that the
+ * templates use. Only an icon outside the templates loads its full set.
+ *
+ * @returns `null` for a Lucide icon name.
+ */
+export async function loadSetOfIcon(name: string): Promise<IconSet | null> {
+  const source = iconSourceOf(name)
+  if (!source) return null
+  const full = sets.get(source)
+  if (full) return full
+  const template = (await loadTemplateSets().catch(() => null))?.get(source)
+  return template?.byId.has(name) ? template : loadIconSet(source)
 }
 
 /** Adds an icon set that the app has without a fetch, such as the icons that an exported page carries. */
@@ -91,7 +143,7 @@ export function loadIconSets(): Promise<IconSet[]> {
 /** Returns the entry of an icon name if the app has loaded its set. */
 export function iconEntry(name: string): IconEntry | undefined {
   const source = iconSourceOf(name)
-  return source ? sets.get(source)?.byId.get(name) : undefined
+  return source ? (sets.get(source)?.byId.get(name) ?? templateEntries.get(name)) : undefined
 }
 
 const artUrls = new Map<string, string>()

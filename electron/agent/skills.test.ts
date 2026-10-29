@@ -59,8 +59,8 @@ describe('skills', () => {
     const folder = path.join(import.meta.dirname, '../../src/canvas/icons/data')
     const ids = new Set(
       readdirSync(folder).flatMap((name) => {
-        const data = JSON.parse(readFileSync(path.join(folder, name), 'utf8')) as { entries: { id: string }[] }
-        return data.entries.map((entry) => entry.id)
+        const data = JSON.parse(readFileSync(path.join(folder, name), 'utf8')) as { entries?: { id: string }[] }
+        return data.entries?.map((entry) => entry.id) ?? []
       }),
     )
     for (const text of Object.values(files)) {

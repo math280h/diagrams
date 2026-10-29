@@ -12,6 +12,8 @@ export interface FramingOptions {
   bottomInsetPx?: number
   /** If true, the hook frames the diagram one time and does not follow later size changes. */
   once?: boolean
+  /** If true, the whole diagram includes its text nodes, such as the title. */
+  withText?: boolean
 }
 
 /**
@@ -27,6 +29,7 @@ export function useReadableFraming({
   maxZoom,
   bottomInsetPx = 0,
   once = false,
+  withText = false,
 }: FramingOptions) {
   const initialized = useNodesInitialized()
   const store = useStoreApi()
@@ -54,7 +57,7 @@ export function useReadableFraming({
   useEffect(() => {
     if (!fontsReady || !initialized || measuredSize === 0 || width === 0 || height === 0 || (once && framed)) return
     const { nodes, nodeLookup } = store.getState()
-    const framedNodes = nodes.filter((node) => node.type !== 'text')
+    const framedNodes = withText ? nodes : nodes.filter((node) => node.type !== 'text')
     const bounds = getNodesBounds(framedNodes.length > 0 ? framedNodes : nodes, { nodeLookup })
     const rects = new Map<string, Rect>()
     for (const [id, node] of nodeLookup) {
@@ -92,6 +95,7 @@ export function useReadableFraming({
     maxZoom,
     bottomInsetPx,
     once,
+    withText,
     framed,
   ])
 

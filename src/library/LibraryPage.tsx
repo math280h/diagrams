@@ -89,13 +89,16 @@ function useHoverPlay() {
 /** The distance below and above the visible part of the library at which a preview starts to mount. */
 const PREVIEW_MOUNT_MARGIN = '100% 0px'
 
-function PreviewFrame({ diagram, playing }: { diagram: Diagram; playing: boolean }) {
+/** The lowest zoom of a template card. A larger template shows its busiest part instead of all of it. */
+const TEMPLATE_CARD_MIN_ZOOM = 0.45
+
+function PreviewFrame({ diagram, playing, minZoom }: { diagram: Diagram; playing: boolean; minZoom: number }) {
   const [ref, near] = useInView(PREVIEW_MOUNT_MARGIN, true)
   const mounted = useIdleMount(near)
   return (
     <div ref={ref} className="relative aspect-[16/10] w-full overflow-hidden border-b bg-background">
       <div className="absolute inset-0">
-        {mounted && <LivePreview diagram={diagram} playing={playing} minZoom={0} paddingPx={16} />}
+        {mounted && <LivePreview diagram={diagram} playing={playing} minZoom={minZoom} paddingPx={16} />}
       </div>
     </div>
   )
@@ -119,7 +122,7 @@ function DiagramCard({ meta, onRename, onDelete }: { meta: DiagramMeta; onRename
     >
       <Link to="/d/$diagramId" params={{ diagramId: meta.id }} tabIndex={-1} aria-hidden className="block">
         {diagram ? (
-          <PreviewFrame diagram={diagram} playing={playing} />
+          <PreviewFrame diagram={diagram} playing={playing} minZoom={0} />
         ) : (
           <div className="grid aspect-[16/10] place-items-center border-b text-xs text-muted-foreground">
             This diagram cannot be read
@@ -221,7 +224,7 @@ function TemplateCard({ template, diagram }: { template: Template; diagram: Diag
       params={{ templateId: template.id }}
       className="group flex flex-col overflow-hidden rounded-xl border bg-card text-left transition-colors hover:border-foreground/25 focus-visible:border-foreground/25"
     >
-      <PreviewFrame diagram={diagram} playing={playing} />
+      <PreviewFrame diagram={diagram} playing={playing} minZoom={TEMPLATE_CARD_MIN_ZOOM} />
       <div className="px-4 py-3">
         <p className="text-[15px] font-medium tracking-[-0.01em]">{template.name}</p>
         <p className="mt-0.5 text-[13px] leading-5 text-pretty text-muted-foreground">{template.description}</p>

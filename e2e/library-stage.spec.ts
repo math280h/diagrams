@@ -42,3 +42,17 @@ test('holds the playing template while the tab is in the background', async ({ p
   await setHidden(false)
   await expect(caption).not.toHaveText(held!, { timeout: 6000 })
 })
+
+test('draws the templates on the first visit with the small icon file and no full icon set', async ({ page }) => {
+  const iconFiles: string[] = []
+  page.on('request', (request) => {
+    if (request.resourceType() !== 'fetch') return
+    const name = new URL(request.url()).pathname.split('/').pop() ?? ''
+    if (name.endsWith('.json')) iconFiles.push(name.replace(/-[\w-]{8}\.json$/, '.json'))
+  })
+  await page.goto('/')
+  await page.getByRole('link', { name: /C4 containers/ }).scrollIntoViewIfNeeded()
+  await expect(page.locator('.dg-preview .react-flow__node img').first()).toBeVisible({ timeout: 10_000 })
+  await page.waitForTimeout(1500)
+  expect(new Set(iconFiles)).toEqual(new Set(['templates.json']))
+})

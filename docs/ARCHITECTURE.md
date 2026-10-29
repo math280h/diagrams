@@ -131,11 +131,14 @@ The visual system lives in `DESIGN.md` at the repository root.
   `evaluateFlow`, so exports stay frame exact. When one edge step follows another at a different
   point of the same node, the token moves along the node outline (`perimeterPath`) instead of a
   jump. Edge labels hide while the token dot or the token label passes over them.
-- The library shows the product working. Cards are read-only canvases fitted to the whole
-  diagram, at any zoom. The featured stage and the template page frame the diagram so that text
-  stays readable (`readableViewport`): a diagram that fits at zoom 0.5 or more shows whole, a
-  larger one crops around its node with the most connections. The first flow plays on hover and
-  focus. On the first visit, the Order system flow plays in a loop in a full-width stage, with a Pause button,
+- The library shows the product working. Cards are read-only canvases. A card of the user's own
+  diagram fits the whole diagram, at any zoom. A template card and the featured stage frame the
+  diagram so that text stays readable (`readableViewport`): a diagram that fits at zoom 0.45 (cards)
+  or 0.5 (stage) shows whole, a larger one crops around its node with the most connections, because
+  a template of 40 to 60 nodes fitted whole read as a dark smear. The template page opens on the
+  whole diagram with its text nodes (`withText`), so the user sees the whole system and its title
+  first; a page that opened on a crop around one node hid the rest of the system, and a framing
+  without the text nodes cut the title. The first flow plays on hover and focus. On the first visit, the Order system flow plays in a loop in a full-width stage, with a Pause button,
   because motion that starts by itself and lasts more than five seconds needs a way to stop it (WCAG 2.2.2). Pause
   holds the frame; with reduced motion the stage waits for Play. Static
   wireframe thumbnails hid the motion. Cards that cropped around one node showed a fragment with
@@ -191,6 +194,11 @@ An icon name is either a Lucide name (`database`) or a set icon with a prefix: `
 - The sets come from the official sources: the AWS Architecture Icons package, the Azure
   architecture icons, the Google Cloud product icons, the Kubernetes icon set and Simple Icons for
   software logos. The licences and usage terms are in `THIRD-PARTY-NOTICES.md`.
+- The templates use about 50 of the set icons. `src/canvas/icons/data/templates.json` holds only
+  those (`node scripts/template-icons.mjs` writes it, and a unit test fails when it no longer
+  matches the templates or the sets). The icon cache takes an icon from it before it fetches a full
+  set (`loadSetOfIcon`), so the library draws all its previews with about 35 KB gzip of icons, not
+  the about 265 KB gzip of the five sets. The editor still loads the full sets for search.
 - `scripts/icons/catalog.mjs` lists the curated entries: product name, source image, card form,
   aliases for import matching and search keywords. `pnpm icons` downloads the packages into
   `node_modules/.cache`, optimizes the SVG files with SVGO and writes one JSON file per set to

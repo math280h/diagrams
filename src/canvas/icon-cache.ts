@@ -46,7 +46,7 @@ import {
 } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { iconComponent, iconImageUrls } from './icons/components'
-import { iconSourceOf, loadIconSet } from './icons/library'
+import { iconSourceOf, loadSetOfIcon } from './icons/library'
 
 export const loaded = new Map<string, ComponentType<LucideProps>>(
   Object.entries({
@@ -133,12 +133,10 @@ function decodeImage(url: string): Promise<void> {
 }
 
 async function loadSetIcon(name: string): Promise<void> {
-  const source = iconSourceOf(name)
-  if (!source) return
-  const set = await loadIconSet(source)
-  const entry = set.byId.get(name)
-  const component = entry ? iconComponent(set, entry) : null
-  if (!entry || !component) return
+  const set = await loadSetOfIcon(name)
+  const entry = set?.byId.get(name)
+  const component = set && entry ? iconComponent(set, entry) : null
+  if (!set || !entry || !component) return
   await Promise.all(iconImageUrls(set, entry).map(decodeImage))
   loaded.set(name, component)
   notify()
