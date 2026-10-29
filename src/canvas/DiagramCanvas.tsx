@@ -29,6 +29,7 @@ import { ShapeNode } from './nodes/ShapeNode'
 import { TextNode } from './nodes/TextNode'
 import { ViewportLayerPortal } from './portal'
 import { LevelOfDetail } from './level-of-detail'
+import { StepNumbers } from './StepNumbers'
 import { ZoomProperty } from './zoom'
 
 function nodeHasDetails(node: DiagramNode): boolean {
@@ -170,6 +171,7 @@ export function DiagramCanvas({
           <ZoomProperty rootRef={rootRef} />
           {levelOfDetail && <LevelOfDetail rootRef={rootRef} />}
           <ViewportLayerPortal>
+            <StepNumbers />
             <FlowToken />
           </ViewportLayerPortal>
           {details && <NodeDetailsCard hover={hover} nodes={flowProps.nodes} />}

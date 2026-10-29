@@ -22,8 +22,10 @@ import { useDoc } from '@/store/doc-store'
 import { setUi, useUi } from '@/store/ui-store'
 import { Segmented, SliderField } from '@/editor/inspector/controls'
 import { stepLine, targetName } from './names'
-import { findStep } from '@/model/flow'
+import { findStep, overviewName } from '@/model/flow'
 
+const MIN_STEP_MS = 200
+const STEP_SNAP_MS = 50
 const LABEL_WIDTH = 148
 const LANE_HEIGHT = 30
 const MIN_PX_PER_SECOND = 20
@@ -37,7 +39,7 @@ function trackLabel(track: Track): { icon: ReactNode; text: string } {
     : { icon: <Waves className="size-3.5" />, text: name }
 }
 
-function dragHandler(onMove: (deltaPx: number) => void, onEnd?: (moved: boolean) => void) {
+function dragHandler(onMove: (deltaPx: number, event: PointerEvent) => void, onEnd?: (moved: boolean) => void) {
   return (event: ReactPointerEvent) => {
     event.stopPropagation()
     const startX = event.clientX
@@ -45,7 +47,7 @@ function dragHandler(onMove: (deltaPx: number) => void, onEnd?: (moved: boolean)
     const move = (moveEvent: PointerEvent) => {
       const delta = moveEvent.clientX - startX
       if (Math.abs(delta) > 2) moved = true
-      if (moved) onMove(delta)
+      if (moved) onMove(delta, moveEvent)
     }
     const up = () => {
       window.removeEventListener('pointermove', move)
@@ -316,13 +318,41 @@ export function Timeline({ flow }: { flow: Flow }) {
               const { step } = segment
               const width = Math.max(6, (segment.endMs - segment.startMs) * scale)
               const line = stepLine(step, segment.lanes)
+              const label =
+                step.target.kind === 'flow'
+                  ? overviewName(segment.index, segments.length)
+                  : step.target.kind === 'node'
+                    ? targetName(step.target)
+                    : `→ ${line.event || line.element}`
+              const next = segments[segment.index + 1]?.step
+              const resize = (requestedMs: number, local: boolean) =>
+                updateFlow(
+                  flow.id,
+                  (draft) => {
+                    const place = findStep(draft, step.id)
+                    if (!place) return
+                    const after = local ? place.list.find((candidate) => candidate.id === next?.id) : undefined
+                    let target = Math.max(MIN_STEP_MS, Math.round(requestedMs / STEP_SNAP_MS) * STEP_SNAP_MS)
+                    if (after && next) {
+                      const total = step.durationMs + next.durationMs
+                      target = Math.min(target, total - MIN_STEP_MS)
+                      after.durationMs = total - target
+                    }
+                    place.step.durationMs = target
+                  },
+                  `duration:${step.id}`,
+                )
               return (
                 <div
                   key={step.id}
-                  title={[line.element, line.event].filter(Boolean).join(': ')}
+                  title={[step.target.kind === 'flow' ? label : line.element, line.event].filter(Boolean).join(': ')}
                   className={cn(
                     'absolute top-1 bottom-1 flex items-center overflow-hidden rounded-md border px-1.5 text-[11px]',
-                    step.target.kind === 'node' ? 'bg-accent' : 'bg-muted/50',
+                    step.target.kind === 'flow'
+                      ? 'bg-flow/15'
+                      : step.target.kind === 'node'
+                        ? 'bg-accent'
+                        : 'bg-muted/50',
                     selectedStepId === step.id ? 'border-foreground/50' : 'border-transparent',
                   )}
                   style={{ left: segment.startMs * scale, width: width - 2 }}
@@ -332,21 +362,25 @@ export function Timeline({ flow }: { flow: Flow }) {
                     engine.playback.seek(segment.startMs + 1)
                   }}
                 >
-                  <span className="truncate">
-                    {step.target.kind === 'node' ? targetName(step.target) : `→ ${line.event || line.element}`}
-                  </span>
+                  <span className="truncate">{label}</span>
                   <div
-                    className="absolute top-0 right-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-foreground/30"
-                    onPointerDown={dragHandler((delta) =>
-                      updateFlow(
-                        flow.id,
-                        (draft) => {
-                          const target = findStep(draft, step.id)?.step
-                          if (target)
-                            target.durationMs = Math.max(200, Math.round((step.durationMs + delta / scale) / 50) * 50)
-                        },
-                        `duration:${step.id}`,
-                      ),
+                    role="separator"
+                    tabIndex={0}
+                    aria-orientation="vertical"
+                    aria-label={`End of step ${segment.index + 1}. Arrow keys change its time; with Alt, the next step keeps its start.`}
+                    aria-valuenow={step.durationMs}
+                    aria-valuemin={MIN_STEP_MS}
+                    title="Drag to change the time of the step. The later steps move with it; hold Alt to keep them in place."
+                    className="absolute top-0 right-0 bottom-0 w-1.5 cursor-ew-resize outline-none hover:bg-foreground/30 focus-visible:bg-ring"
+                    onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+                      event.preventDefault()
+                      const delta = (event.key === 'ArrowRight' ? 1 : -1) * (event.shiftKey ? 500 : STEP_SNAP_MS * 2)
+                      resize(step.durationMs + delta, event.altKey)
+                    }}
+                    onPointerDown={dragHandler((delta, moveEvent) =>
+                      resize(step.durationMs + delta / scale, moveEvent.altKey),
                     )}
                   />
                 </div>

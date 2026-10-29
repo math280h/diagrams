@@ -73,6 +73,16 @@ export function segmentRect(segment: TimelineSegment, geometry: FlowGeometry, ar
   return unionRects(rects)
 }
 
+/** Returns the rectangle around all the nodes that the steps of the timeline reach. */
+export function pathRect(timeline: Timeline, geometry: FlowGeometry): Rect | null {
+  return unionRects(
+    timeline.segments.flatMap((segment) => {
+      const rect = segmentRect(segment, geometry)
+      return rect ? [rect] : []
+    }),
+  )
+}
+
 function safeFitZoom(rect: Rect, view: ViewSize): number {
   const margins = safeMargins(view)
   return Math.min(
@@ -294,7 +304,13 @@ export function stepFrames(timeline: Timeline, geometry: FlowGeometry, view: Vie
   timeline.segments.forEach((segment, index) => {
     const { step } = segment
     let frame = previous
-    if (step.camera === 'fit') {
+    if (segment.target.kind === 'flow') {
+      const path = pathRect(timeline, geometry)
+      const paddingPx = Math.min(OVERVIEW_PADDING_PX, Math.min(view.width, view.height) * OVERVIEW_PADDING_SHARE)
+      frame = path
+        ? keepInBounds(fitCamera(path, view, paddingPx, step.zoom * viewZoomScale(view)), geometry, view)
+        : overview
+    } else if (step.camera === 'fit') {
       const focus = segmentRect(segment, geometry)
       if (focus) {
         const paddingPx = Math.min(OVERVIEW_PADDING_PX, Math.min(view.width, view.height) * OVERVIEW_PADDING_SHARE)

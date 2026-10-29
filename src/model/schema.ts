@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { COLORS } from './colors'
 
-export const DIAGRAM_VERSION = 14
+export const DIAGRAM_VERSION = 15
 
 const colorSchema = z.enum(COLORS)
 
@@ -226,12 +226,19 @@ export type StoredEdge = z.infer<typeof storedEdgeSchema>
 export const targetSchema = z.object({ kind: z.enum(['node', 'edge']), id: z.string() })
 export type Target = z.infer<typeof targetSchema>
 
+/**
+ * The target of a step: a node, an edge, or the whole flow. A step on the whole flow is an overview: it shows all the
+ * nodes and edges of the path, for example as an introduction before the first step or a conclusion after the last.
+ */
+export const stepTargetSchema = z.union([targetSchema, z.object({ kind: z.literal('flow'), id: z.literal('') })])
+export type StepTarget = z.infer<typeof stepTargetSchema>
+
 export const LOG_LEVELS = ['info', 'warn', 'error'] as const
 export type LogLevel = (typeof LOG_LEVELS)[number]
 
 export const stepSchema = z.object({
   id: z.string(),
-  target: targetSchema,
+  target: stepTargetSchema,
   caption: z.string(),
   /** The text of the log line, for example `POST /orders`. An empty string shows the edge label. */
   event: z.string(),
@@ -330,6 +337,8 @@ export const flowSchema = z.object({
    */
   bodies: z.boolean(),
   cameraStyle: z.enum(CAMERA_STYLES),
+  /** If true, the canvas numbers the previous, the current and the next step while the flow plays. */
+  stepNumbers: z.boolean(),
   /** The speed and ease of the camera moves between step frames. */
   cameraMotion: z.enum(CAMERA_MOTIONS),
   paths: z.array(flowPathSchema).optional(),

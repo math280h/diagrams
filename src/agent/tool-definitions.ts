@@ -227,7 +227,16 @@ const edgePatch = z.object({
 const stepInput = z.object({
   target: z
     .string()
-    .describe('The node or edge of the step. Use "A -> B" for an edge. A node id, ref or unique label selects a node.'),
+    .optional()
+    .describe(
+      'The node or edge of the step. Use "A -> B" for an edge. A node id, ref or unique label selects a node. Leave it out for an overview step.',
+    ),
+  overview: z
+    .boolean()
+    .optional()
+    .describe(
+      'If true, the step shows the whole flow and needs no target: as the first step it is the introduction, as the last step the conclusion.',
+    ),
   caption: z.string().optional().describe('One short sentence that the presenter shows for this step.'),
   event: z
     .string()
@@ -272,6 +281,10 @@ const flowOptions = {
     .optional(),
   spotlight: z.boolean().optional().describe('If true, elements that the flow did not reach yet look dim.'),
   loop: z.boolean().optional().describe('If true, the flow starts again at the end.'),
+  stepNumbers: z
+    .boolean()
+    .optional()
+    .describe('If true, the diagram shows the numbers of the previous, the current and the next step.'),
   cameraStyle: z
     .enum(CAMERA_STYLES)
     .optional()

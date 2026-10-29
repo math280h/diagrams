@@ -4,6 +4,8 @@ import {
   FileCode,
   FileInput,
   Ellipsis,
+  PanelBottom,
+  PanelTop,
   Play,
   Pause,
   Plus,
@@ -41,7 +43,7 @@ import { useDoc } from '@/store/doc-store'
 import { setUi, useUi } from '@/store/ui-store'
 import { Field, Segmented, SwitchField, TextInput } from '@/editor/inspector/controls'
 import { IconPicker } from '@/editor/inspector/IconPicker'
-import { appendNodeToFlow } from './record'
+import { appendNodeToFlow, createOverviewStep } from './record'
 import { FLOW_PANEL_HEIGHT } from './layout'
 import { ResizeHandle } from '@/components/ResizeHandle'
 import { useElementWidth } from '@/lib/use-element-width'
@@ -132,6 +134,11 @@ function FlowSettings({ flow }: { flow: Flow }) {
           onChange={(spotlight) => set((draft) => void (draft.spotlight = spotlight))}
         />
         <SwitchField label="Loop" checked={flow.loop} onChange={(loop) => set((draft) => void (draft.loop = loop))} />
+        <SwitchField
+          label="Number the steps on the diagram"
+          checked={flow.stepNumbers}
+          onChange={(stepNumbers) => set((draft) => void (draft.stepNumbers = stepNumbers))}
+        />
         <SwitchField
           label="Show request and response bodies"
           checked={flow.bodies}
@@ -234,6 +241,26 @@ function FlowMenu({ flows, flow }: { flows: Flow[]; flow: Flow | undefined }) {
               }}
             >
               <Copy /> Duplicate flow
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={flow.steps[0]?.target.kind === 'flow'}
+              onClick={() => {
+                const step = createOverviewStep(flow.name)
+                updateFlow(flow.id, (draft) => void draft.steps.unshift(step))
+                setUi({ selectedStepId: step.id })
+              }}
+            >
+              <PanelTop /> Add an introduction
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={flow.steps.length === 0 || flow.steps.at(-1)?.target.kind === 'flow'}
+              onClick={() => {
+                const step = createOverviewStep()
+                updateFlow(flow.id, (draft) => void draft.steps.push(step))
+                setUi({ selectedStepId: step.id })
+              }}
+            >
+              <PanelBottom /> Add a conclusion
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => copySequence(flow)}>
               <FileCode /> Copy as Mermaid sequence

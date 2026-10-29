@@ -10,6 +10,22 @@ import { useUi } from '@/store/ui-store'
 
 export const DEFAULT_NODE_STEP_MS = 1400
 export const DEFAULT_EDGE_STEP_MS = 1300
+export const DEFAULT_OVERVIEW_STEP_MS = 2400
+
+/** Returns a step that shows the whole flow, as an introduction or a conclusion. */
+export function createOverviewStep(caption = ''): Step {
+  return {
+    id: newId('s'),
+    target: { kind: 'flow', id: '' },
+    caption,
+    durationMs: DEFAULT_OVERVIEW_STEP_MS,
+    camera: 'fit',
+    zoom: 1,
+    event: '',
+    latencyMs: null,
+    level: 'info',
+  }
+}
 
 export function createStep(target: Target, caption = ''): Step {
   return {
@@ -46,8 +62,16 @@ function recording(): Recording | null {
   }
 }
 
+function lastMovingStep(steps: Step[]): Step | undefined {
+  return steps.findLast((step) => step.target.kind !== 'flow')
+}
+
+function insertIndex(steps: Step[]): number {
+  return steps.length > 1 && steps.at(-1)!.target.kind === 'flow' ? steps.length - 1 : steps.length
+}
+
 function lastTokenNode({ steps, timeline, pathId }: Recording): string | null {
-  const lastId = steps.at(-1)?.id ?? (pathId ? findPath(timeline.flow, pathId)?.fromStep : undefined)
+  const lastId = lastMovingStep(steps)?.id ?? (pathId ? findPath(timeline.flow, pathId)?.fromStep : undefined)
   const segment = lastId
     ? timeline.segments.find((candidate) => candidate.step.id === lastId)
     : timeline.segments.at(-1)
@@ -77,7 +101,7 @@ export function appendNodeToFlow(nodeId: string) {
     ...(path ?? []).map((edgeId) => createStep({ kind: 'edge', id: edgeId })),
     createStep({ kind: 'node', id: nodeId }),
   ]
-  editSteps(current, (list) => void list.push(...steps))
+  editSteps(current, (list) => void list.splice(insertIndex(list), 0, ...steps))
   useUi.setState({ selectedStepId: steps.at(-1)!.id })
 }
 
@@ -85,7 +109,7 @@ export function appendTargetToFlow(target: Target) {
   const current = recording()
   if (!current) return
   const step = createStep(target)
-  editSteps(current, (list) => void list.push(step))
+  editSteps(current, (list) => void list.splice(insertIndex(list), 0, step))
   useUi.setState({ selectedStepId: step.id })
 }
 
@@ -104,12 +128,13 @@ function addParallel(step: Step, target: Target) {
 export function appendParallelNode(nodeId: string) {
   const current = recording()
   if (!current) return
-  const last = current.steps.at(-1)
+  const moving = current.steps.filter((step) => step.target.kind !== 'flow')
+  const last = moving.at(-1)
   if (!last) return appendNodeToFlow(nodeId)
   const segmentOf = (step: Step | undefined) =>
     step ? current.timeline.segments.find((candidate) => candidate.step.id === step.id) : undefined
   const { edges } = useDoc.getState()
-  const edgeStep = last.target.kind === 'edge' ? last : current.steps.at(-2)
+  const edgeStep = last.target.kind === 'edge' ? last : moving.at(-2)
   const source = edgeStep?.target.kind === 'edge' ? segmentOf(edgeStep)?.fromNode : null
   const route = source ? findEdgePath(source, nodeId, edges) : null
   const edgeId = route?.length === 1 ? route[0]! : null

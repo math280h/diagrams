@@ -1,7 +1,7 @@
 import { definedFields } from '@/lib/defined-fields'
 import { edgeTravel } from '@/engine/flow/compile'
 import { iconSourceOf, type IconSet } from '@/canvas/icons/library'
-import { createStep } from '@/editor/flow/record'
+import { createOverviewStep, createStep } from '@/editor/flow/record'
 import { findEdgePath } from '@/engine/route'
 import { boundaryKind, BOUNDARY_BY_ID, TINTED_TIERS } from '@/model/boundaries'
 import type { Color } from '@/model/colors'
@@ -401,7 +401,7 @@ export function buildEdge(input: EdgeInput, resolver: Resolver, warnings: string
 }
 
 export function applyStepInput(step: Step, input: Partial<StepInput>): Step {
-  const { target: _target, parallel: _parallel, ...fields } = input
+  const { target: _target, parallel: _parallel, overview: _overview, ...fields } = input
   return { ...step, ...definedFields(fields) }
 }
 
@@ -428,6 +428,11 @@ export function buildSteps(
   const steps: Step[] = []
   let tokenAt = startNode
   for (const input of inputs) {
+    if (input.overview) {
+      steps.push(applyStepInput(createOverviewStep(input.caption ?? ''), input))
+      continue
+    }
+    if (!input.target) throw new ToolError('A step needs a target, or overview: true.')
     const target = resolver.target(input.target)
     const parallel = (input.parallel ?? []).map((reference) => resolver.target(reference))
     if (target.kind === 'node') {

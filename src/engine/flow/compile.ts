@@ -1,5 +1,5 @@
 import { findPath, pathSteps, stepTargets } from '@/model/flow'
-import type { Flow, Step, Target } from '@/model/schema'
+import type { Flow, Step, StepTarget, Target } from '@/model/schema'
 
 export interface EdgeEnds {
   id: string
@@ -18,12 +18,17 @@ export interface Lane {
   toNode: string | null
 }
 
-export interface TimelineSegment extends Lane {
+export interface TimelineSegment extends Omit<Lane, 'target'> {
+  /** The main target, or the whole flow for an overview step. */
+  target: StepTarget
   step: Step
   index: number
   startMs: number
   endMs: number
-  /** The main target first, then the parallel targets that exist. The fields of the segment repeat the first lane. */
+  /**
+   * The main target first, then the parallel targets that exist. The fields of the segment repeat the first lane. An
+   * overview step has no lanes.
+   */
   lanes: Lane[]
   /** The path that holds the step, or `null` for a main step. */
   pathId: string | null
@@ -83,6 +88,22 @@ export function compileFlow(
   let lastNodes: ReadonlySet<string> = new Set()
 
   for (const step of pathSteps(flow, pathId)) {
+    if (step.target.kind === 'flow') {
+      segments.push({
+        target: step.target,
+        reversed: false,
+        fromNode: null,
+        toNode: null,
+        step,
+        index: segments.length,
+        startMs: cursor,
+        endMs: cursor + step.durationMs,
+        lanes: [],
+        pathId: path && pathStepIds.has(step.id) ? path.id : null,
+      })
+      cursor += step.durationMs
+      continue
+    }
     const [main, ...parallel] = stepTargets(step).map((target) => lane(target, nodeIds, edgeById, lastNodes))
     if (!main) continue
     const lanes = [main, ...parallel.filter((candidate): candidate is Lane => candidate !== null)]

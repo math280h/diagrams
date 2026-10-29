@@ -1,8 +1,20 @@
 import type { Flow, FlowPath, Step, Target } from './schema'
 
-/** Returns the target of a step and its parallel targets, the main target first. */
+/** Returns the node or edge target of a step and its parallel targets, the main target first. An overview step has none. */
 export function stepTargets(step: Step): Target[] {
-  return [step.target, ...(step.parallel ?? [])]
+  return step.target.kind === 'flow' ? [] : [step.target, ...(step.parallel ?? [])]
+}
+
+/** Returns true for a step that shows the whole flow. */
+export function isOverview(step: Step): boolean {
+  return step.target.kind === 'flow'
+}
+
+/** Returns the name of an overview step by its place: Introduction first, Conclusion last, else Overview. */
+export function overviewName(index: number, total: number): string {
+  if (index === 0) return 'Introduction'
+  if (index === total - 1) return 'Conclusion'
+  return 'Overview'
 }
 
 export function findPath(flow: Flow, pathId: string | null): FlowPath | null {

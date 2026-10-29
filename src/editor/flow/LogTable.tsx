@@ -2,7 +2,7 @@ import { Waypoints } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { useEngine, usePlaybackState } from '@/engine/hooks'
 import { cn } from '@/lib/utils'
-import { findPath, pathSteps, stepTargets } from '@/model/flow'
+import { findPath, pathSteps, stepTargets, isOverview, overviewName } from '@/model/flow'
 import type { Flow } from '@/model/schema'
 import { selectOnly } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
@@ -99,7 +99,8 @@ export function LogTable({ flow }: { flow: Flow }) {
               ? 'active'
               : 'pending'
         const line = stepLine(step, segment?.lanes)
-        const { element, event } = line
+        const element = isOverview(step) ? overviewName(index, steps.length) : line.element
+        const { event } = line
         const body = flow.bodies ? line.body : ''
         const selected = selectedStepId === step.id
         return (

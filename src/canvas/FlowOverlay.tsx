@@ -1,6 +1,6 @@
 import { useReactFlow, useStore } from '@xyflow/react'
 import { useCallback } from 'react'
-import { lanesText, type LaneName } from '@/model/flow'
+import { lanesText, overviewName, type LaneName } from '@/model/flow'
 import { nodeName } from '@/model/labels'
 import { stepBody } from '@/model/payload'
 import type { EdgeData } from '@/model/schema'
@@ -61,7 +61,7 @@ export function FlowCaption() {
     const from = nodeTitle(getNode(reversed ? edge.target : edge.source))
     return [{ kind: 'edge', from, to: nodeTitle(getNode(reversed ? edge.source : edge.target)) }]
   })
-  const element = lanesText(lanes)
+  const element = caption.target.kind === 'flow' ? overviewName(caption.index, caption.total) : lanesText(lanes)
   const event = caption.event || (caption.target.kind === 'edge' ? (getEdge(caption.target.id)?.data?.label ?? '') : '')
 
   return (

@@ -61,6 +61,8 @@ The visual system lives in `DESIGN.md` at the repository root.
   targets to flow steps and the optional `paths` to flows. Version 13 added the optional `sensitive` mark (`personal`
   or `secret`) to body fields. Version 14 added `cameraStyle` (`frame`, `follow` or `still`) and `cameraMotion`
   (`gentle`, `quick` or `slow`) to flows; the migration gives earlier flows the frame camera with the gentle motion.
+  Version 15 added overview steps (a step `target` of kind `flow` with an empty id) and `stepNumbers` to flows; the
+  migration turns the numbers off for earlier flows.
 - Groups are boundaries. A group's `kind` points into the catalogue in `src/model/boundaries.ts`:
   AWS, Azure, Google Cloud, Kubernetes and general kinds, plus the custom group. Each kind has a
   family (scope, logical, location, zone, network, subnet, security, runtime) that sets its line
@@ -314,6 +316,17 @@ both without a second kind of flow.
   same manner as one token. The engine draws a parallel token with a copy of the token element, and colours each
   token after the protocol of its own edge. The camera frames all lanes of a parallel step, so that no token leaves
   the view.
+- **Overview steps.** A step whose target is the whole flow (`kind: 'flow'`) is an overview: the Introduction when it
+  comes first, the Conclusion when it comes last, an Overview in between. Its segment has no lanes, so no token moves;
+  `evaluateFlow` marks every node and edge of the path active, and the camera frames the whole path (`pathRect`).
+  Recording adds new steps before a Conclusion and continues from the last step that moves the token. The sequence view
+  and the Mermaid sequence leave overview steps out, because they have no message.
+- **Step numbers.** With `stepNumbers`, the canvas numbers the previous, the current and the next step
+  (`StepNumbers`): a node step at the top-left corner of its node, an edge step at the middle of its edge. It follows
+  the caption of the engine, so the video export shows the numbers frame by frame. Walkthrough tools show only the
+  steps next to the current one by default, because a number on every step makes a busy diagram busier.
+- **Timeline.** The end of each step block is a handle (`separator`, arrow keys or drag). A change of time moves all
+  later steps; with Alt the next step takes the difference, so the later steps keep their start.
 - In the editor, Shift-click while recording adds a node to the last step: the edge from the same source node joins
   the edge step, and the node joins the node step. The step properties list the parallel candidates as switches: the
   other edges that leave the same node in the token's direction, or the nodes that the parallel edges of the previous
