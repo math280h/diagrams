@@ -59,16 +59,21 @@ release, whichever is newer. An app on a beta preview skips alpha previews.
 ## Builds of main
 
 Each push to `main` that changes more than Markdown and `docs/` runs the Preview app workflow. Nobody needs to start
-or approve it. It builds the installers without signatures, tests the packaged app, and puts them on the pre-release
-with the tag `preview`, which it creates the first time and then moves to the newest commit.
+or approve it. It builds the installers without signatures and tests the packaged app. Then it publishes them as a
+pre-release with the tag `preview-<run>`, for example `preview-57`, in the same way as a release: first a draft, then
+the files, then publish.
 
-- The files have fixed names, such as `Diagrams-preview-win-x64.exe` and `Diagrams-preview-mac-arm64.dmg`, so a link
-  to them always gives the newest build.
+- The repository has immutable releases, so GitHub locks the files and the tag of a published release. Each build
+  therefore gets a new pre-release, and a tag name is never used twice.
+- After it publishes, the workflow deletes the older builds and their tags, and keeps the build before the new one.
+  The preview website reads the installer links when it builds, so its links stay valid until the next deploy.
 - A build has the version `<next patch>-preview.<run>`, for example `0.1.5-preview.57`, and does not update itself.
   Download it again for newer changes, or install a release to get updates.
-- The What’s new page of the preview website links these installers under Next release. The release lists and the
-  comparison with `main` leave the `preview` pre-release out, and the website deploy skips it like every pre-release.
-- A newer push cancels a build that still runs, so the pre-release holds the newest build that passed.
+- The What’s new page of the preview website links the installers of the newest build under Next release. The
+  release lists and the comparison with `main` leave the `preview-<run>` pre-releases out, and the website deploy
+  skips them like every pre-release.
+- A newer push cancels a build that still runs. The newest build that passed stays published.
+- Each published build notifies the people who watch the releases of the repository.
 
 ## Who can release
 

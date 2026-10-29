@@ -49,7 +49,7 @@ describe('release notes at build time', () => {
         { tag_name: 'v0.2.0', draft: true, published_at: '2026-10-29T10:00:00Z' },
         { tag_name: 'v0.2.0-beta.1', prerelease: true, published_at: '2026-10-28T10:00:00Z' },
         { tag_name: 'v0.1.3', published_at: '2026-10-26T04:53:53Z' },
-        { tag_name: 'preview', prerelease: true, published_at: '2026-10-30T10:00:00Z' },
+        { tag_name: 'preview-57', prerelease: true, published_at: '2026-10-30T10:00:00Z' },
       ]),
     ).toBe('v0.2.0-beta.1')
     expect(newestReleaseTag([])).toBeNull()

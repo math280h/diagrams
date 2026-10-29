@@ -20,6 +20,7 @@ jobs:
       contents: write
     outputs:
       version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - name: Choose the version
         id: version
@@ -29,13 +30,17 @@ jobs:
           latest=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)
           IFS=. read -r major minor patch <<< "${latest#v}"
           echo "version=$major.$minor.$((patch + 1))-preview.$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"
-      - name: Create the preview release if it is missing
+          echo "tag=preview-$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"
+      - name: Create the draft release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          gh release view preview --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1 && exit 0
-          gh release create preview --repo "$GITHUB_REPOSITORY" --prerelease --latest=false --target "$GITHUB_SHA" \
-            --title Preview --notes 'Installers of the newest build of main.'
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1 && exit 0
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --prerelease --latest=false --target "$GITHUB_SHA" \
+            --title "Preview $VERSION" \
+            --notes "Installers of a build of main: $VERSION, from $GITHUB_SHA. A preview build does not update itself."
 
   package:
     name: Package for ${{ matrix.os }}
@@ -84,22 +89,35 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.prepare.outputs.tag }}
         run: |
           find release -maxdepth 1 -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.AppImage' -o -name '*.deb' \) \
-            -print0 | xargs -0 gh release upload preview --repo "$GITHUB_REPOSITORY" --clobber
+            -print0 | xargs -0 gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber
 
-  finish:
-    name: Point the preview release at the commit
+  publish:
+    name: Publish the build
     needs: [prepare, package]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Move the tag and describe the build
+      - name: Publish the pre-release
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ needs.prepare.outputs.version }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease --latest=false
+      - name: Delete the older builds
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.prepare.outputs.tag }}
         run: |
-          gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/preview" -f sha="$GITHUB_SHA" -F force=true
-          gh release edit preview --repo "$GITHUB_REPOSITORY" --prerelease --notes \
-            "Installers of the newest build of main: $VERSION, from $GITHUB_SHA. A preview build does not update itself."
+          gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" |
+            jq -r -s --arg tag "$TAG" '
+              [add[] | select((.tag_name | test("^preview-[0-9]+$")) and .tag_name != $tag)] |
+              (map(select(.draft | not)) | max_by(.published_at) | .id) as $previous |
+              .[] | select(.id != $previous) | "\(.id) \(.tag_name) \(.draft)"' |
+            while read -r id tag draft; do
+              gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/$id"
+              if [ "$draft" = false ]; then gh api --method DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$tag"; fi
+            done

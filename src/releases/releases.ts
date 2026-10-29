@@ -1,5 +1,10 @@
 import builtReleases, { unreleased } from 'virtual:release-notes'
-import { PREVIEW_APP_TAG, RELEASE_ASSET_URL_PREFIX, RELEASES_API_URL, REPOSITORY_URL } from '@/desktop/constants'
+import {
+  PREVIEW_APP_TAG_PATTERN,
+  RELEASE_ASSET_URL_PREFIX,
+  RELEASES_API_URL,
+  REPOSITORY_URL,
+} from '@/desktop/constants'
 import type { UnreleasedChanges } from './unreleased'
 
 const LOOKUP_TIMEOUT_MS = 8000
@@ -48,6 +53,14 @@ function text(value: unknown): string {
   return typeof value === 'string' ? value : ''
 }
 
+function isPreviewAppRelease(release: GitHubRelease): boolean {
+  return PREVIEW_APP_TAG_PATTERN.test(text(release.tag_name))
+}
+
+function publishedAtMs(release: GitHubRelease): number {
+  return Date.parse(text(release.published_at)) || 0
+}
+
 /** Returns true on the preview website, which deploys `main` and also lists the newest pre-releases. */
 export function isPreviewSite(): boolean {
   return import.meta.env.VITE_RELEASE_CHANNEL === 'preview'
@@ -62,14 +75,14 @@ export function isPreviewSite(): boolean {
 export function parseReleases(data: unknown, previews = false): Release[] {
   if (!Array.isArray(data)) return []
   const releases = (data as GitHubRelease[])
-    .filter((release) => release.draft !== true && text(release.tag_name) && release.tag_name !== PREVIEW_APP_TAG)
+    .filter((release) => release.draft !== true && text(release.tag_name) && !isPreviewAppRelease(release))
     .map((release): Release => {
       const tag = text(release.tag_name)
       const url = text(release.html_url)
       return {
         tag,
         name: text(release.name) || tag,
-        publishedAt: Date.parse(text(release.published_at)) || 0,
+        publishedAt: publishedAtMs(release),
         html: text(release.body_html),
         url: url.startsWith(`${REPOSITORY_URL}/releases/`) ? url : `${REPOSITORY_URL}/releases/tag/${tag}`,
         preview: release.prerelease === true,
@@ -83,12 +96,14 @@ export function parseReleases(data: unknown, previews = false): Release[] {
 /** Returns the installers on the pre-release of the newest build of `main`, in a fixed order. */
 export function previewDownloads(data: unknown): Download[] {
   if (!Array.isArray(data)) return []
-  const preview = (data as GitHubRelease[]).find((release) => release.tag_name === PREVIEW_APP_TAG)
+  const [preview] = (data as GitHubRelease[])
+    .filter((release) => release.draft !== true && isPreviewAppRelease(release))
+    .toSorted((a, b) => publishedAtMs(b) - publishedAtMs(a))
   const assets = (preview?.assets ?? []).filter(
     (asset): asset is { name: string; browser_download_url: string } =>
       typeof asset.name === 'string' &&
       typeof asset.browser_download_url === 'string' &&
-      asset.browser_download_url.startsWith(`${RELEASE_ASSET_URL_PREFIX}${PREVIEW_APP_TAG}/`),
+      asset.browser_download_url.startsWith(`${RELEASE_ASSET_URL_PREFIX}${text(preview?.tag_name)}/`),
   )
   return PREVIEW_INSTALLERS.flatMap(({ label, pattern }) => {
     const asset = assets.find((candidate) => pattern.test(candidate.name))

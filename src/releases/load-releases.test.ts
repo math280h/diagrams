@@ -1,12 +1,27 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-const { PREVIEW } = vi.hoisted(() => ({ PREVIEW: 'https://github.com/math280h/diagrams/releases/download/preview' }))
+const { DOWNLOADS, PREVIEW } = vi.hoisted(() => {
+  const downloads = 'https://github.com/math280h/diagrams/releases/download'
+  return { DOWNLOADS: downloads, PREVIEW: `${downloads}/preview-57` }
+})
 
 vi.mock('virtual:release-notes', () => ({
   default: [
     { tag_name: 'v0.2.0', published_at: '2026-10-28T09:00:00Z', body_html: '<p>Notes</p>' },
     {
-      tag_name: 'preview',
+      tag_name: 'preview-58',
+      draft: true,
+      prerelease: true,
+      assets: [{ name: 'Diagrams-preview-win-x64.exe', browser_download_url: `${DOWNLOADS}/preview-58/a.exe` }],
+    },
+    {
+      tag_name: 'preview-56',
+      prerelease: true,
+      published_at: '2026-10-29T10:30:00Z',
+      assets: [{ name: 'Diagrams-preview-win-x64.exe', browser_download_url: `${DOWNLOADS}/preview-56/a.exe` }],
+    },
+    {
+      tag_name: 'preview-57',
       prerelease: true,
       published_at: '2026-10-29T11:00:00Z',
       assets: [
@@ -18,6 +33,10 @@ vi.mock('virtual:release-notes', () => ({
         {
           name: 'Diagrams-preview-mac-x64.dmg',
           browser_download_url: 'https://example.com/Diagrams-preview-mac-x64.dmg',
+        },
+        {
+          name: 'Diagrams-preview-mac-arm64.dmg',
+          browser_download_url: `${DOWNLOADS}/preview-56/Diagrams-preview-mac-arm64.dmg`,
         },
         { name: 'latest.yml', browser_download_url: `${PREVIEW}/latest.yml` },
       ],
