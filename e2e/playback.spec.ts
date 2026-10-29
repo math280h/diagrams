@@ -97,6 +97,35 @@ test('hides an edge label while the token passes over it', async ({ page }) => {
   await expect(covered).toHaveCount(0, { timeout: 10_000 })
 })
 
+test.describe('with reduced motion', () => {
+  test.use({ reducedMotion: 'reduce' })
+
+  test('hides the edge label under the token after a jump to a step', async ({ page }) => {
+    await page.goto('/')
+    await copyTemplate(page, 'Order system')
+    await page.getByRole('button', { name: 'Present' }).click()
+    await expect(page.locator('.dg-caption')).toBeVisible()
+    for (let press = 0; press < 5; press++) await page.keyboard.press('ArrowRight')
+    await expect(page.getByText('Step 6 of 13')).toBeVisible()
+
+    const labelsAtToken = () =>
+      page.evaluate(() => {
+        const chip = document.querySelector('.dg-token-chip')!.getBoundingClientRect()
+        const labels = Array.from(document.querySelectorAll('.dg-edge-label'))
+        const under = (label: Element) => {
+          const box = label.getBoundingClientRect()
+          return box.left < chip.right && box.right > chip.left && box.top < chip.bottom && box.bottom > chip.top
+        }
+        return {
+          covered: labels.filter((label) => label.hasAttribute('data-covered')).map((label) => label.textContent),
+          underToken: labels.filter(under).map((label) => label.textContent),
+        }
+      })
+    await expect.poll(async () => (await labelsAtToken()).underToken).not.toEqual([])
+    await expect.poll(async () => (await labelsAtToken()).covered).toEqual((await labelsAtToken()).underToken)
+  })
+})
+
 test('keeps the icon of a node that appears while the canvas is zoomed out readable', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'New diagram' }).first().click()

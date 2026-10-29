@@ -210,6 +210,8 @@ export class Engine {
   private shownState: string | null = null
   private tokenShown = false
   private tokenLabelShown = false
+  /** True if the edge labels were measured against the token place of an earlier frame. */
+  private labelCoverStale = false
   private point: PathPoint = { x: 0, y: 0, angleRad: 0 }
   private frameRequest = 0
   private lastTimestamp: number | null = null
@@ -310,7 +312,9 @@ export class Engine {
   /** Stops the frame loop after one last render, so the page shows the current state of both clocks. */
   pause() {
     this.stop()
-    if (!this.manual) this.render(this.ambient.time.get(), this.playback.time.get())
+    if (this.manual) return
+    this.render(this.ambient.time.get(), this.playback.time.get())
+    this.coverStaleEdgeLabels()
   }
 
   private loop = (timestamp: number) => {
@@ -409,6 +413,7 @@ export class Engine {
     if (this.root) applyFlowFrame(this.root, null, false)
     this.setViewOpacity(1)
     this.coverEdgeLabels(false, false)
+    this.labelCoverStale = false
     if (this.tokenElement) this.tokenElement.style.display = 'none'
     for (const element of this.parallelTokenElements) element.style.display = 'none'
     this.trafficScale.clear()
@@ -444,6 +449,12 @@ export class Engine {
     labels.forEach((label, index) => {
       if (covered[index] !== label.hasAttribute('data-covered')) label.toggleAttribute('data-covered', covered[index])
     })
+  }
+
+  private coverStaleEdgeLabels() {
+    if (!this.labelCoverStale) return
+    this.labelCoverStale = false
+    this.coverEdgeLabels(this.tokenShown, this.tokenLabelShown)
   }
 
   private tokenProtocol(timeline: Timeline, index: number): string | null {
@@ -522,7 +533,10 @@ export class Engine {
       !this.playback.cameraRequest &&
       timeline === this.lastTimeline &&
       timeMs === this.lastFlowMs
-    if (unchanged && !this.manual) return null
+    if (unchanged && !this.manual) {
+      this.coverStaleEdgeLabels()
+      return null
+    }
     this.flowDirty = false
     this.lastFlowMs = timeMs
     if (timeline !== this.lastTimeline) {
@@ -569,6 +583,7 @@ export class Engine {
     this.tokenShown = result.token !== null
     this.tokenLabelShown = result.tokenLabel > LABEL_VISIBLE
     if (this.manual) this.coverEdgeLabels(this.tokenShown, this.tokenLabelShown)
+    else this.labelCoverStale = true
 
     const moveCamera = this.playback.playing || this.manual || this.playback.cameraRequest || this.handoff !== null
     if (result.camera && this.setViewport && moveCamera) {
