@@ -28,10 +28,8 @@ interface BrowserDevice {
 /** Returns true for a browser on a computer that runs the desktop app, and false on phones and tablets. */
 export function isDesktopComputer({ userAgent, maxTouchPoints, coarsePointer }: BrowserDevice): boolean {
   if (MOBILE.test(userAgent)) return false
-  // iPadOS Safari sends the user agent of a Mac. No Mac has a touch screen.
-  if (/Macintosh/.test(userAgent)) return maxTouchPoints <= 1
-  // Chrome on large Android tablets sends the user agent of a Linux computer.
-  if (/Linux/.test(userAgent)) return !(maxTouchPoints > 0 && coarsePointer)
+  // iPadOS Safari sends the user agent of a Mac. Chrome on large Android tablets sends that of a Linux computer.
+  if (/Macintosh|Linux/.test(userAgent)) return !(maxTouchPoints > 0 && coarsePointer)
   return true
 }
 

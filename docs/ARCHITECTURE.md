@@ -996,9 +996,9 @@ local device.
 The website offers the app (the agent card and "Open in desktop app") only on a computer
 (`isDesktopComputer`). A phone or tablet that names itself in the user agent gets no offer. iPadOS
 Safari sends the user agent of a Mac, and Chrome on large Android tablets that of a Linux computer.
-So a Mac user agent with more than one touch point, or a Linux one whose primary pointer is a finger,
-also counts as a tablet. A Linux laptop with a touch screen keeps the offer, because its primary
-pointer is the trackpad.
+So a Mac or Linux user agent with a touch screen whose primary pointer is a finger also counts as a
+tablet. A MacBook or Linux laptop with a touch screen keeps the offer, because its primary pointer is
+the trackpad. Windows keeps the offer on every device, because Windows tablets run the app.
 
 ### Command-line render
 

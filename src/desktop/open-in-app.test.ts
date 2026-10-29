@@ -17,6 +17,7 @@ describe('isDesktopComputer', () => {
     expect(isDesktopComputer({ userAgent: CHROME_WINDOWS, ...mouse })).toBe(true)
     expect(isDesktopComputer({ userAgent: CHROME_WINDOWS, ...finger })).toBe(true)
     expect(isDesktopComputer({ userAgent: SAFARI_MAC, ...mouse })).toBe(true)
+    expect(isDesktopComputer({ userAgent: SAFARI_MAC, ...touchScreenWithTrackpad })).toBe(true)
     expect(isDesktopComputer({ userAgent: CHROME_LINUX, ...mouse })).toBe(true)
     expect(isDesktopComputer({ userAgent: CHROME_LINUX, ...touchScreenWithTrackpad })).toBe(true)
   })
@@ -28,7 +29,6 @@ describe('isDesktopComputer', () => {
 
   it('refuses tablets that send the user agent of a computer', () => {
     expect(isDesktopComputer({ userAgent: SAFARI_MAC, ...finger })).toBe(false)
-    expect(isDesktopComputer({ userAgent: SAFARI_MAC, maxTouchPoints: 5, coarsePointer: false })).toBe(false)
     expect(isDesktopComputer({ userAgent: CHROME_LINUX, ...finger })).toBe(false)
   })
 })

@@ -80,8 +80,6 @@ for (const device of PHONES_AND_TABLETS) {
     test.use(device.options)
 
     test(`does not offer the desktop app on ${device.name}`, async ({ page }) => {
-      // Chromium touch emulation reports one touch point. Real phones and tablets report five or more.
-      await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'maxTouchPoints', { get: () => 5 }))
       await page.goto('/')
       await expect(page.getByRole('heading', { name: 'Keep diagrams with your code' })).toBeAttached()
       await expect(page.getByRole('heading', { name: 'Let an AI agent draw with you' })).toHaveCount(0)
@@ -89,14 +87,19 @@ for (const device of PHONES_AND_TABLETS) {
   })
 }
 
-for (const { name, userAgent } of [
-  { name: 'a Mac', userAgent: MAC_SAFARI },
-  { name: 'a Linux computer', userAgent: LINUX_CHROME },
+for (const { name, userAgent, touchPoints } of [
+  { name: 'a Mac', userAgent: MAC_SAFARI, touchPoints: 0 },
+  { name: 'a MacBook with a touch screen', userAgent: MAC_SAFARI, touchPoints: 10 },
+  { name: 'a Linux computer', userAgent: LINUX_CHROME, touchPoints: 0 },
 ]) {
   test.describe(name, () => {
     test.use({ userAgent })
 
     test(`offers the desktop app on ${name}`, async ({ page }) => {
+      // Chromium touch emulation also makes the primary pointer coarse, so only the touch points change here.
+      await page.addInitScript((points) => {
+        Object.defineProperty(Navigator.prototype, 'maxTouchPoints', { get: () => points })
+      }, touchPoints)
       await page.goto('/')
       await expect(page.getByRole('heading', { name: 'Let an AI agent draw with you' })).toBeVisible()
     })
