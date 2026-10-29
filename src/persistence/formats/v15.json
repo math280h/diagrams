@@ -3,7 +3,7 @@
   "source": "working tree",
   "diagrams": [
     {
-      "id": "d_dqftwzbi81",
+      "id": "d_ex6sbz5rcq",
       "name": "Order system",
       "version": 15,
       "theme": {
@@ -16,7 +16,7 @@
       },
       "nodes": [
         {
-          "id": "n_es61i8ymmc",
+          "id": "n_o7f33dc1gh",
           "type": "group",
           "position": {
             "x": 240,
@@ -41,7 +41,7 @@
           "zIndex": -1
         },
         {
-          "id": "n_xhbu6pwtwo",
+          "id": "n_0xmbnk1e9z",
           "type": "card",
           "position": {
             "x": 0,
@@ -54,7 +54,7 @@
             "color": "neutral",
             "lines": [
               {
-                "id": "l_ynrqq5x0am",
+                "id": "l_83q5hguwq0",
                 "text": "checkout.shop.dev"
               }
             ],
@@ -72,7 +72,7 @@
           "zIndex": 1000
         },
         {
-          "id": "n_uezln8bd2k",
+          "id": "n_jsns8740ix",
           "type": "card",
           "position": {
             "x": 1216,
@@ -85,7 +85,7 @@
             "color": "neutral",
             "lines": [
               {
-                "id": "l_we1oh3m9zq",
+                "id": "l_nxl22tkp38",
                 "text": "payments API"
               }
             ],
@@ -98,7 +98,7 @@
               "description": "Takes the card payment. A 429 means a rate limit, and Orders retries it.",
               "links": [
                 {
-                  "id": "k_22vssmjb44",
+                  "id": "k_uf6jusqt0o",
                   "label": "Payment Intents API",
                   "url": "https://docs.stripe.com/api/payment_intents"
                 }
@@ -109,7 +109,7 @@
           "zIndex": 1000
         },
         {
-          "id": "n_o5rgwplxbd",
+          "id": "n_1wq3ijae7j",
           "type": "text",
           "position": {
             "x": 0,
@@ -125,7 +125,7 @@
           "zIndex": 1000
         },
         {
-          "id": "n_pdxzvdl34w",
+          "id": "n_yl36b0lnik",
           "type": "text",
           "position": {
             "x": 0,
@@ -141,7 +141,7 @@
           "zIndex": 1000
         },
         {
-          "id": "n_rq7hvwwf1t",
+          "id": "n_q4pvxosfhw",
           "type": "card",
           "position": {
             "x": 48,
@@ -154,7 +154,7 @@
             "color": "neutral",
             "lines": [
               {
-                "id": "l_tecfngm4tc",
+                "id": "l_fd8tvneed6",
                 "text": "Envoy"
               }
             ],
@@ -167,7 +167,7 @@
               "description": "Ends TLS, checks the session cookie with Auth and routes /orders to the Orders service.",
               "links": [
                 {
-                  "id": "k_s6cmvkmyne",
+                  "id": "k_frzdsugcuh",
                   "label": "Envoy docs",
                   "url": "https://www.envoyproxy.io/docs"
                 }
@@ -175,11 +175,11 @@
             }
           },
           "width": 192,
-          "parentId": "n_es61i8ymmc",
+          "parentId": "n_o7f33dc1gh",
           "zIndex": 1000
         },
         {
-          "id": "n_hn4lr8u6bv",
+          "id": "n_0f7p6kojh0",
           "type": "card",
           "position": {
             "x": 320,
@@ -192,7 +192,7 @@
             "color": "neutral",
             "lines": [
               {
-                "id": "l_2mlt0bjqbw",
+                "id": "l_fs87aujxx6",
                 "text": "OIDC"
               }
             ],
@@ -207,11 +207,11 @@
             }
           },
           "width": 192,
-          "parentId": "n_es61i8ymmc",
+          "parentId": "n_o7f33dc1gh",
           "zIndex": 1000
         },
         {
-          "id": "n_gghcc1fjpv",
+          "id": "n_l49z2dati1",
           "type": "card",
           "position": {
             "x": 320,
@@ -224,7 +224,7 @@
             "color": "neutral",
             "lines": [
               {
-                "id": "l_ko6b341k80",
+                "id": "l_2mo4pbbzh6",
                 "text": "Go · 3 replicas"
               }
             ],
@@ -239,11 +239,11 @@
             }
           },
           "width": 192,
-          "parentId": "n_es61i8ymmc",
+          "parentId": "n_o7f33dc1gh",
           "zIndex": 1000
         },
         {
-          "id": "n_mnf9o8hli2",
+          "id": "n_r6h9lmp31y",
           "type": "card",
           "position": {
             "x": 624,
@@ -256,7 +256,7 @@
             "color": "neutral",
             "lines": [
               {
-                "id": "l_yftg5bd11y",
+                "id": "l_2erdmwjn6a",
                 "text": "orders"
               }
             ],
@@ -271,11 +271,11 @@
             }
           },
           "width": 192,
-          "parentId": "n_es61i8ymmc",
+          "parentId": "n_o7f33dc1gh",
           "zIndex": 1000
         },
         {
-          "id": "n_y0n3hvy3uo",
+          "id": "n_cpuuxibosb",
           "type": "card",
           "position": {
             "x": 624,
@@ -288,7 +288,7 @@
             "color": "neutral",
             "lines": [
               {
-                "id": "l_uarv3uln0a",
+                "id": "l_96xt9nd1na",
                 "text": "sessions"
               }
             ],
@@ -303,11 +303,11 @@
             }
           },
           "width": 192,
-          "parentId": "n_es61i8ymmc",
+          "parentId": "n_o7f33dc1gh",
           "zIndex": 1000
         },
         {
-          "id": "n_1ej956kslo",
+          "id": "n_8bt1cfc9wf",
           "type": "card",
           "position": {
             "x": 320,
@@ -320,7 +320,7 @@
             "color": "neutral",
             "lines": [
               {
-                "id": "l_19oy1x9rwl",
+                "id": "l_dzocppijsq",
                 "text": "Kafka"
               }
             ],
@@ -335,11 +335,11 @@
             }
           },
           "width": 216,
-          "parentId": "n_es61i8ymmc",
+          "parentId": "n_o7f33dc1gh",
           "zIndex": 1000
         },
         {
-          "id": "n_l5glmuc923",
+          "id": "n_0u9j7st6lr",
           "type": "card",
           "position": {
             "x": 624,
@@ -352,7 +352,7 @@
             "color": "neutral",
             "lines": [
               {
-                "id": "l_rh7a86s5jq",
+                "id": "l_qrt59f5yos",
                 "text": "Node 22"
               }
             ],
@@ -367,16 +367,16 @@
             }
           },
           "width": 192,
-          "parentId": "n_es61i8ymmc",
+          "parentId": "n_o7f33dc1gh",
           "zIndex": 1000
         }
       ],
       "edges": [
         {
-          "id": "e_0ah648jzvj",
+          "id": "e_b1hnswg4rr",
           "type": "flow",
-          "source": "n_xhbu6pwtwo",
-          "target": "n_rq7hvwwf1t",
+          "source": "n_0xmbnk1e9z",
+          "target": "n_q4pvxosfhw",
           "data": {
             "path": "smooth",
             "stroke": "solid",
@@ -399,7 +399,7 @@
             "request": {
               "fields": [
                 {
-                  "id": "fld_ef3dspsk9r",
+                  "id": "fld_rnjrd2bypo",
                   "path": "items",
                   "type": "array",
                   "required": true,
@@ -407,7 +407,7 @@
                   "description": ""
                 },
                 {
-                  "id": "fld_xpxu3dcsfr",
+                  "id": "fld_wb39ms75h9",
                   "path": "items[].sku",
                   "type": "string",
                   "required": true,
@@ -415,7 +415,7 @@
                   "description": ""
                 },
                 {
-                  "id": "fld_hib1zi8tmx",
+                  "id": "fld_5bm6w6hzvq",
                   "path": "items[].qty",
                   "type": "number",
                   "required": true,
@@ -423,7 +423,7 @@
                   "description": ""
                 },
                 {
-                  "id": "fld_qjscnommnw",
+                  "id": "fld_szc4ujlyei",
                   "path": "paymentMethod",
                   "type": "string",
                   "required": true,
@@ -435,7 +435,7 @@
             "response": {
               "fields": [
                 {
-                  "id": "fld_s373zkz0cw",
+                  "id": "fld_gxt56y8jpu",
                   "path": "orderId",
                   "type": "string",
                   "required": true,
@@ -443,7 +443,7 @@
                   "description": ""
                 },
                 {
-                  "id": "fld_jy0ad8b7w7",
+                  "id": "fld_7ou7bxl95n",
                   "path": "status",
                   "type": "string",
                   "required": true,
@@ -455,10 +455,10 @@
           }
         },
         {
-          "id": "e_e9pdo6midk",
+          "id": "e_f24v53mtbv",
           "type": "flow",
-          "source": "n_rq7hvwwf1t",
-          "target": "n_hn4lr8u6bv",
+          "source": "n_q4pvxosfhw",
+          "target": "n_0f7p6kojh0",
           "data": {
             "path": "smooth",
             "stroke": "solid",
@@ -481,10 +481,10 @@
           }
         },
         {
-          "id": "e_96v0cnhk2j",
+          "id": "e_cwlve8op9i",
           "type": "flow",
-          "source": "n_rq7hvwwf1t",
-          "target": "n_gghcc1fjpv",
+          "source": "n_q4pvxosfhw",
+          "target": "n_l49z2dati1",
           "data": {
             "path": "smooth",
             "stroke": "solid",
@@ -507,10 +507,10 @@
           }
         },
         {
-          "id": "e_zj7rm2djxr",
+          "id": "e_p2fxs9k69t",
           "type": "flow",
-          "source": "n_gghcc1fjpv",
-          "target": "n_mnf9o8hli2",
+          "source": "n_l49z2dati1",
+          "target": "n_r6h9lmp31y",
           "data": {
             "path": "smooth",
             "stroke": "solid",
@@ -533,10 +533,10 @@
           }
         },
         {
-          "id": "e_t3szg7v43w",
+          "id": "e_n8q1uqna71",
           "type": "flow",
-          "source": "n_gghcc1fjpv",
-          "target": "n_y0n3hvy3uo",
+          "source": "n_l49z2dati1",
+          "target": "n_cpuuxibosb",
           "data": {
             "path": "smooth",
             "stroke": "solid",
@@ -559,10 +559,10 @@
           }
         },
         {
-          "id": "e_s8nq6qe1nm",
+          "id": "e_tzwh91k8qc",
           "type": "flow",
-          "source": "n_gghcc1fjpv",
-          "target": "n_1ej956kslo",
+          "source": "n_l49z2dati1",
+          "target": "n_8bt1cfc9wf",
           "data": {
             "path": "smooth",
             "stroke": "solid",
@@ -585,7 +585,7 @@
             "request": {
               "fields": [
                 {
-                  "id": "fld_b0s3mz5kki",
+                  "id": "fld_exmbeonne3",
                   "path": "orderId",
                   "type": "string",
                   "required": true,
@@ -593,7 +593,7 @@
                   "description": ""
                 },
                 {
-                  "id": "fld_woba33kti6",
+                  "id": "fld_wkmz7809uy",
                   "path": "email",
                   "type": "string",
                   "required": true,
@@ -602,7 +602,7 @@
                   "sensitive": "personal"
                 },
                 {
-                  "id": "fld_bihltoio3p",
+                  "id": "fld_zrysplqrwz",
                   "path": "total",
                   "type": "number",
                   "required": true,
@@ -614,10 +614,10 @@
           }
         },
         {
-          "id": "e_ui95xu7rox",
+          "id": "e_kpqrg0y6hj",
           "type": "flow",
-          "source": "n_1ej956kslo",
-          "target": "n_l5glmuc923",
+          "source": "n_8bt1cfc9wf",
+          "target": "n_0u9j7st6lr",
           "data": {
             "path": "smooth",
             "stroke": "solid",
@@ -640,7 +640,7 @@
             "request": {
               "fields": [
                 {
-                  "id": "fld_ayxvippyof",
+                  "id": "fld_cmwz7pk84n",
                   "path": "orderId",
                   "type": "string",
                   "required": true,
@@ -648,7 +648,7 @@
                   "description": ""
                 },
                 {
-                  "id": "fld_4vx6gu7s0y",
+                  "id": "fld_bi8kv9u807",
                   "path": "email",
                   "type": "string",
                   "required": true,
@@ -657,7 +657,7 @@
                   "sensitive": "personal"
                 },
                 {
-                  "id": "fld_85w6z74kpt",
+                  "id": "fld_o91hbz41ce",
                   "path": "total",
                   "type": "number",
                   "required": true,
@@ -669,10 +669,10 @@
           }
         },
         {
-          "id": "e_69wzuzvmec",
+          "id": "e_29yl9231ys",
           "type": "flow",
-          "source": "n_gghcc1fjpv",
-          "target": "n_uezln8bd2k",
+          "source": "n_l49z2dati1",
+          "target": "n_jsns8740ix",
           "data": {
             "path": "smooth",
             "stroke": "dashed",
@@ -695,7 +695,7 @@
             "request": {
               "fields": [
                 {
-                  "id": "fld_kpt0yz81fx",
+                  "id": "fld_bzlz5jvtkp",
                   "path": "amount",
                   "type": "number",
                   "required": true,
@@ -703,7 +703,7 @@
                   "description": ""
                 },
                 {
-                  "id": "fld_lio4ikvwn5",
+                  "id": "fld_87z22ui3cg",
                   "path": "currency",
                   "type": "string",
                   "required": true,
@@ -711,7 +711,7 @@
                   "description": ""
                 },
                 {
-                  "id": "fld_qzqjlxt5nt",
+                  "id": "fld_nrfva9l9dx",
                   "path": "customer",
                   "type": "string",
                   "required": true,
@@ -724,7 +724,7 @@
             "response": {
               "fields": [
                 {
-                  "id": "fld_xp4o22k3xw",
+                  "id": "fld_s4znpjxcb6",
                   "path": "id",
                   "type": "string",
                   "required": true,
@@ -732,7 +732,7 @@
                   "description": ""
                 },
                 {
-                  "id": "fld_4g1u4vfdyq",
+                  "id": "fld_sa49imf8ay",
                   "path": "status",
                   "type": "string",
                   "required": true,
@@ -746,13 +746,13 @@
       ],
       "flows": [
         {
-          "id": "f_u6i80elbd9",
+          "id": "f_0fww3niox8",
           "name": "Place an order",
           "steps": [
             {
               "target": {
                 "kind": "node",
-                "id": "n_xhbu6pwtwo"
+                "id": "n_0xmbnk1e9z"
               },
               "caption": "The shopper presses Pay.",
               "durationMs": 1300,
@@ -761,12 +761,12 @@
               "event": "POST /orders",
               "latencyMs": null,
               "level": "info",
-              "id": "s_cj413pf7a8"
+              "id": "s_thut3d93xl"
             },
             {
               "target": {
                 "kind": "edge",
-                "id": "e_0ah648jzvj"
+                "id": "e_b1hnswg4rr"
               },
               "caption": "",
               "durationMs": 1200,
@@ -775,12 +775,12 @@
               "event": "TLS 1.3",
               "latencyMs": 38,
               "level": "info",
-              "id": "s_fx32a88k67"
+              "id": "s_99bplw6et4"
             },
             {
               "target": {
                 "kind": "node",
-                "id": "n_rq7hvwwf1t"
+                "id": "n_q4pvxosfhw"
               },
               "caption": "The gateway checks the session and routes the request.",
               "durationMs": 1500,
@@ -789,12 +789,12 @@
               "event": "route /orders",
               "latencyMs": 4,
               "level": "info",
-              "id": "s_wuhbmsxsih"
+              "id": "s_8yz39z3yi6"
             },
             {
               "target": {
                 "kind": "edge",
-                "id": "e_96v0cnhk2j"
+                "id": "e_cwlve8op9i"
               },
               "caption": "",
               "durationMs": 1200,
@@ -803,12 +803,12 @@
               "event": "CreateOrder",
               "latencyMs": 2,
               "level": "info",
-              "id": "s_sml63rgkuc"
+              "id": "s_o8d1gv49ad"
             },
             {
               "target": {
                 "kind": "node",
-                "id": "n_gghcc1fjpv"
+                "id": "n_l49z2dati1"
               },
               "caption": "Orders validates the cart.",
               "durationMs": 1400,
@@ -817,12 +817,12 @@
               "event": "validate cart",
               "latencyMs": 6,
               "level": "info",
-              "id": "s_ml17pgfx7x"
+              "id": "s_07xmnommhv"
             },
             {
               "target": {
                 "kind": "edge",
-                "id": "e_69wzuzvmec"
+                "id": "e_29yl9231ys"
               },
               "caption": "Stripe rate-limits the first charge, so Orders retries it.",
               "durationMs": 1600,
@@ -831,12 +831,12 @@
               "event": "POST /v1/payment_intents 429",
               "latencyMs": 120,
               "level": "warn",
-              "id": "s_u9a8celco5"
+              "id": "s_ck1re8aj7j"
             },
             {
               "target": {
                 "kind": "edge",
-                "id": "e_69wzuzvmec"
+                "id": "e_29yl9231ys"
               },
               "caption": "The retry succeeds.",
               "durationMs": 1300,
@@ -845,12 +845,12 @@
               "event": "200 succeeded",
               "latencyMs": 190,
               "level": "info",
-              "id": "s_mde5r886sv"
+              "id": "s_6rhs92diov"
             },
             {
               "target": {
                 "kind": "edge",
-                "id": "e_zj7rm2djxr"
+                "id": "e_p2fxs9k69t"
               },
               "caption": "Orders writes the order row in one transaction.",
               "durationMs": 1300,
@@ -859,12 +859,12 @@
               "event": "INSERT orders",
               "latencyMs": 4,
               "level": "info",
-              "id": "s_e0ho7xvtbd"
+              "id": "s_zk03ksnvbj"
             },
             {
               "target": {
                 "kind": "node",
-                "id": "n_mnf9o8hli2"
+                "id": "n_r6h9lmp31y"
               },
               "caption": "The row is committed.",
               "durationMs": 1200,
@@ -873,12 +873,12 @@
               "event": "COMMIT",
               "latencyMs": 3,
               "level": "info",
-              "id": "s_bqma2puxjy"
+              "id": "s_gea32uc6fb"
             },
             {
               "target": {
                 "kind": "edge",
-                "id": "e_zj7rm2djxr"
+                "id": "e_p2fxs9k69t"
               },
               "caption": "",
               "durationMs": 1000,
@@ -887,12 +887,12 @@
               "event": "OK",
               "latencyMs": 1,
               "level": "info",
-              "id": "s_50x20kr68t"
+              "id": "s_bb9swy7xeq"
             },
             {
               "target": {
                 "kind": "edge",
-                "id": "e_s8nq6qe1nm"
+                "id": "e_tzwh91k8qc"
               },
               "caption": "Orders publishes order.created.",
               "durationMs": 1300,
@@ -901,12 +901,12 @@
               "event": "produce order.created",
               "latencyMs": 3,
               "level": "info",
-              "id": "s_079cb9h7rm"
+              "id": "s_k1z74mavay"
             },
             {
               "target": {
                 "kind": "edge",
-                "id": "e_ui95xu7rox"
+                "id": "e_kpqrg0y6hj"
               },
               "caption": "",
               "durationMs": 1300,
@@ -915,12 +915,12 @@
               "event": "consume",
               "latencyMs": 15,
               "level": "info",
-              "id": "s_nfh8iuftm8"
+              "id": "s_048hzenfv9"
             },
             {
               "target": {
                 "kind": "node",
-                "id": "n_l5glmuc923"
+                "id": "n_0u9j7st6lr"
               },
               "caption": "The email worker sends the confirmation.",
               "durationMs": 1800,
@@ -929,7 +929,7 @@
               "event": "send confirmation",
               "latencyMs": 120,
               "level": "info",
-              "id": "s_tq1cxp383a"
+              "id": "s_wsrgfesv04"
             }
           ],
           "tracks": [],
@@ -952,11 +952,11 @@
         "zoom": 1
       },
       "rev": 0,
-      "createdAt": 1793237543511,
-      "updatedAt": 1793237543511
+      "createdAt": 1793238421779,
+      "updatedAt": 1793238421779
     },
     {
-      "id": "d_8l37mhbf9m",
+      "id": "d_g83kuribmj",
       "name": "Event pipeline",
       "version": 15,
       "theme": {
@@ -969,7 +969,7 @@
       },
       "nodes": [
         {
-          "id": "n_oo96m9tc21",
+          "id": "n_vjvp8iuc2o",
           "type": "group",
           "position": {
             "x": 256,
@@ -994,7 +994,7 @@
           "zIndex": -1
         },
         {
-          "id": "n_4lywbymtpt",
+          "id": "n_tcvlns8r42",
           "type": "group",
           "position": {
             "x": 640,
@@ -1019,7 +1019,7 @@
           "zIndex": -1
         },
         {
-          "id": "n_w4825ahlaz",
+          "id": "n_hual9i1m1q",
           "type": "card",
           "position": {
             "x": 0,
@@ -1032,7 +1032,7 @@
             "color": "neutral",
             "lines": [
               {
-                "id": "l_lsiv8xc9th",
+                "id": "l_jvt12dr2si",
                 "text": "SDK v4"
               }
             ],
@@ -1050,7 +1050,7 @@
           "zIndex": 1000
         },
         {
-          "id": "n_snag2q12kr",
+          "id": "n_6enfo4uojq",
           "type": "card",
           "position": {
             "x": 0,
@@ -1063,7 +1063,7 @@
             "color": "neutral",
             "lines": [
               {
-                "id": "l_vivakod6wk",
+                "id": "l_ymbpk7pcs9",
                 "text": "iOS, Android"
               }
             ],
@@ -1081,7 +1081,7 @@
           "zIndex": 1000
         },
         {
-          "id": "n_nx18uwlwed",
+          "id": "n_36s24v4y61",
           "type": "card",
           "position": {
             "x": 1040,
@@ -1094,7 +1094,7 @@
             "color": "neutral",
             "lines": [
               {
-                "id": "l_220se80t52",
+                "id": "l_lzqddpg2n7",
                 "text": "BigQuery"
               }
             ],
@@ -1112,7 +1112,7 @@
           "zIndex": 1000
         },
         {
-          "id": "n_3bbs8167ng",
+          "id": "n_g7xxqwzv9m",
           "type": "card",
           "position": {
             "x": 1040,
@@ -1125,7 +1125,7 @@
             "color": "neutral",
             "lines": [
               {
-                "id": "l_1ytkjgf7f8",
+                "id": "l_541lis9l3j",
                 "text": "on-call"
               }
             ],
@@ -1143,7 +1143,7 @@
           "zIndex": 1000
         },
         {
-          "id": "n_l82ussjh8k",
+          "id": "n_khzur6vc6l",
           "type": "card",
           "position": {
             "x": 48,
@@ -1156,7 +1156,7 @@
             "color": "neutral",
             "lines": [
               {
-                "id": "l_ua2wzhnmoe",
+                "id": "l_cht6atlxp1",
                 "text": "Rust"
               }
             ],
@@ -1171,11 +1171,11 @@
             }
           },
           "width": 216,
-          "parentId": "n_oo96m9tc21",
+          "parentId": "n_vjvp8iuc2o",
           "zIndex": 1000
         },
         {
-          "id": "n_nbykcxib0v",
+          "id": "n_dafoetqupl",
           "type": "card",
           "position": {
             "x": 48,
@@ -1188,7 +1188,7 @@
             "color": "neutral",
             "lines": [
               {
-                "id": "l_tjv0d5itky",
+                "id": "l_0a5s3bgixl",
                 "text": "Kafka, 12 partitions"
               }
             ],
@@ -1203,11 +1203,11 @@
             }
           },
           "width": 216,
-          "parentId": "n_oo96m9tc21",
+          "parentId": "n_vjvp8iuc2o",
           "zIndex": 1000
         },
         {
-          "id": "n_rylk881yvx",
+          "id": "n_cy650vomg9",
           "type": "card",
           "position": {
             "x": 48,
@@ -1220,7 +1220,7 @@
             "color": "neutral",
             "lines": [
               {
-                "id": "l_2175xqtqpq",
+                "id": "l_ngmkv7v0hp",
                 "text": "Flink job"
               }
             ],
@@ -1235,11 +1235,11 @@
             }
           },
           "width": 216,
-          "parentId": "n_4lywbymtpt",
+          "parentId": "n_tcvlns8r42",
           "zIndex": 1000
         },
         {
-          "id": "n_sznaok44sr",
+          "id": "n_wfvg5zmkjn",
           "type": "card",
           "position": {
             "x": 48,
@@ -1252,7 +1252,7 @@
             "color": "neutral",
             "lines": [
               {
-                "id": "l_uqgnppx57t",
+                "id": "l_1e171rw9b1",
                 "text": "Python"
               }
             ],
@@ -1267,16 +1267,16 @@
             }
           },
           "width": 216,
-          "parentId": "n_4lywbymtpt",
+          "parentId": "n_tcvlns8r42",
           "zIndex": 1000
         }
       ],
       "edges": [
         {
-          "id": "e_utb2jmi5pw",
+          "id": "e_5vslylb00l",
           "type": "flow",
-          "source": "n_w4825ahlaz",
-          "target": "n_l82ussjh8k",
+          "source": "n_hual9i1m1q",
+          "target": "n_khzur6vc6l",
           "data": {
             "path": "smooth",
             "stroke": "solid",
@@ -1299,10 +1299,10 @@
           }
         },
         {
-          "id": "e_6uk41dqja6",
+          "id": "e_osfvgilmm9",
           "type": "flow",
-          "source": "n_snag2q12kr",
-          "target": "n_l82ussjh8k",
+          "source": "n_6enfo4uojq",
+          "target": "n_khzur6vc6l",
           "data": {
             "path": "smooth",
             "stroke": "solid",
@@ -1325,10 +1325,10 @@
           }
         },
         {
-          "id": "e_nh1jy5ip2c",
+          "id": "e_eyreqyqvtw",
           "type": "flow",
-          "source": "n_l82ussjh8k",
-          "target": "n_nbykcxib0v",
+          "source": "n_khzur6vc6l",
+          "target": "n_dafoetqupl",
           "data": {
             "path": "smooth",
             "stroke": "solid",
@@ -1351,10 +1351,10 @@
           }
         },
         {
-          "id": "e_zp8xlav6ab",
+          "id": "e_t13zzgniy6",
           "type": "flow",
-          "source": "n_nbykcxib0v",
-          "target": "n_rylk881yvx",
+          "source": "n_dafoetqupl",
+          "target": "n_cy650vomg9",
           "data": {
             "path": "smooth",
             "stroke": "solid",
@@ -1377,10 +1377,10 @@
           }
         },
         {
-          "id": "e_70mn8dmilf",
+          "id": "e_n10hnzhsuf",
           "type": "flow",
-          "source": "n_nbykcxib0v",
-          "target": "n_sznaok44sr",
+          "source": "n_dafoetqupl",
+          "target": "n_wfvg5zmkjn",
           "data": {
             "path": "smooth",
             "stroke": "solid",
@@ -1403,10 +1403,10 @@
           }
         },
         {
-          "id": "e_8y0uvfqp5j",
+          "id": "e_7i9000u273",
           "type": "flow",
-          "source": "n_rylk881yvx",
-          "target": "n_nx18uwlwed",
+          "source": "n_cy650vomg9",
+          "target": "n_36s24v4y61",
           "data": {
             "path": "smooth",
             "stroke": "solid",
@@ -1429,10 +1429,10 @@
           }
         },
         {
-          "id": "e_2megdh0ddl",
+          "id": "e_dcbb5xq9zg",
           "type": "flow",
-          "source": "n_sznaok44sr",
-          "target": "n_3bbs8167ng",
+          "source": "n_wfvg5zmkjn",
+          "target": "n_g7xxqwzv9m",
           "data": {
             "path": "smooth",
             "stroke": "dashed",
@@ -1457,13 +1457,13 @@
       ],
       "flows": [
         {
-          "id": "f_flsatn9bb1",
+          "id": "f_9wthl50yr5",
           "name": "An event arrives",
           "steps": [
             {
               "target": {
                 "kind": "node",
-                "id": "n_w4825ahlaz"
+                "id": "n_hual9i1m1q"
               },
               "caption": "The web SDK sends a batch of events.",
               "durationMs": 1300,
@@ -1472,12 +1472,12 @@
               "event": "track checkout_started",
               "latencyMs": null,
               "level": "info",
-              "id": "s_li6badsmh8"
+              "id": "s_gpp8bkkv5i"
             },
             {
               "target": {
                 "kind": "edge",
-                "id": "e_utb2jmi5pw"
+                "id": "e_5vslylb00l"
               },
               "caption": "",
               "durationMs": 1200,
@@ -1486,12 +1486,12 @@
               "event": "POST /v1/events",
               "latencyMs": 18,
               "level": "info",
-              "id": "s_ac5y8akn8x"
+              "id": "s_lbwfu5dimn"
             },
             {
               "target": {
                 "kind": "node",
-                "id": "n_l82ussjh8k"
+                "id": "n_khzur6vc6l"
               },
               "caption": "The collector checks the schema and adds a receive time.",
               "durationMs": 1400,
@@ -1500,12 +1500,12 @@
               "event": "validate batch",
               "latencyMs": null,
               "level": "info",
-              "id": "s_n4d1pe1p9q"
+              "id": "s_4bfg2fhpgm"
             },
             {
               "target": {
                 "kind": "edge",
-                "id": "e_nh1jy5ip2c"
+                "id": "e_eyreqyqvtw"
               },
               "caption": "",
               "durationMs": 1200,
@@ -1514,12 +1514,12 @@
               "event": "",
               "latencyMs": 4,
               "level": "info",
-              "id": "s_mq24jnf4tx"
+              "id": "s_pengiu476p"
             },
             {
               "target": {
                 "kind": "node",
-                "id": "n_nbykcxib0v"
+                "id": "n_dafoetqupl"
               },
               "caption": "Kafka keeps the batch on 12 partitions.",
               "durationMs": 1400,
@@ -1528,12 +1528,12 @@
               "event": "append partition 7",
               "latencyMs": null,
               "level": "info",
-              "id": "s_y7b0uo7rjy"
+              "id": "s_l4ny2453jc"
             },
             {
               "target": {
                 "kind": "edge",
-                "id": "e_zp8xlav6ab"
+                "id": "e_t13zzgniy6"
               },
               "caption": "Two consumer groups read the same events at the same time.",
               "durationMs": 1400,
@@ -1545,15 +1545,15 @@
               "parallel": [
                 {
                   "kind": "edge",
-                  "id": "e_70mn8dmilf"
+                  "id": "e_n10hnzhsuf"
                 }
               ],
-              "id": "s_pt5orch2yf"
+              "id": "s_yc0f9sugt0"
             },
             {
               "target": {
                 "kind": "node",
-                "id": "n_rylk881yvx"
+                "id": "n_cy650vomg9"
               },
               "caption": "The enricher adds user and geo data while fraud scoring rates each event.",
               "durationMs": 1800,
@@ -1565,15 +1565,15 @@
               "parallel": [
                 {
                   "kind": "node",
-                  "id": "n_sznaok44sr"
+                  "id": "n_wfvg5zmkjn"
                 }
               ],
-              "id": "s_fooasphgch"
+              "id": "s_jdsw4mgz1t"
             },
             {
               "target": {
                 "kind": "edge",
-                "id": "e_8y0uvfqp5j"
+                "id": "e_7i9000u273"
               },
               "caption": "",
               "durationMs": 1300,
@@ -1582,12 +1582,12 @@
               "event": "load job",
               "latencyMs": null,
               "level": "info",
-              "id": "s_bwtq260r2d"
+              "id": "s_844kw0reym"
             },
             {
               "target": {
                 "kind": "node",
-                "id": "n_nx18uwlwed"
+                "id": "n_36s24v4y61"
               },
               "caption": "Analysts can query the events within five minutes.",
               "durationMs": 1800,
@@ -1596,7 +1596,7 @@
               "event": "INSERT events",
               "latencyMs": null,
               "level": "info",
-              "id": "s_t0rfuim9ac"
+              "id": "s_blwloehqtx"
             }
           ],
           "tracks": [],
@@ -1613,14 +1613,14 @@
           "cameraMotion": "gentle",
           "paths": [
             {
-              "id": "p_sskffgp4zf",
+              "id": "p_gs6j0k6nsv",
               "name": "High fraud score",
-              "fromStep": "s_fooasphgch",
+              "fromStep": "s_jdsw4mgz1t",
               "steps": [
                 {
                   "target": {
                     "kind": "edge",
-                    "id": "e_2megdh0ddl"
+                    "id": "e_dcbb5xq9zg"
                   },
                   "caption": "A score above 0.9 pages the on-call engineer.",
                   "durationMs": 1400,
@@ -1629,12 +1629,12 @@
                   "event": "POST /v2/enqueue",
                   "latencyMs": null,
                   "level": "error",
-                  "id": "s_ix0ismmyq8"
+                  "id": "s_vpxu6f22j4"
                 },
                 {
                   "target": {
                     "kind": "node",
-                    "id": "n_3bbs8167ng"
+                    "id": "n_g7xxqwzv9m"
                   },
                   "caption": "The on-call engineer gets the alert in seconds.",
                   "durationMs": 1800,
@@ -1643,7 +1643,7 @@
                   "event": "incident triggered",
                   "latencyMs": null,
                   "level": "error",
-                  "id": "s_injw6ahgz0"
+                  "id": "s_qxnx2uoi4n"
                 }
               ],
               "rejoinStep": null
@@ -1657,11 +1657,11 @@
         "zoom": 1
       },
       "rev": 0,
-      "createdAt": 1793237543512,
-      "updatedAt": 1793237543512
+      "createdAt": 1793238421779,
+      "updatedAt": 1793238421779
     },
     {
-      "id": "d_r188qx5bmb",
+      "id": "d_tt00tgtc3c",
       "name": "Checkout flow",
       "version": 15,
       "theme": {
@@ -1674,7 +1674,7 @@
       },
       "nodes": [
         {
-          "id": "n_g6ppmz0vdh",
+          "id": "n_g4wcyj3nbe",
           "type": "shape",
           "position": {
             "x": 0,
@@ -1697,7 +1697,7 @@
           "zIndex": 1000
         },
         {
-          "id": "n_wxw9s18gq5",
+          "id": "n_01lj4zh3tu",
           "type": "card",
           "position": {
             "x": 208,
@@ -1710,7 +1710,7 @@
             "color": "neutral",
             "lines": [
               {
-                "id": "l_yef8gox1z9",
+                "id": "l_9iyfpqa3ve",
                 "text": "/p/aurora-lamp"
               }
             ],
@@ -1728,7 +1728,7 @@
           "zIndex": 1000
         },
         {
-          "id": "n_qzne887ylj",
+          "id": "n_dtqwsdd69z",
           "type": "card",
           "position": {
             "x": 560,
@@ -1741,7 +1741,7 @@
             "color": "neutral",
             "lines": [
               {
-                "id": "l_oyayp11kcg",
+                "id": "l_05rsuy1514",
                 "text": "/cart"
               }
             ],
@@ -1759,7 +1759,7 @@
           "zIndex": 1000
         },
         {
-          "id": "n_4dtmye1hzz",
+          "id": "n_0k044r9y3r",
           "type": "shape",
           "position": {
             "x": 864,
@@ -1782,7 +1782,7 @@
           "zIndex": 1000
         },
         {
-          "id": "n_esku1mbr2h",
+          "id": "n_7dcqba0g6x",
           "type": "card",
           "position": {
             "x": 1072,
@@ -1795,7 +1795,7 @@
             "color": "neutral",
             "lines": [
               {
-                "id": "l_kedscfd14v",
+                "id": "l_4hdtob3n0x",
                 "text": "email + passkey"
               }
             ],
@@ -1813,7 +1813,7 @@
           "zIndex": 1000
         },
         {
-          "id": "n_l99u8exj19",
+          "id": "n_hcwhpm87nz",
           "type": "card",
           "position": {
             "x": 1072,
@@ -1826,7 +1826,7 @@
             "color": "neutral",
             "lines": [
               {
-                "id": "l_rw8xt0hdpv",
+                "id": "l_ygd3nzr2i4",
                 "text": "card or wallet"
               }
             ],
@@ -1844,7 +1844,7 @@
           "zIndex": 1000
         },
         {
-          "id": "n_0wkdwdg9l9",
+          "id": "n_m9x8j8dxa8",
           "type": "shape",
           "position": {
             "x": 1392,
@@ -1869,10 +1869,10 @@
       ],
       "edges": [
         {
-          "id": "e_7m4bmp43pu",
+          "id": "e_vmpq7zoa9e",
           "type": "flow",
-          "source": "n_g6ppmz0vdh",
-          "target": "n_wxw9s18gq5",
+          "source": "n_g4wcyj3nbe",
+          "target": "n_01lj4zh3tu",
           "data": {
             "path": "smooth",
             "stroke": "solid",
@@ -1895,10 +1895,10 @@
           }
         },
         {
-          "id": "e_oxwz3nfqgf",
+          "id": "e_6t8nyain8t",
           "type": "flow",
-          "source": "n_wxw9s18gq5",
-          "target": "n_qzne887ylj",
+          "source": "n_01lj4zh3tu",
+          "target": "n_dtqwsdd69z",
           "data": {
             "path": "smooth",
             "stroke": "solid",
@@ -1921,10 +1921,10 @@
           }
         },
         {
-          "id": "e_nsdpucznfh",
+          "id": "e_gzoogx3qck",
           "type": "flow",
-          "source": "n_qzne887ylj",
-          "target": "n_4dtmye1hzz",
+          "source": "n_dtqwsdd69z",
+          "target": "n_0k044r9y3r",
           "data": {
             "path": "smooth",
             "stroke": "solid",
@@ -1947,10 +1947,10 @@
           }
         },
         {
-          "id": "e_ayhvywdtev",
+          "id": "e_oe3weykqbz",
           "type": "flow",
-          "source": "n_4dtmye1hzz",
-          "target": "n_esku1mbr2h",
+          "source": "n_0k044r9y3r",
+          "target": "n_7dcqba0g6x",
           "data": {
             "path": "smooth",
             "stroke": "solid",
@@ -1973,10 +1973,10 @@
           }
         },
         {
-          "id": "e_0tjc157x5j",
+          "id": "e_ucd06ya81g",
           "type": "flow",
-          "source": "n_4dtmye1hzz",
-          "target": "n_l99u8exj19",
+          "source": "n_0k044r9y3r",
+          "target": "n_hcwhpm87nz",
           "data": {
             "path": "smooth",
             "stroke": "solid",
@@ -1999,10 +1999,10 @@
           }
         },
         {
-          "id": "e_90pw8diygv",
+          "id": "e_g1gwi6ygpq",
           "type": "flow",
-          "source": "n_esku1mbr2h",
-          "target": "n_l99u8exj19",
+          "source": "n_7dcqba0g6x",
+          "target": "n_hcwhpm87nz",
           "data": {
             "path": "smooth",
             "stroke": "dashed",
@@ -2025,10 +2025,10 @@
           }
         },
         {
-          "id": "e_2drp9b078a",
+          "id": "e_mhjjy44khu",
           "type": "flow",
-          "source": "n_l99u8exj19",
-          "target": "n_0wkdwdg9l9",
+          "source": "n_hcwhpm87nz",
+          "target": "n_m9x8j8dxa8",
           "data": {
             "path": "smooth",
             "stroke": "solid",
@@ -2053,13 +2053,13 @@
       ],
       "flows": [
         {
-          "id": "f_m93eeus772",
+          "id": "f_36xhjtjff9",
           "name": "Returning customer",
           "steps": [
             {
               "target": {
                 "kind": "node",
-                "id": "n_g6ppmz0vdh"
+                "id": "n_g4wcyj3nbe"
               },
               "caption": "A returning customer lands from a search ad.",
               "durationMs": 1300,
@@ -2068,12 +2068,12 @@
               "event": "utm_source=search",
               "latencyMs": null,
               "level": "info",
-              "id": "s_42wl4wuax0"
+              "id": "s_v38suvgyz7"
             },
             {
               "target": {
                 "kind": "edge",
-                "id": "e_7m4bmp43pu"
+                "id": "e_vmpq7zoa9e"
               },
               "caption": "",
               "durationMs": 1300,
@@ -2082,12 +2082,12 @@
               "event": "GET /p/aurora-lamp",
               "latencyMs": null,
               "level": "info",
-              "id": "s_538kyouj4s"
+              "id": "s_zb4x3a72rk"
             },
             {
               "target": {
                 "kind": "node",
-                "id": "n_wxw9s18gq5"
+                "id": "n_01lj4zh3tu"
               },
               "caption": "They open the product page.",
               "durationMs": 1500,
@@ -2096,12 +2096,12 @@
               "event": "view product",
               "latencyMs": null,
               "level": "info",
-              "id": "s_susxm7a6n4"
+              "id": "s_q8g1yvc14w"
             },
             {
               "target": {
                 "kind": "edge",
-                "id": "e_oxwz3nfqgf"
+                "id": "e_6t8nyain8t"
               },
               "caption": "Add to cart",
               "durationMs": 1300,
@@ -2110,12 +2110,12 @@
               "event": "POST /cart/items",
               "latencyMs": null,
               "level": "info",
-              "id": "s_a83meff754"
+              "id": "s_2pzk9wasuw"
             },
             {
               "target": {
                 "kind": "node",
-                "id": "n_qzne887ylj"
+                "id": "n_dtqwsdd69z"
               },
               "caption": "The cart shows two items.",
               "durationMs": 1400,
@@ -2124,12 +2124,12 @@
               "event": "view cart",
               "latencyMs": null,
               "level": "info",
-              "id": "s_ctegthvysd"
+              "id": "s_6jkyft9yrh"
             },
             {
               "target": {
                 "kind": "edge",
-                "id": "e_nsdpucznfh"
+                "id": "e_gzoogx3qck"
               },
               "caption": "",
               "durationMs": 1300,
@@ -2138,12 +2138,12 @@
               "event": "click Checkout",
               "latencyMs": null,
               "level": "info",
-              "id": "s_dyp7vpg0xt"
+              "id": "s_9u3cqo7vqa"
             },
             {
               "target": {
                 "kind": "node",
-                "id": "n_4dtmye1hzz"
+                "id": "n_0k044r9y3r"
               },
               "caption": "The app checks the session.",
               "durationMs": 1300,
@@ -2152,12 +2152,12 @@
               "event": "GET /session",
               "latencyMs": null,
               "level": "info",
-              "id": "s_xc39kd1wda"
+              "id": "s_6n4m5hoa6i"
             },
             {
               "target": {
                 "kind": "edge",
-                "id": "e_0tjc157x5j"
+                "id": "e_ucd06ya81g"
               },
               "caption": "The session is valid, so sign-in is skipped.",
               "durationMs": 1300,
@@ -2166,12 +2166,12 @@
               "event": "200 signed in",
               "latencyMs": null,
               "level": "info",
-              "id": "s_42mg26lrrg"
+              "id": "s_baz3l3j306"
             },
             {
               "target": {
                 "kind": "node",
-                "id": "n_l99u8exj19"
+                "id": "n_hcwhpm87nz"
               },
               "caption": "They pay with a saved wallet.",
               "durationMs": 1600,
@@ -2180,12 +2180,12 @@
               "event": "pay with wallet",
               "latencyMs": null,
               "level": "info",
-              "id": "s_5od36m2vo8"
+              "id": "s_suuayu94j9"
             },
             {
               "target": {
                 "kind": "edge",
-                "id": "e_2drp9b078a"
+                "id": "e_mhjjy44khu"
               },
               "caption": "",
               "durationMs": 1300,
@@ -2194,12 +2194,12 @@
               "event": "POST /orders",
               "latencyMs": null,
               "level": "info",
-              "id": "s_h5nh5q3df9"
+              "id": "s_pf98pgrsrm"
             },
             {
               "target": {
                 "kind": "node",
-                "id": "n_0wkdwdg9l9"
+                "id": "n_m9x8j8dxa8"
               },
               "caption": "Order placed in 41 seconds.",
               "durationMs": 2000,
@@ -2208,7 +2208,7 @@
               "event": "order placed",
               "latencyMs": null,
               "level": "info",
-              "id": "s_c1r0l1b640"
+              "id": "s_cjfinlqddz"
             }
           ],
           "tracks": [],
@@ -2231,8 +2231,8 @@
         "zoom": 1
       },
       "rev": 0,
-      "createdAt": 1793237543512,
-      "updatedAt": 1793237543512
+      "createdAt": 1793238421780,
+      "updatedAt": 1793238421780
     }
   ]
 }

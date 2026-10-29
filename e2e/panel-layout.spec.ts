@@ -38,7 +38,7 @@ test('moves the view switch and recording into a menu when the flow toolbar is n
   await copyTemplate(page, 'Order system')
   await page.locator('.react-flow__node', { hasText: 'Orders' }).first().click()
   await page.getByRole('button', { name: 'Flows' }).click()
-  await expect(page.getByRole('radio', { name: 'Sequence' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Sequence', exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: 'More flow controls' }).click()
   await page.getByRole('menuitemradio', { name: 'Sequence' }).click()
   await expect(page.getByRole('region', { name: 'Flow' }).locator('svg').first()).toBeVisible()
