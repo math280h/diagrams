@@ -284,6 +284,7 @@ export function SliderField({
         <span className="text-[11px] text-muted-foreground tabular-nums">{format ? format(value) : value}</span>
       </div>
       <Slider
+        thumbLabel={label}
         value={[value]}
         min={min}
         max={max}

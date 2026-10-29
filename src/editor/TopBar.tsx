@@ -234,9 +234,11 @@ export function TopBar() {
           </IconButton>
           <Separator orientation="vertical" className="mx-1 h-5 data-vertical:self-center" />
           <Tooltip>
-            <TooltipTrigger render={<Button variant="ghost" aria-label="Insert" onClick={openInsertAtCenter} />}>
-              <Plus /> <span className="hidden md:inline">Insert</span>
-              <Kbd className="hidden md:inline-flex">N</Kbd>
+            <TooltipTrigger render={<Button variant="ghost" onClick={openInsertAtCenter} />}>
+              <Plus /> <span className="sr-only md:not-sr-only">Insert</span>
+              <Kbd aria-hidden className="hidden md:inline-flex">
+                N
+              </Kbd>
             </TooltipTrigger>
             <TooltipContent>Insert a node</TooltipContent>
           </Tooltip>

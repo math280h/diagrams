@@ -11,7 +11,12 @@ export function ShortcutsDialog() {
         <DialogHeader>
           <DialogTitle>Keyboard shortcuts</DialogTitle>
         </DialogHeader>
-        <div className="-mx-4 max-h-[70dvh] space-y-4 overflow-y-auto px-4">
+        <div
+          tabIndex={0}
+          role="region"
+          aria-label="Shortcuts"
+          className="-mx-4 max-h-[70dvh] space-y-4 overflow-y-auto rounded-md px-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
           {SHORTCUT_GROUPS.map((group) => (
             <section key={group.title} aria-labelledby={`shortcuts-${group.title}`}>
               <h3 id={`shortcuts-${group.title}`} className="text-xs font-medium text-muted-foreground">

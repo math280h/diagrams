@@ -107,7 +107,6 @@ export function LogTable({ flow }: { flow: Flow }) {
           <button
             key={step.id}
             type="button"
-            aria-label={`Step ${index + 1}: ${element}${event ? `, ${event}` : ''}, ${state}`}
             data-index={segment?.index}
             data-state={state}
             data-kind={step.target.kind}
@@ -143,6 +142,7 @@ export function LogTable({ flow }: { flow: Flow }) {
               </span>
             )}
             <span className="dg-log-caption truncate font-sans text-[13px] max-lg:hidden">{step.caption}</span>
+            <span className="sr-only">, {state}</span>
           </button>
         )
       })}

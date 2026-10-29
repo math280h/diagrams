@@ -9,6 +9,7 @@ const dist = path.resolve(distArg)
 const out = path.resolve(outArg)
 const DESKTOP = { width: 1440, height: 900 }
 const PHONE = { width: 390, height: 844 }
+const LAPTOP = { width: 1280, height: 720 }
 const READY_MS = 30_000
 const SETTLE_MS = 400
 
@@ -66,6 +67,14 @@ async function desktopScreens(page, url, theme) {
   await capture(page, 'editor-empty', theme)
 }
 
+async function laptopScreens(page, url, theme) {
+  await copyOrderSystem(page, url)
+  await page.locator('.react-flow__node', { hasText: 'Orders' }).first().click()
+  await page.getByRole('button', { name: 'Flows' }).click()
+  await page.getByRole('region', { name: 'Flow' }).waitFor()
+  await capture(page, 'laptop-editor-panels', theme)
+}
+
 async function phoneScreens(page, url, theme) {
   await page.goto(`${url}#/`)
   await page.locator('.dg-preview .react-flow__node').first().waitFor({ timeout: READY_MS })
@@ -94,6 +103,7 @@ try {
   for (const theme of ['dark', 'light']) {
     for (const [size, take] of [
       [DESKTOP, desktopScreens],
+      [LAPTOP, laptopScreens],
       [PHONE, phoneScreens],
     ]) {
       const context = await browser.newContext({

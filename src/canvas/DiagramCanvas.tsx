@@ -93,7 +93,12 @@ export function DiagramCanvas({
         editable && node.data.pinned === true && 'dg-pinned',
       ].filter(Boolean)
       const className = [node.className, ...marks].filter(Boolean).join(' ')
-      return { ...node, ariaLabel: nodeAriaLabel(node), ...(className ? { className } : {}) }
+      return {
+        ...node,
+        ariaRole: 'group' as const,
+        ariaLabel: nodeAriaLabel(node),
+        ...(className ? { className } : {}),
+      }
     })
   }, [flowProps.nodes, details, editable])
   const edges = useMemo(() => {
