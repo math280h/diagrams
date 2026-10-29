@@ -11,7 +11,7 @@ import {
   DEV_ORIGINS,
   DIAGRAM_FILE_SUFFIX,
   HANDOFF_TTL_MS,
-  PREVIEW_APP_TAG,
+  PREVIEW_APP_LABEL,
   WEBSITE_ORIGIN,
 } from '@/desktop/constants'
 import type { AgentInfo } from '@/desktop/contract'
@@ -105,7 +105,7 @@ function currentUpdatePolicy(): UpdatePolicy {
     packageType: readText(path.join(process.resourcesPath, 'package-type')),
     appImage: Boolean(process.env.APPIMAGE),
     macSigned: manifest.macSigned === true,
-    preview: app.getVersion().includes(`-${PREVIEW_APP_TAG}.`),
+    preview: app.getVersion().includes(`-${PREVIEW_APP_LABEL}.`),
   })
 }
 

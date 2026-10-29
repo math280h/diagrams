@@ -1,5 +1,5 @@
 import type { Plugin } from 'vite'
-import { PREVIEW_APP_TAG, RELEASES_API_URL, REPOSITORY_API_URL } from '../src/desktop/constants.ts'
+import { PREVIEW_APP_TAG_PATTERN, RELEASES_API_URL, REPOSITORY_API_URL } from '../src/desktop/constants.ts'
 import type { UnreleasedChange, UnreleasedChanges } from '../src/releases/unreleased.ts'
 
 const MODULE_ID = 'virtual:release-notes'
@@ -49,7 +49,7 @@ export function newestReleaseTag(releases: unknown[]): string | null {
       release.draft !== true &&
       typeof release.tag_name === 'string' &&
       release.tag_name &&
-      release.tag_name !== PREVIEW_APP_TAG,
+      !PREVIEW_APP_TAG_PATTERN.test(release.tag_name),
   )
   const time = (release: Record<string, unknown>) => Date.parse(String(release.published_at)) || 0
   const [newest] = published.toSorted((a, b) => time(b) - time(a))
