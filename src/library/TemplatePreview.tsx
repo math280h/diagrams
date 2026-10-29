@@ -108,6 +108,7 @@ function Preview({ template }: { template: Template }) {
           theme={diagram.theme}
           resolvedTheme={resolvedTheme}
           editable={false}
+          levelOfDetail
           onNodesChange={onNodesChange}
           onEdgesChange={(changes: EdgeChange<DiagramEdge>[]) =>
             setEdges((current) => applyEdgeChanges(changes, current))

@@ -1,5 +1,7 @@
-import { useReactFlow, useViewport } from '@xyflow/react'
-import { Maximize, Minus, Plus } from 'lucide-react'
+import { useReactFlow, useStore, useViewport } from '@xyflow/react'
+import { Map as MapIcon, Maximize, Minus, Plus } from 'lucide-react'
+import { MINIMAP_MIN_NODES } from '@/canvas/Minimap'
+import { useSettings } from '@/store/settings-store'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useFitToScreen } from './fit'
@@ -9,6 +11,9 @@ export function ZoomControls() {
   const { zoom } = useViewport()
   const { zoomIn, zoomOut, zoomTo } = useReactFlow()
   const fitToScreen = useFitToScreen()
+  const large = useStore((state) => state.nodes.length >= MINIMAP_MIN_NODES)
+  const showMinimap = useSettings((state) => state.showMinimap)
+  const setShowMinimap = useSettings((state) => state.setShowMinimap)
   return (
     <div className="dg-chrome absolute bottom-3 left-3 z-10 flex h-8 items-center gap-0.5 px-0.5">
       <Button variant="ghost" size="icon-sm" aria-label="Zoom out" onClick={() => void zoomOut({ duration: 160 })}>
@@ -44,6 +49,25 @@ export function ZoomControls() {
           <span className="ml-2 text-muted-foreground">{KEYS.fit}</span>
         </TooltipContent>
       </Tooltip>
+      {large && (
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant={showMinimap ? 'secondary' : 'ghost'}
+                size="icon-sm"
+                aria-label="Minimap"
+                aria-pressed={showMinimap}
+                className="max-md:hidden"
+                onClick={() => setShowMinimap(!showMinimap)}
+              />
+            }
+          >
+            <MapIcon />
+          </TooltipTrigger>
+          <TooltipContent>{showMinimap ? 'Hide the minimap' : 'Show the minimap'}</TooltipContent>
+        </Tooltip>
+      )}
     </div>
   )
 }

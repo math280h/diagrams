@@ -169,6 +169,21 @@ The visual system lives in `DESIGN.md` at the repository root.
   Record and Add the selected node move into a More menu, and below 720 px the step count and the
   time readout hide. On a phone (below 640 px) the top bar keeps the name, Present and Export, and
   the editing controls move into a More menu, so that the name stays readable.
+- Large diagrams stay navigable:
+  - **Level of detail.** The editor and the template page set `data-lod` on the canvas root (`LevelOfDetail`): `far`
+    below zoom 0.55 and `farther` below 0.3. Then card lines, meters, badges, edge labels and traffic hide, and card
+    titles and boundary labels grow 1.35 or 1.8 times. The change uses `visibility` and `scale`, so node sizes, edge
+    anchors and saved sizes do not change. Dashes stay, because the templates use them for meaning, such as a line
+    that crosses the internet. Present, previews and exports keep full detail, so that a flow does not pop
+    between levels while the camera moves.
+  - **Minimap.** A diagram of 20 nodes or more shows a minimap in the editor, which the zoom controls hide and the
+    settings remember. Groups show as outlines, and text nodes do not show.
+  - **Go to.** When the command menu has a search, it lists the nodes, and a node opens selected and in the middle
+    of the view.
+  - **Explore in Present** (`useExplore`, the E key). The flow stops, the node with the most connections takes the
+    focus, the camera frames it with its neighbours above the strip at the bottom, and the rest dims. A click on a
+    node, or on its button in the strip, moves the focus; Esc stops exploring. The flow loads again at its start and
+    does not play by itself.
 - Metrics, meters, status dots and badges are optional. Templates use them only where they carry
   data, such as a connection pool size or a port.
 - Cards, shapes and text always draw above boundaries (`ELEMENT_Z`). React Flow puts a child node

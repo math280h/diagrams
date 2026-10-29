@@ -1,6 +1,7 @@
 import { useNavigate } from '@tanstack/react-router'
 import { copyDiagramAsPng } from '@/export/image-copy'
 import { useReactFlow } from '@xyflow/react'
+import { useMemo, useState } from 'react'
 import {
   BookOpen,
   Bot,
@@ -15,6 +16,7 @@ import {
   Film,
   Waypoints,
   Group,
+  Crosshair,
   History,
   ImageDown,
   Image,
@@ -47,6 +49,7 @@ import {
   CommandShortcut,
 } from '@/components/ui/command'
 import { BOUNDARY_PROVIDERS } from '@/model/boundaries'
+import { boundaryTitle, nodeTitle } from '@/model/labels'
 import { PRESET_CATEGORIES, PRESETS } from '@/model/presets'
 import { exportDiagramJson } from '@/persistence/library-actions'
 import {
@@ -57,6 +60,7 @@ import {
   groupSelection,
   pinNodes,
   selectionPinned,
+  selectOnly,
   updateEdgesTraffic,
 } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
@@ -68,6 +72,8 @@ import { tidyUp } from './layout-command'
 import { presetNodeAt } from './preset-node'
 import { useFitToScreen } from './fit'
 import { KEYS } from '@/lib/shortcut-keys'
+
+const GO_TO_DURATION_MS = 400
 
 const CAPITALIZED_PREFIXES = BOUNDARY_PROVIDERS.map((provider) => provider.prefix).filter(Boolean)
 
@@ -81,25 +87,60 @@ export function CommandMenu() {
   const flows = useDoc((state) => state.flows)
   const id = useDoc((state) => state.id)
   const navigate = useNavigate()
-  const { screenToFlowPosition } = useReactFlow()
+  const { screenToFlowPosition, fitView } = useReactFlow()
   const fit = useFitToScreen()
   const setTheme = useSettings((state) => state.setTheme)
+  const [search, setSearch] = useState('')
+  const nodes = useDoc((state) => state.nodes)
+  const targets = useMemo(
+    () =>
+      open
+        ? nodes.flatMap((node) =>
+            node.type === 'text'
+              ? []
+              : [{ id: node.id, name: node.type === 'group' ? boundaryTitle(node) : nodeTitle(node) }],
+          )
+        : [],
+    [open, nodes],
+  )
 
   const run = (action: () => void) => () => {
     setUi({ commandOpen: false })
+    setSearch('')
     action()
+  }
+
+  const goTo = (nodeId: string) => {
+    selectOnly([nodeId])
+    void fitView({ nodes: [{ id: nodeId }], duration: GO_TO_DURATION_MS, maxZoom: 1.2, padding: 1 })
   }
 
   return (
     <CommandDialog
       open={open}
-      onOpenChange={(value) => setUi({ commandOpen: value })}
+      onOpenChange={(value) => {
+        setUi({ commandOpen: value })
+        if (!value) setSearch('')
+      }}
       title="Command menu"
       description="Search for an action"
     >
-      <CommandInput placeholder="Search for an action…" />
+      <CommandInput placeholder="Search for an action or a node…" value={search} onValueChange={setSearch} />
       <CommandList className="max-h-[420px]">
         <CommandEmpty>Nothing matches your search.</CommandEmpty>
+        {search.trim() !== '' && targets.length > 0 && (
+          <CommandGroup heading="Go to">
+            {targets.map((target) => (
+              <CommandItem
+                key={target.id}
+                value={`go to ${target.name} ${target.id}`}
+                onSelect={run(() => goTo(target.id))}
+              >
+                <Crosshair /> {target.name}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
         <CommandGroup heading="Diagram">
           <CommandItem onSelect={run(undo)}>
             <Undo2 /> Undo <CommandShortcut>{KEYS.undo}</CommandShortcut>
