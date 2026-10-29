@@ -13,7 +13,7 @@ function openDiagramId(): string | null {
 }
 
 /** Creates the handler context of the app in this window, which uses the router and the editor. */
-export function createBrowserContext(signal: AbortSignal): Omit<HandlerContext, 'toolTitle'> {
+export function createBrowserContext(signal: AbortSignal): Omit<HandlerContext, 'toolTitle' | 'changes'> {
   return {
     signal,
     openDiagramId,

@@ -30,28 +30,41 @@ function contains(outer: Rect, inner: Rect) {
   )
 }
 
-/** Lists layout problems that an agent should fix: nodes that overlap and nodes that stick out of their group. */
-export function layoutWarnings(nodes: readonly DiagramNode[]): string[] {
+/**
+ * Finds nodes that overlap and nodes that stick out of their group.
+ *
+ * @returns For `overlap`, the two nodes. For `outside`, the node and then its group.
+ */
+export function layoutProblems(
+  nodes: readonly DiagramNode[],
+): { kind: 'overlap' | 'outside'; nodes: [string, string] }[] {
   const byId = new Map(nodes.map((node) => [node.id, node]))
   const rects = new Map(nodes.map((node) => [node.id, absoluteRect(node, byId)]))
-  const warnings: string[] = []
+  const problems: { kind: 'overlap' | 'outside'; nodes: [string, string] }[] = []
   const elements = nodes.filter((node) => node.type !== 'group')
   for (let i = 0; i < elements.length; i++) {
     for (let j = i + 1; j < elements.length; j++) {
       const a = elements[i]!
       const b = elements[j]!
-      if (overlaps(rects.get(a.id)!, rects.get(b.id)!)) {
-        warnings.push(`"${nodeLabel(a)}" (${a.id}) overlaps "${nodeLabel(b)}" (${b.id}).`)
-      }
+      if (overlaps(rects.get(a.id)!, rects.get(b.id)!)) problems.push({ kind: 'overlap', nodes: [a.id, b.id] })
     }
   }
   for (const node of nodes) {
     const parent = node.parentId ? byId.get(node.parentId) : undefined
     if (parent && !contains(rects.get(parent.id)!, rects.get(node.id)!)) {
-      warnings.push(`"${nodeLabel(node)}" (${node.id}) sticks out of its group "${nodeLabel(parent)}" (${parent.id}).`)
+      problems.push({ kind: 'outside', nodes: [node.id, parent.id] })
     }
   }
-  return warnings
+  return problems
+}
+
+/** Lists layout problems that an agent should fix: nodes that overlap and nodes that stick out of their group. */
+export function layoutWarnings(nodes: readonly DiagramNode[]): string[] {
+  const byId = new Map(nodes.map((node) => [node.id, node]))
+  const name = (id: string) => `"${nodeLabel(byId.get(id)!)}" (${id})`
+  return layoutProblems(nodes).map(({ kind, nodes: [a, b] }) =>
+    kind === 'overlap' ? `${name(a)} overlaps ${name(b)}.` : `${name(a)} sticks out of its group ${name(b)}.`,
+  )
 }
 
 function compactDetails(details: NodeDetails) {

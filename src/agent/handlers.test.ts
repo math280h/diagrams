@@ -60,6 +60,7 @@ function context(): HandlerContext {
   return {
     signal: new AbortController().signal,
     toolTitle: 'Test tool',
+    changes: [],
     openDiagramId: () => open,
     async openInEditor(id) {
       const diagram = repository().load(id)
@@ -84,9 +85,13 @@ function context(): HandlerContext {
   }
 }
 
+let lastChanges: string[] = []
+
 async function call<N extends ToolName>(name: N, input: ToolInput<N>) {
   const handler = HANDLERS[name] as (input: ToolInput<N>, ctx: HandlerContext) => Promise<ToolContent[]>
-  const content = await handler(input, context())
+  const ctx = context()
+  const content = await handler(input, ctx)
+  lastChanges = ctx.changes
   const text = content.find((block) => block.type === 'text')
   return JSON.parse(text && text.type === 'text' ? text.text : '{}') as Record<string, unknown>
 }
@@ -179,6 +184,37 @@ describe('agent tools', () => {
     undo()
     expect(useDoc.getState().nodes).toHaveLength(0)
     expect(useHistory.getState().canUndo).toBe(false)
+  })
+
+  it('describes the change of each edit, and answers graph questions and lint checks about the result', async () => {
+    await call('create_diagram', { name: 'Shop' })
+    await call('add_elements', {
+      nodes: [
+        { ref: 'web', label: 'Web', form: 'client' },
+        { ref: 'api', label: 'API' },
+        { ref: 'db', label: 'Orders DB', form: 'datastore' },
+        { ref: 'mail', label: 'Mailer' },
+      ],
+      edges: [
+        { from: 'web', to: 'api', label: 'HTTPS' },
+        { from: 'api', to: 'db' },
+      ],
+    })
+    expect(lastChanges).toEqual(['Added 4 nodes and 2 connections.'])
+
+    const outgoers = await call('query_graph', { query: 'outgoers', node: 'API' })
+    expect(outgoers.results).toEqual([
+      expect.objectContaining({ node: expect.objectContaining({ label: 'Orders DB' }), direction: 'out' }),
+    ])
+    const path = await call('query_graph', { query: 'path', node: 'Web', to: 'Orders DB' })
+    expect(path).toMatchObject({
+      found: true,
+      hops: [{ reaches: { label: 'API' } }, { reaches: { label: 'Orders DB' } }],
+    })
+
+    const { issues } = (await call('lint_diagram', {})) as { issues: { rule: string; nodes?: string[] }[] }
+    expect(issues.map((issue) => issue.rule).toSorted()).toEqual(['no-technology', 'unconnected', 'unlabelled-edge'])
+    expect(issues.find((issue) => issue.rule === 'unconnected')!.nodes).toEqual([nodeByLabel('Mailer').id])
   })
 
   it('warns about icons and fields that do not exist', async () => {

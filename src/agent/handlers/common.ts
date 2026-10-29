@@ -3,7 +3,8 @@ import { repository } from '@/persistence/active-repository'
 import { fromDiagram } from '@/persistence/serialize'
 import { untilStored } from '@/persistence/until-stored'
 import { takeSnapshot, useDoc } from '@/store/doc-store'
-import { flushPendingSave } from '@/store/document'
+import { currentDiagram, flushPendingSave } from '@/store/document'
+import { describeChange } from '@/model/diagram-diff'
 import { oneStep } from '@/store/history'
 import { asVersionAuthor } from '@/store/versions'
 import { errorMessage } from '@/lib/error-message'
@@ -72,6 +73,7 @@ export async function commitEdit<T>(ctx: HandlerContext, diagramId: string, chan
     throw new ToolError('The editor no longer shows this diagram, so the tool made no change. Call the tool again.')
   }
   let result: T | undefined
+  const before = currentDiagram()
   const failure = await untilStored(diagramId, () => {
     result = asVersionAuthor({ author: 'agent', tool: ctx.toolTitle }, () => {
       const value = oneStep(change)
@@ -79,6 +81,7 @@ export async function commitEdit<T>(ctx: HandlerContext, diagramId: string, chan
       return value
     })
   })
+  ctx.changes.push(describeChange(before, currentDiagram()))
   if (failure !== null) {
     throw new ToolError(`The change shows in the editor, but it did not save: ${failure}. Tell the user.`)
   }

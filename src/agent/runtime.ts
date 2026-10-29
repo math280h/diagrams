@@ -8,6 +8,7 @@ import { HANDLERS } from './handlers'
 import { isToolName, TOOL_DEFINITIONS, type ToolName } from './tool-definitions'
 
 const CANCELLED = 'The request was cancelled.'
+const NO_CHANGES = 'No visible changes.'
 
 const enqueue = createSerialQueue()
 
@@ -23,7 +24,10 @@ async function execute(tool: ToolName, input: unknown, ctx: HandlerContext): Pro
   useAgentActivity.setState({ title, readOnly: annotations.readOnlyHint })
   try {
     const handler = HANDLERS[tool] as (input: unknown, ctx: HandlerContext) => ReturnType<(typeof HANDLERS)[ToolName]>
-    return { ok: true, content: await handler(input, ctx) }
+    const content = await handler(input, ctx)
+    const changes = ctx.changes.filter((change) => change !== NO_CHANGES)
+    if (changes.length > 0) content.push({ type: 'text', text: `Changes: ${changes.join(' ')}` })
+    return { ok: true, content }
   } catch (error) {
     return { ok: false, message: errorMessage(error) }
   } finally {
@@ -44,7 +48,7 @@ export function runAgentTool(
   tool: string,
   args: unknown,
   signal: AbortSignal,
-  createContext: (signal: AbortSignal) => Omit<HandlerContext, 'toolTitle'>,
+  createContext: (signal: AbortSignal) => Omit<HandlerContext, 'toolTitle' | 'changes'>,
   timeoutMs?: number,
 ): Promise<ToolOutcome> {
   if (!isToolName(tool)) return Promise.resolve({ ok: false, message: `The app has no tool "${tool}".` })
@@ -55,7 +59,11 @@ export function runAgentTool(
   return new Promise<ToolOutcome>((resolve) => {
     enqueue(async () => {
       const callSignal = AbortSignal.any([signal, AbortSignal.timeout(limitMs)])
-      const outcome = execute(tool, parsed.data, { ...createContext(callSignal), toolTitle: definition.title })
+      const outcome = execute(tool, parsed.data, {
+        ...createContext(callSignal),
+        toolTitle: definition.title,
+        changes: [],
+      })
       const stopped = whenAborted(callSignal).then((): ToolOutcome => ({
         ok: false,
         message: signal.aborted ? CANCELLED : `The tool did not finish within ${limitMs} ms.`,

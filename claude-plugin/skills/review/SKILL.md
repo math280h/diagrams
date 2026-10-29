@@ -5,7 +5,7 @@ description: Checks a Diagrams diagram for layout and clarity problems and fixes
 
 # Review a diagram
 
-1. **Read it.** Call `get_diagram` with `detail: "full"`. Read the `warnings`. They list overlapping nodes and nodes that stick out of their group.
+1. **Read it.** Call `get_diagram` with `detail: "full"`, then `lint_diagram`. Its issues name the nodes and edges: overlaps, nodes outside their group, edges without a label, cards without a technology line, nodes without edges, flow steps that lost their target, and the C4 checks. Fix the `warning` issues first.
 2. **Look at it.** Call `render_image`. If the result says that the scale is low, render each area again with `focus`.
 3. **Check each point.** Note the fix for each problem.
 

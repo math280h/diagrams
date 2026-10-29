@@ -10,13 +10,23 @@ import {
 } from './handlers/diagrams'
 import { addElements, deleteElementsHandler, layoutDiagramHandler, updateElements } from './handlers/elements'
 import { addFlowHandler, deleteFlowHandler, updateFlowHandler } from './handlers/flows'
-import { getDiagram, getEditorState, listBoundaryKinds, listDiagrams, searchIconsHandler } from './handlers/read'
+import {
+  getDiagram,
+  getEditorState,
+  lintDiagramHandler,
+  listBoundaryKinds,
+  listDiagrams,
+  queryGraphHandler,
+  searchIconsHandler,
+} from './handlers/read'
 import { renderImage } from './handlers/render'
 
 export const HANDLERS = {
   list_diagrams: listDiagrams,
   get_editor_state: getEditorState,
   get_diagram: getDiagram,
+  query_graph: queryGraphHandler,
+  lint_diagram: lintDiagramHandler,
   search_icons: searchIconsHandler,
   list_boundary_kinds: listBoundaryKinds,
   create_diagram: createDiagramHandler,

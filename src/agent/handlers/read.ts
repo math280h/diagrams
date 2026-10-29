@@ -5,6 +5,9 @@ import { repository } from '@/persistence/active-repository'
 import { useDoc } from '@/store/doc-store'
 import { useUi } from '@/store/ui-store'
 import { compactDiagram } from '@/agent/compact'
+import { ToolError } from '@/agent/errors'
+import { lintDiagram, queryGraph } from '@/agent/graph-checks'
+import { createResolver } from '@/agent/resolve'
 import type { HandlerContext } from '@/agent/context'
 import type { ToolInput } from '@/agent/tool-definitions'
 import { diagramContent, editorShows, json, targetDiagramId, type ToolHandler } from './common'
@@ -144,4 +147,18 @@ export const listBoundaryKinds: ToolHandler<'list_boundary_kinds'> = async ({ pr
     kinds,
     nesting: `Tiers nest from the outside in: ${TIER_ORDER.join(' > ')}. A custom group can go at any level. A runtime boundary, such as a cluster, draws solid.`,
   })
+}
+
+export const queryGraphHandler: ToolHandler<'query_graph'> = async ({ diagramId, query, node, to }, ctx) => {
+  const content = diagramContent(ctx, targetDiagramId(ctx, diagramId))
+  const resolver = createResolver(content.nodes, content.edges)
+  const from = resolver.node(node)
+  if (query === 'path' && !to) throw new ToolError('A path query needs "to": the node to reach.')
+  return json(queryGraph(content, query, from.id, to ? resolver.node(to).id : undefined))
+}
+
+export const lintDiagramHandler: ToolHandler<'lint_diagram'> = async ({ diagramId }, ctx) => {
+  const content = diagramContent(ctx, targetDiagramId(ctx, diagramId))
+  const issues = lintDiagram(content)
+  return json(issues.length === 0 ? { issues, message: 'No problems found.' } : { issues })
 }
