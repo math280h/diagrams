@@ -787,8 +787,8 @@ plays without an account, a server or a file (`src/share/share-link.ts`).
   can come in next to it.
 - Random ids such as `n_4k2j9x0q7a` do not compress, and a diagram names each node many times: in edges, flow steps
   and parents. The link writes short ids such as `n_3` in the id fields (`id`, `source`, `target`, `parentId`) only,
-  so text that looks like an id stays as it is. The Order system link has about 2,600 characters, and the largest
-  template about 8,100. Above 8,000 characters the tab says that some chat apps and mail programs cut such links.
+  so text that looks like an id stays as it is. `share-link.test.ts` checks that the Order system link stays below
+  half of `LONG_LINK_CHARS`. Above that limit the tab says that some chat apps and mail programs cut such links.
 - The data is in the fragment, so a browser never sends it to the site. The shared page decodes it, brings it
   through the migrations and plays it in `PlayerStage`; Save a copy stores it as a new diagram. A cut-off or damaged
   link says so.
