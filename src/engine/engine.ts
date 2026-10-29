@@ -1,5 +1,5 @@
 import { motionValue } from 'motion'
-import type { LogLevel, Target, Traffic, XY } from '@/model/schema'
+import type { LogLevel, StepTarget, Target, Traffic, XY } from '@/model/schema'
 import { applyFlowFrame, flowStateKey } from './apply'
 import { blendCameras, cameraToViewport, viewportToCamera, type Rect, type ViewSize, type Viewport } from './camera'
 import { createClock } from './clock'
@@ -45,7 +45,9 @@ export interface CaptionLane {
   reversed: boolean
 }
 
-export interface Caption extends CaptionLane {
+export interface Caption extends Omit<CaptionLane, 'target'> {
+  /** The main target, or the whole flow for an overview step. */
+  target: StepTarget
   text: string
   index: number
   total: number

@@ -4,7 +4,7 @@ import { blendCameras, fitCamera, type Camera, type ViewSize } from '@/engine/ca
 import { clamp01, easeInOutCubic } from '@/engine/easing'
 import { segmentIndexAt, type Timeline } from './compile'
 import type { FlowGeometry } from './evaluate'
-import { keepInBounds, overviewCamera, segmentRect, viewZoomScale } from './framing'
+import { keepInBounds, overviewCamera, pathRect, segmentRect, viewZoomScale } from './framing'
 
 const INTRO_MS = 1500
 const POSITION_WINDOW_MS = 1000
@@ -27,7 +27,10 @@ function stepZooms(timeline: Timeline, geometry: FlowGeometry, view: ViewSize): 
     const previous = zooms.length > 0 ? zooms[zooms.length - 1]! : null
     const { step } = segment
     let zoom: number
-    if (step.camera === 'hold') {
+    if (segment.target.kind === 'flow') {
+      const path = pathRect(timeline, geometry)
+      zoom = path ? fitCamera(path, view, FIT_PADDING_PX, step.zoom * viewZoomScale(view)).zoom : overview
+    } else if (step.camera === 'hold') {
       zoom = previous ?? overview
     } else if (step.camera === 'fit' || segment.lanes.length > 1) {
       const rect = segmentRect(segment, geometry)
@@ -58,6 +61,10 @@ function targetCamera(
   if (!segment) return overviewCamera(geometry, view)
   const zoom = zooms[index]!
   const { step } = segment
+  if (segment.target.kind === 'flow') {
+    const path = pathRect(timeline, geometry)
+    return path ? { ...rectCenter(path), zoom } : overviewCamera(geometry, view)
+  }
   if (step.camera === 'hold') {
     if (index === 0) return overviewCamera(geometry, view)
     const previous = timeline.segments[index - 1]!

@@ -355,3 +355,36 @@ describe('step frames', () => {
     expect(at(middle(5)).viewOpacity).toBe(1)
   })
 })
+
+describe('overview steps', () => {
+  const overview = (id: string): Step => ({ ...step('node', 'a'), id, target: { kind: 'flow', id: '' }, caption: id })
+  const flow = flowWith([overview('intro'), step('node', 'a'), step('edge', 'ab'), step('node', 'b'), overview('end')])
+  const timeline = compileFlow(flow, nodeIds, edges)
+
+  it('keeps an overview step as a segment without a token', () => {
+    expect(timeline.segments.map((segment) => [segment.target.kind, segment.lanes.length])).toEqual([
+      ['flow', 0],
+      ['node', 1],
+      ['edge', 1],
+      ['node', 1],
+      ['flow', 0],
+    ])
+    expect(timeline.segments[2]).toMatchObject({ fromNode: 'a', toNode: 'b' })
+  })
+
+  it('lights up the whole path and frames it during an overview', () => {
+    const frame = evaluateFlow(timeline, 500, geometry, view, { camera: true })
+    expect(frame.token).toBeNull()
+    expect(frame.caption).toBe('intro')
+    expect([...frame.activeNodes].toSorted()).toEqual(['a', 'b'])
+    expect([...frame.activeEdges]).toEqual(['ab'])
+    const narrow = { width: 500, height: 400 }
+    const intro = stepFrames(timeline, geometry, narrow)[0]!
+    expect(intro.x - narrow.width / 2 / intro.zoom).toBeLessThanOrEqual(0)
+    expect(intro.x + narrow.width / 2 / intro.zoom).toBeGreaterThanOrEqual(400)
+  })
+
+  it('moves the token again after an introduction', () => {
+    expect(evaluateFlow(timeline, 1500, geometry, view, { camera: false }).token).not.toBeNull()
+  })
+})

@@ -165,6 +165,12 @@ function toVersion14(raw: Record<string, unknown>): Record<string, unknown> {
   }
 }
 
+/** Version 15 adds `stepNumbers` to each flow and overview steps (`target.kind` `flow`). Earlier flows show no numbers. */
+function toVersion15(raw: Record<string, unknown>): Record<string, unknown> {
+  const flows = Array.isArray(raw.flows) ? raw.flows : []
+  return { ...raw, flows: flows.map((flow: Record<string, unknown>) => ({ stepNumbers: false, ...flow })) }
+}
+
 /** The migration at index `n` converts a diagram from version `n + 1` to version `n + 2`. */
 const MIGRATIONS: Migration[] = [
   toVersion2,
@@ -180,6 +186,7 @@ const MIGRATIONS: Migration[] = [
   toVersion12,
   toVersion13,
   toVersion14,
+  toVersion15,
 ]
 
 export class DiagramFormatError extends Error {}

@@ -2,7 +2,7 @@ import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { usePlaybackState } from '@/engine/hooks'
-import { findStep, removeStep } from '@/model/flow'
+import { findStep, overviewName, removeStep } from '@/model/flow'
 import { nodeTitle } from '@/model/labels'
 import { payloadJson } from '@/model/payload'
 import type { Flow, Step, Target } from '@/model/schema'
@@ -114,6 +114,7 @@ export function StepInspector({ flow, step }: { flow: Flow; step: Step }) {
   const place = findStep(flow, step.id)
   const index = place?.index ?? 0
   const count = place?.list.length ?? 0
+  const overview = step.target.kind === 'flow'
   const set = (patch: Partial<Step>, key?: string) =>
     updateFlow(
       flow.id,
@@ -168,7 +169,10 @@ export function StepInspector({ flow, step }: { flow: Flow; step: Step }) {
         </div>
       }
     >
-      <p className="truncate text-sm font-medium">{targetName(step.target)}</p>
+      <p className="truncate text-sm font-medium">
+        {step.target.kind === 'flow' ? overviewName(index, count) : targetName(step.target)}
+      </p>
+      {overview && <p className="text-xs text-muted-foreground">Shows the whole path of the flow.</p>}
       <Field label="Event">
         <TextInput
           mono
@@ -177,33 +181,37 @@ export function StepInspector({ flow, step }: { flow: Flow; step: Step }) {
           onChange={(event) => set({ event }, `event:${step.id}`)}
         />
       </Field>
-      <Field label="Latency">
-        <TextInput
-          mono
-          value={step.latencyMs === null ? '' : String(step.latencyMs)}
-          placeholder="ms"
-          onChange={(text) => {
-            const value = Number.parseFloat(text)
-            set(
-              { latencyMs: text.trim() === '' || Number.isNaN(value) ? null : Math.max(0, value) },
-              `latency:${step.id}`,
-            )
-          }}
-        />
-      </Field>
+      {!overview && (
+        <Field label="Latency">
+          <TextInput
+            mono
+            value={step.latencyMs === null ? '' : String(step.latencyMs)}
+            placeholder="ms"
+            onChange={(text) => {
+              const value = Number.parseFloat(text)
+              set(
+                { latencyMs: text.trim() === '' || Number.isNaN(value) ? null : Math.max(0, value) },
+                `latency:${step.id}`,
+              )
+            }}
+          />
+        </Field>
+      )}
       {step.target.kind === 'edge' && <StepBody flow={flow} step={step} />}
-      <ParallelTargets flow={flow} step={step} />
-      <Field label="Level">
-        <Segmented
-          value={step.level}
-          onChange={(level) => set({ level })}
-          options={[
-            { value: 'info', label: 'Info' },
-            { value: 'warn', label: 'Warn' },
-            { value: 'error', label: 'Error' },
-          ]}
-        />
-      </Field>
+      {!overview && <ParallelTargets flow={flow} step={step} />}
+      {!overview && (
+        <Field label="Level">
+          <Segmented
+            value={step.level}
+            onChange={(level) => set({ level })}
+            options={[
+              { value: 'info', label: 'Info' },
+              { value: 'warn', label: 'Warn' },
+              { value: 'error', label: 'Error' },
+            ]}
+          />
+        </Field>
+      )}
       <Field label="Caption">
         <Textarea
           value={step.caption}
@@ -221,18 +229,20 @@ export function StepInspector({ flow, step }: { flow: Flow; step: Step }) {
         format={(value) => `${(value / 1000).toFixed(1)} s`}
         onChange={(durationMs) => set({ durationMs }, `duration:${step.id}`)}
       />
-      <Field label="Camera">
-        <Segmented
-          value={step.camera}
-          onChange={(camera) => set({ camera })}
-          options={[
-            { value: 'follow', label: 'Auto', title: 'The camera of the flow keeps the step in view.' },
-            { value: 'fit', label: 'Frame', title: 'The camera centres on the step and zooms in.' },
-            { value: 'hold', label: 'Hold', title: 'The camera does not move.' },
-          ]}
-        />
-      </Field>
-      {step.camera !== 'hold' && (
+      {!overview && (
+        <Field label="Camera">
+          <Segmented
+            value={step.camera}
+            onChange={(camera) => set({ camera })}
+            options={[
+              { value: 'follow', label: 'Auto', title: 'The camera of the flow keeps the step in view.' },
+              { value: 'fit', label: 'Frame', title: 'The camera centres on the step and zooms in.' },
+              { value: 'hold', label: 'Hold', title: 'The camera does not move.' },
+            ]}
+          />
+        </Field>
+      )}
+      {(overview || step.camera !== 'hold') && (
         <SliderField
           label="Max zoom"
           value={step.zoom}

@@ -14,7 +14,7 @@ import { withWarnings } from '@/agent/warnings'
 
 type FlowOptions = Pick<
   ToolInput<'add_flow'>,
-  'token' | 'spotlight' | 'loop' | 'bodies' | 'cameraStyle' | 'cameraMotion'
+  'token' | 'spotlight' | 'loop' | 'bodies' | 'stepNumbers' | 'cameraStyle' | 'cameraMotion'
 > & {
   name?: string
 }
@@ -26,6 +26,7 @@ function applyOptions(flow: Flow, options: FlowOptions) {
   if (options.spotlight !== undefined) flow.spotlight = options.spotlight
   if (options.loop !== undefined) flow.loop = options.loop
   if (options.bodies !== undefined) flow.bodies = options.bodies
+  if (options.stepNumbers !== undefined) flow.stepNumbers = options.stepNumbers
   if (options.cameraStyle !== undefined) flow.cameraStyle = options.cameraStyle
   if (options.cameraMotion !== undefined) flow.cameraMotion = options.cameraMotion
 }

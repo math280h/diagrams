@@ -105,6 +105,7 @@ function stepText(
       : { kind: 'edge', from: nameOf(lane.fromNode!), to: nameOf(lane.toNode!) },
   )
   const { step } = segment
+  if (step.target.kind === 'flow') return `The whole flow${step.caption ? ` — ${oneLine(step.caption)}` : ''}`
   const mainEdge = step.target.kind === 'edge' ? edgeById.get(step.target.id) : undefined
   const event = oneLine(step.event || (mainEdge?.data?.label ?? ''))
   const facts = [

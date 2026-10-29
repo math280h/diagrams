@@ -157,7 +157,7 @@ function compactEdge(edge: DiagramEdge, full: boolean) {
 function compactSteps(steps: readonly Step[]) {
   return steps.map((step, index) => ({
     index,
-    [step.target.kind]: step.target.id,
+    ...(step.target.kind === 'flow' ? { overview: true } : { [step.target.kind]: step.target.id }),
     ...(step.parallel?.length ? { parallel: step.parallel.map((target) => ({ [target.kind]: target.id })) } : {}),
     ...(step.caption ? { caption: step.caption } : {}),
     ...(step.event ? { event: step.event } : {}),
@@ -185,6 +185,7 @@ function compactFlow(flow: Flow, full: boolean) {
     spotlight: flow.spotlight,
     loop: flow.loop,
     bodies: flow.bodies,
+    stepNumbers: flow.stepNumbers,
     cameraStyle: flow.cameraStyle,
     cameraMotion: flow.cameraMotion,
     steps: compactSteps(flow.steps),

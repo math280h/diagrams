@@ -85,7 +85,7 @@ function linkedEdge(
   if (!neighbour) return null
   const linked = neighbour.lanes.find((candidate) => candidate.target.kind === 'edge' && candidate[side] === node)
   if (linked) return linked
-  return laneIndex === 0 && neighbour.target.kind === 'edge' ? neighbour : null
+  return laneIndex === 0 && neighbour.target.kind === 'edge' ? (neighbour.lanes[0] ?? null) : null
 }
 
 function nodeAnchor(id: string | null, geometry: FlowGeometry): XY | null {
@@ -420,6 +420,14 @@ export function evaluateFlow(
       lift: tokenLiftAt(timeline, index, timeMs, geometry, lane),
       label: tokenLabelAt(timeline, index, timeMs, geometry, lane),
     })
+  }
+  if (timeline.segments[index]?.target.kind === 'flow') {
+    for (const segment of timeline.segments) {
+      for (const lane of segment.lanes) {
+        if (lane.target.kind === 'edge') frame.activeEdges.add(lane.target.id)
+        for (const id of [lane.fromNode, lane.toNode]) if (id) frame.activeNodes.add(id)
+      }
+    }
   }
   for (const id of frame.activeNodes) frame.visitedNodes.delete(id)
   for (const id of frame.activeEdges) frame.visitedEdges.delete(id)

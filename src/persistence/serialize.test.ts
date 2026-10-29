@@ -159,6 +159,12 @@ describe('migrate', () => {
     ])
   })
 
+  it('turns off the step numbers of version 14 flows', () => {
+    const { stepNumbers: _numbers, ...flow } = createFlow('Checkout')
+    const v14 = { ...createDiagram(), version: 14, flows: [flow] }
+    expect(migrate(JSON.parse(JSON.stringify(v14))).flows[0]!.stepNumbers).toBe(false)
+  })
+
   it('reads version 10 diagrams as they are, and keeps the inside links of version 11', () => {
     const base = createDiagram()
     const node = { id: 'api', type: 'card', position: { x: 0, y: 0 }, data: defaultCardData() }

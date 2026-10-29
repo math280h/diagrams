@@ -1310,3 +1310,29 @@
   border: 1px solid var(--dg-line);
   border-radius: 8px;
 }
+
+.dg-step-number {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2900;
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--dg-muted);
+  background: var(--dg-panel);
+  border: 1px solid var(--dg-line);
+  border-radius: 10px;
+  pointer-events: none;
+}
+.dg-step-number[data-current] {
+  color: var(--dg-ground);
+  background: var(--dg-select);
+  border-color: transparent;
+}
