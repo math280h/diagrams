@@ -591,7 +591,28 @@ wall-clock time and the captured frame would show it part way.
 
 The canvas grid is off in exports unless the user turns it on: it is an editing aid. The animation
 tab captures five frames from the export stage as a preview strip, so the preview shows the real
-camera path and framing.
+camera path and framing. While an animation renders, the tab shows the time that is left, from
+the time of the frames so far.
+
+The image tab:
+
+- **Selection.** With a selection, the image shows only the selected nodes, the nodes inside them
+  and the edges between them (`detachedSelection`, which copy and paste also use). A node whose
+  parent is left out takes its absolute position. The switch starts on, and its label counts the
+  nodes.
+- **Copy.** Copy PNG and Copy SVG write to the clipboard (`writeImageToClipboard`). The image
+  goes as a promise, so the click keeps its user activation while the image renders. An SVG goes
+  as text, and also as `image/svg+xml` where `ClipboardItem.supports` accepts it. Alt+Shift+C
+  copies the selection, or the whole diagram, as a PNG from the editor (`copyDiagramAsPng`); the
+  browser keeps Ctrl+Shift+C for its developer tools.
+- **Editable images.** With "Keep the diagram in the file", the image holds the diagram (or the
+  selection without its flows), so that Import opens it again as a diagram (`src/export/embed.ts`).
+  A PNG gets an `iTXt` chunk before `IEND` with the keyword `application/vnd.diagrams+json` and
+  zlib-compressed JSON; an SVG gets a `metadata` element with the same JSON, compressed and in
+  base64. The switch starts off and the settings keep it, because anyone with the file can read
+  the diagram, with its details, bodies and sensitive fields.
+- **Preview.** The preview is captured at the scale that fills its box, and the tab estimates the
+  file size: from the preview for a PNG, from the real file for an SVG.
 
 The Mermaid tab can also write a flow as a sequence diagram (`flowToMermaidSequence`): calls are solid arrows,
 responses dashed arrows, `error` steps end in a cross, and steps on a node and captions become notes. The latency

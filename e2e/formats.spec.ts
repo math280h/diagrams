@@ -22,9 +22,9 @@ test('opens a diagram file that version 0.1.2 exported', async ({ page }) => {
 
   await page.goto('/')
   await page.getByRole('button', { name: 'Import' }).click()
-  await page.getByRole('tab', { name: 'Diagram file (JSON)' }).click()
+  await page.getByRole('tab', { name: 'Diagram file' }).click()
   const chooserOpens = page.waitForEvent('filechooser')
-  await page.getByRole('button', { name: 'Choose a .diagram.json file' }).click()
+  await page.getByRole('button', { name: /Choose a .diagram.json file/ }).click()
   const chooser = await chooserOpens
   await chooser.setFiles({
     name: 'order-system.diagram.json',

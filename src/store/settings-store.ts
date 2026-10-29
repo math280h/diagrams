@@ -12,11 +12,14 @@ interface SettingsState {
   sidePanelWidth: number
   /** The height of the flow panel in pixels. `null` takes the height of its view. */
   flowPanelHeight: number | null
+  /** If true, an exported image holds the diagram, so that Diagrams can open it again. */
+  embedDiagram: boolean
   setTheme: (theme: AppTheme) => void
   setAmbientMotion: (value: boolean) => void
   setInspectorOpen: (value: boolean) => void
   setSidePanelWidth: (value: number) => void
   setFlowPanelHeight: (value: number | null) => void
+  setEmbedDiagram: (value: boolean) => void
 }
 
 export const DEFAULT_SIDE_PANEL_WIDTH = 288
@@ -29,21 +32,24 @@ export const useSettings = create<SettingsState>()(
       inspectorOpen: true,
       sidePanelWidth: DEFAULT_SIDE_PANEL_WIDTH,
       flowPanelHeight: null,
+      embedDiagram: false,
       setTheme: (theme) => set({ theme }),
       setAmbientMotion: (ambientMotion) => set({ ambientMotion }),
       setInspectorOpen: (inspectorOpen) => set({ inspectorOpen }),
       setSidePanelWidth: (sidePanelWidth) => set({ sidePanelWidth }),
       setFlowPanelHeight: (flowPanelHeight) => set({ flowPanelHeight }),
+      setEmbedDiagram: (embedDiagram) => set({ embedDiagram }),
     }),
     {
       name: 'dg:settings',
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ theme, ambientMotion, inspectorOpen, sidePanelWidth, flowPanelHeight }) => ({
+      partialize: ({ theme, ambientMotion, inspectorOpen, sidePanelWidth, flowPanelHeight, embedDiagram }) => ({
         theme,
         ambientMotion,
         inspectorOpen,
         sidePanelWidth,
         flowPanelHeight,
+        embedDiagram,
       }),
     },
   ),

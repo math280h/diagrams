@@ -1,4 +1,5 @@
 import { useNavigate } from '@tanstack/react-router'
+import { copyDiagramAsPng } from '@/export/image-copy'
 import { useReactFlow } from '@xyflow/react'
 import {
   BookOpen,
@@ -15,6 +16,7 @@ import {
   Waypoints,
   Group,
   History,
+  ImageDown,
   Image,
   Keyboard,
   LayoutGrid,
@@ -110,6 +112,9 @@ export function CommandMenu() {
           </CommandItem>
           <CommandItem onSelect={run(() => setUi({ sensitiveView: !useUi.getState().sensitiveView }))}>
             <ShieldAlert /> Show or hide sensitive data
+          </CommandItem>
+          <CommandItem onSelect={run(copyDiagramAsPng)}>
+            <ImageDown /> Copy as a PNG <CommandShortcut>{KEYS.copyImage}</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={run(duplicateSelection)}>
             <CopyPlus /> Duplicate selection <CommandShortcut>{KEYS.duplicate}</CommandShortcut>
