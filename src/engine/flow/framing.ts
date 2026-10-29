@@ -37,7 +37,8 @@ interface Margins {
   y: number
 }
 
-function viewZoomScale(view: ViewSize): number {
+/** Returns the share of the step zoom that a view of this width uses, from 0.7 to 1. */
+export function viewZoomScale(view: ViewSize): number {
   return Math.min(1, Math.max(MIN_VIEW_ZOOM_SCALE, view.width / FULL_ZOOM_VIEW_WIDTH))
 }
 
@@ -56,7 +57,12 @@ export function overviewCamera(geometry: FlowGeometry, view: ViewSize): Camera {
   return fitCamera(bounds, view, paddingPx, OVERVIEW_MAX_ZOOM)
 }
 
-function segmentRect(segment: TimelineSegment, geometry: FlowGeometry, arrivalOnly = false): Rect | null {
+/**
+ * Returns the rectangle around the nodes that the lanes of a segment leave and reach.
+ *
+ * @param arrivalOnly - If true, only the nodes that the lanes reach count.
+ */
+export function segmentRect(segment: TimelineSegment, geometry: FlowGeometry, arrivalOnly = false): Rect | null {
   const rects: Rect[] = []
   for (const id of new Set(
     segment.lanes.flatMap((lane) => (arrivalOnly ? [lane.toNode] : [lane.fromNode, lane.toNode])),
@@ -113,7 +119,12 @@ function containRect(camera: Camera, rect: Rect, view: ViewSize): Camera {
   }
 }
 
-function keepInBounds(camera: Camera, geometry: FlowGeometry, view: ViewSize, overshootShare = 0): Camera {
+/**
+ * Moves the camera so that the view does not go past the diagram by more than a margin.
+ *
+ * @param overshootShare - The share of the view that may go past the margin, from 0.
+ */
+export function keepInBounds(camera: Camera, geometry: FlowGeometry, view: ViewSize, overshootShare = 0): Camera {
   const bounds = geometry.bounds()
   if (!bounds) return camera
   const axis = (value: number, start: number, size: number, span: number) => {

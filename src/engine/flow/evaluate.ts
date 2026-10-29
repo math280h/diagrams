@@ -4,7 +4,8 @@ import { blendCameras, type Camera, type Rect, type ViewSize } from '@/engine/ca
 import { clamp01, easeInOutCubic, easeInOutSine, lerp } from '@/engine/easing'
 import { pointAt, type ArcTable } from '@/engine/path-sampler'
 import { segmentIndexAt, type Lane, type Timeline, type TimelineSegment } from './compile'
-import { framedCameraAt, type FramedCamera } from './framing'
+import { followCameraAt } from './follow-camera'
+import { framedCameraAt, overviewCamera, type FramedCamera } from './framing'
 import { firstKeyframeMs, sampleCameraTrack, sampleValueTrack } from './tracks'
 
 export interface FlowGeometry {
@@ -338,7 +339,24 @@ function cameraAt(
   view: ViewSize,
   reducedMotion: boolean,
 ): FramedCamera {
-  const framed = framedCameraAt(timeline, timeMs, geometry, view, timeline.flow.cameraMotion, reducedMotion)
+  const { cameraStyle, cameraMotion } = timeline.flow
+  const framed: FramedCamera =
+    cameraStyle === 'frame'
+      ? framedCameraAt(timeline, timeMs, geometry, view, cameraMotion, reducedMotion)
+      : {
+          camera:
+            cameraStyle === 'follow'
+              ? followCameraAt(
+                  timeline,
+                  timeMs,
+                  geometry,
+                  view,
+                  (index, atMs) => tokenAt(timeline, index, atMs, geometry),
+                  reducedMotion,
+                )
+              : overviewCamera(geometry, view),
+          opacity: 1,
+        }
   const track = timeline.flow.tracks.find((candidate) => candidate.kind === 'camera')
   if (!track || track.kind !== 'camera' || track.keyframes.length === 0) return framed
   const stepCamera = framed.camera

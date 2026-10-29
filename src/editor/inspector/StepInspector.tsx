@@ -226,7 +226,7 @@ export function StepInspector({ flow, step }: { flow: Flow; step: Step }) {
           value={step.camera}
           onChange={(camera) => set({ camera })}
           options={[
-            { value: 'follow', label: 'Auto', title: 'The camera keeps the step in view and moves only when it must.' },
+            { value: 'follow', label: 'Auto', title: 'The camera of the flow keeps the step in view.' },
             { value: 'fit', label: 'Frame', title: 'The camera centres on the step and zooms in.' },
             { value: 'hold', label: 'Hold', title: 'The camera does not move.' },
           ]}

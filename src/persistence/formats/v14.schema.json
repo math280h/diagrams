@@ -1029,6 +1029,10 @@
           "bodies": {
             "type": "boolean"
           },
+          "cameraStyle": {
+            "type": "string",
+            "enum": ["frame", "follow", "still"]
+          },
           "cameraMotion": {
             "type": "string",
             "enum": ["gentle", "quick", "slow"]
@@ -1145,7 +1149,18 @@
             }
           }
         },
-        "required": ["id", "name", "steps", "tracks", "token", "spotlight", "loop", "bodies", "cameraMotion"],
+        "required": [
+          "id",
+          "name",
+          "steps",
+          "tracks",
+          "token",
+          "spotlight",
+          "loop",
+          "bodies",
+          "cameraStyle",
+          "cameraMotion"
+        ],
         "additionalProperties": false
       }
     },

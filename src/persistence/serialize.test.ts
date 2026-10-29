@@ -148,11 +148,15 @@ describe('migrate', () => {
     expect(migrated.edges[0]!.data.request).toBeUndefined()
   })
 
-  it('gives the flows of version 13 diagrams the gentle camera, and keeps a motion that a flow already has', () => {
-    const { cameraMotion: _motion, ...flow } = createFlow('Checkout')
-    const v13 = { ...createDiagram(), version: 13, flows: [flow, { ...flow, id: 'quick', cameraMotion: 'quick' }] }
+  it('gives the flows of version 13 diagrams the framing camera with the gentle motion, and keeps set values', () => {
+    const { cameraStyle: _style, cameraMotion: _motion, ...flow } = createFlow('Checkout')
+    const set = { ...flow, id: 'set', cameraStyle: 'follow', cameraMotion: 'quick' }
+    const v13 = { ...createDiagram(), version: 13, flows: [flow, set] }
     const migrated = migrate(JSON.parse(JSON.stringify(v13)))
-    expect(migrated.flows.map((candidate) => candidate.cameraMotion)).toEqual(['gentle', 'quick'])
+    expect(migrated.flows.map(({ cameraStyle, cameraMotion }) => [cameraStyle, cameraMotion])).toEqual([
+      ['frame', 'gentle'],
+      ['follow', 'quick'],
+    ])
   })
 
   it('reads version 10 diagrams as they are, and keeps the inside links of version 11', () => {

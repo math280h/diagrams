@@ -130,17 +130,30 @@ function FlowSettings({ flow }: { flow: Flow }) {
           checked={flow.bodies}
           onChange={(bodies) => set((draft) => void (draft.bodies = bodies))}
         />
-        <Field label="Camera moves">
+        <Field label="Camera">
           <Segmented
-            value={flow.cameraMotion}
-            onChange={(cameraMotion) => set((draft) => void (draft.cameraMotion = cameraMotion))}
+            value={flow.cameraStyle}
+            onChange={(cameraStyle) => set((draft) => void (draft.cameraStyle = cameraStyle))}
             options={[
-              { value: 'gentle', label: 'Gentle' },
-              { value: 'quick', label: 'Quick' },
-              { value: 'slow', label: 'Slow' },
+              { value: 'frame', label: 'Frame', title: 'Each step gets a frame. The camera moves only when it must.' },
+              { value: 'follow', label: 'Follow', title: 'The camera follows the token.' },
+              { value: 'still', label: 'Still', title: 'The camera shows the whole diagram and does not move.' },
             ]}
           />
         </Field>
+        {flow.cameraStyle === 'frame' && (
+          <Field label="Camera moves">
+            <Segmented
+              value={flow.cameraMotion}
+              onChange={(cameraMotion) => set((draft) => void (draft.cameraMotion = cameraMotion))}
+              options={[
+                { value: 'gentle', label: 'Gentle' },
+                { value: 'quick', label: 'Quick' },
+                { value: 'slow', label: 'Slow' },
+              ]}
+            />
+          </Field>
+        )}
         <SwitchField
           label="Camera follows the flow"
           checked={playback.follow}

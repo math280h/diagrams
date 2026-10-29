@@ -308,6 +308,13 @@ export const tokenSchema = z.object({
 export const CAMERA_MOTIONS = ['gentle', 'quick', 'slow'] as const
 export type CameraMotion = (typeof CAMERA_MOTIONS)[number]
 
+/**
+ * How the camera of a flow moves: `frame` gives each step a frame and moves only when it must, `follow` tracks the
+ * token at the zoom of each step, and `still` shows the whole diagram and does not move.
+ */
+export const CAMERA_STYLES = ['frame', 'follow', 'still'] as const
+export type CameraStyle = (typeof CAMERA_STYLES)[number]
+
 export const flowSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -322,6 +329,7 @@ export const flowSchema = z.object({
    * moves back.
    */
   bodies: z.boolean(),
+  cameraStyle: z.enum(CAMERA_STYLES),
   /** The speed and ease of the camera moves between step frames. */
   cameraMotion: z.enum(CAMERA_MOTIONS),
   paths: z.array(flowPathSchema).optional(),

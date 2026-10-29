@@ -326,6 +326,25 @@ describe('step frames', () => {
     expect(Math.abs(quick.x - target.x)).toBeLessThan(Math.abs(slow.x - target.x))
   })
 
+  it('tracks the token with the follow camera', () => {
+    const follow = compileFlow(flowWith(walk, { cameraStyle: 'follow' }), new Set(row), rowEdges)
+    const shape = rowGeometry()
+    const edge = follow.segments[5]!
+    const early = evaluateFlow(follow, edge.startMs + 300, shape, medium, { camera: true }).camera!
+    const late = evaluateFlow(follow, edge.endMs - 100, shape, medium, { camera: true }).camera!
+    expect(late.x).toBeGreaterThan(early.x)
+  })
+
+  it('shows the whole diagram and does not move with the still camera', () => {
+    const still = compileFlow(flowWith(walk, { cameraStyle: 'still' }), new Set(row), rowEdges)
+    const shape = rowGeometry()
+    const cameras = [0, middle(3), middle(8)].map(
+      (timeMs) => evaluateFlow(still, timeMs, shape, medium, { camera: true }).camera,
+    )
+    expect(cameras[1]).toEqual(cameras[0])
+    expect(cameras[2]).toEqual(cameras[0])
+  })
+
   it('cuts with reduced motion, and dips the canvas only where the frame changes', () => {
     const shape = rowGeometry()
     const frames = stepFrames(timeline, shape, medium)

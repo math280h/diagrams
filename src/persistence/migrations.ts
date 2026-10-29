@@ -156,12 +156,12 @@ function toVersion13(raw: Record<string, unknown>): Record<string, unknown> {
   return raw
 }
 
-/** Version 14 adds `cameraMotion` to each flow. Earlier flows move with the gentle ease. */
+/** Version 14 adds `cameraStyle` and `cameraMotion` to each flow. Earlier flows frame their steps with the gentle ease. */
 function toVersion14(raw: Record<string, unknown>): Record<string, unknown> {
   const flows = Array.isArray(raw.flows) ? raw.flows : []
   return {
     ...raw,
-    flows: flows.map((flow: Record<string, unknown>) => ({ cameraMotion: 'gentle', ...flow })),
+    flows: flows.map((flow: Record<string, unknown>) => ({ cameraStyle: 'frame', cameraMotion: 'gentle', ...flow })),
   }
 }
 

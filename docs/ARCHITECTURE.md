@@ -59,8 +59,8 @@ The visual system lives in `DESIGN.md` at the repository root.
   (description, owner and links) to cards, shapes and groups. Version 10 added the optional `pinned` flag to the data of every node. Version 11 added the
   optional `opens` field, the id of another diagram, to cards and groups. Version 12 added the optional `parallel`
   targets to flow steps and the optional `paths` to flows. Version 13 added the optional `sensitive` mark (`personal`
-  or `secret`) to body fields. Version 14 added `cameraMotion` (`gentle`, `quick` or `slow`) to flows; the migration
-  gives earlier flows the gentle motion.
+  or `secret`) to body fields. Version 14 added `cameraStyle` (`frame`, `follow` or `still`) and `cameraMotion`
+  (`gentle`, `quick` or `slow`) to flows; the migration gives earlier flows the frame camera with the gentle motion.
 - Groups are boundaries. A group's `kind` points into the catalogue in `src/model/boundaries.ts`:
   AWS, Azure, Google Cloud, Kubernetes and general kinds, plus the custom group. Each kind has a
   family (scope, logical, location, zone, network, subnet, security, runtime) that sets its line
@@ -426,7 +426,13 @@ diagram with its real operations, latencies and statuses.
   the values that it reads, so a mutable playback object kept the play button on Play while a flow played.
 - `evaluateFlow(timeline, t, geometry, view)` is pure. Token position, node and edge state,
   caption and camera depend only on `t`. Scrubbing and export use the same function.
-- The camera frames, it does not follow the token. `stepFrames` (`src/engine/flow/framing.ts`) gives each step one
+- A flow chooses its camera (`cameraStyle`): `frame` (the default), `follow` or `still`. Different
+  walkthroughs want different cameras: a calm explainer, a camera that rides along with the request, or a fixed view
+  for a slide. Still always shows the overview. Follow (`src/engine/flow/follow-camera.ts`) is the camera of format 13
+  and earlier: a weighted mean of the step targets over a window around `t` (1 s for the position, 1.6 s for the
+  zoom), so it starts to move before a step and has no jumps; a step zooms in by at most 1.35 times over the step
+  before it.
+- The frame camera does not follow the token. `stepFrames` (`src/engine/flow/framing.ts`) gives each step one
   frame, in step order:
   - A follow step (Auto in the step properties) holds the overview while the whole diagram is legible: the overview
     zoom is at least 0.7 of the median step zoom of the flow. The step zoom is the reading zoom, scaled down on views
@@ -441,7 +447,8 @@ diagram with its real operations, latencies and statuses.
     legible zoom when no move can do it. Cut titles were the most visible fault of the camera that followed the token.
   - Fit (Frame) centres on the step and zooms in to the step zoom. Hold keeps the frame of the step before.
 - `framedCameraAt` moves into the frame of each step around the start of the step, in a span of the flow's
-  `cameraMotion`: gentle (1 s, sine ease), quick (550 ms, cubic ease) or slow (1.6 s, sine ease). The spans do not
+  `cameraMotion` (only for the frame camera): gentle (1 s, sine ease), quick (550 ms, cubic ease) or slow (1.6 s,
+  sine ease). The spans do not
   overlap. A move at the same zoom is a straight pan; a move that changes the zoom uses `interpolateZoom`. A camera
   that followed the token at a fixed zoom panned on every step and cropped medium diagrams, also when the whole
   diagram fitted at a legible zoom.
