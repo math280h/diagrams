@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { COLORS } from './colors'
 
-export const DIAGRAM_VERSION = 13
+export const DIAGRAM_VERSION = 14
 
 const colorSchema = z.enum(COLORS)
 
@@ -305,6 +305,9 @@ export const tokenSchema = z.object({
   shape: z.enum(['dot', 'chip']),
 })
 
+export const CAMERA_MOTIONS = ['gentle', 'quick', 'slow'] as const
+export type CameraMotion = (typeof CAMERA_MOTIONS)[number]
+
 export const flowSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -319,6 +322,8 @@ export const flowSchema = z.object({
    * moves back.
    */
   bodies: z.boolean(),
+  /** The speed and ease of the camera moves between step frames. */
+  cameraMotion: z.enum(CAMERA_MOTIONS),
   paths: z.array(flowPathSchema).optional(),
 })
 export type Flow = z.infer<typeof flowSchema>

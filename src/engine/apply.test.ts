@@ -15,6 +15,7 @@ function frame(segmentIndex: number, emphasis: [ElementKey, number][] = []): Flo
     visitedEdges: new Set(),
     caption: '',
     camera: null,
+    viewOpacity: 1,
     emphasis: new Map(emphasis),
     trafficScale: new Map(),
   }

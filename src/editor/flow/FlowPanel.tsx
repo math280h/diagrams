@@ -130,6 +130,17 @@ function FlowSettings({ flow }: { flow: Flow }) {
           checked={flow.bodies}
           onChange={(bodies) => set((draft) => void (draft.bodies = bodies))}
         />
+        <Field label="Camera moves">
+          <Segmented
+            value={flow.cameraMotion}
+            onChange={(cameraMotion) => set((draft) => void (draft.cameraMotion = cameraMotion))}
+            options={[
+              { value: 'gentle', label: 'Gentle' },
+              { value: 'quick', label: 'Quick' },
+              { value: 'slow', label: 'Slow' },
+            ]}
+          />
+        </Field>
         <SwitchField
           label="Camera follows the flow"
           checked={playback.follow}

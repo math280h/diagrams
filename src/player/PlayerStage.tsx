@@ -44,6 +44,7 @@ import { describeDiagram } from '@/export/describe'
 import { findPath } from '@/model/flow'
 
 const IDLE_HIDE_MS = 2600
+const TOP_BAR_HEIGHT_PX = 44
 const DETAILS_HINT_KEY = 'dg:details-hint-shown'
 
 function readFlag(key: string): boolean {
@@ -198,7 +199,7 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
       engine.playback.load(null, null)
       return
     }
-    engine.setInsets({ top: 0, right: 0, bottom: CAPTION_HEIGHT_PX, left: 0 })
+    engine.setInsets({ top: TOP_BAR_HEIGHT_PX, right: 0, bottom: CAPTION_HEIGHT_PX, left: 0 })
     engine.playback.load(
       flow.id,
       compileFlow(flow, new Set(initial.nodes.map((node) => node.id)), initial.edges, pathId),

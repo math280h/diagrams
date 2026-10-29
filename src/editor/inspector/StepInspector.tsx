@@ -226,15 +226,15 @@ export function StepInspector({ flow, step }: { flow: Flow; step: Step }) {
           value={step.camera}
           onChange={(camera) => set({ camera })}
           options={[
-            { value: 'follow', label: 'Follow', title: 'The camera follows the token.' },
-            { value: 'fit', label: 'Frame', title: 'The camera frames the step target.' },
+            { value: 'follow', label: 'Auto', title: 'The camera keeps the step in view and moves only when it must.' },
+            { value: 'fit', label: 'Frame', title: 'The camera centres on the step and zooms in.' },
             { value: 'hold', label: 'Hold', title: 'The camera does not move.' },
           ]}
         />
       </Field>
       {step.camera !== 'hold' && (
         <SliderField
-          label={step.camera === 'fit' ? 'Max zoom' : 'Zoom'}
+          label="Max zoom"
           value={step.zoom}
           min={0.2}
           max={2.5}

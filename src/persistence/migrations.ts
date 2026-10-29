@@ -156,6 +156,15 @@ function toVersion13(raw: Record<string, unknown>): Record<string, unknown> {
   return raw
 }
 
+/** Version 14 adds `cameraMotion` to each flow. Earlier flows move with the gentle ease. */
+function toVersion14(raw: Record<string, unknown>): Record<string, unknown> {
+  const flows = Array.isArray(raw.flows) ? raw.flows : []
+  return {
+    ...raw,
+    flows: flows.map((flow: Record<string, unknown>) => ({ cameraMotion: 'gentle', ...flow })),
+  }
+}
+
 /** The migration at index `n` converts a diagram from version `n + 1` to version `n + 2`. */
 const MIGRATIONS: Migration[] = [
   toVersion2,
@@ -170,6 +179,7 @@ const MIGRATIONS: Migration[] = [
   toVersion11,
   toVersion12,
   toVersion13,
+  toVersion14,
 ]
 
 export class DiagramFormatError extends Error {}

@@ -148,6 +148,13 @@ describe('migrate', () => {
     expect(migrated.edges[0]!.data.request).toBeUndefined()
   })
 
+  it('gives the flows of version 13 diagrams the gentle camera, and keeps a motion that a flow already has', () => {
+    const { cameraMotion: _motion, ...flow } = createFlow('Checkout')
+    const v13 = { ...createDiagram(), version: 13, flows: [flow, { ...flow, id: 'quick', cameraMotion: 'quick' }] }
+    const migrated = migrate(JSON.parse(JSON.stringify(v13)))
+    expect(migrated.flows.map((candidate) => candidate.cameraMotion)).toEqual(['gentle', 'quick'])
+  })
+
   it('reads version 10 diagrams as they are, and keeps the inside links of version 11', () => {
     const base = createDiagram()
     const node = { id: 'api', type: 'card', position: { x: 0, y: 0 }, data: defaultCardData() }

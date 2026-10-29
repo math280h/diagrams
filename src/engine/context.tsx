@@ -1,6 +1,7 @@
 import { getNodesBounds, useReactFlow, useStore, useStoreApi } from '@xyflow/react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useReducedMotion } from '@/lib/motion'
+import type { Rect } from './camera'
 import { Engine } from './engine'
 import { EngineContext } from './engine-context'
 import { useEngine } from './hooks'
@@ -81,6 +82,15 @@ export function EngineBinding({ rootRef }: { rootRef: React.RefObject<HTMLElemen
           const { nodes, nodeLookup } = store.getState()
           if (nodes.length === 0) return null
           return getNodesBounds(nodes, { nodeLookup })
+        },
+        texts() {
+          const rects: Rect[] = []
+          for (const node of store.getState().nodeLookup.values()) {
+            if (node.type !== 'text' || node.hidden) continue
+            const { x, y } = node.internals.positionAbsolute
+            rects.push({ x, y, width: node.measured.width ?? 0, height: node.measured.height ?? 0 })
+          }
+          return rects
         },
       },
     })

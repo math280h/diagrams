@@ -172,6 +172,7 @@ function compactFlow(flow: Flow, full: boolean) {
     spotlight: flow.spotlight,
     loop: flow.loop,
     bodies: flow.bodies,
+    cameraMotion: flow.cameraMotion,
     steps: compactSteps(flow.steps),
     ...(paths.length > 0
       ? {

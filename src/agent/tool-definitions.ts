@@ -3,6 +3,7 @@ import { LAYOUT_DIRECTIONS } from '@/layout/types'
 import { BOUNDARY_PROVIDER_IDS } from '@/model/boundaries'
 import { COLORS } from '@/model/colors'
 import {
+  CAMERA_MOTIONS,
   CARD_FORMS,
   EDGE_PROTOCOLS,
   FONT_PAIRS,
@@ -238,9 +239,9 @@ const stepInput = z.object({
     .enum(['follow', 'fit', 'hold'])
     .optional()
     .describe(
-      'follow (the default) tracks the token, fit frames the node or edge of the step, hold keeps the last view.',
+      'follow (the default) keeps the step in view: the camera shows the whole diagram while it is legible, and otherwise moves only when the step leaves the view. fit centres on the node or edge of the step and zooms in. hold keeps the last view.',
     ),
-  zoom: z.number().min(0.1).max(4).optional().describe('With follow, the camera zoom. With fit, the largest zoom.'),
+  zoom: z.number().min(0.1).max(4).optional().describe('The largest camera zoom for the step.'),
   parallel: z
     .array(z.string())
     .optional()
@@ -270,6 +271,10 @@ const flowOptions = {
     .optional(),
   spotlight: z.boolean().optional().describe('If true, elements that the flow did not reach yet look dim.'),
   loop: z.boolean().optional().describe('If true, the flow starts again at the end.'),
+  cameraMotion: z
+    .enum(CAMERA_MOTIONS)
+    .optional()
+    .describe('How the camera moves between step frames: gentle (the default), quick or slow.'),
   bodies: z
     .boolean()
     .optional()
