@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Compass,
   Maximize,
   Minimize,
   Pause,
@@ -42,6 +43,8 @@ import { fromDiagram } from '@/persistence/serialize'
 import { Scrubber } from './Scrubber'
 import { describeDiagram } from '@/export/describe'
 import { findPath } from '@/model/flow'
+import { ExploreStrip } from './ExploreStrip'
+import { useExplore } from './use-explore'
 
 const IDLE_HIDE_MS = 2600
 const TOP_BAR_HEIGHT_PX = 44
@@ -174,6 +177,9 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
   const resolvedTheme = useCanvasTheme(diagram.theme.mode)
   const { fitBounds, getInternalNode } = useReactFlow()
   const [leaving, setLeaving] = useState(false)
+  const explore = useExplore(nodes, edges, TOP_BAR_HEIGHT_PX)
+  const exploring = explore.active
+  const backFromExplore = useRef(false)
 
   const openDiagram = useCallback(
     (diagramId: string, nodeId: string) => {
@@ -195,8 +201,9 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
   )
 
   useEffect(() => {
-    if (!flow) {
+    if (!flow || exploring) {
       engine.playback.load(null, null)
+      if (exploring) backFromExplore.current = true
       return
     }
     engine.setInsets({ top: TOP_BAR_HEIGHT_PX, right: 0, bottom: CAPTION_HEIGHT_PX, left: 0 })
@@ -205,10 +212,22 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
       compileFlow(flow, new Set(initial.nodes.map((node) => node.id)), initial.edges, pathId),
     )
     engine.playback.setFollow(true)
+    if (backFromExplore.current) {
+      backFromExplore.current = false
+      return
+    }
     if (prefersReducedMotion()) return
     const timer = window.setTimeout(() => engine.playback.play(), 700)
     return () => window.clearTimeout(timer)
-  }, [engine, flow, initial, pathId])
+  }, [engine, flow, initial, pathId, exploring])
+
+  const toggleExplore = useCallback(() => {
+    if (exploring) explore.stop()
+    else {
+      engine.playback.pause()
+      explore.start()
+    }
+  }, [engine, explore, exploring])
 
   const step = useCallback((delta: 1 | -1) => stepFlow(engine, delta), [engine])
 
@@ -234,8 +253,10 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
         engine.playback.toggle()
       } else if (event.key === 'ArrowRight') step(1)
       else if (event.key === 'ArrowLeft') step(-1)
+      else if (event.key === 'Escape' && exploring) explore.stop()
       else if (event.key === 'Escape' && !document.fullscreenElement) onExit?.()
       else if (shortcutLetter(event) === 'f') void toggleFullscreen()
+      else if (shortcutLetter(event) === 'e') toggleExplore()
     }
     const onFullscreen = () => setFullscreen(document.fullscreenElement !== null)
     window.addEventListener('keydown', onKey)
@@ -249,7 +270,7 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
       document.removeEventListener('fullscreenchange', onFullscreen)
       window.clearTimeout(hideTimer.current)
     }
-  }, [engine, poke, step, onExit])
+  }, [engine, poke, step, onExit, exploring, explore, toggleExplore])
 
   const showControls = controlsVisible || !playback.playing
 
@@ -268,8 +289,10 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
     >
       <main className="h-full w-full">
         <DiagramCanvas
-          nodes={nodes}
-          edges={edges}
+          nodes={explore.nodes}
+          edges={explore.edges}
+          exploring={exploring}
+          onNodeClick={explore.onNodeClick}
           theme={{ ...diagram.theme, background: 'none' }}
           resolvedTheme={resolvedTheme}
           editable={false}
@@ -306,7 +329,11 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
           </Button>
         )}
         <div className={cn('mx-1 h-5 w-px bg-border', !onExit && 'max-sm:hidden')} />
-        {flow ? (
+        {exploring ? (
+          <span className="flex-1 truncate px-2 text-sm text-muted-foreground">
+            Exploring. Click a node, or a neighbour below, to move.
+          </span>
+        ) : flow ? (
           <>
             <FlowPicker flows={diagram.flows} flow={flow} onChange={onFlowChange} />
             <PathPicker
@@ -358,6 +385,19 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
           </span>
         )}
         {actions}
+        {initial.nodes.length > 0 && (
+          <ShortcutTooltip label={exploring ? 'Stop exploring' : 'Explore'} keys={KEYS.explore}>
+            <Button
+              variant={exploring ? 'secondary' : 'ghost'}
+              size="icon-sm"
+              aria-label="Explore"
+              aria-pressed={exploring}
+              onClick={toggleExplore}
+            >
+              <Compass />
+            </Button>
+          </ShortcutTooltip>
+        )}
         <ShortcutTooltip label={fullscreen ? 'Exit full screen' : 'Full screen'} keys={KEYS.fullScreen}>
           <Button
             variant="ghost"
@@ -369,6 +409,7 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
           </Button>
         </ShortcutTooltip>
       </header>
+      <ExploreStrip explore={explore} />
     </div>
   )
 }

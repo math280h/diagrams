@@ -6,6 +6,8 @@ import {
   type OnSelectionChangeParams,
   type Viewport,
 } from '@xyflow/react'
+import { Minimap, MINIMAP_MIN_NODES } from '@/canvas/Minimap'
+import { useSettings } from '@/store/settings-store'
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react'
 import { useCanvasTheme } from '@/canvas/canvas-theme'
 import { DiagramCanvas } from '@/canvas/DiagramCanvas'
@@ -67,6 +69,7 @@ export function EditorCanvas() {
   const resolvedTheme = useCanvasTheme(theme.mode)
   const description = useDiagramDescription()
   const sensitiveView = useUi((state) => state.sensitiveView)
+  const showMinimap = useSettings((state) => state.showMinimap)
   const threats = useMemo(
     () =>
       sensitiveView ? new Map(dataCrossings(nodes, edges).map((crossing) => [crossing.edgeId, crossing])) : undefined,
@@ -173,6 +176,7 @@ export function EditorCanvas() {
           theme={theme}
           resolvedTheme={resolvedTheme}
           editable={!previewing}
+          levelOfDetail
           onOpenDiagram={openDiagram}
           showCaption={false}
           description={description}
@@ -211,6 +215,7 @@ export function EditorCanvas() {
         >
           <RecoverViewport />
           {narrow && <StartFrame />}
+          {showMinimap && nodes.length >= MINIMAP_MIN_NODES && <Minimap />}
         </DiagramCanvas>
       </CanvasContextMenu>
       {nodes.length === 0 && <EmptyCanvas />}

@@ -14,12 +14,15 @@ interface SettingsState {
   flowPanelHeight: number | null
   /** If true, an exported image holds the diagram, so that Diagrams can open it again. */
   embedDiagram: boolean
+  /** If true, a large diagram shows a minimap in the editor. */
+  showMinimap: boolean
   setTheme: (theme: AppTheme) => void
   setAmbientMotion: (value: boolean) => void
   setInspectorOpen: (value: boolean) => void
   setSidePanelWidth: (value: number) => void
   setFlowPanelHeight: (value: number | null) => void
   setEmbedDiagram: (value: boolean) => void
+  setShowMinimap: (value: boolean) => void
 }
 
 export const DEFAULT_SIDE_PANEL_WIDTH = 288
@@ -33,23 +36,34 @@ export const useSettings = create<SettingsState>()(
       sidePanelWidth: DEFAULT_SIDE_PANEL_WIDTH,
       flowPanelHeight: null,
       embedDiagram: false,
+      showMinimap: true,
       setTheme: (theme) => set({ theme }),
       setAmbientMotion: (ambientMotion) => set({ ambientMotion }),
       setInspectorOpen: (inspectorOpen) => set({ inspectorOpen }),
       setSidePanelWidth: (sidePanelWidth) => set({ sidePanelWidth }),
       setFlowPanelHeight: (flowPanelHeight) => set({ flowPanelHeight }),
       setEmbedDiagram: (embedDiagram) => set({ embedDiagram }),
+      setShowMinimap: (showMinimap) => set({ showMinimap }),
     }),
     {
       name: 'dg:settings',
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ theme, ambientMotion, inspectorOpen, sidePanelWidth, flowPanelHeight, embedDiagram }) => ({
+      partialize: ({
         theme,
         ambientMotion,
         inspectorOpen,
         sidePanelWidth,
         flowPanelHeight,
         embedDiagram,
+        showMinimap,
+      }) => ({
+        theme,
+        ambientMotion,
+        inspectorOpen,
+        sidePanelWidth,
+        flowPanelHeight,
+        embedDiagram,
+        showMinimap,
       }),
     },
   ),

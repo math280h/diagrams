@@ -28,6 +28,7 @@ import { GroupNode } from './nodes/GroupNode'
 import { ShapeNode } from './nodes/ShapeNode'
 import { TextNode } from './nodes/TextNode'
 import { ViewportLayerPortal } from './portal'
+import { LevelOfDetail } from './level-of-detail'
 import { ZoomProperty } from './zoom'
 
 function nodeHasDetails(node: DiagramNode): boolean {
@@ -53,6 +54,10 @@ export interface DiagramCanvasProps extends Omit<ReactFlowProps<DiagramNode, Dia
   threats?: ReadonlyMap<string, DataCrossing>
   overlay?: ReactNode
   rootRef?: React.RefObject<HTMLDivElement | null>
+  /** If true, cards show less detail and larger titles when the zoom is low (`data-lod`). */
+  levelOfDetail?: boolean
+  /** If true, the canvas dims the nodes and edges without the `dg-explore-near` class. */
+  exploring?: boolean
 }
 
 export function DiagramCanvas({
@@ -68,6 +73,8 @@ export function DiagramCanvas({
   overlay,
   children,
   rootRef: givenRef,
+  levelOfDetail = false,
+  exploring = false,
   ...flowProps
 }: DiagramCanvasProps) {
   const ownRef = useRef<HTMLDivElement>(null)
@@ -84,7 +91,8 @@ export function DiagramCanvas({
         details && nodeHasDetails(node) && 'dg-has-details',
         editable && node.data.pinned === true && 'dg-pinned',
       ].filter(Boolean)
-      return { ...node, ariaLabel: nodeAriaLabel(node), ...(marks.length > 0 ? { className: marks.join(' ') } : {}) }
+      const className = [node.className, ...marks].filter(Boolean).join(' ')
+      return { ...node, ariaLabel: nodeAriaLabel(node), ...(className ? { className } : {}) }
     })
   }, [flowProps.nodes, details, editable])
   const edges = useMemo(() => {
@@ -106,6 +114,7 @@ export function DiagramCanvas({
         data-export={exportMode ? 'true' : undefined}
         data-details={details ? 'true' : undefined}
         data-threats={threats ? 'true' : undefined}
+        data-exploring={exploring ? 'true' : undefined}
       >
         <ReactFlow<DiagramNode, DiagramEdge>
           nodeTypes={nodeTypes}
@@ -159,6 +168,7 @@ export function DiagramCanvas({
           )}
           <EngineBinding rootRef={rootRef} />
           <ZoomProperty rootRef={rootRef} />
+          {levelOfDetail && <LevelOfDetail rootRef={rootRef} />}
           <ViewportLayerPortal>
             <FlowToken />
           </ViewportLayerPortal>
