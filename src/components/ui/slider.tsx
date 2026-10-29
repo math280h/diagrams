@@ -1,7 +1,15 @@
 import { Slider as SliderPrimitive } from '@base-ui/react/slider'
 import { cn } from 'cn'
 
-function Slider({ className, defaultValue, value, min = 0, max = 100, ...props }: SliderPrimitive.Root.Props) {
+function Slider({
+  className,
+  defaultValue,
+  value,
+  min = 0,
+  max = 100,
+  thumbLabel,
+  ...props
+}: SliderPrimitive.Root.Props & { thumbLabel?: string }) {
   const values = Array.isArray(value) ? value : Array.isArray(defaultValue) ? defaultValue : [min, max]
 
   return (
@@ -29,6 +37,7 @@ function Slider({ className, defaultValue, value, min = 0, max = 100, ...props }
           <SliderPrimitive.Thumb
             data-slot="slider-thumb"
             key={index}
+            getAriaLabel={thumbLabel ? () => thumbLabel : undefined}
             className="relative block size-3 shrink-0 rounded-full border border-foreground/40 bg-background transition-[color,box-shadow] select-none after:absolute after:-inset-2 has-focus-visible:ring-3 has-focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50"
           />
         ))}

@@ -120,7 +120,14 @@ function PathPicker({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={<Button variant="ghost" size="sm" className="max-w-44 max-sm:max-w-28" aria-label="Path" />}
+        render={
+          <Button
+            variant="ghost"
+            size="sm"
+            className="max-w-44 max-sm:max-w-28"
+            aria-label={`Path: ${findPath(flow, pathId)?.name ?? 'Main path'}`}
+          />
+        }
       >
         <span className="truncate">{findPath(flow, pathId)?.name ?? 'Main path'}</span>
         <ChevronDown className="opacity-60" />

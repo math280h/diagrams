@@ -1040,9 +1040,19 @@ images current without a person. `main.mjs` does the work in Node, and `lib.mjs`
   to the library, the editor, the panels, the export dialog or Present shows in the comment too.
   `scripts/app-screens.mjs` of each commit serves the web build of that commit and takes the same screens with
   Playwright: the library, a template page, the editor with a node selected and with the flow panel, the image export,
-  Present at its first step and five steps later, an empty diagram, and the library, the editor and Present on a
-  phone, each in the dark and the light theme. It asks for reduced motion and turns off CSS animations, so nothing
-  moves while it takes a screen.
+  Present at its first step and five steps later, an empty diagram at 1440 × 900, the editor with the properties and
+  the flow panel open at 1280 × 720, and the library, the editor and Present on a phone at 390 × 844, each in the dark
+  and the light theme. It asks for reduced motion and turns off CSS animations, so nothing moves while it takes a
+  screen.
+- `e2e/accessibility-scan.spec.ts` runs axe (`@axe-core/playwright`, the WCAG 2.2 A and AA rules) over the library, a
+  template page, the editor with a selection and the flow panel, the command menu, the insert menu, the shortcut
+  sheet, the image export, the minimap, Present with Explore, and the phone library and editor, in both themes. The scan
+  of Explore leaves out the nodes and edges that Explore dims on purpose, because WCAG 1.4.3 does not apply to
+  inactive parts, and their text is faded to 16 % while the fade runs. Any violation fails the end-to-end
+  run. The first scan found nodes with a label and no role on read-only canvases (every node now has the `group`
+  role), controls whose label did not hold their visible text (the zoom readout, Insert, the path pickers and the log
+  rows, which now take their name from their text), a padding slider without a name, and a scrolling list that the
+  keyboard could not reach.
 - The action compares the screens with `samePixels` (`actions/render/png.mjs`): at most 16 pixels may have a colour
   channel that differs by more than 8 of 255. Two builds of the same code draw text edges a few levels apart (at most 4
   in tests), and can draw a rounded corner a few pixels differently (2 pixels, 37 levels apart, at the corner of a

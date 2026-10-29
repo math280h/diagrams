@@ -25,7 +25,7 @@ export function ZoomControls() {
             <Button
               variant="ghost"
               size="sm"
-              aria-label="Reset zoom to 100%"
+              aria-label={`${Math.round(zoom * 100)}%, reset zoom to 100%`}
               onClick={() => void zoomTo(1, { duration: 200 })}
               className="w-12 px-0 text-xs font-normal tabular-nums"
             />

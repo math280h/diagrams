@@ -124,7 +124,11 @@ export function PathMenu({ flow }: { flow: Flow }) {
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="max-w-44" aria-label="Path" />}>
+        <DropdownMenuTrigger
+          render={
+            <Button variant="ghost" size="sm" className="max-w-44" aria-label={`Path: ${path?.name ?? 'Main path'}`} />
+          }
+        >
           <span className="truncate">{path?.name ?? 'Main path'}</span>
           <ChevronDown className="opacity-60" />
         </DropdownMenuTrigger>

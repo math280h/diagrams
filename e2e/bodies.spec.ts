@@ -1,6 +1,10 @@
 import { expect, test, type Page } from '@playwright/test'
 import { copyTemplate } from './helpers'
 
+function logRow(page: Page, step: number) {
+  return page.locator('.dg-log-row').nth(step - 1)
+}
+
 function section(page: Page, title: 'Request body' | 'Response body') {
   return page.locator('section', { has: page.getByRole('heading', { name: title, exact: true }) })
 }
@@ -46,8 +50,8 @@ test('describes the bodies of a connection, fills them from JSON, copies the exa
   await expect(mark).toHaveText('{4} → {1}')
 
   await page.getByRole('button', { name: 'Flows' }).click()
-  const write = page.getByRole('button', { name: /^Step 8: Orders → Postgres/ })
-  const answer = page.getByRole('button', { name: /^Step 10: Postgres → Orders/ })
+  const write = logRow(page, 8)
+  const answer = logRow(page, 10)
   await expect(write).toContainText('INSERT orders')
   await expect(write).toContainText('{"orderId":"ord_8f2k","total":49,"lines":[{"sku":"LAMP-01"}]}')
   await expect(answer).toContainText('{"rows":1}')
