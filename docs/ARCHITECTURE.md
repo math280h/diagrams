@@ -1020,10 +1020,11 @@ images current without a person. `main.mjs` does the work in Node, and `lib.mjs`
   Present at its first step and five steps later, an empty diagram, and the library, the editor and Present on a
   phone, each in the dark and the light theme. It asks for reduced motion and turns off CSS animations, so nothing
   moves while it takes a screen.
-- The action compares the screens with `samePixels` (`actions/render/png.mjs`): no colour channel of a pixel may differ
-  by more than 8 of 255. Two builds of the same code draw text edges a few levels apart (at most 4 in tests), while a
-  change of text, colour or layout moves pixels much further, so an exact compare would show screens that did not
-  change.
+- The action compares the screens with `samePixels` (`actions/render/png.mjs`): at most 16 pixels may have a colour
+  channel that differs by more than 8 of 255. Two builds of the same code draw text edges a few levels apart (at most 4
+  in tests), and can draw a rounded corner a few pixels differently (2 pixels, 37 levels apart, at the corner of a
+  button), while a change of text, colour or layout moves hundreds of pixels much further. An exact compare would show
+  screens that did not change.
 - The featured stage and the template cards frame their diagram after the fonts load, and again when the measured
   node sizes change. Before, a font that arrived after the first measure left a frame for the fallback font, and two
   screens of the library differed by a few pixels.

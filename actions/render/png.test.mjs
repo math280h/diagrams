@@ -55,8 +55,20 @@ describe('png', () => {
           [[40, 0, 0, 255], WHITE],
           [WHITE, BLACK],
         ]),
+        8,
+        0,
       ),
     ).toBe(false)
     expect(samePixels(base, png(1, [[BLACK], [WHITE]]))).toBe(false)
+  })
+
+  it('counts a few stray pixels at an anti-aliased corner as the same, and more of them as different', () => {
+    const row = (count, color) => Array.from({ length: count }, () => color)
+    const base = png(20, [row(20, WHITE), row(20, WHITE)])
+    const corner = png(20, [[[219, 219, 219, 255], [182, 182, 182, 255], ...row(18, WHITE)], row(20, WHITE)])
+    expect(samePixels(base, corner, 8, 2)).toBe(true)
+    const line = png(20, [row(20, [200, 200, 200, 255]), row(20, WHITE)])
+    expect(samePixels(base, line, 8, 2)).toBe(false)
+    expect(samePixels(base, line)).toBe(false)
   })
 })

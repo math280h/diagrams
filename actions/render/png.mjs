@@ -69,18 +69,26 @@ export function decodePng(png) {
 }
 
 /**
- * Returns true if two PNG images look the same: the same size, and no colour channel of a pixel differs by more than
- * the tolerance. Text, colour and layout changes move channels by much more than the tolerance.
+ * Returns true if two PNG images look the same: the same size, and at most `strayPixels` pixels with a colour channel
+ * that differs by more than the tolerance. Text, colour and layout changes move many pixels by much more than the
+ * tolerance; two renders of the same page can differ in a few anti-aliased pixels at a rounded corner.
  *
  * @param tolerance - The largest channel difference, from 0 to 255, that counts as the same.
+ * @param strayPixels - The number of pixels over the tolerance that still count as the same.
  */
-export function samePixels(a, b, tolerance = 8) {
+export function samePixels(a, b, tolerance = 8, strayPixels = 16) {
   if (a.equals(b)) return true
   const first = decodePng(a)
   const second = decodePng(b)
   if (first.width !== second.width || first.height !== second.height) return false
-  for (let index = 0; index < first.pixels.length; index++) {
-    if (Math.abs(first.pixels[index] - second.pixels[index]) > tolerance) return false
+  let different = 0
+  for (let pixel = 0; pixel < first.pixels.length; pixel += 4) {
+    for (let channel = pixel; channel < pixel + 4; channel++) {
+      if (Math.abs(first.pixels[channel] - second.pixels[channel]) <= tolerance) continue
+      different++
+      if (different > strayPixels) return false
+      break
+    }
   }
   return true
 }
