@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { devices, expect, test, type Page } from '@playwright/test'
 import {
   AGENT_HOST,
   AGENT_PORT,
@@ -53,3 +53,52 @@ test('explains what to do when the desktop app does not answer', async ({ page }
   await expect(page.getByRole('link', { name: 'Get the desktop app' })).toHaveAttribute('href', DESKTOP_DOWNLOAD_URL)
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible()
 })
+
+const MAC_SAFARI =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15'
+const LINUX_CHROME =
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
+
+function withoutBrowserType(device: (typeof devices)[string]) {
+  const { defaultBrowserType: _browserType, ...options } = device
+  return options
+}
+
+const PHONES_AND_TABLETS = [
+  { name: 'an iPhone', options: withoutBrowserType(devices['iPhone 15']) },
+  { name: 'an Android phone', options: withoutBrowserType(devices['Pixel 9']) },
+  { name: 'an Android tablet', options: withoutBrowserType(devices['Galaxy Tab S9']) },
+  {
+    name: 'an Android tablet in desktop mode',
+    options: { ...withoutBrowserType(devices['Galaxy Tab S9']), userAgent: LINUX_CHROME, isMobile: false },
+  },
+  { name: 'an iPad', options: { ...withoutBrowserType(devices['iPad (gen 11)']), userAgent: MAC_SAFARI } },
+]
+
+for (const device of PHONES_AND_TABLETS) {
+  test.describe(device.name, () => {
+    test.use(device.options)
+
+    test(`does not offer the desktop app on ${device.name}`, async ({ page }) => {
+      // Chromium touch emulation reports one touch point. Real phones and tablets report five or more.
+      await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'maxTouchPoints', { get: () => 5 }))
+      await page.goto('/')
+      await expect(page.getByRole('heading', { name: 'Keep diagrams with your code' })).toBeAttached()
+      await expect(page.getByRole('heading', { name: 'Let an AI agent draw with you' })).toHaveCount(0)
+    })
+  })
+}
+
+for (const { name, userAgent } of [
+  { name: 'a Mac', userAgent: MAC_SAFARI },
+  { name: 'a Linux computer', userAgent: LINUX_CHROME },
+]) {
+  test.describe(name, () => {
+    test.use({ userAgent })
+
+    test(`offers the desktop app on ${name}`, async ({ page }) => {
+      await page.goto('/')
+      await expect(page.getByRole('heading', { name: 'Let an AI agent draw with you' })).toBeVisible()
+    })
+  })
+}

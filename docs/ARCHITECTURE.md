@@ -993,6 +993,13 @@ passes the link to the running app. The website then posts the diagram to the lo
 tries again for 15 seconds while the app starts. Chrome asks once before a website reaches the
 local device.
 
+The website offers the app (the agent card and "Open in desktop app") only on a computer
+(`isDesktopComputer`). A phone or tablet that names itself in the user agent gets no offer. iPadOS
+Safari sends the user agent of a Mac, and Chrome on large Android tablets that of a Linux computer.
+So a Mac user agent with more than one touch point, or a Linux one whose primary pointer is a finger,
+also counts as a tablet. A Linux laptop with a touch screen keeps the offer, because its primary
+pointer is the trackpad.
+
 ### Command-line render
 
 `--render <file> --out <file>` makes the desktop app render a diagram file to a PNG, SVG, GIF, MP4 or WebM file and
