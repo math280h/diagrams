@@ -22,7 +22,7 @@ const NOTICE_FILE = /^(licen[cs]e|copying|notice)([.-].*)?$/i
 const SEPARATOR = '='.repeat(80)
 
 function packageRoot(moduleId: string): string | null {
-  const file = moduleId.replace(/^\0/, '').split('?')[0].replaceAll('\\', '/')
+  const file = moduleId.replace(/^\0/, '').split('?')[0]!.replaceAll('\\', '/')
   const marker = file.lastIndexOf('/node_modules/')
   if (marker === -1) return null
   const rest = file.slice(marker + '/node_modules/'.length).split('/')
