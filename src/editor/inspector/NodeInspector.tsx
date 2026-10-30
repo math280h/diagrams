@@ -1,6 +1,5 @@
-import { AlignCenter, AlignLeft, AlignRight, Plus, X } from 'lucide-react'
+import { AlignCenter, AlignLeft, AlignRight } from 'lucide-react'
 import { Icon } from '@/canvas/icon'
-import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { newId } from '@/model/defaults'
@@ -28,6 +27,7 @@ import {
   SliderField,
   SwitchField,
   TextInput,
+  TextLines,
 } from './controls'
 import { DetailsFields } from './DetailsFields'
 import { OpensFields } from './OpensFields'
@@ -53,13 +53,19 @@ const SHAPE_OPTIONS = SHAPES.map((shape) => {
 function CardFields({ node }: { node: CardNodeType }) {
   const { data } = node
   const set = (patch: Partial<CardData>, key?: string) => updateNodeData(node.id, patch, key)
-  const [detail, ...extraLines] = data.lines
-  const hasExtras = extraLines.length > 0 || data.meter !== null || data.status !== 'none' || data.badge !== ''
+  const hasExtras = data.meter !== null || data.status !== 'none' || data.badge !== ''
   const [extrasOpen, setExtrasOpen] = useState(hasExtras)
+  const detail = data.lines.map((line) => line.text).join('\n')
 
   const setDetail = (text: string) => {
-    const first = { id: detail?.id ?? newId('l'), text }
-    set({ lines: text === '' && extraLines.length === 0 ? [] : [first, ...extraLines] }, `detail:${node.id}`)
+    const texts = text === '' ? [] : text.split(/\r?\n/)
+    const lines = texts.map((line, index) => ({ id: data.lines[index]?.id ?? newId('l'), text: line }))
+    set({ lines }, `detail:${node.id}`)
+  }
+  const dropEmptyLastLines = () => {
+    let end = data.lines.length
+    while (end > 0 && data.lines[end - 1]!.text.trim() === '') end--
+    if (end < data.lines.length) set({ lines: data.lines.slice(0, end) }, `detail:${node.id}`)
   }
 
   return (
@@ -71,14 +77,19 @@ function CardFields({ node }: { node: CardNodeType }) {
         <Field label="Kind">
           <Choice label="Kind" value={data.form} onChange={(form) => set({ form })} options={FORM_OPTIONS} />
         </Field>
-        <Field label="Detail">
-          <TextInput
+        <Field label="Detail" multiline>
+          <TextLines
             mono
-            value={detail?.text ?? ''}
+            value={detail}
             placeholder={DETAIL_PLACEHOLDERS[data.form]}
             onChange={setDetail}
+            onBlur={dropEmptyLastLines}
           />
         </Field>
+        <p className="text-xs text-muted-foreground">
+          One line for each line of the card. Text in braces, for example <code className="font-mono">{'{840}'}</code>,
+          shows brighter.
+        </p>
         <Field label="Icon">
           <IconPicker value={data.icon} onChange={(icon) => set({ icon })} allowNone />
         </Field>
@@ -90,46 +101,6 @@ function CardFields({ node }: { node: CardNodeType }) {
         <SwitchField label="Edit metrics" checked={extrasOpen} onChange={setExtrasOpen} />
         {extrasOpen && (
           <>
-            {extraLines.map((line) => (
-              <div key={line.id} className="flex items-center gap-1">
-                <TextInput
-                  mono
-                  value={line.text}
-                  onChange={(text) =>
-                    set(
-                      { lines: data.lines.map((item) => (item.id === line.id ? { ...item, text } : item)) },
-                      `line:${line.id}`,
-                    )
-                  }
-                />
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label="Remove line"
-                  onClick={() => set({ lines: data.lines.filter((item) => item.id !== line.id) })}
-                >
-                  <X />
-                </Button>
-              </div>
-            ))}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="justify-start"
-              onClick={() =>
-                set({
-                  lines: [
-                    ...(detail ? data.lines : [{ id: newId('l'), text: '' }]),
-                    { id: newId('l'), text: 'p99 {840} ms' },
-                  ],
-                })
-              }
-            >
-              <Plus /> Add a metric line
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              Text in braces, for example <code className="font-mono">{'{840}'}</code>, shows brighter.
-            </p>
             <SwitchField
               label="Meter"
               checked={data.meter !== null}
