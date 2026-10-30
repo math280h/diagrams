@@ -1,10 +1,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { gunzipSync } from 'node:zlib'
 import { unzipSync } from 'fflate'
 import * as simpleIcons from 'simple-icons'
 import { optimize } from 'svgo'
-import { AWS, AZURE, GCP, KUBERNETES, LOGO_ALIASES, LOGOS } from './catalog.mjs'
+import { AWS, AZURE, GCP, KUBERNETES, LOGO_ALIASES, LOGOS, SALESFORCE } from './catalog.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const CACHE = join(ROOT, 'node_modules', '.cache', 'diagram-icons')
@@ -17,6 +18,10 @@ const GCP_CORE_URL = 'https://services.google.com/fh/files/misc/core-products-ic
 const GCP_CATEGORY_URL = 'https://services.google.com/fh/files/misc/category-icons.zip'
 const KUBERNETES_COMMIT = '70a4bb2d8cc35bb0672f221bad9bc60c27a6f94b'
 const KUBERNETES_ICONS_URL = `https://raw.githubusercontent.com/kubernetes/community/${KUBERNETES_COMMIT}/icons/svg/`
+const SALESFORCE_ICONS_URL = 'https://registry.npmjs.org/@salesforce-ux/icons/-/icons-10.18.1.tgz'
+const SALESFORCE_ICONS_FOLDER = 'package/dist/salesforce-lightning-design-system-icons/'
+const SALESFORCE_UTILITY_GLYPH = 0.64
+const TAR_BLOCK = 512
 
 async function download(url, name) {
   const file = join(CACHE, name)
@@ -43,6 +48,31 @@ async function svgArchive(url, name) {
     filter: (file) => file.name.endsWith('.svg') && !file.name.includes('__MACOSX'),
   })
   return Object.entries(files).map(([path, data]) => [path, Buffer.from(data).toString('utf8')])
+}
+
+function tarText(block, start, length) {
+  const text = block.toString('latin1', start, start + length)
+  const end = text.indexOf('\0')
+  return end === -1 ? text : text.slice(0, end)
+}
+
+// A tar file is a 512 byte header for each file, then its data, padded to 512 bytes. A header holds the name at 0, the
+// size in octal at 124, the type at 156 and a name prefix at 345.
+function tarArchive(gzip) {
+  const tar = gunzipSync(gzip)
+  const files = []
+  for (let offset = 0; offset + TAR_BLOCK <= tar.length;) {
+    const header = tar.subarray(offset, offset + TAR_BLOCK)
+    const name = tarText(header, 0, 100)
+    if (!name) break
+    const size = Number.parseInt(tarText(header, 124, 12).trim() || '0', 8)
+    const prefix = tarText(header, 345, 155)
+    const type = tarText(header, 156, 1)
+    const data = tar.subarray(offset + TAR_BLOCK, offset + TAR_BLOCK + size)
+    if (type === '0' || type === '') files.push([prefix ? `${prefix}/${name}` : name, data.toString('utf8')])
+    offset += TAR_BLOCK + Math.ceil(size / TAR_BLOCK) * TAR_BLOCK
+  }
+  return files
 }
 
 function find(archive, test, what) {
@@ -202,8 +232,34 @@ function buildLogos() {
   writeSet('logos', { entries })
 }
 
-await buildAws()
-await buildAzure()
-await buildGcp()
-await buildKubernetes()
-buildLogos()
+async function buildSalesforce() {
+  const archive = tarArchive(await download(SALESFORCE_ICONS_URL, 'salesforce-icons.tgz'))
+  const art = {}
+  const entries = []
+  for (const [category, list] of Object.entries(SALESFORCE)) {
+    for (const item of list) {
+      const entry = entryFields('salesforce', category, item)
+      const [kind, name] = entry.art.split(':')
+      art[entry.art] ??= {
+        light: clean(find(archive, (p) => p === `${SALESFORCE_ICONS_FOLDER}${kind}/${name}.svg`, entry.art)),
+        tile: item[6],
+        ...(kind === 'utility' ? { glyph: SALESFORCE_UTILITY_GLYPH } : {}),
+      }
+      entries.push(entry)
+    }
+  }
+  writeSet('salesforce', { art, entries })
+}
+
+const BUILDS = {
+  aws: buildAws,
+  azure: buildAzure,
+  gcp: buildGcp,
+  k8s: buildKubernetes,
+  logos: buildLogos,
+  salesforce: buildSalesforce,
+}
+
+const chosen = process.argv.slice(2)
+for (const name of chosen) if (!BUILDS[name]) throw new Error(`Unknown icon set ${name}`)
+for (const [name, build] of Object.entries(BUILDS)) if (chosen.length === 0 || chosen.includes(name)) await build()

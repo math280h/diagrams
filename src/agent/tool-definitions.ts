@@ -16,7 +16,7 @@ import {
 } from '@/model/schema'
 
 const NODE_KINDS = ['card', 'shape', 'text', 'group'] as const
-const PROVIDERS = ['aws', 'azure', 'gcp', 'k8s', 'logo', 'lucide'] as const
+const PROVIDERS = ['aws', 'azure', 'gcp', 'k8s', 'logo', 'salesforce', 'lucide'] as const
 
 const diagramId = z
   .string()

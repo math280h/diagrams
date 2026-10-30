@@ -338,6 +338,16 @@
   flex: none;
   object-fit: contain;
 }
+.dg-art-tile {
+  display: inline-block;
+  border-radius: 22%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+:where(.dg-art-tile) {
+  width: var(--dg-art-size);
+  height: var(--dg-art-size);
+}
 .dg-art[data-variant='dark'],
 .dark .dg-art[data-variant='light'],
 .dg-canvas[data-theme='dark'] .dg-art[data-variant='light'],

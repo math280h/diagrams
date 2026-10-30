@@ -984,3 +984,103 @@ export const LOGO_ALIASES = {
   googlechrome: 'chrome',
   firefoxbrowser: 'firefox',
 }
+
+/**
+ * The Salesforce icons that the build copies from the Lightning Design System icons, by category.
+ *
+ * Each entry is `[slug, title, art, form, aliases, keywords, tile]`, with `art` as `standard:<name>` or
+ * `utility:<name>`. The glyphs are white, and `tile` is the colour of the square behind them: for a standard icon the
+ * background colour of its `.slds-icon-standard-<name>` class in the Lightning Design System CSS 2.264.3, and for the
+ * Salesforce cloud the blue of the Salesforce logo.
+ */
+export const SALESFORCE = {
+  Products: [
+    [
+      'salesforce',
+      'Salesforce',
+      'utility:salesforce1',
+      'external',
+      'salesforce|sfdc|salesforce crm|sales cloud|service cloud',
+      'crm cloud platform',
+      '#00a1e0',
+    ],
+    ['slack', 'Slack', 'standard:slack', 'external', 'slack', 'chat messaging channels', '#4a154b'],
+    ['tableau', 'Tableau', 'standard:tableau', 'external', 'tableau', 'analytics bi dashboards reports', '#0f1e3c'],
+    ['mulesoft', 'MuleSoft', 'standard:mulesoft', 'service', 'mulesoft|anypoint', 'integration api esb', '#1b96ff'],
+    [
+      'data-cloud',
+      'Data Cloud',
+      'standard:data_cloud',
+      'datastore',
+      'data cloud|salesforce data cloud',
+      'cdp customer data platform',
+      '#5a1ba9',
+    ],
+  ],
+  Platform: [
+    ['apex', 'Apex', 'standard:apex', 'function', 'apex class|apex trigger', 'code class trigger', '#032d60'],
+    ['flow', 'Flow', 'standard:flow', 'function', 'salesforce flow', 'automation process builder', '#032d60'],
+    [
+      'connected-app',
+      'Connected app',
+      'standard:connected_apps',
+      'service',
+      'connected app',
+      'oauth integration',
+      '#5867e8',
+    ],
+    ['bot', 'Bot', 'standard:bot', 'service', 'einstein bot|agentforce', 'agent chatbot assistant', '#107cad'],
+  ],
+  Objects: [
+    [
+      'account',
+      'Account',
+      'standard:account',
+      'datastore',
+      'salesforce account',
+      'company customer record object',
+      '#5867e8',
+    ],
+    [
+      'contact',
+      'Contact',
+      'standard:contact',
+      'datastore',
+      'salesforce contact',
+      'person customer record object',
+      '#9602c7',
+    ],
+    ['lead', 'Lead', 'standard:lead', 'datastore', 'salesforce lead', 'prospect record object', '#1b96ff'],
+    [
+      'opportunity',
+      'Opportunity',
+      'standard:opportunity',
+      'datastore',
+      'salesforce opportunity',
+      'deal record object',
+      '#ff5d2d',
+    ],
+    ['case', 'Case', 'standard:case', 'datastore', 'salesforce case', 'support ticket record object', '#ff538a'],
+    [
+      'campaign',
+      'Campaign',
+      'standard:campaign',
+      'datastore',
+      'salesforce campaign',
+      'marketing record object',
+      '#9050e9',
+    ],
+    ['product', 'Product', 'standard:product', 'datastore', 'salesforce product', 'catalog record object', '#9050e9'],
+    ['order', 'Order', 'standard:orders', 'datastore', 'salesforce order', 'record object', '#1b96ff'],
+    ['quote', 'Quote', 'standard:quotes', 'datastore', 'salesforce quote', 'pricing record object', '#3ba755'],
+    [
+      'contract',
+      'Contract',
+      'standard:contract',
+      'datastore',
+      'salesforce contract',
+      'agreement record object',
+      '#396547',
+    ],
+  ],
+}

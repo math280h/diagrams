@@ -6,9 +6,9 @@ import { iconSourceOf, loadIconSets } from './library'
 describe('icon sets', () => {
   it('load with an image or a path for every entry', async () => {
     const sets = await loadIconSets()
-    expect(sets.map((set) => set.source)).toEqual(['aws', 'azure', 'gcp', 'k8s', 'logo'])
+    expect(sets.map((set) => set.source)).toEqual(['aws', 'azure', 'gcp', 'k8s', 'logo', 'salesforce'])
     for (const set of sets) {
-      expect(set.entries.length).toBeGreaterThan(20)
+      expect(set.entries.length).toBeGreaterThan(15)
       for (const entry of set.entries) {
         expect(entry.id.startsWith(`${set.source}:`)).toBe(true)
         expect(entry.path ?? (entry.art && set.art[entry.art]?.light)).toBeTruthy()

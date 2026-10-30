@@ -228,16 +228,28 @@ The visual system lives in `DESIGN.md` at the repository root.
 ### Icons
 
 An icon name is either a Lucide name (`database`) or a set icon with a prefix: `aws:`, `azure:`,
-`gcp:`, `k8s:` or `logo:`.
+`gcp:`, `k8s:`, `logo:` or `salesforce:`.
 
 - The sets come from the official sources: the AWS Architecture Icons package, the Azure
-  architecture icons, the Google Cloud product icons, the Kubernetes icon set and Simple Icons for
-  software logos. The licences and usage terms are in `THIRD-PARTY-NOTICES.md`.
+  architecture icons, the Google Cloud product icons, the Kubernetes icon set, Simple Icons for
+  software logos and the Salesforce Lightning Design System icons. The licences and usage terms are in
+  `THIRD-PARTY-NOTICES.md`.
+- Simple Icons removed Salesforce and its brands (Slack, Tableau, MuleSoft, Heroku) in version 16, because of the
+  Salesforce trademark guidelines. The `salesforce:` set takes the icons that Salesforce publishes itself
+  (`@salesforce-ux/icons`, CC BY-ND 4.0): its products (the Salesforce cloud, Slack, Tableau, MuleSoft, Data Cloud),
+  platform parts (Apex, Flow, a connected app, a bot) and CRM objects (Account to Contract). The licence allows
+  copies but no changed artwork, so the build only optimises the SVG files. The glyphs are white, and the app draws
+  them as Salesforce does: on a rounded square of the colour of the icon (`tile`), from the `.slds-icon-standard-*`
+  classes of the Lightning Design System CSS. The square is CSS (`.dg-art-tile`, the glyph as a background image), so
+  the file stays as Salesforce published it. The Salesforce cloud is a utility glyph without space around it, so it
+  fills 64 % of its square (`glyph`). The Mermaid import matches the objects only by names such as "Salesforce
+  account", so a node named "Order" in another diagram does not get a Salesforce icon. `pnpm icons salesforce` builds only
+  this set.
 - The templates use about 50 of the set icons. `src/canvas/icons/data/templates.json` holds only
   those (`node scripts/template-icons.mjs` writes it, and a unit test fails when it no longer
   matches the templates or the sets). The icon cache takes an icon from it before it fetches a full
   set (`loadSetOfIcon`), so the library draws all its previews with about 35 KB gzip of icons, not
-  the about 265 KB gzip of the five sets. The editor still loads the full sets for search.
+  the about 270 KB gzip of the six sets. The editor still loads the full sets for search.
 - `scripts/icons/catalog.mjs` lists the curated entries: product name, source image, card form,
   aliases for import matching and search keywords. `pnpm icons` downloads the packages into
   `node_modules/.cache`, optimizes the SVG files with SVGO and writes one JSON file per set to

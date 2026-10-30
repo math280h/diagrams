@@ -54,7 +54,10 @@ export const HEADLINE_FEATURES: readonly HeadlineFeature[] = [
 export const MORE_FEATURES: readonly Feature[] = [
   { title: 'Templates', summary: 'C4, RAG, an agent with MCP tools, event pipelines and more, ready to play.' },
   { title: 'Node kinds', summary: 'Services, data stores, queues, clients and more, each with its own outline.' },
-  { title: 'Real icons', summary: 'Official AWS, Azure, Google Cloud and Kubernetes icons, and 220 software logos.' },
+  {
+    title: 'Real icons',
+    summary: 'Official AWS, Azure, Google Cloud, Kubernetes and Salesforce icons, and 220 software logos.',
+  },
   { title: 'Boundaries', summary: 'Cloud, network and cluster boundaries, or your own groups, such as a team.' },
   { title: 'Colours and metrics', summary: 'Colour nodes by kind or by group, and add numbers or meters.' },
   { title: 'Moving connections', summary: 'Dots, comets, dashes or pulses that flow along a connection.' },

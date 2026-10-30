@@ -50,6 +50,19 @@ project uses it under CC-BY-4.0 (https://creativecommons.org/licenses/by/4.0/). 
 as described above. Kubernetes is a registered trademark of The Linux Foundation. Use of the Kubernetes logo follows
 the Linux Foundation trademark usage guidelines: https://www.linuxfoundation.org/legal/trademark-usage
 
+### Salesforce Lightning Design System icons
+
+Source: https://www.lightningdesignsystem.com/icons/ (the npm package `@salesforce-ux/icons`, version 10.18.1).
+
+Copyright salesforce.com, inc. The icons are licensed under the Creative Commons Attribution-NoDerivatives 4.0
+International Public License (https://creativecommons.org/licenses/by-nd/4.0/). The app bundles 19 of them. The build
+optimises each SVG file with SVGO, as described above, which is a technical change that does not change how an icon
+looks. The app does not change the artwork: it shows each white glyph on a rounded square of the colour that the
+Lightning Design System CSS gives the icon (the Salesforce cloud on the blue of the Salesforce logo). Salesforce,
+Slack, Tableau, MuleSoft, Data Cloud and the other product names and logos are trademarks of Salesforce, Inc. This
+licence does not cover trademarks, and their use here only names the products in a diagram. Salesforce does not endorse
+this app.
+
 ## Simple Icons
 
 Source: https://simpleicons.org (simple-icons 16.35.0). The app bundles 220 of its logos as single-colour paths.
