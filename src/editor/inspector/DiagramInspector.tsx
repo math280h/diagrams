@@ -13,7 +13,9 @@ import {
   StretchHorizontal,
   StretchVertical,
 } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { takesColor, type DiagramNode } from '@/model/types'
 import {
   alignSelection,
@@ -40,15 +42,35 @@ const ALIGN_LABELS = {
   bottom: 'Align bottom',
 } as const
 
-export function StylePanel() {
+/** Shows the settings of the open diagram and of the app on two tabs. */
+export function SettingsPanel() {
+  return (
+    <Tabs defaultValue="diagram" className="gap-0">
+      <div className="border-b border-panel-border px-3 pt-3 pb-2.5">
+        <TabsList className="w-full">
+          <TabsTrigger value="diagram">This diagram</TabsTrigger>
+          <TabsTrigger value="app">App</TabsTrigger>
+        </TabsList>
+      </div>
+      <TabsContent value="diagram">
+        <ScopeNote>Saved in the diagram. Everyone who opens it, and every export, uses these.</ScopeNote>
+        <DiagramSettings />
+      </TabsContent>
+      <TabsContent value="app">
+        <ScopeNote>Only for you, on this device. Diagrams and exports do not change.</ScopeNote>
+        <AppSettings />
+      </TabsContent>
+    </Tabs>
+  )
+}
+
+function ScopeNote({ children }: { children: ReactNode }) {
+  return <p className="border-b border-panel-border px-3 py-2.5 text-xs text-muted-foreground">{children}</p>
+}
+
+function DiagramSettings() {
   const theme = useDoc((state) => state.theme)
   const edges = useDoc((state) => state.edges)
-  const appTheme = useSettings((state) => state.theme)
-  const setAppTheme = useSettings((state) => state.setTheme)
-  const contrast = useSettings((state) => state.contrast)
-  const setContrast = useSettings((state) => state.setContrast)
-  const ambientMotion = useSettings((state) => state.ambientMotion)
-  const setAmbientMotion = useSettings((state) => state.setAmbientMotion)
   const fitToScreen = useFitToScreen()
   const allEdgeIds = new Set(edges.map((edge) => edge.id))
   const animated = edges.filter((edge) => edge.data?.traffic.enabled).length
@@ -95,12 +117,6 @@ export function StylePanel() {
             ]}
           />
         </Field>
-        <SwitchField label="Snap to grid" checked={theme.snap} onChange={(snap) => setTheme({ snap })} />
-        <SwitchField
-          label="Route connections around nodes"
-          checked={theme.routeAround}
-          onChange={(routeAround) => setTheme({ routeAround })}
-        />
         <SwitchField
           label="Colour boundaries by kind"
           checked={theme.boundaryColors}
@@ -112,7 +128,12 @@ export function StylePanel() {
           onChange={(protocolColors) => setTheme({ protocolColors })}
         />
       </Section>
-      <Section title="Traffic">
+      <Section title="Connections">
+        <SwitchField
+          label="Route connections around nodes"
+          checked={theme.routeAround}
+          onChange={(routeAround) => setTheme({ routeAround })}
+        />
         {edges.length === 0 ? (
           <p className="text-xs text-muted-foreground">New connections have no traffic. Turn it on per connection.</p>
         ) : (
@@ -128,7 +149,7 @@ export function StylePanel() {
                 <Pause /> Stop all
               </Button>
             </div>
-            <Field label="Style for all">
+            <Field label="Traffic">
               <Segmented
                 label="Traffic style for all connections"
                 className="w-full"
@@ -144,9 +165,9 @@ export function StylePanel() {
             </Field>
           </>
         )}
-        <SwitchField label="Animate traffic while editing" checked={ambientMotion} onChange={setAmbientMotion} />
       </Section>
       <Section title="Layout">
+        <SwitchField label="Snap to grid" checked={theme.snap} onChange={(snap) => setTheme({ snap })} />
         <div className="grid grid-cols-2 gap-1.5">
           <Button variant="outline" size="sm" onClick={() => tidyUp('RIGHT', fitToScreen)}>
             <LayoutGrid /> Left to right
@@ -156,41 +177,49 @@ export function StylePanel() {
           </Button>
         </div>
       </Section>
-      <Section title="App">
-        <Field label="Theme">
-          <Segmented
-            label="App theme"
-            value={appTheme}
-            onChange={setAppTheme}
-            options={[
-              { value: 'system', label: 'System' },
-              { value: 'light', label: 'Light' },
-              { value: 'dark', label: 'Dark' },
-            ]}
-          />
-        </Field>
-        <Field label="Contrast">
-          <Segmented
-            label="Canvas contrast"
-            value={contrast}
-            onChange={setContrast}
-            options={[
-              { value: 'system', label: 'System' },
-              { value: 'standard', label: 'Standard' },
-              { value: 'high', label: 'High' },
-            ]}
-          />
-        </Field>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start"
-          onClick={() => setUi({ shortcutsOpen: true })}
-        >
-          <Keyboard /> Keyboard shortcuts
-        </Button>
-      </Section>
     </>
+  )
+}
+
+function AppSettings() {
+  const appTheme = useSettings((state) => state.theme)
+  const setAppTheme = useSettings((state) => state.setTheme)
+  const contrast = useSettings((state) => state.contrast)
+  const setContrast = useSettings((state) => state.setContrast)
+  const ambientMotion = useSettings((state) => state.ambientMotion)
+  const setAmbientMotion = useSettings((state) => state.setAmbientMotion)
+
+  return (
+    <Section title="Look and motion">
+      <Field label="Theme">
+        <Segmented
+          label="App theme"
+          value={appTheme}
+          onChange={setAppTheme}
+          options={[
+            { value: 'system', label: 'System' },
+            { value: 'light', label: 'Light' },
+            { value: 'dark', label: 'Dark' },
+          ]}
+        />
+      </Field>
+      <Field label="Contrast">
+        <Segmented
+          label="Canvas contrast"
+          value={contrast}
+          onChange={setContrast}
+          options={[
+            { value: 'system', label: 'System' },
+            { value: 'standard', label: 'Standard' },
+            { value: 'high', label: 'High' },
+          ]}
+        />
+      </Field>
+      <SwitchField label="Animate traffic while editing" checked={ambientMotion} onChange={setAmbientMotion} />
+      <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => setUi({ shortcutsOpen: true })}>
+        <Keyboard /> Keyboard shortcuts
+      </Button>
+    </Section>
   )
 }
 

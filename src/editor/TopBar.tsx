@@ -52,7 +52,7 @@ import { currentDiagram, flushPendingSave } from '@/store/document'
 import { redo, undo, useHistory } from '@/store/history'
 import { setUi, useUi } from '@/store/ui-store'
 import { useVersions } from '@/store/versions'
-import { StylePanel } from './inspector/DiagramInspector'
+import { SettingsPanel } from './inspector/DiagramInspector'
 import { openInsertAtCenter } from './insert'
 import { IS_MAC, KEYS } from '@/lib/shortcut-keys'
 import { toast } from 'sonner'
@@ -254,15 +254,15 @@ export function TopBar() {
           <Popover>
             <Tooltip>
               <TooltipTrigger
-                render={<PopoverTrigger render={<Button variant="ghost" size="icon" aria-label="Style and theme" />} />}
+                render={<PopoverTrigger render={<Button variant="ghost" size="icon" aria-label="Settings" />} />}
               >
                 <SlidersHorizontal />
               </TooltipTrigger>
-              <TooltipContent>Style and theme</TooltipContent>
+              <TooltipContent>Settings</TooltipContent>
             </Tooltip>
             <PopoverContent align="end" className="w-80 p-0">
               <ScrollArea className="**:data-[slot=scroll-area-viewport]:max-h-[70vh]">
-                <StylePanel />
+                <SettingsPanel />
               </ScrollArea>
             </PopoverContent>
           </Popover>
