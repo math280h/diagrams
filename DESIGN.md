@@ -89,6 +89,12 @@ typography:
     fontWeight: 500
     lineHeight: 1.04
     letterSpacing: '-0.03em'
+  section-display:
+    fontFamily: 'Host Grotesk Variable, ui-sans-serif, system-ui, sans-serif'
+    fontSize: '36px'
+    fontWeight: 500
+    lineHeight: 1.1
+    letterSpacing: '-0.03em'
   headline:
     fontFamily: 'Host Grotesk Variable, ui-sans-serif, system-ui, sans-serif'
     fontSize: '24px'
@@ -355,6 +361,7 @@ Diagram canvases default to the `host` pair. A diagram may switch its canvas pai
 ### Hierarchy
 
 - **Display** (500, 48px, 36px below 640px, 1.04, -0.03em, balanced wrap): the first-run library headline only.
+- **Section display** (500, 36px, 30px below 640px, 1.1, -0.03em, balanced wrap): "What Diagrams does" on the first-run library only, so that the features read as a chapter of their own under the stage.
 - **Headline** (500, 24px, -0.02em): "Your diagrams" on the returning library.
 - **Title** (500, 20px, -0.015em): library section headings.
 - **Card name** (500, 15px, -0.01em): library card names and the wordmark (-0.02em).
@@ -377,9 +384,9 @@ Diagram canvases default to the `host` pair. A diagram may switch its canvas pai
 ## Layout
 
 - **Top bar:** 44px, chrome fill, hairline below, 6px side padding in the editor and Present, 12px in the library. Library: mark, wordmark, the agent button (desktop app only), a GitHub link, theme, Import (ghost), New diagram (primary).
-- **Library, first run:** a centred column up to 1152px. The display headline and one line of support, then a full-width stage (the window height less 360px, from 360px to 620px, so that the stage and its caption strip fit on a 1280 × 720 screen; 16px corners) where the Order system flow plays in a loop with its caption strip, then the other four templates as live cards, two in a row from 640px.
-- **Library, returning:** the agent introduction, "Your diagrams" with a count and a 256px search, a 1, 2 or 3 column card grid, a storage line, then the live template cards (1, 2 or 3 columns) under a "Templates" title with the same hint as the first run. Grid gaps are 16px. On the first run the agent introduction comes after the templates, so that the playing stage is the first thing below the headline.
-- **Previews:** read-only canvases at 16:10, with the grid off. Cards fit the whole diagram with 16px padding at any zoom, so nothing is cropped. The stage and the template page use `readableViewport`: the whole diagram if it fits at zoom 0.5, else a crop around the node with the most connections and its neighbours. A card plays its first flow on hover or focus.
+- **Library, first run:** a centred column up to 1152px. The display headline and one line of support, with the agent introduction beside them from 1280px (a 384px column, aligned to their bottom; under them below 1280px). Then a full-width stage (the window height less 360px, from 360px to 620px, so that the stage and its caption strip fit on a 1280 × 720 screen; 16px corners) where the Order system flow plays in a loop with its caption strip, then the features section 80px under the stage, then the other templates as live cards under "More templates", two in a row from 640px, then the install offer on tablets.
+- **Library, returning:** the agent introduction, "Your diagrams" with a count and a 256px search, a 1, 2 or 3 column card grid, a storage line, then the live template cards (1, 2 or 3 columns) under a "Templates" title with the same hint as the first run. Grid gaps are 16px. On the first run the agent introduction sits beside the headline, so that the offer is at the top and the stage still fits above the fold.
+- **Previews:** read-only canvases at 16:10, with the grid off. Cards fit the whole diagram with 16px padding at any zoom, so nothing is cropped, and show less detail and larger titles at a low zoom; boundary labels then show the name without the kind and the detail. A template too large for a card (Multi-cloud platform, Collaborative editor) shows its cover: a smaller diagram of about 13 nodes from parts of the template, at the scale of the other cards. The stage and the template page use `readableViewport`: the whole diagram if it fits at zoom 0.5, else a crop around the node with the most connections and its neighbours. A card plays its first flow on hover or focus.
 - **Editor:** the canvas fills everything under the bar. The log pane docks under the canvas when Flows is open: a transport row, a sticky 28px column header and 24px rows. Floating chrome on the canvas (zoom, hints, the selection tools) uses the chrome fill, a hairline and 8px corners, inset 12px.
 - **Present:** the canvas fills the screen. The top bar docks to the top and fades out after idle while playing; the caption strip docks to the bottom. Playback starts after 700ms unless the user prefers reduced motion. Previous and Next (and the arrow keys) move one step at a time, also onto connection steps, where the paused token shows partway along the connection; "Step n of N" sits beside the scrubber from 640px.
 
@@ -449,9 +456,9 @@ Quiet and compact.
 ### Cards / Containers
 
 - **Library card:** chrome fill, hairline, 12px corners, a 16:10 live preview over a hairline, then the name (card name type) and a 13px muted meta line with tabular figures. The meta line leaves out the flow count when there are no flows. Hover and focus raise the border to 25% text colour.
-- **Agent introduction:** chrome fill, hairline, 12px corners, 16px by 20px padding; a card-name title "Let an AI agent draw with you", one 13px muted line with an example request, a secondary action and a ghost close button in the top right. In the desktop app the action opens the agent setup, and the strip shows until the first agent call; the bar's agent button then shows its "Connect an agent" label. On the website the action is "Download for Windows" (or macOS or Linux), which starts the installer of the latest release, next to a 13px muted "All downloads" link; when the system is unknown it is "Get the desktop app" and opens the release page. The strip shows only on computers. On tablets the same strip offers to install the website: the title "Install Diagrams on this device", one 13px muted line, and a secondary Install button, or a 13px muted line of steps where the browser has no install prompt. Phones and the installed app show neither. Closing a strip hides it permanently.
+- **Agent introduction:** chrome fill, hairline, 12px corners, 16px by 20px padding; a card-name title "Let an AI agent draw with you", one 13px muted line with an example request, a secondary action and a ghost close button in the top right. The strip lays out by its own width: from 576px the actions sit on the right of the text, below that they go under it. In the desktop app the action opens the agent setup, and the strip shows until the first agent call; the bar's agent button then shows its "Connect an agent" label. On the website the action is "Download for Windows" (or macOS or Linux), which starts the installer of the latest release, followed by a 13px muted "All downloads" link; when the system is unknown it is "Get the desktop app" and opens the release page. The strip shows only on computers. On tablets the same strip offers to install the website: the title "Install Diagrams on this device", one 13px muted line, and a secondary Install button, or a 13px muted line of steps where the browser has no install prompt. Phones and the installed app show neither. Closing a strip hides it permanently.
 - **Featured stage:** ground fill, hairline, 16px corners; a 48px chrome header with the template name, a Signal Blue dot and the flow name, a small ghost Pause or Play button, and a small secondary button "Open {template name}" with an arrow; the live canvas with its caption strip fills the rest.
-- **Features section:** under the featured stage and before More templates. A card-name heading row like the templates heading, a grid of six headline cards (card fill, hairline, 12px corners, 16px padding; a 16px muted icon, the card-name title, a 13px muted summary, and a small picture from the featured template at the bottom), then a hairline and "Also in Diagrams": a 13px muted label on the left and every other feature on the right in three columns with hairlines between them, each a 15px name at 80% text colour with a muted plus. Selecting a name opens its one-line summary (13px muted) under it and turns the plus into a cross; only that column grows. Three columns from 1024px, two from 768px, one below.
+- **Features section:** 80px under the featured stage and before More templates. A section display heading with one 16px muted line of support, then a grid of six headline cards like the template cards (card fill, hairline, 12px corners): a 144px ground picture over a hairline, then 16px padding with a 16px muted icon, the card-name title, a 13px muted summary and an optional action at the bottom. The pictures come from the featured template where they can: the first captioned steps with caption-strip step badges (the first in Signal Blue), operations with latency bars, a sketch of the first connection that carries sensitive data across a trust boundary (the dashed boundary around the inside end, the line and a field chip in the warn or error colour of the data, and the crossing as text under it), and the start of the sequence diagram. The agent card shows the example request, an "Agent editing" chip and three sketched nodes, the last one dashed; the share card shows the export formats as chips. Then a hairline and "Also in Diagrams": a 13px muted label on the left and every other feature on the right in three columns with hairlines between them, each a 15px name at 80% text colour with a muted plus. Selecting a name opens its one-line summary (13px muted) under it and turns the plus into a cross; only that column grows. Three columns from 1024px, two from 768px, one below.
 - **Dialogs:** popover fill, 12px corners, 16px padding, a 1px ring at 10% text colour.
 
 ### Navigation
@@ -531,7 +538,7 @@ Present, the library stage and video export only. Docked to the bottom of the ca
 - **Do** set values people copy in Fragment Mono with slashed zero and tabular figures.
 - **Do** tell boundary tiers apart by line pattern so a diagram reads the same with boundary colours off.
 - **Do** leave nodes neutral unless a colour marks a group, such as a team or a kind of part.
-- **Do** show previews as read-only live canvases with the grid off: cards fit the whole diagram, the stage frames by `readableViewport`.
+- **Do** show previews as read-only live canvases with the grid off: cards fit the whole diagram (or the cover of a large template), the stage frames by `readableViewport`.
 - **Do** give every new token a light-theme counterpart with the same role.
 - **Do** stop autoplay and cut the camera when the user prefers reduced motion.
 

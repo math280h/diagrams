@@ -13,6 +13,7 @@ import path from 'node:path'
 import {
   COMMENT_MARKER,
   commentBody,
+  IMAGE_WIDTH_PX,
   imagePath,
   imageUrl,
   parseNameStatus,
@@ -21,7 +22,7 @@ import {
   renderOptions,
   splitCommand,
 } from './lib.mjs'
-import { samePixels } from './png.mjs'
+import { changedRegions, cropRows, decodePng, drawBoxes, encodePng, samePixels, viewRows } from './png.mjs'
 
 const APP_REPOSITORY = 'math280h/diagrams'
 const DEFAULT_PATTERN = '**/*.diagram.json'
@@ -30,6 +31,9 @@ const PUSH_ATTEMPTS = 3
 const BOT_NAME = 'github-actions[bot]'
 const BOT_EMAIL = '41898282+github-actions[bot]@users.noreply.github.com'
 const USERNS_SETTING = '/proc/sys/kernel/apparmor_restrict_unprivileged_userns'
+const TALL_IMAGE_SHOWN_PX = 1000
+const VIEW_SHOWN_PX = { marginPx: 40, minHeightPx: 320, maxHeightPx: 800 }
+const BOXES_NOTE = 'Red boxes mark the parts that changed.'
 
 const env = process.env
 const inputs = {
@@ -255,15 +259,75 @@ function publishComment(pullRequest, commit, entries, intro) {
     return
   }
   const folder = `pr-${pullRequest.number}/${shortSha(commit)}`
-  const files = entries.flatMap((entry) => [entry.before, entry.after].filter(Boolean))
+  const files = entries.flatMap((entry) =>
+    [entry.before, entry.after, entry.beforeView, entry.afterView].filter(Boolean),
+  )
   if (files.length > 0) pushPreviews(folder, files, pullRequest.number)
   const linked = entries.map((entry) => ({
     ...entry,
     before: imageLink(folder, entry.before),
     after: imageLink(folder, entry.after),
+    beforeView: imageLink(folder, entry.beforeView),
+    afterView: imageLink(folder, entry.afterView),
   }))
   upsertComment(pullRequest.number, commentBody({ entries: linked, intro }))
   console.log(`Commented on #${pullRequest.number}.`)
+}
+
+function writeImage(previews, file, image) {
+  writeFileSync(path.join(previews, file), encodePng(image))
+  return file
+}
+
+/**
+ * Draws a box around each change on the before and after PNG of an entry, and cuts the rows with the changes out of
+ * an image that would be too tall in the comment.
+ *
+ * @returns The entry with the marked images, and true if it has boxes.
+ */
+function markChanges(previews, entry) {
+  const sides = ['before', 'after'].filter((side) => entry[side]?.endsWith('.png'))
+  if (sides.length === 0) return { entry, boxed: false }
+  const images = Object.fromEntries(
+    sides.map((side) => [side, decodePng(readFileSync(path.join(previews, entry[side])))]),
+  )
+  const regions =
+    images.before && images.after ? changedRegions(images.before, images.after) : { before: [], after: [] }
+  const boxed = [...regions.before, ...regions.after].some((region) => region.height > 0)
+  const tallest = sides.map((side) => images[side]).toSorted((a, b) => b.height - a.height)[0]
+  const tall = (tallest.height * IMAGE_WIDTH_PX) / tallest.width > TALL_IMAGE_SHOWN_PX
+  const marked = { ...entry }
+  for (const side of sides) {
+    const folder = path.dirname(entry[side])
+    const image = boxed ? drawBoxes(images[side], regions[side]) : images[side]
+    if (boxed) marked[side] = writeImage(previews, `${folder}/${side}.marked.png`, image)
+    if (!tall) continue
+    const scale = image.width / IMAGE_WIDTH_PX
+    const rows = viewRows(regions[side], image.height, {
+      marginPx: VIEW_SHOWN_PX.marginPx * scale,
+      minHeightPx: VIEW_SHOWN_PX.minHeightPx * scale,
+      maxHeightPx: VIEW_SHOWN_PX.maxHeightPx * scale,
+    })
+    const view = cropRows(image, rows.top, rows.height)
+    if (view.height >= image.height) continue
+    marked[`${side}View`] = writeImage(previews, `${folder}/${side}.view.png`, view)
+    marked[`${side}Hidden`] = regions[side].filter(
+      (region) => region.height > 0 && (region.y < rows.top || region.y + region.height > rows.top + rows.height),
+    ).length
+  }
+  return { entry: marked, boxed }
+}
+
+function markEntries(previews, entries) {
+  const results = entries.map((entry) => {
+    try {
+      return markChanges(previews, entry)
+    } catch (error) {
+      console.log(`::warning::The action could not mark the changes of ${entry.file}. ${error.message}`)
+      return { entry, boxed: false }
+    }
+  })
+  return { entries: results.map((result) => result.entry), boxed: results.some((result) => result.boxed) }
 }
 
 function compareScreens(previews, firstIndex) {
@@ -353,11 +417,12 @@ function compareApps(command, baseCommand) {
   )
   const counted = screens.count > 0 ? `${total} diagrams and ${screens.count} app screens` : `${total} diagrams`
   const compared = `It compares ${counted} with the ${inputs.baseRoot ? 'base commit' : 'app of the base commit'}.`
+  const marked = markEntries(previews, entries)
   const intro =
     entries.length > 0
-      ? `The diagrams that look different with this pull request, as of ${shortSha(commit)}. ${compared}`
+      ? `The diagrams that look different with this pull request, as of ${shortSha(commit)}. ${compared}${marked.boxed ? ` ${BOXES_NOTE}` : ''}`
       : `No diagram looks different with this pull request, as of ${shortSha(commit)}. ${compared}`
-  publishComment(event.pull_request, commit, entries, intro)
+  publishComment(event.pull_request, commit, marked.entries, intro)
 }
 
 function compareImages(command) {
@@ -394,11 +459,12 @@ function compareImages(command) {
   })
   summary(['### Changed diagrams', '', ...changes.map(({ kind, file }) => `- \`${file}\` (${kind})`)].join('\n'))
   const commit = pullRequest.head?.sha ?? head
+  const marked = markEntries(previews, entries)
   publishComment(
     pullRequest,
     commit,
-    entries,
-    `The diagrams that this pull request changes, as of ${shortSha(commit)}.`,
+    marked.entries,
+    `The diagrams that this pull request changes, as of ${shortSha(commit)}.${marked.boxed ? ` ${BOXES_NOTE}` : ''}`,
   )
 }
 

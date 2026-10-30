@@ -52,7 +52,11 @@ export const HEADLINE_FEATURES: readonly HeadlineFeature[] = [
 
 /** Every other feature, one short line each. */
 export const MORE_FEATURES: readonly Feature[] = [
-  { title: 'Templates', summary: 'C4, RAG, an agent with MCP tools, event pipelines and more, ready to play.' },
+  {
+    title: 'Templates',
+    summary:
+      'C4, RAG, an agent with MCP tools, an OpenID Connect sign-in, webhooks, a deploy pipeline and more, ready to play.',
+  },
   { title: 'Node kinds', summary: 'Services, data stores, queues, clients and more, each with its own outline.' },
   {
     title: 'Real icons',

@@ -30,6 +30,8 @@ export interface LivePreviewProps {
   showCaption?: boolean
   /** The connections that carry sensitive data across a trust boundary, by edge id, to highlight. */
   threats?: ReadonlyMap<string, DataCrossing>
+  /** If true, the canvas shows less detail and larger titles when the zoom is low. */
+  levelOfDetail?: boolean
 }
 
 function PreviewCanvas({
@@ -41,6 +43,7 @@ function PreviewCanvas({
   paddingPx,
   showCaption,
   threats,
+  levelOfDetail,
 }: Required<Omit<LivePreviewProps, 'threats'>> & Pick<LivePreviewProps, 'threats'>) {
   const engine = useEngine()
   const reducedMotion = useReducedMotion()
@@ -86,6 +89,7 @@ function PreviewCanvas({
         editable={false}
         showCaption={showCaption}
         threats={threats}
+        levelOfDetail={levelOfDetail}
         onNodesChange={onNodesChange}
         nodesFocusable={false}
         edgesFocusable={false}
@@ -108,6 +112,7 @@ export function LivePreview({
   paddingPx = 24,
   showCaption = false,
   threats,
+  levelOfDetail = false,
 }: LivePreviewProps) {
   return (
     <div className="dg-preview pointer-events-none h-full w-full" aria-hidden>
@@ -122,6 +127,7 @@ export function LivePreview({
             paddingPx={paddingPx}
             showCaption={showCaption}
             threats={threats}
+            levelOfDetail={levelOfDetail}
           />
         </EngineProvider>
       </ReactFlowProvider>

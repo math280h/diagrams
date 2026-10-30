@@ -25,6 +25,9 @@ export function DesktopDownloadLink({
   }
   return (
     <>
+      <a href={url} className={buttonVariants({ variant })}>
+        <Download /> Download for {SYSTEM_NAMES[system]}
+      </a>
       {allDownloads && (
         <a
           href={DESKTOP_DOWNLOAD_URL}
@@ -35,9 +38,6 @@ export function DesktopDownloadLink({
           All downloads
         </a>
       )}
-      <a href={url} className={buttonVariants({ variant })}>
-        <Download /> Download for {SYSTEM_NAMES[system]}
-      </a>
     </>
   )
 }

@@ -1,6 +1,6 @@
 import { deflateSync } from 'node:zlib'
 import { describe, expect, it } from 'vitest'
-import { decodePng, samePixels } from './png.mjs'
+import { changedRegions, cropRows, decodePng, drawBoxes, encodePng, samePixels, viewRows } from './png.mjs'
 
 function chunk(type, data) {
   const length = Buffer.alloc(4)
@@ -70,5 +70,146 @@ describe('png', () => {
     const line = png(20, [row(20, [200, 200, 200, 255]), row(20, WHITE)])
     expect(samePixels(base, line, 8, 2)).toBe(false)
     expect(samePixels(base, line)).toBe(false)
+  })
+
+  it('writes a PNG that it reads back, with alpha only when a pixel is not opaque', () => {
+    const opaque = { width: 2, height: 2, pixels: new Uint8ClampedArray([...BLACK, ...WHITE, ...WHITE, ...BLACK]) }
+    const written = encodePng(opaque)
+    expect(written[25]).toBe(2)
+    expect(decodePng(written)).toEqual(opaque)
+    const clear = { width: 1, height: 1, pixels: new Uint8ClampedArray([10, 20, 30, 0]) }
+    expect(encodePng(clear)[25]).toBe(6)
+    expect(decodePng(encodePng(clear))).toEqual(clear)
+  })
+})
+
+function canvas(width, height, color = WHITE) {
+  const pixels = new Uint8ClampedArray(width * height * 4)
+  for (let at = 0; at < pixels.length; at += 4) pixels.set(color, at)
+  return { width, height, pixels }
+}
+
+function paint(image, { x, y, width, height }, color = BLACK) {
+  const copy = { ...image, pixels: new Uint8ClampedArray(image.pixels) }
+  for (let row = y; row < y + height; row++) {
+    for (let column = x; column < x + width; column++) copy.pixels.set(color, (row * image.width + column) * 4)
+  }
+  return copy
+}
+
+describe('changed regions', () => {
+  const base = canvas(400, 300)
+  const both = (regions) => ({ before: regions, after: regions })
+
+  it('finds each change apart, and joins changes that are close', () => {
+    const changed = paint(paint(base, { x: 20, y: 20, width: 10, height: 10 }), {
+      x: 300,
+      y: 200,
+      width: 30,
+      height: 20,
+    })
+    expect(changedRegions(base, changed)).toEqual(
+      both([
+        { x: 16, y: 16, width: 16, height: 16 },
+        { x: 288, y: 192, width: 48, height: 32 },
+      ]),
+    )
+    const close = paint(paint(base, { x: 20, y: 20, width: 10, height: 10 }), { x: 50, y: 20, width: 10, height: 10 })
+    expect(changedRegions(base, close)).toEqual(both([{ x: 16, y: 16, width: 48, height: 16 }]))
+  })
+
+  it('leaves out a few stray pixels at a text edge, and small differences in colour', () => {
+    const noise = paint(paint(base, { x: 20, y: 20, width: 1, height: 1 }), { x: 100, y: 100, width: 40, height: 4 })
+    expect(changedRegions(base, noise)).toEqual(both([{ x: 96, y: 96, width: 48, height: 16 }]))
+    const corners = paint(paint(base, { x: 0, y: 0, width: 4, height: 4 }), { x: 390, y: 290, width: 3, height: 3 })
+    expect(changedRegions(base, corners)).toEqual(both([]))
+    expect(changedRegions(base, paint(base, { x: 0, y: 0, width: 50, height: 50 }, [250, 250, 250, 255]))).toEqual(
+      both([]),
+    )
+  })
+
+  it('marks only the inserted rows when content moves down, and their place on the image without them', () => {
+    const before = paint(base, { x: 100, y: 150, width: 50, height: 20 })
+    const after = paint(paint(canvas(400, 340), { x: 50, y: 50, width: 300, height: 40 }), {
+      x: 100,
+      y: 190,
+      width: 50,
+      height: 20,
+    })
+    expect(changedRegions(before, after)).toEqual({
+      before: [{ x: 50, y: 50, width: 300, height: 0 }],
+      after: [{ x: 48, y: 48, width: 304, height: 48 }],
+    })
+  })
+
+  it('leaves out rows of background that only the longer image has', () => {
+    expect(changedRegions(base, canvas(400, 340))).toEqual(both([]))
+  })
+
+  it('merges the nearest regions until no more than the limit are left', () => {
+    let changed = base
+    for (const x of [16, 112, 208, 304]) changed = paint(changed, { x, y: 16, width: 8, height: 8 })
+    changed = paint(changed, { x: 16, y: 272, width: 8, height: 8 })
+    expect(changedRegions(base, changed, { maxRegions: 2 })).toEqual(
+      both([
+        { x: 16, y: 16, width: 304, height: 16 },
+        { x: 16, y: 272, width: 16, height: 16 },
+      ]),
+    )
+  })
+})
+
+describe('marked images', () => {
+  const at = (image, x, y) => [...image.pixels.subarray((y * image.width + x) * 4, (y * image.width + x) * 4 + 4)]
+
+  it('draws an outline around a region, outside its padding', () => {
+    const image = drawBoxes(canvas(40, 40), [{ x: 10, y: 10, width: 20, height: 20 }], { lineWidthPx: 1, paddingPx: 2 })
+    expect(at(image, 7, 7)).toEqual([229, 72, 77, 255])
+    expect(at(image, 32, 20)).toEqual([229, 72, 77, 255])
+    expect(at(image, 8, 8)).toEqual(WHITE)
+    expect(at(image, 20, 20)).toEqual(WHITE)
+  })
+
+  it('keeps the outline of a region at the edge of the image inside it, and draws none for a region without height', () => {
+    const wide = drawBoxes(canvas(40, 40), [{ x: 0, y: 10, width: 40, height: 20 }], { lineWidthPx: 1, paddingPx: 2 })
+    expect(at(wide, 0, 20)).toEqual([229, 72, 77, 255])
+    expect(at(wide, 39, 20)).toEqual([229, 72, 77, 255])
+    const marker = drawBoxes(canvas(10, 10), [{ x: 2, y: 5, width: 6, height: 0 }])
+    expect(new Set(marker.pixels)).toEqual(new Set([255]))
+  })
+
+  it('cuts rows out of an image', () => {
+    const image = paint(canvas(2, 4), { x: 0, y: 2, width: 2, height: 1 })
+    const rows = cropRows(image, 2, 5)
+    expect(rows).toMatchObject({ width: 2, height: 2 })
+    expect([...rows.pixels.subarray(0, 4)]).toEqual(BLACK)
+  })
+
+  it('shows the rows of the changes with a margin, between the least and the most rows', () => {
+    const limits = { marginPx: 10, minHeightPx: 100, maxHeightPx: 300 }
+    expect(viewRows([], 1000, limits)).toEqual({ top: 0, height: 300 })
+    expect(viewRows([{ x: 0, y: 400, width: 10, height: 150 }], 1000, limits)).toEqual({ top: 390, height: 170 })
+    expect(viewRows([{ x: 0, y: 400, width: 10, height: 20 }], 1000, limits)).toEqual({ top: 360, height: 100 })
+    expect(viewRows([{ x: 0, y: 100, width: 10, height: 800 }], 1000, limits)).toEqual({ top: 90, height: 300 })
+  })
+
+  it('shows as many whole changes as fit, and ends the rows before a change that does not fit', () => {
+    const limits = { marginPx: 10, minHeightPx: 100, maxHeightPx: 300 }
+    const fitting = [
+      { x: 0, y: 100, width: 10, height: 100 },
+      { x: 0, y: 240, width: 10, height: 40 },
+      { x: 0, y: 350, width: 10, height: 100 },
+    ]
+    expect(viewRows(fitting, 1000, limits)).toEqual({ top: 90, height: 200 })
+    const short = [
+      { x: 0, y: 100, width: 10, height: 20 },
+      { x: 0, y: 160, width: 10, height: 400 },
+    ]
+    expect(viewRows(short, 1000, limits)).toEqual({ top: 53, height: 100 })
+    const close = [
+      { x: 0, y: 100, width: 10, height: 100 },
+      { x: 0, y: 240, width: 10, height: 400 },
+    ]
+    expect(viewRows(close, 1000, { ...limits, marginPx: 50 })).toEqual({ top: 50, height: 183 })
   })
 })

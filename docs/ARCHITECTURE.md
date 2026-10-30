@@ -134,20 +134,30 @@ The visual system lives in `DESIGN.md` at the repository root.
   `evaluateFlow`, so exports stay frame exact. When one edge step follows another at a different
   point of the same node, the token moves along the node outline (`perimeterPath`) instead of a
   jump. Edge labels hide while the token dot or the token label passes over them.
-- The library shows the product working. Cards are read-only canvases. A card of the user's own
-  diagram fits the whole diagram, at any zoom. A template card and the featured stage frame the
-  diagram so that text stays readable (`readableViewport`): a diagram that fits at zoom 0.45 (cards)
-  or 0.5 (stage) shows whole, a larger one crops around its node with the most connections, because
-  a template of 40 to 60 nodes fitted whole read as a dark smear. The template page opens on the
+- The library shows the product working. Cards are read-only canvases that fit the whole diagram,
+  at any zoom, with the level of detail, so that titles stay legible. The featured stage frames
+  the diagram so that text stays readable (`readableViewport`): a diagram that fits at zoom 0.5
+  shows whole, a larger one crops around its node with the most connections. A template too large
+  for a card has a `cover`: a smaller diagram from parts of the template, with a flow, that the
+  card shows in its place. Template cards that cropped around the busiest node showed some
+  templates at twice the scale of others, with cards cut at the edges; a template of 40 to 60
+  nodes fitted whole read as a dark smear, and its nested boundary labels covered each other; and
+  a readable crop of it showed one service and none of the story. The template page opens on the
   whole diagram with its text nodes (`withText`), so the user sees the whole system and its title
   first; a page that opened on a crop around one node hid the rest of the system, and a framing
   without the text nodes cut the title. The first flow plays on hover and focus.
 - Under the featured stage, the first visit shows what Diagrams does (`Features`), and then the other templates. Six
   headline features have a picture made from the featured template when the page loads: the first steps of its flow,
-  its operations with their latency, its connections that carry sensitive data across a trust boundary, and the start
-  of its sequence diagram (`flowToMermaidSequence`). So the pictures show the real data and stay in step with the
+  its operations with their latency, its first connection that carries sensitive data across a trust boundary, and the
+  start of its sequence diagram (`flowToMermaidSequence`). So the pictures show the real data and stay in step with the
   template. "Show on the stage" highlights those connections on the stage, as the Sensitive data view of the editor
   does. Every other feature follows as one short line, so that no feature hides in the editor.
+- The features section has a heading one size under the headline, and each card shows its picture first, as a
+  template card shows its preview first. With a section title like the template headings and the pictures under the
+  text, testers scrolled past the section as fine print between the stage and the template previews.
+- On the first visit from 1280 px, the agent introduction (with the desktop download) sits beside the headline. At
+  the bottom of the page testers did not find the download, and above the stage it pushed the caption strip off a
+  1280 × 720 screen. Beside the headline it costs about 5 px of height, so the stage still fits.
 - `src/library/feature-list.ts` holds the titles and summaries for the library and the README.
   `node scripts/readme-features.ts` writes them between the `features` markers of the README, and a test fails when
   the README is out of date.
@@ -182,12 +192,14 @@ The visual system lives in `DESIGN.md` at the repository root.
   time readout hide. On a phone (below 640 px) the top bar keeps the name, Present and Export, and
   the editing controls move into a More menu, so that the name stays readable.
 - Large diagrams stay navigable:
-  - **Level of detail.** The editor and the template page set `data-lod` on the canvas root (`LevelOfDetail`): `far`
-    below zoom 0.55 and `farther` below 0.3. Then card lines, meters, badges, edge labels and traffic hide, and card
+  - **Level of detail.** The editor, the template page and the library cards set `data-lod` on the canvas root
+    (`LevelOfDetail`): `far` below zoom 0.55 and `farther` below 0.3. Then card lines, meters, badges, edge labels
+    and traffic hide, and card
     titles and boundary labels grow 1.35 or 1.8 times. The change uses `visibility` and `scale`, so node sizes, edge
     anchors and saved sizes do not change. Dashes stay, because the templates use them for meaning, such as a line
-    that crosses the internet. Present, previews and exports keep full detail, so that a flow does not pop
-    between levels while the camera moves.
+    that crosses the internet. On a read-only canvas, a boundary label also drops the kind when it has a name, and
+    the detail, so that the name fits in the boundary. Present, the stage and exports keep full detail, so that a
+    flow does not pop between levels while the camera moves. A library card does not move its camera.
   - **Minimap.** A diagram of 20 nodes or more shows a minimap in the editor, which the zoom controls hide and the
     settings remember. Groups show as outlines, and text nodes do not show.
   - **Go to.** When the command menu has a search, it lists the nodes, and a node opens selected and in the middle
@@ -1149,7 +1161,9 @@ images current without a person. `main.mjs` does the work in Node, and `lib.mjs`
   Present at its first step and five steps later, an empty diagram at 1440 × 900, the editor with the properties and
   the flow panel open at 1280 × 720, and the library, the editor and Present on a phone at 390 × 844, each in the dark
   and the light theme. It asks for reduced motion and turns off CSS animations, so nothing moves while it takes a
-  screen.
+  screen. The library screens show the whole page: the script makes the viewport as tall as the page and waits until
+  every card preview has framed its diagram. With only the first screen, a change to the features section or the
+  template cards did not show.
 - `e2e/accessibility-scan.spec.ts` runs axe (`@axe-core/playwright`, the WCAG 2.2 A and AA rules) over the library, a
   template page, the editor with a selection and the flow panel, the command menu, the insert menu, the shortcut
   sheet, the image export, the minimap, Present with Explore, and the phone library and editor, in both themes. The scan
@@ -1164,6 +1178,25 @@ images current without a person. `main.mjs` does the work in Node, and `lib.mjs`
   in tests), and can draw a rounded corner a few pixels differently (2 pixels, 37 levels apart, at the corner of a
   button), while a change of text, colour or layout moves hundreds of pixels much further. An exact compare would show
   screens that did not change.
+- On a changed PNG, the action draws red boxes around the parts that changed (`changedRegions` and `drawBoxes` in
+  `png.mjs`), on the before and the after image. It pairs the pixel rows of the two images first, as a line diff
+  pairs the lines of two texts: each row gets a hash of its colours cut to 16 levels, rows that occur once in both
+  images are anchors (the longest run of them in order), and equal rows next to them pair too. Content that only moved
+  up or down then counts as the same. A pixel diff without this marked everything under a new section as changed, so
+  the box reached from the new section to the end of the page, and only its top edge showed in the cut-out rows.
+- In each run of unpaired rows, the rows that both images have are compared pixel by pixel, and rows that only one
+  image has count where they differ from their first pixel, the background. The changed pixels are grouped in squares
+  of 16 px, changes less than 32 px apart share a box, a group of 16 or fewer pixels is noise at a text edge or a
+  rounded corner (the limit of `samePixels` for a whole screen; with 3, two builds of the same code got boxes around
+  the corners of the logo and a button), and the nearest boxes merge until at most 8 are left on each image. A change
+  that only one image has gives the other image a box without height at its place, which draws nothing but moves the
+  cut-out there. An outline that would leave the image stays at its edge, so a box as wide as the page shows its sides.
+- An image that would be more than 1000 px tall in the comment, such as a whole library page, shows only some rows
+  (at most 800 px tall in the comment): from its first change, as many whole boxes as fit, and it ends above the
+  outline of the next box. Only a first box taller than that is cut. The link under it opens the whole image and says
+  how many changes are outside the rows. Each side is cut out around its own boxes, because a change can sit at another
+  height on each image. Rows from the first to the last change cut a box that did not fit in half, and whole pages side
+  by side made the comment several screens long.
 - The featured stage and the template cards frame their diagram after the fonts load, and again when the measured
   node sizes change. Before, a font that arrived after the first measure left a frame for the fallback font, and two
   screens of the library differed by a few pixels.

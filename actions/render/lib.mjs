@@ -49,8 +49,14 @@ export function renderOptions({ input, output, theme, maxSize }) {
   ]
 }
 
-function cell(url, label, note) {
-  return url ? `<img src="${url}" alt="${label}" width="420">` : note
+/** The width of an image in the pull request comment, in pixels. */
+export const IMAGE_WIDTH_PX = 420
+
+function cell(url, view, hidden, label, note) {
+  if (!url) return note
+  if (!view) return `<img src="${url}" alt="${label}" width="${IMAGE_WIDTH_PX}">`
+  const more = hidden > 0 ? `, ${hidden} more ${hidden === 1 ? 'change' : 'changes'}` : ''
+  return `<img src="${view}" alt="${label}, part of the image" width="${IMAGE_WIDTH_PX}"><br><a href="${url}">Whole image${more}</a>`
 }
 
 /**
@@ -58,13 +64,14 @@ function cell(url, label, note) {
  *
  * @param intro - The sentence above the table.
  * @param entries - Each changed diagram with the address of its images. Without `before`, the cell shows
- *   `beforeNote`, or `New` for an added diagram. Without `after`, it shows `Removed`. Without entries, the comment has
- *   no table.
+ *   `beforeNote`, or `New` for an added diagram. Without `after`, it shows `Removed`. With `beforeView` or
+ *   `afterView`, the cell shows that part of a tall image and links the whole image, with the number of changes
+ *   outside the part (`beforeHidden`, `afterHidden`). Without entries, the comment has no table.
  */
 export function commentBody({ entries, intro }) {
   const rows = entries.map(
-    ({ file, before, after, beforeNote }) =>
-      `| \`${file}\` | ${cell(before, 'Before', beforeNote ?? 'New')} | ${cell(after, 'After', 'Removed')} |`,
+    ({ file, before, after, beforeView, afterView, beforeHidden, afterHidden, beforeNote }) =>
+      `| \`${file}\` | ${cell(before, beforeView, beforeHidden, 'Before', beforeNote ?? 'New')} | ${cell(after, afterView, afterHidden, 'After', 'Removed')} |`,
   )
   const table = rows.length > 0 ? ['', '| Diagram | Before | After |', '| --- | --- | --- |', ...rows] : []
   return [COMMENT_MARKER, '### Diagram images', '', intro, ...table, ''].join('\n')
