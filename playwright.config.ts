@@ -12,6 +12,7 @@ export default defineConfig({
     baseURL: `http://127.0.0.1:${PORT}`,
     viewport: { width: 1440, height: 900 },
     acceptDownloads: true,
+    trace: process.env.CI ? 'retain-on-failure' : 'off',
   },
   projects: [
     { name: 'web', testIgnore: /desktop[\\/]/, use: browser },

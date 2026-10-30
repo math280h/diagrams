@@ -1129,6 +1129,25 @@ images current without a person. `main.mjs` does the work in Node, and `lib.mjs`
   node sizes change. Before, a font that arrived after the first measure left a frame for the fallback font, and two
   screens of the library differed by a few pixels.
 
+### Continuous integration
+
+`.github/workflows/ci.yml` runs on each pull request and on `main`.
+
+- "Typecheck, lint and unit tests" runs the static checks and Vitest, with the browser tests in Chromium.
+- "Web tests 1 of 4" to "4 of 4" split the end-to-end tests with the `--shard` option of Playwright. A runner has 4
+  cores, so Playwright runs 2 workers on it; four shards give the 8 workers of a developer computer, with the same
+  tests. The number of shards comes from the matrix (`strategy.job-total`).
+- "Checks and web tests" is the check that the "Protect main" ruleset requires. It waits for the jobs above and fails
+  unless each one passed. It runs with `if: always()`, because GitHub counts a required job that it skips after a
+  failed dependency as passed.
+- "Desktop app on …" runs the unit tests, the desktop end-to-end tests, the render action and a packaged app on
+  Windows, macOS and Linux.
+- `.github/actions/playwright-chromium` restores Chromium from the Actions cache, with the Playwright version in the
+  key, so only a new version downloads it. The download took about three minutes on Windows. On Linux it still
+  installs the system libraries, which a cache cannot hold.
+- On CI, Playwright keeps a trace of each failed test (`trace: 'retain-on-failure'`), and the failed job uploads it in
+  `test-results`. Retries stay off, so a test that fails only sometimes stays visible.
+
 ### Skills
 
 `claude-plugin/` holds the skills and the Claude Code plugin manifest. The main process bundles it
