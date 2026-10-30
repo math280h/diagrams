@@ -22,7 +22,7 @@ Also:
 
 - **Templates.** C4, RAG, an agent with MCP tools, event pipelines and more, ready to play.
 - **Node kinds.** Services, data stores, queues, clients and more, each with its own outline.
-- **Real icons.** Official AWS, Azure, Google Cloud and Kubernetes icons, and 220 software logos.
+- **Real icons.** Official AWS, Azure, Google Cloud, Kubernetes and Salesforce icons, and 220 software logos.
 - **Boundaries.** Cloud, network and cluster boundaries, or your own groups, such as a team.
 - **Colours and metrics.** Colour nodes by kind or by group, and add numbers or meters.
 - **Moving connections.** Dots, comets, dashes or pulses that flow along a connection.

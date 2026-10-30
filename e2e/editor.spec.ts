@@ -79,6 +79,27 @@ test('inserts a cloud service with its official icon from the insert menu', asyn
   await expect(card.locator('img.dg-art')).toBeVisible()
 })
 
+test('inserts Salesforce and a Salesforce object with their icons on a coloured square', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'New diagram' }).first().click()
+  await expect(page.getByLabel('Diagram name')).toHaveValue('Untitled diagram')
+  for (const [query, name, color] of [
+    ['salesforce', 'Salesforce', 'rgb(0, 161, 224)'],
+    ['salesforce opportunity', 'Opportunity', 'rgb(255, 93, 45)'],
+  ] as const) {
+    await page.keyboard.press('n')
+    await page.getByPlaceholder('Insert a node').fill(query)
+    await page
+      .getByRole('option', { name: new RegExp(`^${name}`) })
+      .first()
+      .click()
+    const tile = page.locator('.react-flow__node', { hasText: name }).locator('.dg-art-tile')
+    await expect(tile).toBeVisible()
+    await expect(tile).toHaveCSS('background-color', color)
+    await page.keyboard.press('Escape')
+  }
+})
+
 test('picks a logo in the icon picker', async ({ page }) => {
   await openTemplate(page, 'Order system')
   await page.locator('.react-flow__node', { hasText: 'Auth' }).click()

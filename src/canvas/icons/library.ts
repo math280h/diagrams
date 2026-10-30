@@ -4,6 +4,7 @@ import azureUrl from './data/azure.json?url'
 import gcpUrl from './data/gcp.json?url'
 import k8sUrl from './data/k8s.json?url'
 import logosUrl from './data/logos.json?url'
+import salesforceUrl from './data/salesforce.json?url'
 import templatesUrl from './data/templates.json?url'
 import type { IconSetData } from './subset'
 
@@ -13,6 +14,7 @@ export const ICON_SOURCES = [
   { id: 'gcp', label: 'Google Cloud' },
   { id: 'k8s', label: 'Kubernetes' },
   { id: 'logo', label: 'Logos' },
+  { id: 'salesforce', label: 'Salesforce' },
 ] as const
 
 export type IconSourceId = (typeof ICON_SOURCES)[number]['id']
@@ -24,6 +26,7 @@ export const ICON_SET_FILES: Record<IconSourceId, string> = {
   gcp: 'gcp.json',
   k8s: 'k8s.json',
   logo: 'logos.json',
+  salesforce: 'salesforce.json',
 }
 
 const SET_URLS: Record<IconSourceId, string> = {
@@ -32,12 +35,17 @@ const SET_URLS: Record<IconSourceId, string> = {
   gcp: gcpUrl,
   k8s: k8sUrl,
   logo: logosUrl,
+  salesforce: salesforceUrl,
 }
 
 /** An SVG image from a cloud provider set, with an optional variant for dark backgrounds. */
 export interface IconArt {
   light: string
   dark?: string
+  /** The colour of the rounded square behind a white glyph, for example `#5867e8`. */
+  tile?: string
+  /** The part of the tile that the glyph fills, from 0 to 1. Without it, the glyph fills the tile. */
+  glyph?: number
 }
 
 export interface IconEntry {

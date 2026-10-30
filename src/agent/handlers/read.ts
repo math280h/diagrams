@@ -76,6 +76,8 @@ const PROVIDER_WORDS: Record<string, IconProvider> = {
   google: 'gcp',
   kubernetes: 'k8s',
   k8s: 'k8s',
+  salesforce: 'salesforce',
+  sfdc: 'salesforce',
 }
 
 function words(text: string) {

@@ -35,8 +35,22 @@ function artImage(svg: string, size: LucideProps['size'], className: string | un
   })
 }
 
+function tileImage(art: IconArt, size: LucideProps['size'], className: string | undefined) {
+  return createElement('span', {
+    className: cn('dg-art dg-art-tile', className),
+    style: {
+      '--dg-art-size': typeof size === 'number' ? `${size}px` : size,
+      backgroundColor: art.tile,
+      backgroundImage: `url("${artUrl(art.light)}")`,
+      backgroundSize: `${(art.glyph ?? 1) * 100}%`,
+    },
+    'aria-hidden': true,
+  })
+}
+
 function artIcon(art: IconArt, title: string): ComponentType<LucideProps> {
   function ArtIcon({ size = 24, className }: LucideProps) {
+    if (art.tile) return tileImage(art, size, className)
     if (!art.dark) return artImage(art.light, size, className)
     return createElement(
       Fragment,
