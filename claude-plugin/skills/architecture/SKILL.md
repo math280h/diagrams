@@ -11,7 +11,12 @@ The Diagrams app shows every change while you make it, and each call that change
 2. **Read it first.** Before you change a diagram, call `get_diagram`. Reuse the nodes that are there. Do not add a second "Orders DB".
 3. **Choose icons and boundaries.** Call `search_icons` once for each product the user names, for example "postgres", "lambda" or "kafka". If the system runs in a cloud account, a network or a cluster, call `list_boundary_kinds`.
 4. **Add everything in one call.** Send all nodes and edges in one `add_elements` call. Give each node a `ref` and use the refs in `from`, `to` and `parent`. Do not give `x` and `y`. The app places new nodes.
-5. **Lay it out.** After you add more than four nodes, call `layout_diagram`. Use `RIGHT` for request paths and `DOWN` for layered stacks.
+5. **Lay it out.** After you add more than four nodes, call `layout_diagram` with the `layout` that fits the shape of the system:
+   - `flow` (the default) for request paths with `RIGHT`, and for layered stacks with `DOWN`.
+   - `tree` for a hierarchy from one root, such as an org chart or a dependency tree.
+   - `hub` for one central node with many others around it, such as an event bus or an API gateway. Name it in `center`.
+   - `network` for a mesh with many connections and no main direction.
+   - `grid` for an inventory with few connections, such as a list of services that a team owns.
 6. **Check your work.** Call `lint_diagram` and fix each `warning` with `update_elements`; label the edges it lists where the label helps the reader. Then call `render_image` and look at the image. Fix overlaps, nodes outside their boundary and long labels with `update_elements`. Then render again.
 
 ## Nodes

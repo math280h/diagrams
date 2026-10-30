@@ -1,4 +1,4 @@
-import type { LayoutDirection, LayoutResult } from '@/layout/diagram-layout'
+import type { LayoutChoice, LayoutDirection, LayoutResult } from '@/layout/diagram-layout'
 import { boundaryKind } from '@/model/boundaries'
 import {
   absolutePosition,
@@ -19,6 +19,7 @@ export type LayoutFunction = (
   nodes: DiagramNode[],
   edges: DiagramEdge[],
   direction: LayoutDirection,
+  choice?: LayoutChoice,
 ) => Promise<LayoutResult>
 
 type Point = { x: number; y: number }

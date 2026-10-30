@@ -2,6 +2,7 @@ import ELK from 'elkjs/lib/elk.bundled.js'
 import { describe, expect, it } from 'vitest'
 import { GROUP_PADDING_PX } from '@/model/graph'
 import { computeLayout } from './engine'
+import { hubTree } from './styles'
 import type { LayoutEdge, LayoutNode, LayoutRequest, PlacedNode } from './types'
 
 const elk = new ELK()
@@ -55,7 +56,7 @@ function hub(): LayoutRequest {
     if (previous) b.edge(previous, api)
     previous = api
   }
-  return { nodes: b.nodes, edges: b.edges, direction: 'DOWN', layerGapPx: 120 }
+  return { nodes: b.nodes, edges: b.edges, direction: 'DOWN', layerGapPx: 120, style: 'flow' }
 }
 
 /** A tiered flow: a client, then edge, app and data groups. */
@@ -71,7 +72,7 @@ function tiers(): LayoutRequest {
   b.edge(client, lb)
   b.edge(lb, api)
   b.edge(api, db)
-  return { nodes: b.nodes, edges: b.edges, direction: 'RIGHT', layerGapPx: 120 }
+  return { nodes: b.nodes, edges: b.edges, direction: 'RIGHT', layerGapPx: 120, style: 'flow' }
 }
 
 describe('computeLayout', () => {
@@ -119,5 +120,188 @@ describe('computeLayout', () => {
       expect(child.x + child.width).toBeLessThanOrEqual(parent.x + parent.width - GROUP_PADDING_PX.side + 0.5)
       expect(child.y + child.height).toBeLessThanOrEqual(parent.y + parent.height - GROUP_PADDING_PX.bottom + 0.5)
     }
+  })
+})
+
+type Box = { x: number; y: number; width: number; height: number }
+
+function siblingsApart(rects: Map<string, Box>, request: LayoutRequest) {
+  const parentOf = new Map(request.nodes.map((node) => [node.id, node.parentId]))
+  const ids = [...rects.keys()]
+  return ids.every((a, index) =>
+    ids.slice(index + 1).every((b) => {
+      if (parentOf.get(a) !== parentOf.get(b)) return true
+      const p = rects.get(a)!
+      const q = rects.get(b)!
+      return (
+        p.x + p.width <= q.x + 0.5 ||
+        q.x + q.width <= p.x + 0.5 ||
+        p.y + p.height <= q.y + 0.5 ||
+        q.y + q.height <= p.y + 0.5
+      )
+    }),
+  )
+}
+
+function insideParents(rects: Map<string, Box>, request: LayoutRequest) {
+  return request.nodes.every((node) => {
+    if (!node.parentId) return true
+    const child = rects.get(node.id)!
+    const parent = rects.get(node.parentId)!
+    return (
+      child.x >= parent.x + GROUP_PADDING_PX.side - 0.5 &&
+      child.y >= parent.y + GROUP_PADDING_PX.top - 0.5 &&
+      child.x + child.width <= parent.x + parent.width - GROUP_PADDING_PX.side + 0.5 &&
+      child.y + child.height <= parent.y + parent.height - GROUP_PADDING_PX.bottom + 0.5
+    )
+  })
+}
+
+function centreOf(rect: Box) {
+  return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }
+}
+
+/** An org chart: a root with three leads, each with two reports. */
+function orgChart(): LayoutRequest {
+  const b = builder()
+  const root = b.card('ceo')
+  for (const lead of ['cto', 'cfo', 'coo']) {
+    b.card(lead)
+    b.edge(root, lead)
+    for (const report of ['a', 'b']) b.edge(lead, b.card(`${lead}-${report}`))
+  }
+  return { nodes: b.nodes, edges: b.edges, direction: 'DOWN', layerGapPx: 120, style: 'tree' }
+}
+
+/** A bus with eight spokes, two of which also talk to each other. */
+function star(center?: string): LayoutRequest {
+  const b = builder()
+  const bus = b.card('bus')
+  for (let spoke = 0; spoke < 8; spoke++) b.edge(b.card(`s${spoke}`), bus)
+  b.edge('s0', 's1')
+  return {
+    nodes: b.nodes,
+    edges: b.edges,
+    direction: 'RIGHT',
+    layerGapPx: 120,
+    style: 'hub',
+    ...(center ? { center } : {}),
+  }
+}
+
+describe('layout styles', () => {
+  it.each(['tree', 'hub', 'network', 'grid'] as const)(
+    'keeps nested groups around their nodes, keeps siblings apart and routes every edge with %s',
+    async (style) => {
+      const request = { ...hub(), style }
+      const response = await computeLayout(elk, request)
+      const rects = absolute(response.nodes, request)
+      expect(insideParents(rects, request)).toBe(true)
+      expect(siblingsApart(rects, request)).toBe(true)
+      expect(Object.keys(response.routes)).toHaveLength(request.edges.length)
+    },
+  )
+
+  it.each(['flow', 'tree', 'hub', 'network', 'grid'] as const)(
+    'lays out a diagram without nodes with %s',
+    async (style) => {
+      const request: LayoutRequest = { nodes: [], edges: [], direction: 'RIGHT', layerGapPx: 120, style }
+      expect(await computeLayout(elk, request)).toEqual({ nodes: [], routes: {} })
+    },
+  )
+
+  it('puts each child of a tree below its parent', async () => {
+    const request = orgChart()
+    const rects = absolute((await computeLayout(elk, request)).nodes, request)
+    for (const edge of request.edges) {
+      const parent = rects.get(edge.source)!
+      expect(rects.get(edge.target)!.y).toBeGreaterThanOrEqual(parent.y + parent.height)
+    }
+    expect(siblingsApart(rects, request)).toBe(true)
+  })
+
+  it.each([
+    [undefined, 'bus'],
+    ['s3', 's3'],
+  ])('puts the hub in the middle of the other nodes (centre %s)', async (center, middle) => {
+    const request = star(center)
+    const rects = absolute((await computeLayout(elk, request)).nodes, request)
+    const others = [...rects.keys()].filter((id) => id !== middle).map((id) => centreOf(rects.get(id)!))
+    const mean = {
+      x: others.reduce((sum, point) => sum + point.x, 0) / others.length,
+      y: others.reduce((sum, point) => sum + point.y, 0) / others.length,
+    }
+    const spread = Math.max(...others.map((point) => Math.hypot(point.x - mean.x, point.y - mean.y)))
+    const hubCentre = centreOf(rects.get(middle)!)
+    expect(Math.hypot(hubCentre.x - mean.x, hubCentre.y - mean.y)).toBeLessThan(spread / 2)
+    expect(siblingsApart(rects, request)).toBe(true)
+  })
+
+  it('packs unconnected cards into a compact grid', async () => {
+    const b = builder()
+    for (let card = 0; card < 12; card++) b.card(`c${card}`)
+    const request: LayoutRequest = { nodes: b.nodes, edges: [], direction: 'RIGHT', layerGapPx: 120, style: 'grid' }
+    const rects = [...absolute((await computeLayout(elk, request)).nodes, request).values()]
+    const width = Math.max(...rects.map((rect) => rect.x + rect.width)) - Math.min(...rects.map((rect) => rect.x))
+    const height = Math.max(...rects.map((rect) => rect.y + rect.height)) - Math.min(...rects.map((rect) => rect.y))
+    expect(width / height).toBeGreaterThan(0.8)
+    expect(width / height).toBeLessThan(3)
+  })
+
+  it('keeps a network of separate pairs compact', async () => {
+    const b = builder()
+    for (let pair = 0; pair < 6; pair++) b.edge(b.card(`p${pair}a`), b.card(`p${pair}b`))
+    const request: LayoutRequest = {
+      nodes: b.nodes,
+      edges: b.edges,
+      direction: 'RIGHT',
+      layerGapPx: 120,
+      style: 'network',
+    }
+    const rects = [...absolute((await computeLayout(elk, request)).nodes, request).values()]
+    const width = Math.max(...rects.map((rect) => rect.x + rect.width)) - Math.min(...rects.map((rect) => rect.x))
+    const height = Math.max(...rects.map((rect) => rect.y + rect.height)) - Math.min(...rects.map((rect) => rect.y))
+    const cardArea = rects.reduce((sum, rect) => sum + rect.width * rect.height, 0)
+    expect(cardArea / (width * height)).toBeGreaterThan(0.2)
+  })
+
+  it('gives the same network layout each time', async () => {
+    const b = builder()
+    const ids = Array.from({ length: 10 }, (_, index) => b.card(`n${index}`))
+    for (let a = 0; a < ids.length; a++) for (const step of [1, 3]) b.edge(ids[a]!, ids[(a + step) % ids.length]!)
+    const request: LayoutRequest = {
+      nodes: b.nodes,
+      edges: b.edges,
+      direction: 'RIGHT',
+      layerGapPx: 120,
+      style: 'network',
+    }
+    const first = await computeLayout(elk, request)
+    const second = await computeLayout(elk, request)
+    expect(second.nodes).toEqual(first.nodes)
+    expect(siblingsApart(absolute(first.nodes, request), request)).toBe(true)
+  })
+})
+
+describe('hubTree', () => {
+  const boxes = ['a', 'b', 'c', 'd', 'lonely'].map((id) => ({ id, width: 10, height: 10 }))
+  const links = [
+    { source: 'b', target: 'a' },
+    { source: 'c', target: 'a' },
+    { source: 'a', target: 'd' },
+    { source: 'c', target: 'd' },
+  ]
+
+  it('grows a tree from the box with the most links, and links each unreached box to it', () => {
+    const tree = hubTree(boxes, links, null)
+    expect(tree).toHaveLength(boxes.length - 1)
+    expect(new Set(tree.map((link) => link.target))).toEqual(new Set(['b', 'c', 'd', 'lonely']))
+    expect(tree.filter((link) => link.source === 'a').map((link) => link.target)).toContain('lonely')
+  })
+
+  it('grows the tree from the centre that the caller names', () => {
+    const tree = hubTree(boxes, links, 'd')
+    expect(tree.every((link) => link.target !== 'd')).toBe(true)
+    expect(tree).toHaveLength(boxes.length - 1)
   })
 })

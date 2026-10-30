@@ -3,6 +3,7 @@ import { GROUP_PADDING_PX } from '@/model/graph'
 import { unionRects, type Rect } from '@/model/rect'
 import type { XY } from '@/model/schema'
 import { LAYERED_OPTIONS, spacingOptions } from './hierarchy'
+import { placeLevel } from './styles'
 import { childUnder, lowestCommonContainer, type LayoutTree } from './tree'
 import type { LayoutRequest, PlacedNode } from './types'
 
@@ -319,8 +320,9 @@ function gridPositions(
 }
 
 /**
- * Lays out each container on its own, from the deepest up. A level with two or more groups becomes a grid when the
- * grid scores clearly better than layers. The returned positions are relative to the parent of each node.
+ * Lays out each container on its own, from the deepest up. With the flow style, a level with two or more groups becomes
+ * a grid when the grid scores clearly better than layers. The other styles place each level with {@link placeLevel}.
+ * The returned positions are relative to the parent of each node.
  */
 export async function arrangeLevels(elk: ELK, request: LayoutRequest, tree: LayoutTree): Promise<Arrangement> {
   const sizes = new Map<string, { width: number; height: number }>()
@@ -337,8 +339,19 @@ export async function arrangeLevels(elk: ELK, request: LayoutRequest, tree: Layo
     for (const kid of kids) if (tree.isContainer(kid)) await arrange(kid)
     const boxes = kids.map((id): Box => ({ id, ...sizeOf(id), container: tree.isContainer(id) }))
     const edges = levelEdges(request, tree, container)
-    let positions = await layeredPositions(elk, boxes, edges, request)
-    if (boxes.filter((box) => box.container).length >= 2) {
+    const style = request.style
+    let positions =
+      style === 'flow'
+        ? await layeredPositions(elk, boxes, edges, request)
+        : await placeLevel(
+            elk,
+            style,
+            boxes,
+            edges,
+            request,
+            request.center ? childUnder(tree, container, request.center) : null,
+          )
+    if (style === 'flow' && boxes.filter((box) => box.container).length >= 2) {
       const ends = levelEnds(request, tree, contents, container, boxes)
       const score = (candidate: Positions) => scoreArrangement(request, ends, boxes, candidate)
       const grid = gridPositions(boxes, edges, request, score)

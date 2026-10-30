@@ -4,9 +4,15 @@ import type { DiagramEdge, DiagramNode, GroupNodeType } from '@/model/types'
 import { withRoute } from './apply-layout'
 import { keepPinned } from './pinned'
 import type { LayoutWorkerReply, LayoutWorkerRequest } from './layout.worker'
-import type { LayoutDirection, LayoutRequest, LayoutResponse } from './types'
+import type { LayoutDirection, LayoutRequest, LayoutResponse, LayoutStyle } from './types'
 
-export type { LayoutDirection } from './types'
+export type { LayoutDirection, LayoutStyle } from './types'
+
+/** The arrangement of a layout, and the node at the centre of a `hub` layout. */
+export interface LayoutChoice {
+  style?: LayoutStyle
+  center?: string
+}
 
 export interface LayoutResult {
   nodes: DiagramNode[]
@@ -86,6 +92,7 @@ export async function layoutDiagram(
   nodes: DiagramNode[],
   edges: DiagramEdge[],
   direction: LayoutDirection,
+  { style = 'flow', center }: LayoutChoice = {},
 ): Promise<LayoutResult> {
   const laidOut = nodes.filter((node) => node.type !== 'text')
   const ids = new Set(laidOut.map((node) => node.id))
@@ -100,6 +107,8 @@ export async function layoutDiagram(
     edges: layoutEdges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target })),
     direction,
     layerGapPx: layerGap(layoutEdges),
+    style,
+    ...(center !== undefined && ids.has(center) ? { center } : {}),
   })
   const placed = new Map(response.nodes.map((node) => [node.id, node]))
   const routedIds = new Set(layoutEdges.map((edge) => edge.id))

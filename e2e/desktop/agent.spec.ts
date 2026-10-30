@@ -52,6 +52,30 @@ test('an agent builds a diagram that the user sees and undoes in one step', asyn
   await expect(nodes).toHaveCount(0)
 })
 
+test('an agent arranges a hub around the node that it names', async ({ window, mcp }) => {
+  await callTool(mcp, 'create_diagram', { name: 'Event hub' })
+  const services = ['Orders', 'Billing', 'Search', 'Mail', 'Stock', 'Reports']
+  await callTool(mcp, 'add_elements', {
+    nodes: [{ ref: 'bus', label: 'Event bus' }, ...services.map((label) => ({ ref: label, label }))],
+    edges: services.map((label) => ({ from: label, to: 'bus' })),
+  })
+  await expect(window.locator('[data-editor-canvas] .react-flow__node')).toHaveCount(services.length + 1)
+
+  await callTool(mcp, 'layout_diagram', { layout: 'hub', center: 'Event bus' })
+  const { json } = await callTool(mcp, 'get_diagram', {})
+  const nodes = json.nodes as { label: string; x: number; y: number; w: number; h: number }[]
+  const centre = (node: (typeof nodes)[number]) => ({ x: node.x + node.w / 2, y: node.y + node.h / 2 })
+  const bus = centre(nodes.find((node) => node.label === 'Event bus')!)
+  const spokes = nodes.filter((node) => node.label !== 'Event bus').map(centre)
+  expect(bus.x).toBeGreaterThan(Math.min(...spokes.map((point) => point.x)))
+  expect(bus.x).toBeLessThan(Math.max(...spokes.map((point) => point.x)))
+  expect(bus.y).toBeGreaterThan(Math.min(...spokes.map((point) => point.y)))
+  expect(bus.y).toBeLessThan(Math.max(...spokes.map((point) => point.y)))
+  const lint = await callTool(mcp, 'lint_diagram', {})
+  const issues = lint.json.issues as { rule: string }[]
+  expect(issues.filter((issue) => issue.rule === 'overlap')).toEqual([])
+})
+
 test.describe('with a native window', () => {
   test.use({ hideWindow: 'native' })
 

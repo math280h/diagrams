@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { LAYOUT_DIRECTIONS } from '@/layout/types'
+import { LAYOUT_DIRECTIONS, LAYOUT_STYLES } from '@/layout/types'
 import { BOUNDARY_PROVIDER_IDS } from '@/model/boundaries'
 import { COLORS } from '@/model/colors'
 import {
@@ -529,13 +529,20 @@ export const TOOL_DEFINITIONS = {
   layout_diagram: {
     title: 'Lay out diagram',
     description:
-      'Arrange all nodes automatically with a layered layout that keeps groups around their nodes. Use it after you add many nodes.',
+      'Arrange all nodes automatically and keep groups around their nodes. Use it after you add many nodes. Choose the layout that fits the shape of the system; pinned nodes keep their places.',
     input: z.object({
       diagramId,
+      layout: z
+        .enum(LAYOUT_STYLES)
+        .optional()
+        .describe(
+          'flow (the default): layers along the direction, for request paths and layered architectures; it also lines up nodes across groups. tree: a hierarchy from one root, such as an org chart or a dependency tree. hub: one central node, such as an event bus or a gateway, with the other nodes around it. network: a mesh with many connections and no main direction. grid: compact rows, for an inventory with few connections. tree, hub, network and grid arrange each group on its own. network uses grid in a group with more than 80 nodes.',
+        ),
       direction: z
         .enum(LAYOUT_DIRECTIONS)
         .optional()
-        .describe('The main direction of the edges. The default is RIGHT.'),
+        .describe('The main direction of the edges, for flow and tree. The default is RIGHT.'),
+      center: nodeRef('The node in the middle of a hub layout. The default is the node with the most edges').optional(),
     }),
     annotations: CHANGE,
     timeoutMs: LONG_MS,

@@ -605,6 +605,30 @@ met a node at the middle of its side. Agent placement keeps the routes inside a 
 it snaps the block origin to the grid, not each node, because a snapped node would no longer touch
 its route.
 
+### Layout styles
+
+`layout_diagram` takes a `layout` (`LAYOUT_STYLES` in `src/layout/types.ts`). Tidy up and Mermaid import use `flow`.
+
+| Style     | Use                                                 | ELK algorithm                            |
+| --------- | --------------------------------------------------- | ---------------------------------------- |
+| `flow`    | Request paths and layered architectures             | `layered`, as in the section above       |
+| `tree`    | A hierarchy from one root                           | `mrtree`                                 |
+| `hub`     | One central node, such as an event bus or a gateway | `radial`                                 |
+| `network` | A mesh with many connections and no main direction  | `sporeOverlap` over `stress`             |
+| `grid`    | An inventory with few connections                   | `rectpacking`, with the aspect ratio 1.6 |
+
+- Only `layered` lays out nested groups in one run. The other styles use the recursion of `arrangeLevels` and place
+  each level with `placeLevel` (`src/layout/styles.ts`). `flow` alone aligns nodes across groups.
+- `router.ts` routes the edges of all styles except `flow`.
+- ELK `radial` accepts only a tree with edges away from the root. Without it, ELK throws, overflows the stack, or
+  overlaps nodes. `hubTree` gives ELK a breadth-first tree from the hub. The hub is the node in `center`, or else the
+  box with the most links. A box that no link reaches gets a link from the hub.
+- `stress` took about 4 s for 150 cards in a test. So a level with more than 80 boxes gets `grid` instead of `network`.
+- The style is a parameter of the request. The diagram does not store it.
+- Rejected engines: ELK `force` gave worse results than `stress`; dagre repeats `layered` and has open bugs with
+  nested groups; Graphviz in WebAssembly adds about 0.5 MB; cytoscape fCoSE is not deterministic; WebCola has no
+  maintenance; MSAGL and libavoid failed earlier (see "Stack and why").
+
 ### Routing on the canvas
 
 The diagram setting "Route connections around nodes" (`theme.routeAround`) makes the canvas run the router itself

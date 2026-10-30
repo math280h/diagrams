@@ -35,11 +35,17 @@ function absoluteNodes(nodes: PlacedNode[], tree: LayoutTree): RouterNode[] {
 /**
  * Computes positions, group sizes and edge routes.
  *
- * The positions come from one ELK layered run over the whole hierarchy. At a level with two or more groups, a grid of
- * the groups replaces that result if the grid gets a better score. The orthogonal router then draws all edges.
+ * With the flow style, the positions come from one ELK layered run over the whole hierarchy. At a level with two or
+ * more groups, a grid of the groups replaces that result if the grid gets a better score. The other styles place each
+ * level on its own. The orthogonal router then draws all edges.
  */
 export async function computeLayout(elk: ELK, request: LayoutRequest): Promise<LayoutResponse> {
+  if (request.nodes.length === 0) return { nodes: [], routes: {} }
   const tree = buildTree(request)
+  if (request.style !== 'flow') {
+    const { nodes } = await arrangeLevels(elk, request, tree)
+    return { nodes, routes: Object.fromEntries(routeEdges(absoluteNodes(nodes, tree), request.edges)) }
+  }
   const hierarchy = await layoutHierarchy(elk, request, tree)
   if (!hasGroupedLevel(tree)) return hierarchy
   const arrangement = await arrangeLevels(elk, request, tree)
