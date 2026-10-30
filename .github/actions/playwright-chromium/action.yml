@@ -1,0 +1,24 @@
+name: Install Chromium for Playwright
+description: Installs the Chromium of the Playwright version in the lockfile, from the cache when it holds that version.
+
+runs:
+  using: composite
+  steps:
+    - name: Read the Playwright version
+      id: version
+      shell: bash
+      run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+    - name: Restore Chromium
+      id: cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.os == 'Windows' && '~/AppData/Local/ms-playwright' || runner.os == 'macOS' && '~/Library/Caches/ms-playwright' || '~/.cache/ms-playwright' }}
+        key: playwright-chromium-${{ runner.os }}-${{ runner.arch }}-${{ steps.version.outputs.version }}
+    - name: Download Chromium
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: pnpm exec playwright install --with-deps chromium
+    - name: Install the system libraries of Chromium
+      if: steps.cache.outputs.cache-hit == 'true' && runner.os == 'Linux'
+      shell: bash
+      run: pnpm exec playwright install-deps chromium
