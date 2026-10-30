@@ -14,9 +14,16 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { errorMessage } from '@/lib/error-message'
 import { isDesktop } from './desktop/bridge'
+import { watchInstallPrompt } from './install/install-prompt'
+import { registerServiceWorker } from './install/register-service-worker'
 import { bootstrapStorage } from './persistence/bootstrap'
 import { router } from './router'
 import { StartupError } from './StartupError'
+
+if (!isDesktop()) {
+  watchInstallPrompt()
+  if (import.meta.env.PROD) registerServiceWorker()
+}
 
 let storageError: string | null = null
 try {

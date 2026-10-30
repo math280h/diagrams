@@ -28,6 +28,8 @@
     "scripts/release-notes.test.ts",
     "scripts/readme-features.ts",
     "scripts/readme-features.test.ts",
+    "scripts/service-worker.ts",
+    "scripts/service-worker.test.ts",
     "electron-builder.ts"
   ]
 }

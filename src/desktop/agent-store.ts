@@ -36,8 +36,8 @@ export function hideAgentIntro() {
 /**
  * Returns true while the library shows the agent introduction.
  *
- * The desktop app shows it until the first agent call. The website shows it everywhere except on phones. Both hide it
- * permanently when the user closes it.
+ * The desktop app shows it until the first agent call. The website shows it on computers, which run the desktop app.
+ * Both hide it permanently when the user closes it.
  */
 export function useAgentIntroVisible() {
   return useAgentHistory((state) => !state.introHidden && (isDesktop() ? state.lastCallAt === null : canOpenInApp()))

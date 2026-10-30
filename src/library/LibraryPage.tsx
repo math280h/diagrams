@@ -42,6 +42,7 @@ import { AgentButton } from '@/desktop/AgentButton'
 import { useAgentIntroVisible } from '@/desktop/agent-store'
 import { REPOSITORY_URL } from '@/desktop/constants'
 import { AgentIntro } from '@/desktop/AgentIntro'
+import { InstallIntro } from '@/install/InstallIntro'
 import { desktopApi } from '@/desktop/bridge'
 import { canOpenInApp, openInApp, useOpenedInApp } from '@/desktop/open-in-app'
 import { TitleBarNav } from '@/desktop/TitleBarNav'
@@ -434,10 +435,12 @@ export function LibraryPage() {
                 </div>
               </section>
               <AgentIntro className="mt-12" />
+              <InstallIntro className="mt-12" />
             </>
           ) : (
             <>
               <AgentIntro className="mt-8" />
+              <InstallIntro className="mt-8" />
               <section className="pt-10" aria-labelledby="diagrams-heading">
                 <div className="mb-5 flex flex-wrap items-center gap-3">
                   <h1 id="diagrams-heading" className="text-2xl font-medium tracking-[-0.02em]">

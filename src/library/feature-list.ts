@@ -79,6 +79,10 @@ export const MORE_FEATURES: readonly Feature[] = [
     title: 'Local first',
     summary: 'No account. The website keeps diagrams in your browser, the desktop app as files.',
   },
+  {
+    title: 'App on a tablet',
+    summary: 'Install the website as an app that opens from the home screen and works offline.',
+  },
 ]
 
 export const README_FEATURES_START = '<!-- features:start -->'

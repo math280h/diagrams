@@ -21,7 +21,7 @@ reasons behind it.
 | Desktop e2e          | `pnpm e2e:desktop` (Playwright Electron; build first)                                          |
 | Desktop installer    | `pnpm desktop:package` (electron-builder to `release/`; then `node scripts/smoke-package.mjs`) |
 | Release (maintainer) | `pnpm release:tag patch` (or `minor`, `major`, `beta`; see `docs/RELEASING.md`)                |
-| App icon             | `pnpm app-icon` (renders `build/icon.png` and `icon.ico`)                                      |
+| App icon             | `pnpm app-icon` (renders `build/icon.png`, `icon.ico` and the web app icons in `public/icons`) |
 | README image         | `pnpm readme-gif` (records the editor while a flow plays to `docs/images/editor.gif`)          |
 | Diagram format files | `node scripts/format-sample.mjs` (or `<git ref>`; see "Change the diagram format")             |
 | Template icons       | `node scripts/template-icons.mjs` (after a template or icon set change)                        |
