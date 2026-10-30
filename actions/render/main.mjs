@@ -291,28 +291,27 @@ function markChanges(previews, entry) {
   const images = Object.fromEntries(
     sides.map((side) => [side, decodePng(readFileSync(path.join(previews, entry[side])))]),
   )
-  const regions = images.before && images.after ? changedRegions(images.before, images.after) : []
+  const regions =
+    images.before && images.after ? changedRegions(images.before, images.after) : { before: [], after: [] }
+  const boxed = [...regions.before, ...regions.after].some((region) => region.height > 0)
   const tallest = sides.map((side) => images[side]).toSorted((a, b) => b.height - a.height)[0]
-  const scale = tallest.width / IMAGE_WIDTH_PX
-  const rows = viewRows(regions, tallest.height, {
-    marginPx: VIEW_SHOWN_PX.marginPx * scale,
-    minHeightPx: VIEW_SHOWN_PX.minHeightPx * scale,
-    maxHeightPx: VIEW_SHOWN_PX.maxHeightPx * scale,
-  })
   const tall = (tallest.height * IMAGE_WIDTH_PX) / tallest.width > TALL_IMAGE_SHOWN_PX
   const marked = { ...entry }
   for (const side of sides) {
     const folder = path.dirname(entry[side])
-    const image = regions.length > 0 ? drawBoxes(images[side], regions) : images[side]
-    if (regions.length > 0) marked[side] = writeImage(previews, `${folder}/${side}.marked.png`, image)
+    const image = boxed ? drawBoxes(images[side], regions[side]) : images[side]
+    if (boxed) marked[side] = writeImage(previews, `${folder}/${side}.marked.png`, image)
     if (!tall) continue
-    const view =
-      rows.top < image.height
-        ? cropRows(image, rows.top, rows.height)
-        : cropRows(image, image.height - rows.height, rows.height)
+    const scale = image.width / IMAGE_WIDTH_PX
+    const rows = viewRows(regions[side], image.height, {
+      marginPx: VIEW_SHOWN_PX.marginPx * scale,
+      minHeightPx: VIEW_SHOWN_PX.minHeightPx * scale,
+      maxHeightPx: VIEW_SHOWN_PX.maxHeightPx * scale,
+    })
+    const view = cropRows(image, rows.top, rows.height)
     if (view.height < image.height) marked[`${side}View`] = writeImage(previews, `${folder}/${side}.view.png`, view)
   }
-  return { entry: marked, boxed: regions.length > 0 }
+  return { entry: marked, boxed }
 }
 
 function markEntries(previews, entries) {

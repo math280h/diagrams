@@ -1166,15 +1166,23 @@ images current without a person. `main.mjs` does the work in Node, and `lib.mjs`
   in tests), and can draw a rounded corner a few pixels differently (2 pixels, 37 levels apart, at the corner of a
   button), while a change of text, colour or layout moves hundreds of pixels much further. An exact compare would show
   screens that did not change.
-- On a changed PNG, the action draws red boxes around the parts that differ (`changedRegions` and `drawBoxes` in
-  `png.mjs`), on the before and the after image. It compares squares of 16 px, joins changes less than 32 px apart,
-  leaves out a group of 16 or fewer changed pixels as noise at a text edge or a rounded corner, and merges the
-  nearest boxes until at most 8 are left. 16 is the limit of `samePixels` for a whole screen; with a limit of 3, two
-  builds of the same code got boxes around the corners of the logo and a button. Without a larger group, the image
-  has no box. Rows that only the taller image has count as changed. An image that would be more than 1000 px tall in
-  the comment, such as a whole library page, shows only the rows with the changes (at most 800 px tall in the comment,
-  the same rows on both sides) and links the whole image. Whole pages side by side made the comment several screens
-  long, and a change was hard to find in them.
+- On a changed PNG, the action draws red boxes around the parts that changed (`changedRegions` and `drawBoxes` in
+  `png.mjs`), on the before and the after image. It pairs the pixel rows of the two images first, as a line diff
+  pairs the lines of two texts: each row gets a hash of its colours cut to 16 levels, rows that occur once in both
+  images are anchors (the longest run of them in order), and equal rows next to them pair too. Content that only moved
+  up or down then counts as the same. A pixel diff without this marked everything under a new section as changed, so
+  the box reached from the new section to the end of the page, and only its top edge showed in the cut-out rows.
+- In each run of unpaired rows, the rows that both images have are compared pixel by pixel, and rows that only one
+  image has count where they differ from their first pixel, the background. The changed pixels are grouped in squares
+  of 16 px, changes less than 32 px apart share a box, a group of 16 or fewer pixels is noise at a text edge or a
+  rounded corner (the limit of `samePixels` for a whole screen; with 3, two builds of the same code got boxes around
+  the corners of the logo and a button), and the nearest boxes merge until at most 8 are left on each image. A change
+  that only one image has gives the other image a box without height at its place, which draws nothing but moves the
+  cut-out there. An outline that would leave the image stays at its edge, so a box as wide as the page shows its sides.
+- An image that would be more than 1000 px tall in the comment, such as a whole library page, shows only the rows with
+  its changes (at most 800 px tall in the comment), and links the whole image. Each side is cut out around its own
+  boxes, because a change can sit at another height on each image. Whole pages side by side made the comment several
+  screens long, and a change was hard to find in them.
 - The featured stage and the template cards frame their diagram after the fonts load, and again when the measured
   node sizes change. Before, a font that arrived after the first measure left a frame for the fallback font, and two
   screens of the library differed by a few pixels.

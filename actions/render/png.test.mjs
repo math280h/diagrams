@@ -99,6 +99,7 @@ function paint(image, { x, y, width, height }, color = BLACK) {
 
 describe('changed regions', () => {
   const base = canvas(400, 300)
+  const both = (regions) => ({ before: regions, after: regions })
 
   it('finds each change apart, and joins changes that are close', () => {
     const changed = paint(paint(base, { x: 20, y: 20, width: 10, height: 10 }), {
@@ -107,46 +108,74 @@ describe('changed regions', () => {
       width: 30,
       height: 20,
     })
-    expect(changedRegions(base, changed)).toEqual([
-      { x: 16, y: 16, width: 16, height: 16 },
-      { x: 288, y: 192, width: 48, height: 32 },
-    ])
+    expect(changedRegions(base, changed)).toEqual(
+      both([
+        { x: 16, y: 16, width: 16, height: 16 },
+        { x: 288, y: 192, width: 48, height: 32 },
+      ]),
+    )
     const close = paint(paint(base, { x: 20, y: 20, width: 10, height: 10 }), { x: 50, y: 20, width: 10, height: 10 })
-    expect(changedRegions(base, close)).toEqual([{ x: 16, y: 16, width: 48, height: 16 }])
+    expect(changedRegions(base, close)).toEqual(both([{ x: 16, y: 16, width: 48, height: 16 }]))
   })
 
   it('leaves out a few stray pixels at a text edge, and small differences in colour', () => {
     const noise = paint(paint(base, { x: 20, y: 20, width: 1, height: 1 }), { x: 100, y: 100, width: 40, height: 4 })
-    expect(changedRegions(base, noise)).toEqual([{ x: 96, y: 96, width: 48, height: 16 }])
+    expect(changedRegions(base, noise)).toEqual(both([{ x: 96, y: 96, width: 48, height: 16 }]))
     const corners = paint(paint(base, { x: 0, y: 0, width: 4, height: 4 }), { x: 390, y: 290, width: 3, height: 3 })
-    expect(changedRegions(base, corners)).toEqual([])
-    expect(changedRegions(base, paint(base, { x: 0, y: 0, width: 50, height: 50 }, [250, 250, 250, 255]))).toEqual([])
+    expect(changedRegions(base, corners)).toEqual(both([]))
+    expect(changedRegions(base, paint(base, { x: 0, y: 0, width: 50, height: 50 }, [250, 250, 250, 255]))).toEqual(
+      both([]),
+    )
   })
 
-  it('counts the part that only the larger image has as changed', () => {
-    expect(changedRegions(base, canvas(400, 340))).toEqual([{ x: 0, y: 288, width: 400, height: 52 }])
+  it('marks only the inserted rows when content moves down, and their place on the image without them', () => {
+    const before = paint(base, { x: 100, y: 150, width: 50, height: 20 })
+    const after = paint(paint(canvas(400, 340), { x: 50, y: 50, width: 300, height: 40 }), {
+      x: 100,
+      y: 190,
+      width: 50,
+      height: 20,
+    })
+    expect(changedRegions(before, after)).toEqual({
+      before: [{ x: 50, y: 50, width: 300, height: 0 }],
+      after: [{ x: 48, y: 48, width: 304, height: 48 }],
+    })
+  })
+
+  it('leaves out rows of background that only the longer image has', () => {
+    expect(changedRegions(base, canvas(400, 340))).toEqual(both([]))
   })
 
   it('merges the nearest regions until no more than the limit are left', () => {
     let changed = base
     for (const x of [16, 112, 208, 304]) changed = paint(changed, { x, y: 16, width: 8, height: 8 })
     changed = paint(changed, { x: 16, y: 272, width: 8, height: 8 })
-    const regions = changedRegions(base, changed, { maxRegions: 2 })
-    expect(regions).toEqual([
-      { x: 16, y: 16, width: 304, height: 16 },
-      { x: 16, y: 272, width: 16, height: 16 },
-    ])
+    expect(changedRegions(base, changed, { maxRegions: 2 })).toEqual(
+      both([
+        { x: 16, y: 16, width: 304, height: 16 },
+        { x: 16, y: 272, width: 16, height: 16 },
+      ]),
+    )
   })
 })
 
 describe('marked images', () => {
+  const at = (image, x, y) => [...image.pixels.subarray((y * image.width + x) * 4, (y * image.width + x) * 4 + 4)]
+
   it('draws an outline around a region, outside its padding', () => {
     const image = drawBoxes(canvas(40, 40), [{ x: 10, y: 10, width: 20, height: 20 }], { lineWidthPx: 1, paddingPx: 2 })
-    const at = (x, y) => [...image.pixels.subarray((y * 40 + x) * 4, (y * 40 + x) * 4 + 4)]
-    expect(at(7, 7)).toEqual([229, 72, 77, 255])
-    expect(at(32, 20)).toEqual([229, 72, 77, 255])
-    expect(at(8, 8)).toEqual(WHITE)
-    expect(at(20, 20)).toEqual(WHITE)
+    expect(at(image, 7, 7)).toEqual([229, 72, 77, 255])
+    expect(at(image, 32, 20)).toEqual([229, 72, 77, 255])
+    expect(at(image, 8, 8)).toEqual(WHITE)
+    expect(at(image, 20, 20)).toEqual(WHITE)
+  })
+
+  it('keeps the outline of a region at the edge of the image inside it, and draws none for a region without height', () => {
+    const wide = drawBoxes(canvas(40, 40), [{ x: 0, y: 10, width: 40, height: 20 }], { lineWidthPx: 1, paddingPx: 2 })
+    expect(at(wide, 0, 20)).toEqual([229, 72, 77, 255])
+    expect(at(wide, 39, 20)).toEqual([229, 72, 77, 255])
+    const marker = drawBoxes(canvas(10, 10), [{ x: 2, y: 5, width: 6, height: 0 }])
+    expect(new Set(marker.pixels)).toEqual(new Set([255]))
   })
 
   it('cuts rows out of an image', () => {
