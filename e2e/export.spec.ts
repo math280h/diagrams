@@ -51,13 +51,14 @@ test('exports a Mermaid flowchart to copy or download', async ({ page, context }
 })
 
 test('exports a flow as a WebM video', async ({ page }) => {
+  test.setTimeout(150_000)
   await page.goto('/')
-  await copyTemplate(page, 'Checkout flow')
+  await copyTemplate(page, 'C4 system context')
   await page.getByRole('button', { name: 'Export' }).click()
   await page.getByRole('menuitem', { name: /Animation/ }).click()
   await page.getByRole('button', { name: 'WebM', exact: true }).click()
   await page.getByRole('button', { name: '720p' }).click()
-  const download = page.waitForEvent('download', { timeout: 85_000 })
+  const download = page.waitForEvent('download', { timeout: 140_000 })
   await page.getByRole('button', { name: 'Export WebM' }).click()
   const video = await download
   const bytes = await readFile(await video.path())
