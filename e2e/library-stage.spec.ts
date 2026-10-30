@@ -44,6 +44,19 @@ test('holds the playing template while the tab is in the background', async ({ p
   await expect(caption).not.toHaveText(held!, { timeout: 6000 })
 })
 
+test('offers the desktop app beside the headline and keeps the stage on a 1280 × 720 screen', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 })
+  await page.goto('/')
+  const headline = (await page.getByRole('heading', { level: 1 }).boundingBox())!
+  const offer = (await page.getByRole('region', { name: 'Let an AI agent draw with you' }).boundingBox())!
+  expect(offer.x).toBeGreaterThanOrEqual(headline.x + headline.width)
+  expect(offer.y).toBeLessThan(headline.y + headline.height)
+  const caption = page.locator('.dg-caption').first()
+  await expect(caption).not.toHaveText('', { timeout: 10_000 })
+  const captionBox = (await caption.boundingBox())!
+  expect(captionBox.y + captionBox.height).toBeLessThanOrEqual(720)
+})
+
 test('draws the templates on the first visit with the small icon file and no full icon set', async ({ page }) => {
   const iconFiles: string[] = []
   page.on('request', (request) => {
@@ -75,7 +88,9 @@ test('shows what Diagrams does under the playing template, with pictures from it
   const moreTemplatesTop = (await page.getByRole('heading', { name: 'More templates' }).boundingBox())!.y
   expect(sectionTop).toBeLessThan(moreTemplatesTop)
 
-  await expect(section.getByLabel('The first steps of the flow above').getByRole('listitem')).toHaveCount(3)
+  await expect(section.getByLabel('The first steps of the flow above').getByRole('listitem')).toHaveCount(4)
+  await expect(section.getByLabel('The first steps of the flow above')).toContainText('1/13')
+  await expect(section.getByRole('figure')).toContainText('customer (personal data) Crosses AWS VPC payments.')
   await expect(section.getByLabel('Operations of the flow above with their latency')).toContainText(' ms')
   const sequence = section.getByLabel('The start of the sequence diagram of the template above')
   await expect(sequence).toContainText('sequenceDiagram')

@@ -20,7 +20,7 @@ computer.
 
 Also:
 
-- **Templates.** C4, RAG, an agent with MCP tools, event pipelines and more, ready to play.
+- **Templates.** C4, RAG, an agent with MCP tools, an OpenID Connect sign-in, webhooks, a deploy pipeline and more, ready to play.
 - **Node kinds.** Services, data stores, queues, clients and more, each with its own outline.
 - **Real icons.** Official AWS, Azure, Google Cloud and Kubernetes icons, and 220 software logos.
 - **Boundaries.** Cloud, network and cluster boundaries, or your own groups, such as a team.

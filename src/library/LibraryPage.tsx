@@ -93,16 +93,13 @@ function useHoverPlay() {
 /** The distance below and above the visible part of the library at which a preview starts to mount. */
 const PREVIEW_MOUNT_MARGIN = '100% 0px'
 
-/** The lowest zoom of a template card. A larger template shows its busiest part instead of all of it. */
-const TEMPLATE_CARD_MIN_ZOOM = 0.45
-
-function PreviewFrame({ diagram, playing, minZoom }: { diagram: Diagram; playing: boolean; minZoom: number }) {
+function PreviewFrame({ diagram, playing }: { diagram: Diagram; playing: boolean }) {
   const [ref, near] = useInView(PREVIEW_MOUNT_MARGIN, true)
   const mounted = useIdleMount(near)
   return (
     <div ref={ref} className="relative aspect-[16/10] w-full overflow-hidden border-b bg-background">
       <div className="absolute inset-0">
-        {mounted && <LivePreview diagram={diagram} playing={playing} minZoom={minZoom} paddingPx={16} />}
+        {mounted && <LivePreview diagram={diagram} playing={playing} minZoom={0} paddingPx={16} levelOfDetail />}
       </div>
     </div>
   )
@@ -126,7 +123,7 @@ function DiagramCard({ meta, onRename, onDelete }: { meta: DiagramMeta; onRename
     >
       <Link to="/d/$diagramId" params={{ diagramId: meta.id }} tabIndex={-1} aria-hidden className="block">
         {diagram ? (
-          <PreviewFrame diagram={diagram} playing={playing} minZoom={0} />
+          <PreviewFrame diagram={diagram} playing={playing} />
         ) : (
           <div className="grid aspect-[16/10] place-items-center border-b text-xs text-muted-foreground">
             This diagram cannot be read
@@ -228,7 +225,7 @@ function TemplateCard({ template, diagram }: { template: Template; diagram: Diag
       params={{ templateId: template.id }}
       className="group flex flex-col overflow-hidden rounded-xl border bg-card text-left transition-colors hover:border-foreground/25 focus-visible:border-foreground/25"
     >
-      <PreviewFrame diagram={diagram} playing={playing} minZoom={TEMPLATE_CARD_MIN_ZOOM} />
+      <PreviewFrame diagram={diagram} playing={playing} />
       <div className="px-4 py-3">
         <p className="text-[15px] font-medium tracking-[-0.01em]">{template.name}</p>
         <p className="mt-0.5 text-[13px] leading-5 text-pretty text-muted-foreground">{template.description}</p>
@@ -323,7 +320,10 @@ export function LibraryPage() {
       },
       (error: unknown) => toast.error('The file could not be opened.', { description: errorMessage(error) }),
     )
-  const templates = useMemo(() => TEMPLATES.map((template) => ({ ...template, preview: template.build() })), [])
+  const templates = useMemo(
+    () => TEMPLATES.map((template) => ({ ...template, preview: template.cover?.() ?? template.build() })),
+    [],
+  )
   const agentIntroVisible = useAgentIntroVisible()
 
   useEffect(() => discardUnusedBlankDiagrams(), [])
@@ -397,13 +397,16 @@ export function LibraryPage() {
         <div className="mx-auto max-w-6xl px-4 pb-24 sm:px-6">
           {firstRun ? (
             <>
-              <div className="pt-8 pb-8 sm:pt-12">
-                <h1 className="dg-display max-w-3xl text-4xl leading-[1.04] sm:text-5xl">
-                  Draw how your system works, then play a request through it.
-                </h1>
-                <p className="mt-4 max-w-xl text-base leading-6 text-pretty text-muted-foreground">
-                  Architecture diagrams that move, for docs, pull requests and talks. {storageCopy().promise}
-                </p>
+              <div className="grid gap-6 pt-8 pb-8 sm:pt-12 xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-end xl:gap-8">
+                <div>
+                  <h1 className="dg-display max-w-3xl text-4xl leading-[1.04] sm:text-5xl">
+                    Draw how your system works, then play a request through it.
+                  </h1>
+                  <p className="mt-4 max-w-xl text-base leading-6 text-pretty text-muted-foreground">
+                    Architecture diagrams that move, for docs, pull requests and talks. {storageCopy().promise}
+                  </p>
+                </div>
+                <AgentIntro />
               </div>
               <section aria-labelledby="templates-heading">
                 <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -422,7 +425,7 @@ export function LibraryPage() {
                 diagram={featured?.preview}
                 crossingsShown={crossingsShown}
                 onCrossingsShownChange={setCrossingsShown}
-                className="mt-12"
+                className="mt-20"
               />
               <section aria-labelledby="more-templates-heading" className="mt-12">
                 <h2 id="more-templates-heading" className="mb-4 text-xl font-medium tracking-[-0.015em]">
@@ -434,7 +437,6 @@ export function LibraryPage() {
                   ))}
                 </div>
               </section>
-              <AgentIntro className="mt-12" />
               <InstallIntro className="mt-12" />
             </>
           ) : (

@@ -1286,6 +1286,12 @@
   scale: var(--dg-lod-scale);
   transform-origin: left bottom;
 }
+.dg-canvas[data-lod][data-readonly] .dg-group-label {
+  max-width: calc((100% - 24px) / var(--dg-lod-scale));
+}
+.dg-canvas[data-lod][data-readonly] :is(.dg-group-kind:has(+ .dg-group-name), .dg-group-detail) {
+  display: none;
+}
 .dg-canvas[data-lod='far'] {
   --dg-lod-scale: 1.35;
 }

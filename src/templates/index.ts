@@ -14,6 +14,8 @@ export interface Template {
    * node names it. A copy of the template copies them too.
    */
   inside?: () => Diagram[]
+  /** Builds a smaller diagram from parts of the template, which the template card shows in place of the template. */
+  cover?: () => Diagram
 }
 
 /** Returns the diagram of a template, then the diagrams that it opens. */
@@ -907,6 +909,192 @@ function multiCloud(): Diagram {
   )
 
   return b.build('Multi-cloud commerce platform')
+}
+
+function multiCloudCover(): Diagram {
+  const b = new DiagramBuilder()
+  const tenant = b.group(288, 0, 304, 144, boundary('azure.tenant', 'contoso', 'Entra tenant'))
+  const account = b.group(288, 192, 640, 368, boundary('aws.account', 'prod-commerce', '123456789012'))
+  const project = b.group(1008, 208, 304, 144, boundary('gcp.project', 'analytics', 'analytics-prod-4821'))
+  const datacenter = b.group(1008, 400, 304, 144, boundary('general.datacenter', 'Frankfurt', 'FRA1'))
+  const browser = b.card(0, 256, { icon: 'logo:react', form: 'client', title: 'Browser', lines: ['React 19 SPA'] }, 208)
+  const entra = b.card(
+    48,
+    48,
+    { icon: 'azure:entra-external-id', title: 'Entra External ID', lines: ['customer sign-in'] },
+    208,
+    tenant,
+  )
+  const checkout = b.card(
+    48,
+    64,
+    { icon: 'logo:nodedotjs', title: 'Checkout API', lines: ['Node 22 on EKS'] },
+    208,
+    account,
+  )
+  const payments = b.card(384, 64, { icon: 'logo:spring', title: 'Payments', lines: ['Java 21 on EKS'] }, 208, account)
+  const writer = b.card(
+    48,
+    256,
+    { icon: 'aws:aurora-postgresql', form: 'datastore', title: 'Aurora writer', lines: ['PostgreSQL 16'] },
+    208,
+    account,
+  )
+  const invoices = b.card(
+    384,
+    256,
+    { icon: 'aws:lambda', form: 'function', title: 'Invoice sync', lines: ['Lambda'] },
+    208,
+    account,
+  )
+  const fraud = b.card(48, 48, { icon: 'gcp:vertex-ai', title: 'Fraud model', lines: ['Vertex AI'] }, 208, project)
+  const erp = b.card(48, 48, { icon: 'logo:sap', title: 'ERP', lines: ['SAP S/4HANA'] }, 208, datacenter)
+  const stripe = b.card(
+    1056,
+    48,
+    { icon: 'logo:stripe', form: 'external', title: 'Stripe', lines: ['PaymentIntents API'] },
+    208,
+  )
+
+  const still = { enabled: false, direction: 'forward', style: 'dots', density: 1, speed: 80, size: 1.5 } as const
+  const edge = { traffic: still, markerEnd: 'arrow', path: 'smooth' } as const
+  const crossing = { ...edge, stroke: 'dashed' } as const
+
+  const browserToCheckout = b.edge(browser, checkout, { ...crossing, label: 'HTTPS' }, ['right', 'left'])
+  const checkoutToEntra = b.edge(checkout, entra, { ...crossing, label: 'OIDC' }, ['top', 'bottom'])
+  const checkoutToPayments = b.edge(checkout, payments, { ...edge, label: 'gRPC' }, ['right', 'left'])
+  const paymentsToFraud = b.edge(payments, fraud, { ...crossing, label: 'Interconnect' }, ['right', 'left'])
+  const paymentsToStripe = b.edge(payments, stripe, { ...crossing, label: 'HTTPS' }, ['top', 'left'])
+  const checkoutToWriter = b.edge(checkout, writer, { ...edge, label: 'SQL' }, ['bottom', 'top'])
+  const writerToInvoices = b.edge(writer, invoices, { ...edge, label: 'outbox' }, ['right', 'left'])
+  const invoicesToErp = b.edge(invoices, erp, { ...crossing, label: 'OData over VPN' }, ['right', 'left'])
+
+  const fit = 'fit' as const
+  const follow = 'follow' as const
+  b.flow(
+    'Checkout',
+    [
+      nodeStep(browser, 'The shopper presses Pay.', 1400, fit, 1, { event: 'POST /checkout' }),
+      edgeStep(browserToCheckout, 'The request reaches the Checkout API on AWS.', 1500, follow, 1, {
+        event: 'POST /checkout',
+        latencyMs: 30,
+      }),
+      edgeStep(checkoutToEntra, 'Entra External ID on Azure signs the shopper in.', 1500, follow, 1, {
+        event: 'POST /oauth2/v2.0/token',
+        latencyMs: 24,
+      }),
+      edgeStep(checkoutToEntra, '', 1100, follow, 1, { event: '200 id_token', latencyMs: 21 }),
+      edgeStep(checkoutToPayments, 'The Checkout API asks Payments to charge the card.', 1300, follow, 1, {
+        event: 'Authorize',
+        latencyMs: 2,
+      }),
+      edgeStep(paymentsToFraud, 'The fraud model on Google Cloud scores the payment.', 1500, follow, 1, {
+        event: 'POST :predict',
+        latencyMs: 38,
+      }),
+      edgeStep(paymentsToFraud, '', 1100, follow, 1, { event: 'score 0.03', latencyMs: 35 }),
+      edgeStep(paymentsToStripe, 'Stripe charges the card.', 1500, follow, 1, {
+        event: 'POST /v1/payment_intents',
+        latencyMs: 310,
+      }),
+      edgeStep(paymentsToStripe, '', 1100, follow, 1, { event: '200 succeeded', latencyMs: 190 }),
+      edgeStep(checkoutToPayments, '', 1000, follow, 1, { event: 'captured' }),
+      edgeStep(checkoutToWriter, 'The order commits in Aurora.', 1300, follow, 1, {
+        event: 'INSERT orders, outbox',
+        latencyMs: 4,
+      }),
+      edgeStep(writerToInvoices, 'The invoice event leaves through the outbox.', 1300, follow, 1, {
+        event: 'invoice.created',
+      }),
+      edgeStep(invoicesToErp, 'SAP on premises receives the invoice.', 1600, follow, 1, {
+        event: 'POST /A_BillingDocument',
+        latencyMs: 640,
+      }),
+      nodeStep(erp, 'Finance sees the invoice.', 1600, fit, 1, { event: 'committed' }),
+    ],
+    { token: { label: 'order 4821', icon: '', shape: 'chip' } },
+  )
+
+  return b.build('Multi-cloud commerce platform')
+}
+
+function collaborativeEditorCover(): Diagram {
+  const b = new DiagramBuilder()
+  const web = b.group(
+    0,
+    32,
+    304,
+    432,
+    boundary('general.app', 'Web client', 'React 19, Yjs 13', undefined, 'logo:react'),
+  )
+  const platform = b.group(672, 0, 656, 496, boundary('general.system', 'Docs', 'production'))
+  const api = b.group(32, 80, 304, 160, boundary('general.app', 'API', 'Go 1.23', platform, 'logo:go'))
+  const sync = b.group(32, 288, 592, 160, boundary('general.app', 'Sync server', 'Rust', platform, 'logo:rust'))
+  const view = b.card(48, 48, { icon: 'pen-line', title: 'Editor view', lines: ['ProseMirror view'] }, 208, web)
+  const doc = b.card(48, 176, { icon: 'file-text', title: 'Document model', lines: ['Y.Doc, CRDT'] }, 208, web)
+  const provider = b.card(48, 304, { icon: 'refresh-cw', title: 'Sync provider', lines: ['y-websocket'] }, 208, web)
+  const gateway = b.card(400, 336, { icon: 'logo:envoyproxy', title: 'Gateway', lines: ['TLS, HTTP/2'] }, 208)
+  const peer = b.card(400, 528, { icon: 'monitor', form: 'client', title: 'Another editor', lines: ['same page'] }, 208)
+  const router = b.card(48, 48, { icon: 'route', title: 'HTTP router', lines: ['/v1/pages'] }, 208, api)
+  const postgres = b.card(
+    368,
+    128,
+    { icon: 'logo:postgresql', form: 'datastore', title: 'Postgres', lines: ['pages, comments'] },
+    208,
+    platform,
+  )
+  const socket = b.card(
+    48,
+    48,
+    { icon: 'server', title: 'WebSocket server', lines: ['one task per socket'] },
+    208,
+    sync,
+  )
+  const merge = b.card(336, 48, { icon: 'git-merge', title: 'Merge engine', lines: ['server copy'] }, 208, sync)
+
+  const still = { enabled: false, direction: 'forward', style: 'dots', density: 1, speed: 80, size: 1.5 } as const
+  const edge = { traffic: still, markerEnd: 'arrow', path: 'smooth' } as const
+  const crossing = { ...edge, stroke: 'dashed' } as const
+  const local = { ...edge, width: 0.75 } as const
+
+  const viewToDoc = b.edge(view, doc, local, ['bottom', 'top'])
+  const docToProvider = b.edge(doc, provider, local, ['bottom', 'top'])
+  const providerToGateway = b.edge(provider, gateway, { ...crossing, label: 'WSS' }, ['right', 'left'])
+  const peerToGateway = b.edge(peer, gateway, { ...crossing, label: 'WSS' }, ['top', 'bottom'])
+  const gatewayToSocket = b.edge(gateway, socket, { ...edge, label: 'WebSocket' }, ['right', 'left'])
+  b.edge(gateway, router, { ...edge, label: 'HTTP/2' }, ['top', 'left'])
+  b.edge(router, postgres, { ...edge, label: 'SQL' }, ['right', 'left'])
+  const socketToMerge = b.edge(socket, merge, local, ['right', 'left'])
+
+  const fit = 'fit' as const
+  const follow = 'follow' as const
+  b.flow(
+    'Two people edit a page',
+    [
+      nodeStep(view, 'The writer types a word.', 1300, fit, 1, { event: 'insert "ready"' }),
+      edgeStep(viewToDoc, 'The view turns the keystrokes into a CRDT insert.', 1300, follow, 1, {
+        event: 'Y.Text insert',
+      }),
+      edgeStep(docToProvider, '', 900, follow, 1, { event: 'update 41 B' }),
+      edgeStep(providerToGateway, 'The sync provider sends it over the open WebSocket.', 1400, follow, 1, {
+        event: 'WS binary frame',
+        latencyMs: 18,
+      }),
+      edgeStep(gatewayToSocket, '', 1100, follow, 1, { event: 'WS binary frame', latencyMs: 1 }),
+      edgeStep(socketToMerge, 'The merge engine applies the update to the server copy.', 1300, follow, 1, {
+        event: 'apply_update',
+      }),
+      edgeStep(socketToMerge, '', 900, follow, 1, { event: 'broadcast' }),
+      edgeStep(gatewayToSocket, '', 900, follow, 1, { event: 'WS binary frame', latencyMs: 1 }),
+      edgeStep(peerToGateway, '', 1300, follow, 1, { event: 'WS binary frame', latencyMs: 21 }),
+      nodeStep(peer, 'The other editor sees the word 50 ms after the keystroke.', 2000, fit, 1, {
+        event: 'rendered',
+      }),
+    ],
+    { token: { label: 'update 41 B', icon: '', shape: 'chip' } },
+  )
+
+  return b.build('Collaborative editor')
 }
 
 function collaborativeEditor(): Diagram {
@@ -2017,6 +2205,895 @@ function c4Containers(): Diagram {
   return b.build('Staybook: containers', { id: STAYBOOK_CONTAINERS_ID })
 }
 
+function oidcSignIn(): Diagram {
+  const b = new DiagramBuilder()
+  const identity = b.group(528, 0, 352, 320, boundary('general.trust', 'Identity', 'auth.acme.dev'))
+  const platform = b.group(352, 368, 872, 352, boundary('general.system', 'Acme app', 'app.acme.dev'))
+  const browser = b.card(0, 208, { form: 'client', title: 'Browser', icon: 'monitor', lines: ['app.acme.dev'] }, 192)
+  const users = b.card(
+    64,
+    48,
+    { form: 'datastore', title: 'User store', icon: 'logo:postgresql', lines: ['Postgres, users'] },
+    216,
+    identity,
+  )
+  const keycloak = b.card(
+    64,
+    208,
+    {
+      title: 'Keycloak',
+      icon: 'logo:keycloak',
+      lines: ['OIDC, realm acme'],
+      details: details(
+        'Identity team',
+        'Signs users in, checks passwords and issues the access, refresh and ID tokens of the acme realm.',
+        [['OpenID Connect Core', 'https://openid.net/specs/openid-connect-core-1_0.html']],
+      ),
+    },
+    216,
+    identity,
+  )
+  const web = b.card(
+    240,
+    64,
+    {
+      title: 'Web app',
+      icon: 'logo:nextdotjs',
+      lines: ['Next.js, BFF'],
+      details: details(
+        'Web team',
+        'A backend for the frontend. It keeps the tokens in the session store, so the browser holds only an HttpOnly cookie.',
+        [['OAuth 2.0 for browser-based apps', 'https://datatracker.ietf.org/doc/draft-ietf-oauth-browser-based-apps/']],
+      ),
+    },
+    216,
+    platform,
+  )
+  const api = b.card(
+    608,
+    64,
+    {
+      title: 'Orders API',
+      icon: 'logo:go',
+      lines: ['Go, checks JWT'],
+      details: details(
+        'Orders team',
+        'Checks the signature, issuer, audience and expiry of each access token with the signing keys of Keycloak.',
+        [['RFC 7519, JSON Web Token', 'https://www.rfc-editor.org/rfc/rfc7519']],
+      ),
+    },
+    216,
+    platform,
+  )
+  const sessions = b.card(
+    240,
+    240,
+    { form: 'datastore', title: 'Session store', icon: 'logo:redis', lines: ['Redis, 8 h TTL'] },
+    216,
+    platform,
+  )
+
+  const edge = { traffic: STILL, markerEnd: 'arrow' } as const
+  const code = 'SplxlOBeZQQYbYS6'
+  const accessToken = 'eyJhbGciOiJSUzI1NiJ9…'
+  const refreshToken = 'eyJhbGciOiJIUzUxMiJ9…'
+  const toIdp = b.edge(browser, keycloak, {
+    ...edge,
+    label: 'HTTPS',
+    request: body(
+      { username: 'ada@example.com', password: 'correct-horse', code_challenge: 'E9Melhoa2Owv' },
+      { username: 'personal', password: 'secret' },
+    ),
+    response: body({ code, state: 'af0ifjsldkj' }, { code: 'secret' }),
+  })
+  const toApp = b.edge(
+    browser,
+    web,
+    {
+      ...edge,
+      label: 'HTTPS',
+      request: body({ code, state: 'af0ifjsldkj' }, { code: 'secret' }),
+      response: body({ cookie: '__Host-sid=9f2c7a; HttpOnly' }, { cookie: 'secret' }),
+    },
+    ['bottom', 'left'],
+  )
+  const toUsers = b.edge(keycloak, users, {
+    ...edge,
+    label: 'SQL',
+    request: body({ email: 'ada@example.com' }, { email: 'personal' }),
+  })
+  const toToken = b.edge(
+    web,
+    keycloak,
+    {
+      ...edge,
+      label: 'POST /token',
+      protocol: 'http',
+      request: body(
+        { grant_type: 'authorization_code', code, code_verifier: 'dBjftJeZ4CVP' },
+        { code: 'secret', code_verifier: 'secret' },
+      ),
+      response: body(
+        { access_token: accessToken, refresh_token: refreshToken, id_token: accessToken, expires_in: 300 },
+        { access_token: 'secret', refresh_token: 'secret', id_token: 'secret' },
+      ),
+    },
+    ['top', 'bottom'],
+  )
+  const toJwks = b.edge(
+    api,
+    keycloak,
+    {
+      ...edge,
+      label: 'GET /certs',
+      protocol: 'http',
+      stroke: 'dashed',
+      response: body({ keys: [{ kid: 'rs256-2026', kty: 'RSA' }] }),
+    },
+    ['top', 'right'],
+  )
+  const toApi = b.edge(web, api, {
+    ...edge,
+    label: 'HTTPS',
+    request: body({ authorization: `Bearer ${accessToken}` }, { authorization: 'secret' }),
+    response: body({ orders: [{ id: 'ord_8f2k', total: 49 }] }),
+  })
+  const toSessions = b.edge(web, sessions, {
+    ...edge,
+    label: 'sessions',
+    protocol: 'data',
+    request: body(
+      { sid: '9f2c7a', email: 'ada@example.com', refresh_token: refreshToken },
+      { email: 'personal', refresh_token: 'secret' },
+    ),
+  })
+
+  b.text(0, 16, { text: 'Sign in with OpenID Connect', size: 'xl' })
+  b.text(0, 64, { text: 'The tokens stay on the server, and the browser holds a cookie.', size: 'sm', tone: 'muted' })
+
+  const flow = b.flow(
+    'Sign in',
+    [
+      nodeStep(browser, 'The user chooses Sign in.', 1300, 'follow', 1, { event: 'click Sign in' }),
+      edgeStep(toApp, '', 1100, 'follow', 1, { event: 'GET /login', latencyMs: 24 }),
+      nodeStep(web, 'The web app makes a PKCE verifier and keeps it with the state.', 1500, 'follow', 1, {
+        event: 'code_challenge S256',
+        latencyMs: 2,
+      }),
+      edgeStep(toApp, 'It sends the browser to Keycloak with the code challenge.', 1400, 'follow', 1, {
+        event: '302 auth.acme.dev/auth',
+      }),
+      edgeStep(toIdp, '', 1200, 'follow', 1, { event: 'GET /auth', latencyMs: 31 }),
+      nodeStep(keycloak, 'The user enters an email and a password on the Keycloak page.', 1600, 'follow', 1, {
+        event: 'POST /login-actions/authenticate',
+      }),
+      edgeStep(toUsers, 'Keycloak compares the password with its Argon2 hash.', 1400, 'follow', 1, {
+        event: 'SELECT credential',
+        latencyMs: 3,
+      }),
+      edgeStep(toUsers, '', 1000, 'follow', 1, { event: 'argon2id match', latencyMs: 48 }),
+      edgeStep(toIdp, 'Keycloak sends the browser back with a one-time code.', 1400, 'follow', 1, {
+        event: '302 /callback?code=…',
+      }),
+      edgeStep(toApp, '', 1200, 'follow', 1, { event: 'GET /callback', latencyMs: 22 }),
+      edgeStep(toToken, 'The web app trades the code and the verifier for tokens.', 1500, 'follow', 1, {
+        event: 'POST /token',
+        latencyMs: 85,
+      }),
+      edgeStep(toToken, '', 1100, 'follow', 1, { event: '200 access, refresh and ID token' }),
+      edgeStep(toSessions, 'The tokens stay on the server, in the session store.', 1400, 'follow', 1, {
+        event: 'SET sid:9f2c7a',
+        latencyMs: 1,
+      }),
+      edgeStep(toSessions, '', 1000, 'follow', 1, { event: 'OK' }),
+      edgeStep(toApp, 'The browser gets only an HttpOnly session cookie.', 1500, 'follow', 1, {
+        event: '302 / Set-Cookie',
+      }),
+      edgeStep(toApp, 'The orders page asks for data with the cookie.', 1300, 'follow', 1, {
+        event: 'GET /api/orders',
+        latencyMs: 18,
+      }),
+      edgeStep(toApi, 'The web app adds the access token to the API call.', 1400, 'follow', 1, {
+        event: 'GET /v1/orders',
+        latencyMs: 12,
+      }),
+      edgeStep(toJwks, 'The API gets the signing keys of Keycloak once and keeps them.', 1500, 'follow', 1, {
+        event: 'GET /certs',
+        latencyMs: 20,
+      }),
+      edgeStep(toJwks, '', 1000, 'follow', 1, { event: '200 2 keys' }),
+      nodeStep(api, 'The signature, the issuer and the expiry are correct.', 1500, 'follow', 1, {
+        event: 'verify RS256',
+        latencyMs: 1,
+      }),
+      edgeStep(toApi, '', 1100, 'follow', 1, { event: '200 3 orders', latencyMs: 9 }),
+      edgeStep(toApp, '', 1100, 'follow', 1, { event: '200 OK', latencyMs: 41 }),
+      nodeStep(browser, 'The user is signed in, and no token came to the browser.', 1900, 'follow', 1, {
+        event: 'show orders',
+      }),
+    ],
+    { token: { label: 'Sign-in', icon: 'key-round', shape: 'chip' } },
+  )
+  b.path(
+    flow,
+    'Expired access token',
+    16,
+    [
+      nodeStep(api, 'The access token is more than five minutes old.', 1400, 'follow', 1, {
+        event: 'token expired',
+        level: 'warn',
+      }),
+      edgeStep(toApi, '', 1100, 'follow', 1, { event: '401 invalid_token', level: 'warn' }),
+      edgeStep(toSessions, 'The web app reads the refresh token from the session.', 1300, 'follow', 1, {
+        event: 'GET sid:9f2c7a',
+        latencyMs: 1,
+      }),
+      edgeStep(toSessions, '', 1000, 'follow', 1, { event: 'refresh_token' }),
+      edgeStep(toToken, 'It trades the refresh token for new tokens.', 1500, 'follow', 1, {
+        event: 'POST /token refresh_token',
+        latencyMs: 70,
+      }),
+      edgeStep(toToken, '', 1100, 'follow', 1, { event: '200 new access token' }),
+      edgeStep(toApi, 'The web app tries again with the new token.', 1400, 'follow', 1, {
+        event: 'GET /v1/orders',
+        latencyMs: 12,
+      }),
+      nodeStep(api, 'The new token is correct.', 1300, 'follow', 1, { event: 'verify RS256', latencyMs: 1 }),
+    ],
+    20,
+  )
+  return b.build('Sign in with OpenID Connect')
+}
+
+function photoUpload(): Diagram {
+  const b = new DiagramBuilder()
+  const account = b.group(288, 0, 952, 752, boundary('aws.account', 'media', '345678901234'))
+  const phone = b.card(
+    -48,
+    256,
+    { form: 'client', title: 'Mobile app', icon: 'smartphone', lines: ['iOS and Android'] },
+    192,
+  )
+  const gateway = b.card(48, 64, { title: 'API Gateway', icon: 'aws:api-gateway', lines: ['HTTP API'] }, 216, account)
+  const photosApi = b.card(
+    368,
+    64,
+    {
+      form: 'function',
+      title: 'Photos API',
+      icon: 'aws:lambda',
+      lines: ['Lambda, Node 22'],
+      details: details('Media team', 'Signs the upload URLs and lists the approved photos of a feed.', [
+        ['Presigned URLs', 'https://docs.aws.amazon.com/AmazonS3/latest/userguide/PresignedUrlUploadObject.html'],
+      ]),
+    },
+    216,
+    account,
+  )
+  const table = b.card(
+    688,
+    64,
+    { form: 'datastore', title: 'Photos table', icon: 'aws:dynamodb-table', lines: ['DynamoDB'] },
+    216,
+    account,
+  )
+  const uploads = b.card(
+    48,
+    256,
+    { form: 'datastore', title: 'Uploads bucket', icon: 'aws:s3-bucket', lines: ['S3, deletes after 1 day'] },
+    216,
+    account,
+  )
+  const bus = b.card(
+    368,
+    256,
+    { form: 'queue', title: 'EventBridge', icon: 'aws:eventbridge', lines: ['Object Created rule'] },
+    216,
+    account,
+  )
+  const moderate = b.card(
+    688,
+    256,
+    {
+      form: 'function',
+      title: 'Moderate',
+      icon: 'aws:lambda',
+      lines: ['Lambda, Python 3.13'],
+      details: details(
+        'Trust and safety',
+        'Rejects a photo when Rekognition finds a moderation label with a confidence above 90%.',
+        [['Content moderation', 'https://docs.aws.amazon.com/rekognition/latest/dg/moderation.html']],
+      ),
+    },
+    216,
+    account,
+  )
+  const resize = b.card(
+    368,
+    448,
+    {
+      form: 'function',
+      title: 'Resize',
+      icon: 'aws:lambda',
+      lines: ['Lambda, sharp'],
+      details: details(
+        'Media team',
+        'Makes WebP files of 320, 1080 and 2048 px and removes the EXIF data, also the GPS location.',
+        [['sharp', 'https://sharp.pixelplumbing.com']],
+      ),
+    },
+    216,
+    account,
+  )
+  const rekognition = b.card(
+    688,
+    448,
+    { title: 'Rekognition', icon: 'aws:rekognition', lines: ['moderation labels'] },
+    216,
+    account,
+  )
+  const photos = b.card(
+    368,
+    640,
+    { form: 'datastore', title: 'Photos bucket', icon: 'aws:s3-bucket', lines: ['S3, 3 sizes'] },
+    216,
+    account,
+  )
+  const cdn = b.card(48, 640, { title: 'CloudFront', icon: 'aws:cloudfront', lines: ['img.snapr.app'] }, 216, account)
+
+  const edge = { traffic: STILL, markerEnd: 'arrow' } as const
+  const presign = b.edge(
+    phone,
+    gateway,
+    {
+      ...edge,
+      label: 'HTTPS',
+      request: body({ contentType: 'image/heic', bytes: 4194304 }),
+      response: body(
+        { photoId: 'p_7Kq', uploadUrl: 'https://uploads.s3.amazonaws.com/p_7Kq?X-Amz-Signature=…' },
+        { uploadUrl: 'secret' },
+      ),
+    },
+    ['top', 'left'],
+  )
+  const invoke = b.edge(gateway, photosApi, { ...edge, label: 'invoke', protocol: 'rpc' })
+  const pending = b.edge(photosApi, table, { ...edge, label: 'PutItem', protocol: 'data' })
+  const upload = b.edge(phone, uploads, {
+    ...edge,
+    label: 'PUT presigned',
+    protocol: 'http',
+    request: body({ file: 'IMG_2041.HEIC', gps: '52.5200, 13.4050' }, { gps: 'personal' }),
+  })
+  const created = b.edge(uploads, bus, { ...edge, label: 'S3 event', protocol: 'messaging' })
+  const toModerate = b.edge(bus, moderate, { ...edge, label: 'rule target', protocol: 'messaging' })
+  const toResize = b.edge(bus, resize, { ...edge, label: 'rule target', protocol: 'messaging' })
+  b.edge(resize, uploads, { ...edge, label: 'GetObject', protocol: 'data', stroke: 'dashed' }, ['left', 'bottom'])
+  const check = b.edge(moderate, rekognition, { ...edge, label: 'HTTPS' })
+  const status = b.edge(moderate, table, { ...edge, label: 'UpdateItem', protocol: 'data' })
+  const sizes = b.edge(resize, photos, { ...edge, label: 'PutObject', protocol: 'data' })
+  const view = b.edge(phone, cdn, { ...edge, label: 'HTTPS' }, ['bottom', 'left'])
+  const origin = b.edge(cdn, photos, { ...edge, label: 'origin', protocol: 'http' })
+
+  b.text(0, -120, { text: 'Serverless photo upload', size: 'xl' })
+  b.text(0, -72, { text: 'A photo goes from a phone to a CDN, with moderation on the way.', size: 'sm', tone: 'muted' })
+
+  const flow = b.flow(
+    'Upload a photo',
+    [
+      nodeStep(phone, 'Someone shares a photo from a phone.', 1300, 'follow', 1, { event: 'select IMG_2041.HEIC' }),
+      edgeStep(presign, '', 1200, 'follow', 1, { event: 'POST /uploads', latencyMs: 45 }),
+      edgeStep(invoke, '', 1100, 'follow', 1, { event: 'invoke', latencyMs: 3 }),
+      nodeStep(photosApi, 'The function signs an upload URL that works for five minutes.', 1500, 'follow', 1, {
+        event: 'presign PUT',
+        latencyMs: 12,
+      }),
+      edgeStep(pending, 'It saves the photo as pending.', 1300, 'follow', 1, {
+        event: 'PutItem status=pending',
+        latencyMs: 8,
+      }),
+      edgeStep(pending, '', 1000, 'follow', 1, { event: 'OK' }),
+      edgeStep(invoke, '', 1000, 'follow', 1, { event: '200 uploadUrl' }),
+      edgeStep(presign, '', 1100, 'follow', 1, { event: '201 Created', latencyMs: 71 }),
+      edgeStep(upload, 'The app sends the file straight to S3, not through the API.', 1500, 'follow', 1, {
+        event: 'PUT 4.2 MB',
+        latencyMs: 820,
+      }),
+      nodeStep(uploads, 'S3 sends an Object Created event.', 1300, 'follow', 1, { event: 's3:ObjectCreated:Put' }),
+      edgeStep(created, '', 1200, 'follow', 1, { event: 'match rule', latencyMs: 180 }),
+      {
+        ...edgeStep(toResize, 'EventBridge starts both functions at the same time.', 1400, 'follow', 1, {
+          event: 'invoke × 2',
+          latencyMs: 25,
+        }),
+        parallel: [{ kind: 'edge', id: toModerate }],
+      },
+      {
+        ...nodeStep(resize, 'Resize makes three sizes while Rekognition checks the photo.', 1700, 'follow', 1, {
+          event: 'resize 320, 1080, 2048',
+          latencyMs: 640,
+        }),
+        parallel: [{ kind: 'edge', id: check }],
+      },
+      {
+        ...edgeStep(sizes, 'The sizes go to the photos bucket, without the GPS location.', 1500, 'follow', 1, {
+          event: 'PutObject × 3',
+          latencyMs: 90,
+        }),
+        parallel: [{ kind: 'node', id: rekognition }],
+      },
+      edgeStep(check, 'Rekognition finds no unsafe content.', 1300, 'follow', 1, {
+        event: '0 moderation labels',
+        latencyMs: 410,
+      }),
+      edgeStep(status, 'Moderate marks the photo as approved.', 1300, 'follow', 1, {
+        event: 'UpdateItem status=approved',
+        latencyMs: 7,
+      }),
+      nodeStep(table, 'The photo is live 1.6 seconds after the upload.', 1600, 'follow', 1, {
+        event: 'status approved',
+      }),
+      edgeStep(view, 'The feed loads the photo from the nearest edge location.', 1400, 'follow', 1, {
+        event: 'GET /p_7Kq/1080.webp',
+        latencyMs: 24,
+      }),
+      edgeStep(origin, 'On the first request, CloudFront gets the file from S3 and keeps it.', 1500, 'follow', 1, {
+        event: 'origin GET',
+        latencyMs: 38,
+      }),
+      edgeStep(origin, '', 1100, 'follow', 1, { event: '200 image/webp' }),
+      edgeStep(view, '', 1100, 'follow', 1, { event: '200 Miss from cloudfront', latencyMs: 71 }),
+      nodeStep(phone, 'The photo shows in the feed.', 1700, 'follow', 1, { event: 'show 1080 px' }),
+    ],
+    { token: { label: 'Photo', icon: 'image', shape: 'chip' } },
+  )
+  b.path(flow, 'Unsafe photo', 13, [
+    edgeStep(check, 'Rekognition finds explicit content with a confidence of 97%.', 1500, 'follow', 1, {
+      event: 'Explicit 97%',
+      latencyMs: 410,
+      level: 'warn',
+    }),
+    nodeStep(moderate, 'A label above 90% rejects the photo.', 1400, 'follow', 1, { event: 'reject', level: 'warn' }),
+    edgeStep(status, 'Moderate marks the photo as rejected.', 1300, 'follow', 1, {
+      event: 'UpdateItem status=rejected',
+      latencyMs: 7,
+      level: 'warn',
+    }),
+    nodeStep(
+      table,
+      'The feed never shows a rejected photo, and S3 deletes the upload after a day.',
+      1900,
+      'follow',
+      1,
+      {
+        event: 'status rejected',
+        level: 'warn',
+      },
+    ),
+  ])
+  return b.build('Serverless photo upload')
+}
+
+function deployPipeline(): Diagram {
+  const b = new DiagramBuilder()
+  const actions = b.group(
+    576,
+    0,
+    728,
+    288,
+    boundary('general.environment', 'GitHub Actions', 'ci.yml', undefined, 'logo:githubactions'),
+  )
+  const cluster = b.group(288, 448, 1400, 448, boundary('k8s.cluster', 'prod', 'EKS 1.31, 12 nodes'))
+  const shop = b.group(32, 48, 624, 368, boundary('k8s.namespace', 'shop', '', cluster))
+  const argo = b.group(704, 48, 312, 368, boundary('k8s.namespace', 'argocd', '', cluster))
+  const monitoring = b.group(1064, 224, 304, 192, boundary('k8s.namespace', 'monitoring', '', cluster))
+  const developer = b.card(
+    -64,
+    112,
+    { form: 'client', title: 'Developer', icon: 'user', lines: ['merges to main'] },
+    192,
+  )
+  const github = b.card(288, 112, { form: 'external', title: 'GitHub', icon: 'logo:github', lines: ['acme/shop'] })
+  const tests = b.card(48, 48, { title: 'Tests', icon: 'test-tube', lines: ['Vitest, 1,284 tests'] }, 216, actions)
+  const lint = b.card(48, 176, { title: 'Lint', icon: 'list-checks', lines: ['oxlint, tsc'] }, 216, actions)
+  const build = b.card(
+    464,
+    112,
+    {
+      title: 'Build image',
+      icon: 'logo:docker',
+      lines: ['Docker Buildx'],
+      details: details('Platform team', 'Builds one image for each commit on main and tags it with the commit.', [
+        ['docker/build-push-action', 'https://github.com/docker/build-push-action'],
+      ]),
+    },
+    216,
+    actions,
+  )
+  const registry = b.card(1392, 112, {
+    form: 'datastore',
+    title: 'Registry',
+    icon: 'package',
+    lines: ['ghcr.io/acme/shop'],
+  })
+  const config = b.card(1392, 352, {
+    form: 'datastore',
+    title: 'Config repo',
+    icon: 'logo:git',
+    lines: ['acme/deploy, Kustomize'],
+  })
+  const shoppers = b.card(-64, 640, { form: 'client', title: 'Shoppers', icon: 'users', lines: ['shop.acme.dev'] }, 192)
+  const ingress = b.card(48, 144, { title: 'Ingress', icon: 'k8s:ingress', lines: ['NGINX, weighted'] }, 216, shop)
+  const stable = b.card(
+    368,
+    48,
+    { title: 'Stable', icon: 'k8s:pod', lines: ['shop v41, 9 pods'], meter: 0.9, meterText: '90% of requests' },
+    216,
+    shop,
+  )
+  const canary = b.card(
+    368,
+    240,
+    { title: 'Canary', icon: 'k8s:pod', lines: ['shop v42, 1 pod'], meter: 0.1, meterText: '10% of requests' },
+    216,
+    shop,
+  )
+  const argocd = b.card(
+    48,
+    48,
+    {
+      title: 'Argo CD',
+      icon: 'logo:argo',
+      lines: ['polls every 3 min'],
+      details: details(
+        'Platform team',
+        'Keeps the cluster equal to the config repo, which it checks every three minutes.',
+        [['Argo CD docs', 'https://argo-cd.readthedocs.io']],
+      ),
+    },
+    216,
+    argo,
+  )
+  const rollouts = b.card(
+    48,
+    240,
+    {
+      title: 'Argo Rollouts',
+      icon: 'logo:argo',
+      lines: ['canary 10, 50, 100%'],
+      meter: 0.33,
+      meterText: 'step 1 of 3',
+      details: details(
+        'Platform team',
+        'Moves traffic to the canary in steps of 10, 50 and 100%, and stops when the error rate goes above 1%.',
+        [['Canary strategy', 'https://argo-rollouts.readthedocs.io/en/stable/features/canary/']],
+      ),
+    },
+    216,
+    argo,
+  )
+  const prometheus = b.card(
+    48,
+    64,
+    { title: 'Prometheus', icon: 'logo:prometheus', lines: ['5xx rate, 1 min'], meter: 0.02, meterText: '0.2% errors' },
+    208,
+    monitoring,
+  )
+
+  const edge = { traffic: STILL, markerEnd: 'arrow' } as const
+  const push = b.edge(developer, github, { ...edge, label: 'git push', protocol: 'http' })
+  const toTests = b.edge(github, tests, { ...edge, protocol: 'messaging' })
+  const toLint = b.edge(github, lint, { ...edge, protocol: 'messaging' })
+  const testsDone = b.edge(tests, build, { ...edge, protocol: 'none' })
+  const lintDone = b.edge(lint, build, { ...edge, protocol: 'none' })
+  const toRegistry = b.edge(build, registry, { ...edge, label: 'docker push', protocol: 'http' })
+  const toConfig = b.edge(build, config, { ...edge, label: 'commit tag', protocol: 'http' }, ['bottom', 'left'])
+  const fetch = b.edge(argocd, config, { ...edge, label: 'git fetch', protocol: 'http', stroke: 'dashed' }, [
+    'right',
+    'bottom',
+  ])
+  const apply = b.edge(argocd, rollouts, { ...edge, label: 'apply', protocol: 'rpc' })
+  const scale = b.edge(rollouts, canary, { ...edge, label: 'scale', protocol: 'rpc' })
+  const analysis = b.edge(rollouts, prometheus, { ...edge, label: 'PromQL', protocol: 'http' })
+  b.edge(shoppers, ingress, { ...edge, label: 'HTTPS' })
+  const toStable = b.edge(ingress, stable, { ...edge, label: '90%', protocol: 'http' })
+  const toCanary = b.edge(ingress, canary, { ...edge, label: '10%', protocol: 'http' })
+
+  b.text(0, -120, { text: 'Deploy pipeline', size: 'xl' })
+  b.text(0, -72, { text: 'A merged commit reaches production through a canary.', size: 'sm', tone: 'muted' })
+
+  const flow = b.flow(
+    'Ship a commit',
+    [
+      nodeStep(developer, 'A developer merges a fix to main.', 1300, 'follow', 1, { event: 'merge PR 812' }),
+      edgeStep(push, '', 1100, 'follow', 1, { event: 'push main', latencyMs: 900 }),
+      nodeStep(github, 'GitHub starts the CI workflow.', 1300, 'follow', 1, { event: 'workflow_run ci.yml' }),
+      {
+        ...edgeStep(toTests, 'Tests and lint run at the same time.', 1300, 'follow', 1, { event: 'jobs test, lint' }),
+        parallel: [{ kind: 'edge', id: toLint }],
+      },
+      {
+        ...nodeStep(tests, 'All 1,284 tests pass, and lint finds no problem.', 1700, 'follow', 1, {
+          event: '1284 passed in 3 min 34 s',
+        }),
+        parallel: [{ kind: 'node', id: lint }],
+      },
+      {
+        ...edgeStep(testsDone, '', 1100, 'follow', 1, { event: 'needs test, lint' }),
+        parallel: [{ kind: 'edge', id: lintDone }],
+      },
+      nodeStep(build, 'The build job makes an image tagged with the commit.', 1500, 'follow', 1, {
+        event: 'build sha-4f2a9c1 in 96 s',
+      }),
+      edgeStep(toRegistry, '', 1200, 'follow', 1, { event: 'push sha-4f2a9c1' }),
+      edgeStep(toRegistry, 'The registry holds the new image.', 1300, 'follow', 1, { event: 'digest sha256:9b1e…' }),
+      edgeStep(toConfig, 'CI commits the new image tag to the config repo.', 1400, 'follow', 1, {
+        event: 'kustomize edit set image',
+      }),
+      nodeStep(config, 'The config repo now asks for version 42.', 1300, 'follow', 1, { event: 'commit 7c1d2e0' }),
+      edgeStep(fetch, 'Argo CD sees the change on its next poll.', 1300, 'follow', 1, { event: 'git fetch' }),
+      nodeStep(argocd, 'The cluster is different from the repo, so Argo CD applies the change.', 1600, 'follow', 1, {
+        event: 'OutOfSync, sync',
+      }),
+      edgeStep(apply, '', 1100, 'follow', 1, { event: 'apply Rollout shop', latencyMs: 400 }),
+      nodeStep(rollouts, 'Argo Rollouts starts a canary next to the stable pods.', 1500, 'follow', 1, {
+        event: 'setCanaryScale 1',
+      }),
+      edgeStep(scale, '', 1100, 'follow', 1, { event: 'create pod shop-v42' }),
+      nodeStep(canary, 'The canary pod passes its readiness check.', 1400, 'follow', 1, { event: 'Ready 1/1' }),
+      {
+        ...edgeStep(toCanary, 'The ingress sends 10% of the requests to the canary.', 1500, 'follow', 1, {
+          event: 'setWeight 10',
+        }),
+        parallel: [{ kind: 'edge', id: toStable }],
+      },
+      edgeStep(analysis, 'Each minute, Rollouts asks Prometheus for the error rate of the canary.', 1600, 'follow', 1, {
+        event: 'AnalysisRun error-rate',
+        latencyMs: 30,
+      }),
+      nodeStep(prometheus, 'Errors stay at 0.2%, below the limit of 1%.', 1500, 'follow', 1, {
+        event: '5xx rate 0.2%',
+      }),
+      edgeStep(analysis, '', 1100, 'follow', 1, { event: 'Successful' }),
+      nodeStep(rollouts, 'After three good checks, Rollouts moves to 50%, then to 100%.', 1600, 'follow', 1, {
+        event: 'setWeight 100',
+      }),
+      edgeStep(scale, '', 1100, 'follow', 1, { event: 'promote shop-v42' }),
+      nodeStep(canary, 'Version 42 now serves every shopper.', 1900, 'follow', 1, { event: 'rollout complete' }),
+    ],
+    { token: { label: 'v42', icon: 'rocket', shape: 'chip' } },
+  )
+  b.path(flow, 'Canary fails', 18, [
+    nodeStep(prometheus, 'Errors on the canary go up to 4.8%.', 1500, 'follow', 1, {
+      event: '5xx rate 4.8%',
+      level: 'error',
+    }),
+    edgeStep(analysis, '', 1100, 'follow', 1, { event: 'Failed', level: 'error' }),
+    nodeStep(rollouts, 'Rollouts stops and sends all requests back to the stable pods.', 1600, 'follow', 1, {
+      event: 'abort, setWeight 0',
+      level: 'warn',
+    }),
+    edgeStep(scale, '', 1100, 'follow', 1, { event: 'scale shop-v42 to 0', level: 'warn' }),
+    nodeStep(canary, 'The canary is gone, and version 41 serves every shopper.', 1900, 'follow', 1, {
+      event: 'rollback complete',
+      level: 'warn',
+    }),
+  ])
+  return b.build('Deploy pipeline')
+}
+
+function webhookDelivery(): Diagram {
+  const b = new DiagramBuilder()
+  const account = b.group(288, 0, 1016, 560, boundary('aws.account', 'acmepay-prod', '456789012345'))
+  const dashboard = b.card(-64, 64, {
+    form: 'client',
+    title: 'Dashboard',
+    icon: 'layout-dashboard',
+    lines: ['dashboard.acmepay.dev'],
+  })
+  const merchant = b.card(-64, 256, {
+    form: 'external',
+    title: 'Merchant endpoint',
+    icon: 'webhook',
+    lines: ['shop.example.com/hooks'],
+  })
+  const api = b.card(48, 64, { title: 'Payments API', icon: 'logo:go', lines: ['Go, POST /refunds'] }, 216, account)
+  const postgres = b.card(
+    400,
+    64,
+    { form: 'datastore', title: 'Postgres', icon: 'logo:postgresql', lines: ['refunds, outbox'] },
+    216,
+    account,
+  )
+  const relay = b.card(
+    752,
+    64,
+    {
+      title: 'Outbox relay',
+      icon: 'logo:go',
+      lines: ['polls every 200 ms'],
+      details: details(
+        'Payments team',
+        'Reads the unsent outbox rows, sends each one to the queue and marks it as sent. No event is lost when the API stops.',
+        [['Transactional outbox', 'https://microservices.io/patterns/data/transactional-outbox.html']],
+      ),
+    },
+    216,
+    account,
+  )
+  const queue = b.card(
+    400,
+    256,
+    { form: 'queue', title: 'Deliveries', icon: 'aws:sqs', lines: ['SQS, up to 8 tries'] },
+    216,
+    account,
+  )
+  const worker = b.card(
+    48,
+    256,
+    {
+      title: 'Delivery worker',
+      icon: 'logo:nodedotjs',
+      lines: ['HMAC-SHA256, 10 s timeout'],
+      details: details(
+        'Payments team',
+        'Signs each event with the secret of the endpoint and posts it. Each failed try waits longer, for up to three days.',
+        [
+          [
+            'SQS visibility timeout',
+            'https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html',
+          ],
+        ],
+      ),
+    },
+    216,
+    account,
+  )
+  const secrets = b.card(
+    48,
+    448,
+    { form: 'datastore', title: 'Signing secrets', icon: 'aws:secrets-manager', lines: ['Secrets Manager'] },
+    216,
+    account,
+  )
+  const dlq = b.card(
+    400,
+    448,
+    {
+      form: 'queue',
+      title: 'Dead letters',
+      icon: 'aws:sqs',
+      lines: ['SQS, kept 14 days'],
+      details: details(
+        'Payments team',
+        'Keeps the events that failed eight times for 14 days, so that support can send them again.',
+        [
+          [
+            'SQS dead-letter queues',
+            'https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html',
+          ],
+        ],
+      ),
+    },
+    216,
+    account,
+  )
+  const alarm = b.card(752, 448, { title: 'DLQ alarm', icon: 'aws:cloudwatch', lines: ['depth above 0'] }, 216, account)
+  const pager = b.card(1424, 448, {
+    form: 'external',
+    title: 'PagerDuty',
+    icon: 'logo:pagerduty',
+    lines: ['payments on-call'],
+  })
+
+  const edge = { traffic: STILL, markerEnd: 'arrow' } as const
+  const event = { id: 'evt_1Q2', type: 'refund.succeeded', refund: 're_9Kd', email: 'ada@example.com' }
+  const refund = b.edge(dashboard, api, {
+    ...edge,
+    label: 'HTTPS',
+    request: body({ charge: 'ch_3Nf', amount: 4900 }),
+    response: body({ refund: 're_9Kd', status: 'succeeded' }),
+  })
+  const write = b.edge(api, postgres, { ...edge, label: 'SQL' })
+  const poll = b.edge(relay, postgres, { ...edge, label: 'SQL' })
+  const publish = b.edge(
+    relay,
+    queue,
+    { ...edge, label: 'SendMessage', protocol: 'messaging', request: body(event, { email: 'personal' }) },
+    ['bottom', 'right'],
+  )
+  const receive = b.edge(queue, worker, { ...edge, label: 'ReceiveMessage', protocol: 'messaging' })
+  const sign = b.edge(worker, secrets, {
+    ...edge,
+    label: 'GetSecretValue',
+    protocol: 'data',
+    response: body({ secret: 'whsec_5a1f…' }, { secret: 'secret' }),
+  })
+  const deliver = b.edge(worker, merchant, {
+    ...edge,
+    label: 'HTTPS',
+    request: body({ ...event, signature: 't=1730000000,v1=5257a8…' }, { email: 'personal' }),
+    response: body({ received: true }),
+  })
+  const redrive = b.edge(queue, dlq, { ...edge, label: 'after 8 tries', protocol: 'messaging' })
+  const watch = b.edge(dlq, alarm, { ...edge, label: 'metrics', protocol: 'data', stroke: 'dashed' })
+  const page = b.edge(alarm, pager, { ...edge, label: 'HTTPS' })
+
+  b.text(0, -120, { text: 'Webhook delivery', size: 'xl' })
+  b.text(0, -72, { text: 'Each event reaches the merchant, or an engineer hears about it.', size: 'sm', tone: 'muted' })
+
+  const flow = b.flow(
+    'Deliver a webhook',
+    [
+      nodeStep(dashboard, 'A support agent refunds an order.', 1300, 'follow', 1, { event: 'click Refund' }),
+      edgeStep(refund, '', 1100, 'follow', 1, { event: 'POST /v1/refunds', latencyMs: 40 }),
+      edgeStep(write, 'The refund and an outbox row commit in one transaction.', 1500, 'follow', 1, {
+        event: 'INSERT refunds, outbox',
+        latencyMs: 6,
+      }),
+      edgeStep(write, '', 1000, 'follow', 1, { event: 'COMMIT', latencyMs: 2 }),
+      edgeStep(refund, '', 1100, 'follow', 1, { event: '200 succeeded', latencyMs: 58 }),
+      nodeStep(relay, 'The relay reads the outbox five times a second.', 1400, 'follow', 1, { event: 'poll outbox' }),
+      edgeStep(poll, '', 1100, 'follow', 1, { event: 'SELECT … SKIP LOCKED', latencyMs: 3 }),
+      edgeStep(poll, 'It finds the new row.', 1100, 'follow', 1, { event: '1 row' }),
+      edgeStep(publish, 'The relay sends the event to the queue and marks the row as sent.', 1500, 'follow', 1, {
+        event: 'SendMessage evt_1Q2',
+        latencyMs: 12,
+      }),
+      edgeStep(receive, '', 1200, 'follow', 1, { event: 'ReceiveMessage', latencyMs: 20 }),
+      edgeStep(sign, 'The worker gets the signing secret of the merchant.', 1300, 'follow', 1, {
+        event: 'GetSecretValue',
+        latencyMs: 9,
+      }),
+      edgeStep(sign, '', 1000, 'follow', 1, { event: 'whsec_…' }),
+      nodeStep(worker, 'It signs the body with HMAC-SHA256.', 1300, 'follow', 1, { event: 'sign v1', latencyMs: 1 }),
+      edgeStep(deliver, '', 1200, 'follow', 1, { event: 'POST /hooks, try 1' }),
+      nodeStep(merchant, 'The merchant endpoint does not answer in time.', 1500, 'follow', 1, {
+        event: 'no response',
+        level: 'warn',
+      }),
+      edgeStep(deliver, '', 1100, 'follow', 1, { event: 'timeout after 10 s', level: 'warn' }),
+      edgeStep(receive, 'The message comes back after a minute, so the worker tries again.', 1600, 'follow', 1, {
+        event: 'ChangeMessageVisibility 60 s',
+        level: 'warn',
+      }),
+      edgeStep(receive, '', 1100, 'follow', 1, { event: 'ReceiveMessage, try 2' }),
+      edgeStep(deliver, '', 1200, 'follow', 1, { event: 'POST /hooks, try 2', latencyMs: 180 }),
+      nodeStep(merchant, 'The merchant checks the signature and marks the order as refunded.', 1600, 'follow', 1, {
+        event: 'verify signature',
+      }),
+      edgeStep(deliver, '', 1100, 'follow', 1, { event: '200 OK' }),
+      nodeStep(worker, 'The worker deletes the message from the queue.', 1600, 'follow', 1, {
+        event: 'DeleteMessage',
+      }),
+    ],
+    { token: { label: 'Event', icon: 'webhook', shape: 'chip' } },
+  )
+  b.path(flow, 'Endpoint keeps failing', 15, [
+    edgeStep(receive, 'Each try waits longer: 1, 5 and 30 minutes, then hours.', 1600, 'follow', 1, {
+      event: 'tries 2 to 8 fail',
+      level: 'warn',
+    }),
+    nodeStep(queue, 'After the eighth try, SQS moves the message to the dead letters.', 1600, 'follow', 1, {
+      event: 'maxReceiveCount 8',
+      level: 'error',
+    }),
+    edgeStep(redrive, '', 1100, 'follow', 1, { event: 'move to DLQ', level: 'error' }),
+    edgeStep(watch, 'The dead-letter queue is no longer empty.', 1300, 'follow', 1, {
+      event: 'ApproximateNumberOfMessages 1',
+      level: 'error',
+    }),
+    edgeStep(page, 'The alarm pages the payments on-call engineer.', 1400, 'follow', 1, {
+      event: 'trigger incident',
+      level: 'error',
+    }),
+    nodeStep(pager, 'The engineer sees the merchant and the event, and can send it again.', 1900, 'follow', 1, {
+      event: 'incident open',
+      level: 'error',
+    }),
+  ])
+  return b.build('Webhook delivery')
+}
+
 export const TEMPLATES: Template[] = [
   {
     id: 'multi-cloud',
@@ -2024,6 +3101,7 @@ export const TEMPLATES: Template[] = [
     description:
       'AWS runs the shop, Azure signs shoppers in, Google Cloud scores fraud and an on-premises ERP receives invoices. Four flows to play.',
     build: multiCloud,
+    cover: multiCloudCover,
   },
   {
     id: 'collaborative-editor',
@@ -2031,6 +3109,7 @@ export const TEMPLATES: Template[] = [
     description:
       'The inside of a real-time document editor: a CRDT in the browser, a sync server, an API and workers. Three flows follow an edit, a mention and an offline session.',
     build: collaborativeEditor,
+    cover: collaborativeEditorCover,
   },
   {
     id: 'order-system',
@@ -2049,6 +3128,34 @@ export const TEMPLATES: Template[] = [
     name: 'Checkout flow',
     description: "A shopper's path from a search ad to a placed order, with a sign-in branch.",
     build: checkoutFlow,
+  },
+  {
+    id: 'oidc-sign-in',
+    name: 'Sign in with OpenID Connect',
+    description:
+      'A sign-in with Keycloak, PKCE and a backend that keeps the tokens. Turn on Sensitive data to see which connections carry passwords and tokens.',
+    build: oidcSignIn,
+  },
+  {
+    id: 'photo-upload',
+    name: 'Serverless photo upload',
+    description:
+      'A phone uploads a photo to S3, and two Lambda functions resize and moderate it at the same time. A path shows a rejected photo.',
+    build: photoUpload,
+  },
+  {
+    id: 'webhook-delivery',
+    name: 'Webhook delivery',
+    description:
+      'An outbox, a queue and a worker that retries with backoff. A path follows an event to the dead letters and a page.',
+    build: webhookDelivery,
+  },
+  {
+    id: 'deploy-pipeline',
+    name: 'Deploy pipeline',
+    description:
+      'A merged commit goes through GitHub Actions and Argo CD to a canary on Kubernetes. A path shows a canary that fails and rolls back.',
+    build: deployPipeline,
   },
   {
     id: 'rag-assistant',

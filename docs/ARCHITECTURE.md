@@ -134,20 +134,30 @@ The visual system lives in `DESIGN.md` at the repository root.
   `evaluateFlow`, so exports stay frame exact. When one edge step follows another at a different
   point of the same node, the token moves along the node outline (`perimeterPath`) instead of a
   jump. Edge labels hide while the token dot or the token label passes over them.
-- The library shows the product working. Cards are read-only canvases. A card of the user's own
-  diagram fits the whole diagram, at any zoom. A template card and the featured stage frame the
-  diagram so that text stays readable (`readableViewport`): a diagram that fits at zoom 0.45 (cards)
-  or 0.5 (stage) shows whole, a larger one crops around its node with the most connections, because
-  a template of 40 to 60 nodes fitted whole read as a dark smear. The template page opens on the
+- The library shows the product working. Cards are read-only canvases that fit the whole diagram,
+  at any zoom, with the level of detail, so that titles stay legible. The featured stage frames
+  the diagram so that text stays readable (`readableViewport`): a diagram that fits at zoom 0.5
+  shows whole, a larger one crops around its node with the most connections. A template too large
+  for a card has a `cover`: a smaller diagram from parts of the template, with a flow, that the
+  card shows in its place. Template cards that cropped around the busiest node showed some
+  templates at twice the scale of others, with cards cut at the edges; a template of 40 to 60
+  nodes fitted whole read as a dark smear, and its nested boundary labels covered each other; and
+  a readable crop of it showed one service and none of the story. The template page opens on the
   whole diagram with its text nodes (`withText`), so the user sees the whole system and its title
   first; a page that opened on a crop around one node hid the rest of the system, and a framing
   without the text nodes cut the title. The first flow plays on hover and focus.
 - Under the featured stage, the first visit shows what Diagrams does (`Features`), and then the other templates. Six
   headline features have a picture made from the featured template when the page loads: the first steps of its flow,
-  its operations with their latency, its connections that carry sensitive data across a trust boundary, and the start
-  of its sequence diagram (`flowToMermaidSequence`). So the pictures show the real data and stay in step with the
+  its operations with their latency, its first connection that carries sensitive data across a trust boundary, and the
+  start of its sequence diagram (`flowToMermaidSequence`). So the pictures show the real data and stay in step with the
   template. "Show on the stage" highlights those connections on the stage, as the Sensitive data view of the editor
   does. Every other feature follows as one short line, so that no feature hides in the editor.
+- The features section has a heading one size under the headline, and each card shows its picture first, as a
+  template card shows its preview first. With a section title like the template headings and the pictures under the
+  text, testers scrolled past the section as fine print between the stage and the template previews.
+- On the first visit from 1280 px, the agent introduction (with the desktop download) sits beside the headline. At
+  the bottom of the page testers did not find the download, and above the stage it pushed the caption strip off a
+  1280 × 720 screen. Beside the headline it costs about 5 px of height, so the stage still fits.
 - `src/library/feature-list.ts` holds the titles and summaries for the library and the README.
   `node scripts/readme-features.ts` writes them between the `features` markers of the README, and a test fails when
   the README is out of date.
@@ -182,12 +192,14 @@ The visual system lives in `DESIGN.md` at the repository root.
   time readout hide. On a phone (below 640 px) the top bar keeps the name, Present and Export, and
   the editing controls move into a More menu, so that the name stays readable.
 - Large diagrams stay navigable:
-  - **Level of detail.** The editor and the template page set `data-lod` on the canvas root (`LevelOfDetail`): `far`
-    below zoom 0.55 and `farther` below 0.3. Then card lines, meters, badges, edge labels and traffic hide, and card
+  - **Level of detail.** The editor, the template page and the library cards set `data-lod` on the canvas root
+    (`LevelOfDetail`): `far` below zoom 0.55 and `farther` below 0.3. Then card lines, meters, badges, edge labels
+    and traffic hide, and card
     titles and boundary labels grow 1.35 or 1.8 times. The change uses `visibility` and `scale`, so node sizes, edge
     anchors and saved sizes do not change. Dashes stay, because the templates use them for meaning, such as a line
-    that crosses the internet. Present, previews and exports keep full detail, so that a flow does not pop
-    between levels while the camera moves.
+    that crosses the internet. On a read-only canvas, a boundary label also drops the kind when it has a name, and
+    the detail, so that the name fits in the boundary. Present, the stage and exports keep full detail, so that a
+    flow does not pop between levels while the camera moves. A library card does not move its camera.
   - **Minimap.** A diagram of 20 nodes or more shows a minimap in the editor, which the zoom controls hide and the
     settings remember. Groups show as outlines, and text nodes do not show.
   - **Go to.** When the command menu has a search, it lists the nodes, and a node opens selected and in the middle
