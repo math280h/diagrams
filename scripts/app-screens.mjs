@@ -129,6 +129,7 @@ const server = await preview({
   preview: { host: '127.0.0.1', port: Number(portArg), strictPort: true },
 })
 const url = server.resolvedUrls.local[0]
+const origin = new URL(url).origin
 const browser = await chromium.launch()
 try {
   for (const theme of ['dark', 'light']) {
@@ -143,6 +144,10 @@ try {
         colorScheme: theme,
         reducedMotion: 'reduce',
       })
+      await context.route(
+        (address) => address.origin !== origin,
+        (route) => route.abort(),
+      )
       const page = await context.newPage()
       await take(page, url, theme)
       await context.close()
