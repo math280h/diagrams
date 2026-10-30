@@ -62,6 +62,10 @@ test('names the way back from a template on a phone', async ({ page }) => {
 
 test('draws edges with fixed sides on a read-only canvas', async ({ page }) => {
   await page.goto('/#/t/multi-cloud')
+  const zoom = page.getByRole('button', { name: 'Reset zoom to 100%' })
+  await expect(zoom).not.toHaveText('100%')
+  await zoom.click()
+  await expect(zoom).toHaveText('100%')
   const risk = page.locator('.react-flow__node', { hasText: 'Risk client' }).first()
   const fraud = page.locator('.react-flow__node', { hasText: 'Fraud model' }).first()
   const label = page.locator('.dg-edge-label', { hasText: 'Interconnect' })
