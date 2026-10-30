@@ -20,10 +20,16 @@ function onBorder(point: { x: number; y: number }, box: { x: number; y: number; 
 }
 
 /** Inserts three cards in a row and connects the first to the last, past the middle one. */
-async function rowWithLongEdge(page: Page) {
+async function rowWithLongEdge(page: Page, { routeAround }: { routeAround: boolean }) {
   await page.goto('/')
   await page.getByRole('button', { name: 'New diagram' }).first().click()
   await expect(page.getByText('Start with a node')).toBeVisible()
+  if (routeAround) {
+    await page.getByRole('button', { name: 'Style and theme' }).click()
+    const option = page.getByRole('switch', { name: 'Route connections around nodes' })
+    await option.click()
+    await expect(option).toBeChecked()
+  }
   await insertAt(page, 500, 420, 'cache')
   const first = page.locator('.react-flow__node', { hasText: 'Cache' })
   let box = (await first.boundingBox())!
@@ -86,8 +92,28 @@ async function crosses(page: Page, node: Locator) {
   }, box)
 }
 
+async function clickAlong(page: Page, part: number) {
+  const point = await page.locator('.dg-edge-path').evaluate((element: SVGPathElement, at) => {
+    const matrix = element.getScreenCTM()!
+    const middle = element.getPointAtLength(element.getTotalLength() * at)
+    return {
+      x: matrix.a * middle.x + matrix.c * middle.y + matrix.e,
+      y: matrix.b * middle.x + matrix.d * middle.y + matrix.f,
+    }
+  }, part)
+  await page.mouse.click(point.x, point.y)
+}
+
+test('draws a connection between the facing sides by default, through the card between its ends', async ({ page }) => {
+  const middle = await rowWithLongEdge(page, { routeAround: false })
+  await expect.poll(() => crosses(page, middle)).toBe(true)
+  await clickAlong(page, 0.1)
+  await expect(page.getByRole('complementary', { name: 'Properties' })).toContainText('Connection')
+  await expect(page.locator('.dg-route-handle')).toHaveCount(0)
+})
+
 test('routes a connection around a card between its ends, also after the card moves', async ({ page }) => {
-  const middle = await rowWithLongEdge(page)
+  const middle = await rowWithLongEdge(page, { routeAround: true })
   await expect.poll(() => crosses(page, middle)).toBe(false)
 
   const box = (await middle.boundingBox())!
@@ -99,17 +125,9 @@ test('routes a connection around a card between its ends, also after the card mo
 })
 
 test('sets a route by hand with a segment handle, and resets it', async ({ page }) => {
-  await rowWithLongEdge(page)
+  await rowWithLongEdge(page, { routeAround: true })
   const path = page.locator('.dg-edge-path')
-  const point = await path.evaluate((element: SVGPathElement) => {
-    const matrix = element.getScreenCTM()!
-    const middle = element.getPointAtLength(element.getTotalLength() / 2)
-    return {
-      x: matrix.a * middle.x + matrix.c * middle.y + matrix.e,
-      y: matrix.b * middle.x + matrix.d * middle.y + matrix.f,
-    }
-  })
-  await page.mouse.click(point.x, point.y)
+  await clickAlong(page, 0.5)
   const properties = page.getByRole('complementary', { name: 'Properties' })
   await expect(properties.getByText('Goes around other nodes.', { exact: false })).toBeVisible()
 

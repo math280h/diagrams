@@ -3,8 +3,13 @@ import { followBends } from './bends'
 import { createEdge, defaultCardData, defaultGroupData } from './defaults'
 import type { DiagramEdge, DiagramNode } from './types'
 
-const card = (id: string, x: number, y: number): DiagramNode =>
-  ({ id, type: 'card', position: { x, y }, width: 200, data: defaultCardData({ title: id }) }) as DiagramNode
+const card = (id: string, x: number, y: number): DiagramNode => ({
+  id,
+  type: 'card',
+  position: { x, y },
+  width: 200,
+  data: defaultCardData({ title: id }),
+})
 const a = card('a', 0, 0)
 const b = card('b', 400, 200)
 const bent: DiagramEdge = {

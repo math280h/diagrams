@@ -40,6 +40,19 @@ describe('mermaidToDiagram', () => {
     expect(group?.type === 'group' && group.data).toMatchObject({ kind: 'gcp.project', label: 'rides-prod' })
   })
 
+  it('gives each edge an orthogonal route from the layout', async () => {
+    const diagram = await mermaidToDiagram(SOURCE, 'Shop')
+    for (const edge of diagram.edges) {
+      const route = edge.data.route ?? []
+      expect(route.length).toBeGreaterThanOrEqual(2)
+      for (let index = 1; index < route.length; index++) {
+        const a = route[index - 1]!
+        const b = route[index]!
+        expect(a.x === b.x || a.y === b.y).toBe(true)
+      }
+    }
+  })
+
   it('colours nodes and boundaries from classDef, class, ::: and style', async () => {
     const diagram = await mermaidToDiagram(
       `flowchart LR

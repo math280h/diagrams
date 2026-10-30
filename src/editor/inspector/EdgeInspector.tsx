@@ -107,6 +107,7 @@ function autoProtocolLabel(label: string): string {
 }
 
 export function EdgeInspector({ edges }: { edges: DiagramEdge[] }) {
+  const routeAround = useDoc((state) => state.theme.routeAround)
   const first = edges[0]
   if (!first?.data) return null
   const data = first.data
@@ -114,7 +115,7 @@ export function EdgeInspector({ edges }: { edges: DiagramEdge[] }) {
   const single = edges.length === 1
   const set = (patch: Partial<EdgeData>, key?: string) => updateEdgesData(ids, patch, key)
   const setTraffic = (patch: Partial<Traffic>, key?: string) => updateEdgesTraffic(ids, patch, key)
-  const routed = data.path === 'smooth' || data.path === 'step'
+  const routed = routeAround && (data.path === 'smooth' || data.path === 'step')
   const drawn = edges.some((edge) => (edge.data?.bends?.length ?? 0) > 0)
 
   return (

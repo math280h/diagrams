@@ -47,7 +47,11 @@ export async function placeTraceFlow(
     direction: 'RIGHT',
     layout,
   })
-  return { nodes: placed.added, edges: plan.edges, containers: placed.containers, flow: plan.flow }
+  const edges = plan.edges.map((edge): DiagramEdge => {
+    const route = placed.routes.get(edge.id)
+    return route && edge.data ? { ...edge, data: { ...edge.data, route } } : edge
+  })
+  return { nodes: placed.added, edges, containers: placed.containers, flow: plan.flow }
 }
 
 /**

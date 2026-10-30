@@ -105,6 +105,30 @@ export function edgePath(kind: EdgeData['path'], ends: EdgeEndpoints): [path: st
   }
 }
 
+/** The distance within which the end of a route counts as on a node border. */
+const ROUTE_TOLERANCE_PX = 4
+
+function touchesBorder(point: XY, rect: Rect) {
+  const inside =
+    point.x >= rect.x - ROUTE_TOLERANCE_PX &&
+    point.x <= rect.x + rect.width + ROUTE_TOLERANCE_PX &&
+    point.y >= rect.y - ROUTE_TOLERANCE_PX &&
+    point.y <= rect.y + rect.height + ROUTE_TOLERANCE_PX
+  const nearSide =
+    Math.abs(point.x - rect.x) <= ROUTE_TOLERANCE_PX ||
+    Math.abs(point.x - (rect.x + rect.width)) <= ROUTE_TOLERANCE_PX ||
+    Math.abs(point.y - rect.y) <= ROUTE_TOLERANCE_PX ||
+    Math.abs(point.y - (rect.y + rect.height)) <= ROUTE_TOLERANCE_PX
+  return inside && nearSide
+}
+
+/** Returns true if a layout route still starts on the source node and ends on the target node. */
+export function routeFits(route: readonly XY[], source: Rect, target: Rect): boolean {
+  const first = route[0]
+  const last = route.at(-1)
+  return route.length >= 2 && !!first && !!last && touchesBorder(first, source) && touchesBorder(last, target)
+}
+
 /**
  * Returns the points from a node border to just before a corner of a route drawn by hand, at right angles: the point on
  * the side that faces the corner, and a turn when the corner is not level with the node.

@@ -82,8 +82,15 @@ export function DiagramCanvas({
   const ownRef = useRef<HTMLDivElement>(null)
   const rootRef = givenRef ?? ownRef
   const mode = useMemo(
-    () => ({ editable, background: theme.background, openDiagram: onOpenDiagram, threats, snap: theme.snap }),
-    [editable, theme.background, onOpenDiagram, threats, theme.snap],
+    () => ({
+      editable,
+      background: theme.background,
+      openDiagram: onOpenDiagram,
+      threats,
+      snap: theme.snap,
+      routeAround: theme.routeAround,
+    }),
+    [editable, theme.background, onOpenDiagram, threats, theme.snap, theme.routeAround],
   )
   const [routes] = useState(createRouteStore)
   const [hover] = useState(createDetailsHover)
@@ -175,7 +182,7 @@ export function DiagramCanvas({
             {theme.background === 'grid' && (
               <Background variant={BackgroundVariant.Lines} gap={GRID_PX} lineWidth={1} color="var(--dg-grid-line)" />
             )}
-            <EdgeRouter store={routes} />
+            {theme.routeAround && <EdgeRouter store={routes} />}
             <EngineBinding rootRef={rootRef} />
             <ZoomProperty rootRef={rootRef} />
             {levelOfDetail && <LevelOfDetail rootRef={rootRef} />}

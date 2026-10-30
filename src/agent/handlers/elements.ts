@@ -86,8 +86,12 @@ export const addElements: ToolHandler<'add_elements'> = async (input, ctx) => {
     direction: input.direction ?? 'RIGHT',
     layout: ctx.layout,
   })
+  const routed = edges.map((edge): DiagramEdge => {
+    const route = placed.routes.get(edge.id)
+    return route && edge.data ? { ...edge, data: { ...edge.data, route } } : edge
+  })
   await commitEdit(ctx, diagramId, () => {
-    addNodes(placed.added, edges, false)
+    addNodes(placed.added, routed, false)
     fitGroupsToChildren(placed.containers)
   })
 

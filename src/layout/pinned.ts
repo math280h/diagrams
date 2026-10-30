@@ -2,6 +2,7 @@ import { absolutePosition, estimateSize, GROUP_PADDING_PX, groupRectAround, sort
 import { rectsOverlap, unionRects, type Rect } from '@/model/rect'
 import type { XY } from '@/model/schema'
 import type { DiagramEdge, DiagramNode } from '@/model/types'
+import { withRoute } from './apply-layout'
 
 /** The space that the layout keeps between a pinned node and a node that it moves away from it, in canvas pixels. */
 const CLEARANCE_PX = 48
@@ -38,12 +39,15 @@ function exit(rect: Rect, obstacle: Rect): XY {
  * The other nodes keep their arrangement from the layout. The arrangement moves so that the pinned nodes are near their
  * places in it, by the median offset of the pinned nodes. Each pinned node and everything in a pinned group then goes
  * back to its place, and the arranged nodes move out of its way. A group that holds a pinned node grows around it.
+ * An edge keeps its new route only if its two nodes moved by the same distance, and its old route if both are pinned.
  *
  * @param nodes - The nodes before the layout, with their places.
+ * @param edges - The edges before the layout, with their routes.
  * @param laidOut - The layout of the same nodes and edges.
  */
 export function keepPinned(
   nodes: readonly DiagramNode[],
+  edges: readonly DiagramEdge[],
   laidOut: { nodes: DiagramNode[]; edges: DiagramEdge[] },
 ): { nodes: DiagramNode[]; edges: DiagramEdge[] } {
   const before = new Map(nodes.map((node) => [node.id, node]))
@@ -144,5 +148,23 @@ export function keepPinned(
     return next
   })
 
-  return { nodes: resultNodes, edges: laidOut.edges }
+  const offsetOf = (id: string): XY | null => {
+    if (pinnedTree.has(id)) return null
+    const by = extra.get(id) ?? { x: 0, y: 0 }
+    return { x: shift.x + by.x, y: shift.y + by.y }
+  }
+  const oldEdges = new Map(edges.map((edge) => [edge.id, edge]))
+  const resultEdges = laidOut.edges.map((edge): DiagramEdge => {
+    if (pinnedTree.has(edge.source) && pinnedTree.has(edge.target))
+      return oldEdges.get(edge.id) ?? withRoute(edge, undefined)
+    const from = offsetOf(edge.source)
+    const to = offsetOf(edge.target)
+    const route = edge.data?.route
+    if (!from || !to || from.x !== to.x || from.y !== to.y || !route) return withRoute(edge, undefined)
+    return withRoute(
+      edge,
+      route.map((point) => ({ x: point.x + from.x, y: point.y + from.y })),
+    )
+  })
+  return { nodes: resultNodes, edges: resultEdges }
 }

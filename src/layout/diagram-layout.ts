@@ -1,6 +1,7 @@
 import { boundaryKind, boundaryKindLabel } from '@/model/boundaries'
 import { estimateSize, sortParentsFirst } from '@/model/graph'
 import type { DiagramEdge, DiagramNode, GroupNodeType } from '@/model/types'
+import { withRoute } from './apply-layout'
 import { keepPinned } from './pinned'
 import type { LayoutWorkerReply, LayoutWorkerRequest } from './layout.worker'
 import type { LayoutDirection, LayoutRequest, LayoutResponse } from './types'
@@ -9,7 +10,7 @@ export type { LayoutDirection } from './types'
 
 export interface LayoutResult {
   nodes: DiagramNode[]
-  /** The edges as they were: a layout moves nodes only. */
+  /** The edges, with the route of the layout on each edge that the layout routed. */
   edges: DiagramEdge[]
 }
 
@@ -75,10 +76,11 @@ function runLayout(request: LayoutRequest): Promise<LayoutResponse> {
 }
 
 /**
- * Computes new positions and group sizes in a worker.
+ * Computes new positions, group sizes and edge routes in a worker.
  *
- * Text nodes keep their positions. Group nodes get a new size around their children. Pinned nodes keep their places,
- * as {@link keepPinned} describes. The canvas routes the edges around the new positions.
+ * Text nodes keep their positions. Group nodes get a new size around their children. Each edge between two laid out
+ * nodes gets an orthogonal route in canvas coordinates, or loses its old route if the layout found none. Pinned nodes
+ * keep their places, as {@link keepPinned} describes.
  */
 export async function layoutDiagram(
   nodes: DiagramNode[],
@@ -100,6 +102,7 @@ export async function layoutDiagram(
     layerGapPx: layerGap(layoutEdges),
   })
   const placed = new Map(response.nodes.map((node) => [node.id, node]))
+  const routedIds = new Set(layoutEdges.map((edge) => edge.id))
 
   const laidOutGraph = {
     nodes: sortParentsFirst(
@@ -114,7 +117,7 @@ export async function layoutDiagram(
         return next
       }),
     ),
-    edges,
+    edges: edges.map((edge) => (routedIds.has(edge.id) ? withRoute(edge, response.routes[edge.id]) : edge)),
   }
-  return keepPinned(nodes, laidOutGraph)
+  return keepPinned(nodes, edges, laidOutGraph)
 }

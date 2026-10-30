@@ -23,6 +23,7 @@ import {
   manualRoute,
   middleSegments,
   positionSide,
+  routeFits,
   routePath,
   type EdgeEndpoints,
   type RouteSegment,
@@ -116,7 +117,7 @@ function SegmentHandle({
 export function FlowEdge(props: EdgeProps<DiagramEdge>) {
   const { id, source, target, data = FALLBACK_DATA, selected } = props
   const engine = useEngine()
-  const { editable, threats, snap } = useCanvasMode()
+  const { editable, threats, snap, routeAround } = useCanvasMode()
   const threat = threats?.get(id)
   const crossing = threat !== undefined && threat.boundaries.length > 0 ? 'true' : undefined
   const sourceNode = useInternalNode(source)
@@ -130,14 +131,22 @@ export function FlowEdge(props: EdgeProps<DiagramEdge>) {
   const orthogonal = ROUTED_PATHS.has(data.path)
   const bends = draft ?? data.bends
   const drawn =
-    orthogonal && bends?.length && sourceNode && targetNode
+    routeAround && orthogonal && bends?.length && sourceNode && targetNode
       ? manualRoute(internalRect(sourceNode), internalRect(targetNode), bends)
       : undefined
-  const route = drawn ?? (orthogonal ? automatic : undefined)
+  const laidOut =
+    !routeAround &&
+    auto &&
+    orthogonal &&
+    data.route &&
+    routeFits(data.route, internalRect(sourceNode), internalRect(targetNode))
+      ? data.route
+      : undefined
+  const route = drawn ?? (routeAround && orthogonal ? automatic : laidOut)
   const path =
     route && route.length >= 2 ? routePath(route, ROUTE_RADIUS[data.path] ?? 0) : edgePath(data.path, ends)[0]
   const table = useMemo(() => buildArcTable(path), [path])
-  const segments = editable && selected && route ? middleSegments(route) : []
+  const segments = routeAround && editable && selected && route ? middleSegments(route) : []
 
   useLayoutEffect(() => {
     engine.tables.set(id, table)

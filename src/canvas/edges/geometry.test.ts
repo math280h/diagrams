@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bendsWithSegmentAt, manualRoute, middleSegments, routePath } from './geometry'
+import { bendsWithSegmentAt, manualRoute, middleSegments, routeFits, routePath } from './geometry'
 
 const source = { x: 0, y: 0, width: 200, height: 60 }
 const target = { x: 400, y: 100, width: 200, height: 60 }
@@ -9,6 +9,25 @@ const route = [
   { x: 300, y: 130 },
   { x: 400, y: 130 },
 ]
+
+describe('routeFits', () => {
+  it('accepts a route whose ends touch both nodes', () => {
+    expect(routeFits(route, source, target)).toBe(true)
+  })
+
+  it('rejects a route after a node moved', () => {
+    expect(routeFits(route, source, { ...target, x: 480 })).toBe(false)
+    expect(routeFits(route, { ...source, y: 40 }, target)).toBe(false)
+  })
+
+  it('rejects a route that starts inside a node instead of on its border', () => {
+    expect(routeFits([{ x: 100, y: 30 }, ...route.slice(1)], source, target)).toBe(false)
+  })
+
+  it('rejects a route with fewer than two points', () => {
+    expect(routeFits([{ x: 200, y: 30 }], source, target)).toBe(false)
+  })
+})
 
 describe('manualRoute', () => {
   const bends = route.slice(1, -1)

@@ -159,16 +159,17 @@ describe('migrate', () => {
     ])
   })
 
-  it('drops the stored layout routes of version 15 edges, and keeps the rest of each edge', () => {
+  it('keeps the layout routes of version 15 edges, and does not route them around nodes', () => {
     const edge = createEdge('a', 'b', { label: 'SQL' })
     const route = [
       { x: 0, y: 0 },
       { x: 40, y: 0 },
     ]
-    const v15 = { ...createDiagram(), version: 15, edges: [{ ...edge, data: { ...edge.data, route } }] }
+    const { routeAround: _routeAround, ...theme } = createDiagram().theme
+    const v15 = { ...createDiagram(), version: 15, theme, edges: [{ ...edge, data: { ...edge.data, route } }] }
     const migrated = migrate(JSON.parse(JSON.stringify(v15)))
-    expect(migrated.edges[0]!.data).not.toHaveProperty('route')
-    expect(migrated.edges[0]!.data).toMatchObject({ label: 'SQL', path: 'smooth' })
+    expect(migrated.theme.routeAround).toBe(false)
+    expect(migrated.edges[0]!.data!.route).toEqual(route)
   })
 
   it('turns off the step numbers of version 14 flows', () => {

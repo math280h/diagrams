@@ -8,25 +8,25 @@ walks a user through the system with a camera that follows them.
 
 ## Stack and why
 
-| Area            | Choice                                                               | Reason                                                                                                                                                         |
-| --------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Build           | Vite 8 (Rolldown, Oxc), `@vitejs/plugin-react` 6, React Compiler 1.0 | Fast HMR; the compiler removes manual memoization in a heavy editor.                                                                                           |
-| Language        | TypeScript 7                                                         | Native compiler, fast `tsc -b`.                                                                                                                                |
-| Canvas          | `@xyflow/react` 12 (MIT)                                             | Nodes are plain React and HTML, so cards get full CSS control. tldraw needs a paid licence or a watermark. Excalidraw has a hand-drawn look.                   |
-| UI              | Tailwind 4, shadcn CLI 4 with Base UI, lucide icons                  | Owned, accessible components with tokens in CSS variables.                                                                                                     |
-| State           | zustand 5 + immer 11                                                 | One central document store. Immutable snapshots make undo cheap.                                                                                               |
-| Validation      | zod 4                                                                | Validates stored and imported data, with versioned migrations.                                                                                                 |
-| Routing         | TanStack Router, hash history                                        | Typed params, and deep links work on any static host.                                                                                                          |
-| Motion          | Own rAF engine for the canvas, `motionValue` from `motion` 14        | The canvas engine needs real elapsed time and frame-exact control for export. Motion's frame loop limits each step to 40 ms.                                   |
-| Layout          | elkjs 0.12 and an own grid in a web worker; an own edge router       | ELK layers suit flows. Groups that ELK stacks badly go in a grid. The router on the canvas keeps edges out of nodes and of groups that do not hold their ends. |
-| Image export    | `@zumer/snapdom` 3.3                                                 | Best maintained DOM capture; embeds fonts.                                                                                                                     |
-| Video export    | mediabunny 1.61 (MP4 H.264, WebM VP9)                                | WebCodecs muxer that replaces `mp4-muxer` and `webm-muxer`.                                                                                                    |
-| GIF export      | modern-gif 2.1                                                       | Maintained encoder with a worker.                                                                                                                              |
-| Mermaid import  | `mermaid` 12, loaded on demand                                       | `getDiagramFromText` + `db.getData()` parse flowcharts without a render.                                                                                       |
-| Lint and format | oxlint (type-aware), oxfmt                                           | Rust speed, create-vite default.                                                                                                                               |
-| Tests           | Vitest 5 (node and Chromium browser mode), Playwright                | Real browser for Mermaid and export.                                                                                                                           |
-| Desktop         | Electron 45, main and preload built with Vite                        | The same Chromium as the tests on every platform, so WebCodecs export and snapdom capture behave as in the browser. Node runs the agent server.                |
-| Agent server    | `@vitemcp/server` (MCP over HTTP), hono                              | Tools come from the zod schemas. The same loopback server also takes diagrams that the website hands over.                                                     |
+| Area            | Choice                                                               | Reason                                                                                                                                          |
+| --------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Build           | Vite 8 (Rolldown, Oxc), `@vitejs/plugin-react` 6, React Compiler 1.0 | Fast HMR; the compiler removes manual memoization in a heavy editor.                                                                            |
+| Language        | TypeScript 7                                                         | Native compiler, fast `tsc -b`.                                                                                                                 |
+| Canvas          | `@xyflow/react` 12 (MIT)                                             | Nodes are plain React and HTML, so cards get full CSS control. tldraw needs a paid licence or a watermark. Excalidraw has a hand-drawn look.    |
+| UI              | Tailwind 4, shadcn CLI 4 with Base UI, lucide icons                  | Owned, accessible components with tokens in CSS variables.                                                                                      |
+| State           | zustand 5 + immer 11                                                 | One central document store. Immutable snapshots make undo cheap.                                                                                |
+| Validation      | zod 4                                                                | Validates stored and imported data, with versioned migrations.                                                                                  |
+| Routing         | TanStack Router, hash history                                        | Typed params, and deep links work on any static host.                                                                                           |
+| Motion          | Own rAF engine for the canvas, `motionValue` from `motion` 14        | The canvas engine needs real elapsed time and frame-exact control for export. Motion's frame loop limits each step to 40 ms.                    |
+| Layout          | elkjs 0.12 and an own grid and edge router, in a web worker          | ELK layers suit flows. Groups that ELK stacks badly go in a grid, and the router keeps edges out of groups that do not hold their ends.         |
+| Image export    | `@zumer/snapdom` 3.3                                                 | Best maintained DOM capture; embeds fonts.                                                                                                      |
+| Video export    | mediabunny 1.61 (MP4 H.264, WebM VP9)                                | WebCodecs muxer that replaces `mp4-muxer` and `webm-muxer`.                                                                                     |
+| GIF export      | modern-gif 2.1                                                       | Maintained encoder with a worker.                                                                                                               |
+| Mermaid import  | `mermaid` 12, loaded on demand                                       | `getDiagramFromText` + `db.getData()` parse flowcharts without a render.                                                                        |
+| Lint and format | oxlint (type-aware), oxfmt                                           | Rust speed, create-vite default.                                                                                                                |
+| Tests           | Vitest 5 (node and Chromium browser mode), Playwright                | Real browser for Mermaid and export.                                                                                                            |
+| Desktop         | Electron 45, main and preload built with Vite                        | The same Chromium as the tests on every platform, so WebCodecs export and snapdom capture behave as in the browser. Node runs the agent server. |
+| Agent server    | `@vitemcp/server` (MCP over HTTP), hono                              | Tools come from the zod schemas. The same loopback server also takes diagrams that the website hands over.                                      |
 
 Ruled out:
 
@@ -62,8 +62,8 @@ The visual system lives in `DESIGN.md` at the repository root.
   or `secret`) to body fields. Version 14 added `cameraStyle` (`frame`, `follow` or `still`) and `cameraMotion`
   (`gentle`, `quick` or `slow`) to flows; the migration gives earlier flows the frame camera with the gentle motion.
   Version 15 added overview steps (a step `target` of kind `flow` with an empty id) and `stepNumbers` to flows; the
-  migration turns the numbers off for earlier flows. Version 16 removed `route`, the stored path of the last layout,
-  because the canvas routes edges itself, and added the optional `bends` of a route that a person drew to edges.
+  migration turns the numbers off for earlier flows. Version 16 added `routeAround` to the theme, off for earlier
+  diagrams and by default, and the optional `bends` of a route that a person drew to edges.
 - Groups are boundaries. A group's `kind` points into the catalogue in `src/model/boundaries.ts`:
   AWS, Azure, Google Cloud, Kubernetes and general kinds, plus the custom group. Each kind has a
   family (scope, logical, location, zone, network, subnet, security, runtime) that sets its line
@@ -80,7 +80,8 @@ The visual system lives in `DESIGN.md` at the repository root.
 - Nodes separate from the ground by their fill; the outline is only a quiet edge. Outlines that
   carried all of the separation made every element sit on one plane.
 - New edges route at right angles with rounded corners (`smooth`). Bezier curves read as a React
-  Flow demo. `smooth` and `step` edges go around the nodes between their ends (see "Edge routing").
+  Flow demo. With the diagram setting `routeAround`, `smooth` and `step` edges go around the nodes between their ends
+  (see "Routing on the canvas").
 - An edge has a protocol: HTTP, RPC, database or messaging. With `auto`, `detectProtocol` reads it
   from the label ("HTTPS", "gRPC", "SQL", "publish"); the properties panel can set it. Each protocol
   colours the line, the arrow, the traffic and the label. The diagram setting `protocolColors`
@@ -579,39 +580,51 @@ Pinned nodes keep their places (`keepPinned` in `src/layout/pinned.ts`, at the e
 layout runs as usual and the result moves by the median offset of the pinned nodes, so that the arrangement sits
 where the pinned nodes are. Then each pinned node, and everything in a pinned group, goes back to its place. Level by
 level from the deepest group, the other nodes move out of the way of the pinned nodes and of each other, along the
-shorter way out; a group that holds a pinned node does not move and grows around it. The canvas routes the edges
-around the new places. In the editor a pinned node shows a pin mark; exports and the player show nothing.
+shorter way out; a group that holds a pinned node does not move and grows around it. An edge keeps its new route only
+if both of its nodes moved by the same distance, and its old route if both are pinned; the rest go back to the
+facing-sides path. In the editor a pinned node shows a pin mark; exports and the player show nothing.
 
-### Edge routing
+A grid layout needs its own edge routes, because ELK only routes the graphs that it lays out.
+`router.ts` routes on a sparse orthogonal grid: the lines at a clearance from each node, the node
+centres, and the middle of each gap. A* search with costs for length, bends and segments that
+earlier routes use finds each route, from the nearest edge to the farthest. A group blocks every
+route except those with an end inside it. Then nudging moves overlapping parallel segments apart,
+in the order with the fewest crossings, as far as the nearby nodes allow.
 
-`router.ts` routes edges at right angles on a sparse orthogonal grid: the lines at a clearance from each node, the
-node centres, and the middle of each gap. A* search with costs for length, bends and segments that earlier routes use
-finds each route, from the nearest edge to the farthest. A group blocks every route except those with an end inside
-it. An edge with fixed sides starts and ends on those sides. Then nudging moves overlapping parallel segments apart, in
-the order with the fewest crossings, as far as the nearby nodes allow.
+Both kinds of routes go in `edge.data.route` as canvas coordinates. An edge with automatic sides and
+a `smooth` or `step` path follows its route while the first and last points still touch its two
+nodes (`routeFits`). After a node moves, its edges go back to the facing-sides path, so no action
+has to clear routes. Without routes, edges ran behind the nodes between their ends, and every edge
+met a node at the middle of its side. Agent placement keeps the routes inside a block of new nodes;
+it snaps the block origin to the grid, not each node, because a snapped node would no longer touch
+its route.
 
-The canvas runs the router itself (`EdgeRouter` in `src/canvas/edges/routing.ts`), in the editor, Present, previews and
-every export, for each `smooth` or `step` edge. Curves and straight lines keep their own shape.
+### Routing on the canvas
 
-- Before, the layout stored its routes in the edges, and an edge followed its route only while both ends still touched
-  its nodes. After any move it went back to a path between the facing sides, which ran through the nodes between its
-  ends; a hand-made diagram had no routes at all. Measured on the templates in the editor: as shipped no edge passed
-  through a node, but after one drag of the card in the middle of each template, 9 of 180 edges did, in 9 of the 13
-  templates. With routing on the canvas, none do. The layout no longer returns routes, and version 16 of the format
-  drops the stored ones.
+The diagram setting "Route connections around nodes" (`theme.routeAround`) makes the canvas run the router itself
+(`EdgeRouter` in `src/canvas/edges/routing.ts`), in the editor, Present, previews and every export, for each `smooth`
+or `step` edge. Curves and straight lines keep their own shape. The canvas then ignores the routes of the layout. An edge
+with fixed sides starts and ends on those sides.
+
+- It is off by default and for diagrams from before version 16, so that existing diagrams and templates keep the
+  routes that they were arranged with. Measured on the templates in the editor: with it off, as shipped no edge passes
+  through a node, and after one drag of the card in the middle of each template 9 of 180 edges do, in 9 of the 13
+  templates. With it on, none do.
 - The full routing takes about 19 ms for Multi-cloud platform (55 nodes, 38 edges) and under 8 ms for every other
   template. It runs when a node, its size, a parent or a routed edge changes; panning and zooming do not run it. While
   a drag moves nodes, the router routes only the edges of the moving nodes and the edges whose route comes within
-  24 px of them, once for each animation frame, and routes all edges again after the drop.
+  24 px of them, once for each animation frame (about 4 ms on Multi-cloud platform), and routes all edges again after
+  the drop.
 - The routes go to a small store (`RouteStore`). Each edge reads its own route with `useSyncExternalStore`, and an
   unchanged route keeps its array, so a drag renders only the edges whose routes change.
-- A person can set a route by hand: a selected `smooth` or `step` edge shows a handle on each segment that touches
-  no node, and a drag moves the segment across its direction (to the grid when snapping is on). The edge then keeps
-  the corners of its route in `bends`, and the router leaves it out. Its ends attach at right angles to the sides of
-  its nodes that face the first and the last corner (`manualRoute`), so the route follows its nodes when they move.
-  When both ends move by the same distance, as in a drag of both or of their group, or a nudge with the arrow keys,
-  the corners move with them (`followBends`). Tidy up and agent layouts keep the corners of edges whose ends kept
-  their places or moved together, and remove the others. Reset route in the properties panel removes them.
+- With the setting on, a person can set a route by hand: a selected `smooth` or `step` edge shows a handle on each
+  segment that touches no node, and a drag moves the segment across its direction (to the grid when snapping is on).
+  The edge then keeps the corners of its route in `bends`, and the router leaves it out. Its ends attach at right
+  angles to the sides of its nodes that face the first and the last corner (`manualRoute`), so the route follows its
+  nodes when they move. When both ends move by the same distance, as in a drag of both or of their group, or a nudge
+  with the arrow keys, the corners move with them (`followBends`). Tidy up and agent layouts keep the corners of edges
+  whose ends kept their places or moved together, and remove the others. Reset route in the properties panel removes
+  them. With the setting off, the canvas keeps the corners but does not draw them.
 
 ### Portals
 
@@ -1030,8 +1043,8 @@ the handoff from the website, and updates from GitHub Releases.
   (`untilStored`): at once in the browser, after the file write on the desktop. A failed write
   becomes a tool error, so the agent can tell the user; the change stays in the editor. The
   handoff from the website waits the same way before it answers.
-- `layout_diagram` and Tidy up lay out a copy in the worker, then apply the positions and group sizes
-  to the diagram as it is then (`applyLayoutResult`). Changes made meanwhile stay.
+- `layout_diagram` and Tidy up lay out a copy in the worker, then apply the positions, group sizes
+  and routes to the diagram as it is then (`applyLayoutResult`). Changes made meanwhile stay.
 - The groups that get new nodes grow around their children when the change commits
   (`fitGroupsToChildren`), from the diagram as it is then. Everything in a group keeps its place on
   the canvas, also when the group grows to the left or up and its origin moves.

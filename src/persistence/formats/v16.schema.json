@@ -35,9 +35,12 @@
         },
         "protocolColors": {
           "type": "boolean"
+        },
+        "routeAround": {
+          "type": "boolean"
         }
       },
-      "required": ["mode", "fonts", "background", "snap", "boundaryColors", "protocolColors"],
+      "required": ["mode", "fonts", "background", "snap", "boundaryColors", "protocolColors", "routeAround"],
       "additionalProperties": false
     },
     "nodes": {
@@ -634,6 +637,22 @@
                 },
                 "required": ["enabled", "direction", "style", "density", "speed", "size"],
                 "additionalProperties": false
+              },
+              "route": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    }
+                  },
+                  "required": ["x", "y"],
+                  "additionalProperties": false
+                }
               },
               "bends": {
                 "type": "array",
