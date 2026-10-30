@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync } from 'node:fs'
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { chromium } from '@playwright/test'
 import { preview } from 'vite'
@@ -12,11 +12,26 @@ const PHONE = { width: 390, height: 844 }
 const LAPTOP = { width: 1280, height: 720 }
 const READY_MS = 30_000
 const SETTLE_MS = 400
+const STEADY_INTERVAL_MS = 150
+const STEADY_TIMEOUT_MS = 10_000
+const HIDE_TRAFFIC = '.dg-traffic { visibility: hidden !important; }'
 
 async function capture(page, name, theme) {
   await page.evaluate(() => document.fonts.ready)
   await page.waitForTimeout(SETTLE_MS)
-  await page.screenshot({ path: path.join(out, `${name}.${theme}.png`), animations: 'disabled', caret: 'hide' })
+  const shoot = () => page.screenshot({ animations: 'disabled', caret: 'hide', style: HIDE_TRAFFIC })
+  const deadline = Date.now() + STEADY_TIMEOUT_MS
+  let previous = await shoot()
+  for (;;) {
+    await page.waitForTimeout(STEADY_INTERVAL_MS)
+    const next = await shoot()
+    if (next.equals(previous) || Date.now() > deadline) {
+      if (!next.equals(previous)) console.log(`::warning::The ${name}.${theme} screen kept changing.`)
+      writeFileSync(path.join(out, `${name}.${theme}.png`), next)
+      return
+    }
+    previous = next
+  }
 }
 
 async function captureWholePage(page, name, theme) {
@@ -114,6 +129,7 @@ const server = await preview({
   preview: { host: '127.0.0.1', port: Number(portArg), strictPort: true },
 })
 const url = server.resolvedUrls.local[0]
+const origin = new URL(url).origin
 const browser = await chromium.launch()
 try {
   for (const theme of ['dark', 'light']) {
@@ -128,6 +144,10 @@ try {
         colorScheme: theme,
         reducedMotion: 'reduce',
       })
+      await context.route(
+        (address) => address.origin !== origin,
+        (route) => route.abort(),
+      )
       const page = await context.newPage()
       await take(page, url, theme)
       await context.close()

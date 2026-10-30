@@ -1,6 +1,6 @@
 import { deflateSync } from 'node:zlib'
 import { describe, expect, it } from 'vitest'
-import { changedRegions, cropRows, decodePng, drawBoxes, encodePng, samePixels, viewRows } from './png.mjs'
+import { changedRegions, cropRows, decodePng, drawBoxes, encodePng, samePixels, sameScreen, viewRows } from './png.mjs'
 
 function chunk(type, data) {
   const length = Buffer.alloc(4)
@@ -70,6 +70,26 @@ describe('png', () => {
     const line = png(20, [row(20, [200, 200, 200, 255]), row(20, WHITE)])
     expect(samePixels(base, line, 8, 2)).toBe(false)
     expect(samePixels(base, line)).toBe(false)
+  })
+
+  it('counts stray pixels in several places as the same screen, and a changed area as different', () => {
+    const size = 200
+    const blank = Array.from({ length: size }, () => Array.from({ length: size }, () => WHITE))
+    const withPixels = (points) =>
+      png(
+        size,
+        blank.map((row, y) => row.map((color, x) => (points.some(([px, py]) => px === x && py === y) ? BLACK : color))),
+      )
+    const base = withPixels([])
+    const strays = withPixels(
+      [10, 100, 190].flatMap((x) => Array.from({ length: 8 }, (_, index) => [x, 20 + index * 20])),
+    )
+    expect(samePixels(base, strays)).toBe(false)
+    expect(sameScreen(base, strays)).toBe(true)
+    const block = withPixels(
+      Array.from({ length: 100 }, (_, index) => [50 + (index % 10), 50 + Math.floor(index / 10)]),
+    )
+    expect(sameScreen(base, block)).toBe(false)
   })
 
   it('writes a PNG that it reads back, with alpha only when a pixel is not opaque', () => {
