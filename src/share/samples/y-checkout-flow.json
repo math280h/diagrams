@@ -1,0 +1,574 @@
+{
+  "id": "d_sample",
+  "name": "Sample 0: wolf tuokcehC",
+  "version": 15,
+  "theme": {
+    "mode": "auto",
+    "fonts": "host",
+    "background": "dots",
+    "snap": true,
+    "boundaryColors": true,
+    "protocolColors": true
+  },
+  "nodes": [
+    {
+      "id": "n_0",
+      "position": {
+        "x": 0,
+        "y": 192
+      },
+      "width": 132,
+      "height": 52,
+      "zIndex": 1000,
+      "type": "shape",
+      "data": {
+        "shape": "pill",
+        "label": "Sample 1: tisiV",
+        "icon": "",
+        "color": "neutral",
+        "fill": "tint",
+        "details": {
+          "description": "",
+          "owner": "",
+          "links": []
+        }
+      }
+    },
+    {
+      "id": "n_1",
+      "position": {
+        "x": 208,
+        "y": 176
+      },
+      "width": 216,
+      "zIndex": 1000,
+      "type": "card",
+      "data": {
+        "form": "client",
+        "title": "Sample 2: egap tcudorP",
+        "icon": "package",
+        "color": "neutral",
+        "lines": [
+          {
+            "id": "l_0",
+            "text": "/p/aurora-lamp"
+          }
+        ],
+        "meter": null,
+        "meterText": "",
+        "status": "none",
+        "badge": "",
+        "details": {
+          "description": "",
+          "owner": "",
+          "links": []
+        }
+      }
+    },
+    {
+      "id": "n_2",
+      "position": {
+        "x": 560,
+        "y": 176
+      },
+      "width": 216,
+      "zIndex": 1000,
+      "type": "card",
+      "data": {
+        "form": "client",
+        "title": "Sample 3: traC",
+        "icon": "shopping-cart",
+        "color": "neutral",
+        "lines": [
+          {
+            "id": "l_1",
+            "text": "/cart"
+          }
+        ],
+        "meter": null,
+        "meterText": "",
+        "status": "none",
+        "badge": "",
+        "details": {
+          "description": "",
+          "owner": "",
+          "links": []
+        }
+      }
+    },
+    {
+      "id": "n_3",
+      "position": {
+        "x": 864,
+        "y": 160
+      },
+      "width": 128,
+      "height": 128,
+      "zIndex": 1000,
+      "type": "shape",
+      "data": {
+        "shape": "diamond",
+        "label": "Sample 4: ?ni dengiS",
+        "icon": "",
+        "color": "neutral",
+        "fill": "tint",
+        "details": {
+          "description": "",
+          "owner": "",
+          "links": []
+        }
+      }
+    },
+    {
+      "id": "n_4",
+      "position": {
+        "x": 1072,
+        "y": 16
+      },
+      "width": 216,
+      "zIndex": 1000,
+      "type": "card",
+      "data": {
+        "form": "client",
+        "title": "Sample 5: ni ngiS",
+        "icon": "key-round",
+        "color": "neutral",
+        "lines": [
+          {
+            "id": "l_2",
+            "text": "email + passkey"
+          }
+        ],
+        "meter": null,
+        "meterText": "",
+        "status": "none",
+        "badge": "",
+        "details": {
+          "description": "",
+          "owner": "",
+          "links": []
+        }
+      }
+    },
+    {
+      "id": "n_5",
+      "position": {
+        "x": 1072,
+        "y": 336
+      },
+      "width": 216,
+      "zIndex": 1000,
+      "type": "card",
+      "data": {
+        "form": "client",
+        "title": "Sample 6: tnemyaP",
+        "icon": "credit-card",
+        "color": "neutral",
+        "lines": [
+          {
+            "id": "l_3",
+            "text": "card or wallet"
+          }
+        ],
+        "meter": null,
+        "meterText": "",
+        "status": "none",
+        "badge": "",
+        "details": {
+          "description": "",
+          "owner": "",
+          "links": []
+        }
+      }
+    },
+    {
+      "id": "n_6",
+      "position": {
+        "x": 1392,
+        "y": 352
+      },
+      "width": 132,
+      "height": 52,
+      "zIndex": 1000,
+      "type": "shape",
+      "data": {
+        "shape": "pill",
+        "label": "Sample 7: decalp redrO",
+        "icon": "",
+        "color": "neutral",
+        "fill": "tint",
+        "details": {
+          "description": "",
+          "owner": "",
+          "links": []
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_0",
+      "type": "flow",
+      "source": "n_0",
+      "target": "n_1",
+      "data": {
+        "path": "smooth",
+        "stroke": "solid",
+        "width": 1.25,
+        "label": "",
+        "labelPosition": 0.5,
+        "markerStart": "none",
+        "markerEnd": "arrow",
+        "ports": false,
+        "sides": "auto",
+        "protocol": "auto",
+        "traffic": {
+          "enabled": false,
+          "direction": "forward",
+          "style": "dots",
+          "density": 1.4,
+          "speed": 80,
+          "size": 1.5
+        }
+      }
+    },
+    {
+      "id": "e_1",
+      "type": "flow",
+      "source": "n_1",
+      "target": "n_2",
+      "data": {
+        "path": "smooth",
+        "stroke": "solid",
+        "width": 1.25,
+        "label": "Sample 8: trac ot ddA",
+        "labelPosition": 0.5,
+        "markerStart": "none",
+        "markerEnd": "arrow",
+        "ports": false,
+        "sides": "auto",
+        "protocol": "auto",
+        "traffic": {
+          "enabled": false,
+          "direction": "forward",
+          "style": "dots",
+          "density": 1.4,
+          "speed": 80,
+          "size": 1.5
+        }
+      }
+    },
+    {
+      "id": "e_2",
+      "type": "flow",
+      "source": "n_2",
+      "target": "n_3",
+      "data": {
+        "path": "smooth",
+        "stroke": "solid",
+        "width": 1.25,
+        "label": "Sample 9: tuokcehC",
+        "labelPosition": 0.5,
+        "markerStart": "none",
+        "markerEnd": "arrow",
+        "ports": false,
+        "sides": "auto",
+        "protocol": "auto",
+        "traffic": {
+          "enabled": false,
+          "direction": "forward",
+          "style": "dots",
+          "density": 1.4,
+          "speed": 80,
+          "size": 1.5
+        }
+      }
+    },
+    {
+      "id": "e_3",
+      "type": "flow",
+      "source": "n_3",
+      "target": "n_4",
+      "data": {
+        "path": "smooth",
+        "stroke": "solid",
+        "width": 1.25,
+        "label": "Sample a: on",
+        "labelPosition": 0.5,
+        "markerStart": "none",
+        "markerEnd": "arrow",
+        "ports": false,
+        "sides": "auto",
+        "protocol": "auto",
+        "traffic": {
+          "enabled": false,
+          "direction": "forward",
+          "style": "dots",
+          "density": 1.4,
+          "speed": 80,
+          "size": 1.5
+        }
+      }
+    },
+    {
+      "id": "e_4",
+      "type": "flow",
+      "source": "n_3",
+      "target": "n_5",
+      "data": {
+        "path": "smooth",
+        "stroke": "solid",
+        "width": 1.25,
+        "label": "Sample b: sey",
+        "labelPosition": 0.5,
+        "markerStart": "none",
+        "markerEnd": "arrow",
+        "ports": false,
+        "sides": "auto",
+        "protocol": "auto",
+        "traffic": {
+          "enabled": false,
+          "direction": "forward",
+          "style": "dots",
+          "density": 1.4,
+          "speed": 80,
+          "size": 1.5
+        }
+      }
+    },
+    {
+      "id": "e_5",
+      "type": "flow",
+      "source": "n_4",
+      "target": "n_5",
+      "data": {
+        "path": "smooth",
+        "stroke": "dashed",
+        "width": 1.25,
+        "label": "",
+        "labelPosition": 0.5,
+        "markerStart": "none",
+        "markerEnd": "arrow",
+        "ports": false,
+        "sides": "auto",
+        "protocol": "auto",
+        "traffic": {
+          "enabled": false,
+          "direction": "forward",
+          "style": "dots",
+          "density": 1.4,
+          "speed": 80,
+          "size": 1.5
+        }
+      }
+    },
+    {
+      "id": "e_6",
+      "type": "flow",
+      "source": "n_5",
+      "target": "n_6",
+      "data": {
+        "path": "smooth",
+        "stroke": "solid",
+        "width": 1.25,
+        "label": "",
+        "labelPosition": 0.5,
+        "markerStart": "none",
+        "markerEnd": "arrow",
+        "ports": false,
+        "sides": "auto",
+        "protocol": "auto",
+        "traffic": {
+          "enabled": false,
+          "direction": "forward",
+          "style": "dots",
+          "density": 1.4,
+          "speed": 80,
+          "size": 1.5
+        }
+      }
+    }
+  ],
+  "flows": [
+    {
+      "id": "f_0",
+      "name": "Sample c: remotsuc gninruteR",
+      "steps": [
+        {
+          "id": "s_0",
+          "target": {
+            "kind": "node",
+            "id": "n_0"
+          },
+          "caption": "Sample d: .da hcraes a morf sdnal remotsuc gninruter A",
+          "event": "Sample e: hcraes=ecruos_mtu",
+          "latencyMs": null,
+          "level": "info",
+          "durationMs": 1300,
+          "camera": "follow",
+          "zoom": 1.15
+        },
+        {
+          "id": "s_1",
+          "target": {
+            "kind": "edge",
+            "id": "e_0"
+          },
+          "caption": "",
+          "event": "Sample f: pmal-arorua/p/ TEG",
+          "latencyMs": null,
+          "level": "info",
+          "durationMs": 1300,
+          "camera": "follow",
+          "zoom": 1.1
+        },
+        {
+          "id": "s_2",
+          "target": {
+            "kind": "node",
+            "id": "n_1"
+          },
+          "caption": "Sample g: .egap tcudorp eht nepo yehT",
+          "event": "Sample h: tcudorp weiv",
+          "latencyMs": null,
+          "level": "info",
+          "durationMs": 1500,
+          "camera": "follow",
+          "zoom": 1.1
+        },
+        {
+          "id": "s_3",
+          "target": {
+            "kind": "edge",
+            "id": "e_1"
+          },
+          "caption": "Sample i: trac ot ddA",
+          "event": "Sample j: smeti/trac/ TSOP",
+          "latencyMs": null,
+          "level": "info",
+          "durationMs": 1300,
+          "camera": "follow",
+          "zoom": 1.1
+        },
+        {
+          "id": "s_4",
+          "target": {
+            "kind": "node",
+            "id": "n_2"
+          },
+          "caption": "Sample k: .smeti owt swohs trac ehT",
+          "event": "Sample l: trac weiv",
+          "latencyMs": null,
+          "level": "info",
+          "durationMs": 1400,
+          "camera": "follow",
+          "zoom": 1.1
+        },
+        {
+          "id": "s_5",
+          "target": {
+            "kind": "edge",
+            "id": "e_2"
+          },
+          "caption": "",
+          "event": "Sample m: tuokcehC kcilc",
+          "latencyMs": null,
+          "level": "info",
+          "durationMs": 1300,
+          "camera": "follow",
+          "zoom": 1.1
+        },
+        {
+          "id": "s_6",
+          "target": {
+            "kind": "node",
+            "id": "n_3"
+          },
+          "caption": "Sample n: .noisses eht skcehc ppa ehT",
+          "event": "Sample o: noisses/ TEG",
+          "latencyMs": null,
+          "level": "info",
+          "durationMs": 1300,
+          "camera": "follow",
+          "zoom": 1.1
+        },
+        {
+          "id": "s_7",
+          "target": {
+            "kind": "edge",
+            "id": "e_4"
+          },
+          "caption": "Sample p: .deppiks si ni-ngis os ,dilav si noisses ehT",
+          "event": "Sample q: ni dengis 002",
+          "latencyMs": null,
+          "level": "info",
+          "durationMs": 1300,
+          "camera": "follow",
+          "zoom": 1.1
+        },
+        {
+          "id": "s_8",
+          "target": {
+            "kind": "node",
+            "id": "n_5"
+          },
+          "caption": "Sample r: .tellaw devas a htiw yap yehT",
+          "event": "Sample s: tellaw htiw yap",
+          "latencyMs": null,
+          "level": "info",
+          "durationMs": 1600,
+          "camera": "follow",
+          "zoom": 1.1
+        },
+        {
+          "id": "s_9",
+          "target": {
+            "kind": "edge",
+            "id": "e_6"
+          },
+          "caption": "",
+          "event": "Sample t: sredro/ TSOP",
+          "latencyMs": null,
+          "level": "info",
+          "durationMs": 1300,
+          "camera": "follow",
+          "zoom": 1.1
+        },
+        {
+          "id": "s_a",
+          "target": {
+            "kind": "node",
+            "id": "n_6"
+          },
+          "caption": "Sample u: .sdnoces 14 ni decalp redrO",
+          "event": "Sample v: decalp redro",
+          "latencyMs": null,
+          "level": "info",
+          "durationMs": 2000,
+          "camera": "follow",
+          "zoom": 1
+        }
+      ],
+      "tracks": [],
+      "token": {
+        "label": "Sample w: remotsuC",
+        "icon": "",
+        "shape": "chip"
+      },
+      "spotlight": true,
+      "loop": false,
+      "bodies": true,
+      "cameraStyle": "frame",
+      "stepNumbers": false,
+      "cameraMotion": "gentle"
+    }
+  ],
+  "viewport": {
+    "x": 0,
+    "y": 0,
+    "zoom": 1
+  },
+  "rev": 0,
+  "createdAt": 0,
+  "updatedAt": 0
+}

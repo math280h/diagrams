@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 import { copyTemplate } from './helpers'
 
@@ -8,7 +9,7 @@ test('shares a diagram as a link that plays it and saves a copy', async ({ page 
   await page.getByRole('button', { name: 'Export' }).click()
   await page.getByRole('menuitem', { name: 'Share link' }).click()
   const link = page.getByRole('textbox', { name: 'Share link' })
-  await expect(link).toHaveValue(/^http:\/\/127\.0\.0\.1:5173\/#\/s\/z[\w-]+$/)
+  await expect(link).toHaveValue(/^http:\/\/127\.0\.0\.1:5173\/#\/s\/y[\w-]+x$/, { timeout: 15_000 })
   const url = await link.inputValue()
 
   const viewer = await page.context().newPage()
@@ -25,7 +26,15 @@ test('shares a diagram as a link that plays it and saves a copy', async ({ page 
 })
 
 test('explains a share link that is cut off', async ({ page }) => {
-  await page.goto('/#/s/zAbCdEf')
-  await expect(page.getByText('This link cannot be opened')).toBeVisible()
-  await expect(page.getByText('This link is not complete.')).toBeVisible()
+  for (const data of ['zAbCdEf', 'yAbCdEf']) {
+    await page.goto(`/#/s/${data}`)
+    await expect(page.getByText('This link cannot be opened')).toBeVisible()
+    await expect(page.getByText('This link is not complete.')).toBeVisible()
+  }
+})
+
+test('opens a share link from an earlier version', async ({ page }) => {
+  await page.goto(`/#/s/${readFileSync('src/share/samples/z-checkout-flow.txt', 'utf8').trim()}`)
+  await expect(page.getByRole('heading', { name: 'Checkout flow' })).toBeVisible()
+  await expect(page.locator('.react-flow__node')).toHaveCount(7)
 })
