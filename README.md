@@ -41,7 +41,7 @@ computer.
 - **Version history**: see how a diagram looked earlier, including each change that an agent made, and restore any
   version.
 - **Local first**: the website keeps diagrams in your browser. Export a diagram file (JSON) to move it to another
-  browser.
+  browser. On a tablet, install the website as an app that opens from the home screen and works without internet.
 - **Desktop app and AI agents**: the desktop app keeps diagrams as files, and AI agents such as Claude Code can draw,
   animate and render diagrams in it while you watch. An agent can draw a diagram from Terraform, docker-compose or
   Kubernetes files, and later check the diagram against them and report what is missing or gone.

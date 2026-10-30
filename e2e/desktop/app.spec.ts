@@ -129,6 +129,15 @@ test('serves the player files that the web page export puts in a page', async ({
   expect(files.every(({ size }) => size > 1000)).toBe(true)
 })
 
+test('registers no service worker and offers no install of the website', async ({ window }) => {
+  await expect(window.getByRole('button', { name: 'New diagram' })).toBeVisible()
+  const registrations = await window.evaluate(async () =>
+    'serviceWorker' in navigator ? (await navigator.serviceWorker.getRegistrations().catch(() => [])).length : 0,
+  )
+  expect(registrations).toBe(0)
+  await expect(window.getByRole('region', { name: 'Install Diagrams on this device' })).toHaveCount(0)
+})
+
 test('holds the playing template while the window is minimized or hidden', async ({ app, window }) => {
   const report = (visible: boolean) =>
     app.evaluate(

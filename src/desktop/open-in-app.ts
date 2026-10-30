@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { browserDeviceKind } from '@/lib/device'
 import type { Diagram } from '@/model/schema'
 import { isDesktop } from './bridge'
 import {
@@ -12,50 +13,13 @@ import {
   RANDOM_KEY_BYTES,
 } from './constants'
 
-const MOBILE = /Android|iPhone|iPad|iPod|Mobile/i
-
 type HandoffResult =
   | { ok: true; diagramId: string; name: string }
   | { ok: false; reason: 'unreachable' | 'refused'; message: string }
 
-interface BrowserDevice {
-  userAgent: string
-  maxTouchPoints: number
-  /** True if the primary pointer is a finger, as the `(pointer: coarse)` media query tells. */
-  coarsePointer: boolean
-  /** True if the browser has `window.orientation`. */
-  windowOrientation: boolean
-}
-
-/** Returns true for a browser on a computer that runs the desktop app, and false on phones, tablets and Android. */
-export function isDesktopComputer({
-  userAgent,
-  maxTouchPoints,
-  coarsePointer,
-  windowOrientation,
-}: BrowserDevice): boolean {
-  if (MOBILE.test(userAgent)) return false
-  const fingerFirst = maxTouchPoints > 0 && coarsePointer
-  // iPadOS Safari sends the user agent of a Mac.
-  if (/Macintosh/.test(userAgent)) return !fingerFirst
-  // Chrome on large tablets and on Android computers sends the user agent of a Linux computer.
-  // Of the browsers with a Linux user agent, only the Android browsers have window.orientation.
-  if (/Linux/.test(userAgent)) return !fingerFirst && !windowOrientation
-  return true
-}
-
-/** Returns true where the website can hand a diagram to the desktop app: a desktop browser. */
+/** Returns true where the website can hand a diagram to the desktop app: a browser on a computer. */
 export function canOpenInApp() {
-  return (
-    !isDesktop() &&
-    typeof window !== 'undefined' &&
-    isDesktopComputer({
-      userAgent: navigator.userAgent,
-      maxTouchPoints: navigator.maxTouchPoints,
-      coarsePointer: matchMedia('(pointer: coarse)').matches,
-      windowOrientation: 'orientation' in window,
-    })
-  )
+  return !isDesktop() && browserDeviceKind() === 'computer'
 }
 
 function newHandoffCode(): string {
