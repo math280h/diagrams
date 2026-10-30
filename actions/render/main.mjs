@@ -22,7 +22,7 @@ import {
   renderOptions,
   splitCommand,
 } from './lib.mjs'
-import { changedRegions, cropRows, decodePng, drawBoxes, encodePng, samePixels, viewRows } from './png.mjs'
+import { changedRegions, cropRows, decodePng, drawBoxes, encodePng, sameScreen, viewRows } from './png.mjs'
 
 const APP_REPOSITORY = 'math280h/diagrams'
 const DEFAULT_PATTERN = '**/*.diagram.json'
@@ -355,7 +355,7 @@ function compareScreens(previews, firstIndex) {
       return
     }
     copyFileSync(path.join(inputs.baseScreens, name), path.join(previews, before))
-    const same = samePixels(readFileSync(path.join(previews, before)), readFileSync(path.join(previews, after)))
+    const same = sameScreen(readFileSync(path.join(previews, before)), readFileSync(path.join(previews, after)))
     console.log(`${same ? 'Same screen' : 'Different screen'}: ${name}`)
     if (!same) entries.push({ file, before, after })
   })

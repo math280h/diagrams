@@ -488,3 +488,16 @@ export function samePixels(a, b, tolerance = 8, strayPixels = 16) {
   }
   return true
 }
+
+/**
+ * Returns true if two PNG images show no change that {@link changedRegions} marks. Scattered stray pixels can be more
+ * than {@link samePixels} accepts, but no group of them is large enough for a rectangle.
+ */
+export function sameScreen(a, b) {
+  if (samePixels(a, b)) return true
+  const first = decodePng(a)
+  const second = decodePng(b)
+  if (first.width !== second.width) return false
+  const regions = changedRegions(first, second)
+  return regions.before.length === 0 && regions.after.length === 0
+}
