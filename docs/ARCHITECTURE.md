@@ -785,18 +785,40 @@ every release. It also lists, marked Preview:
 ### Share links
 
 The Share link tab of the export dialog makes a link that carries the whole diagram, so people share a diagram that
-plays without an account, a server or a file (`src/share/share-link.ts`).
+plays without an account, a server or a file (`src/share/share-link.ts`). The link code is our own, so it adds no
+dependency and no licence.
 
-- The data after `#/s/` is the diagram JSON without its id, timestamps and save counter, compressed with raw deflate
-  (`CompressionStream`) and written in base64url. The first character names the encoding (`z`), so a later encoding
-  can come in next to it.
-- Random ids such as `n_4k2j9x0q7a` do not compress, and a diagram names each node many times: in edges, flow steps
-  and parents. The link writes short ids such as `n_3` in the id fields (`id`, `source`, `target`, `parentId`) only,
-  so text that looks like an id stays as it is. `share-link.test.ts` checks that the Order system link stays below
-  half of `LONG_LINK_CHARS`. Above that limit the tab says that some chat apps and mail programs cut such links.
+- The data after `#/s/` starts with a letter that names its format. `y` is the current one; `z` (raw deflate through
+  `CompressionStream`) still opens, and `samples/z-checkout-flow.txt` with its test makes sure that it does.
+- A `y` link carries the diagram JSON without its id, timestamps and save counter (`linkJson`), in four steps:
+  - **Implicit ids** (`link-ids.ts`). Random ids such as `n_4k2j9x0q7a` do not compress, and a diagram names each node
+    many times. Each id in the id keys (`id`, `source`, `target`, `parentId`, `fromStep`, `rejoinStep`) becomes its
+    prefix and a number in the order of its first `id`, such as `n_3`. That first `id` keeps only `n_`, because the
+    order gives the number back. Text outside the id keys stays as it is, and other values in the id keys that look
+    like such ids get an escape `~`. A test checks that the templates and the newest format sample keep their ids
+    only in these keys, so a new field that holds ids cannot go missing from the list.
+  - **A context model** (`link-model.ts`) predicts each bit of the JSON from several contexts: the last 1, 2, 3, 4
+    and 6 bytes, the current word, the current JSON key, the key with the word, and the longest earlier match. A
+    mixer learns how much to trust each one, two refinement stages correct it, and a binary arithmetic coder writes
+    the bits. It uses integers only, and its curve is a table in the code, so every engine gives the same bytes.
+  - **A dictionary** (`link-dictionary.txt`, about 158 KB). Both ends first train the model on the JSON of every
+    template, so even the first byte of a link has good statistics. A template link takes a few hundred characters.
+    When each template was left out of its own dictionary, as for a new diagram, the links of all templates were
+    about two thirds shorter than with deflate. `node scripts/link-dictionary.mjs` made the
+    file from the templates. The file is frozen, and a test checks its hash, because a changed dictionary or model
+    gives old links other bytes. Such a change needs a new format letter.
+  - **A frame**: the JSON length as a varint and a 16-bit FNV-1a checksum before the coded bytes, base64url, and the
+    letter `x` at the end. So a cut-off or damaged link says so, and a link never ends in a character such as `_`
+    that Markdown and chat apps leave out of a link.
+- Training on the dictionary takes most of the time, about 0.3 s on a desktop. So the browser runs the model in a
+  module worker (`link-worker.ts`); Node and the tests run it in the same thread. A link holds at most
+  `MAX_LINK_JSON_BYTES` of JSON, which also limits the work that a damaged link can cause.
+- `samples/y-checkout-flow.json` and `.txt` pin the format: the test codes that diagram and expects exactly that link,
+  on every operating system in CI.
+- `share-link.test.ts` checks that the Order system with its own text stays below an eighth of `LONG_LINK_CHARS`.
+  Above that limit the tab says that some chat apps and mail programs cut such links.
 - The data is in the fragment, so a browser never sends it to the site. The shared page decodes it, brings it
-  through the migrations and plays it in `PlayerStage`; Save a copy stores it as a new diagram. A cut-off or damaged
-  link says so.
+  through the migrations and plays it in `PlayerStage`; Save a copy stores it as a new diagram.
 - The desktop app makes links to the website (`WEBSITE_ORIGIN`); the website makes links to its own address, so the
   preview site shares preview links.
 

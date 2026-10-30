@@ -4,6 +4,7 @@ import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/cli
 import { _electron as electron } from '@playwright/test'
 import { IPC_CHANNELS } from '@/desktop/contract'
 import { AGENT_ENDPOINT } from '@/desktop/constants'
+import { copyTemplate } from '../helpers'
 import { agentUrl, callTool, diagramFile, expect, test } from './fixtures'
 
 test('keeps diagrams as files in the diagrams folder', async ({ window, dirs }) => {
@@ -156,4 +157,19 @@ test('holds the playing template while the window is minimized or hidden', async
   await expect(caption).toHaveText(held!)
   await report(true)
   await expect(caption).not.toHaveText(held!, { timeout: 6000 })
+})
+
+test('makes a share link for the website and opens such a link itself', async ({ window }) => {
+  await copyTemplate(window, 'Checkout flow')
+  await window.getByRole('button', { name: 'Export' }).click()
+  await window.getByRole('menuitem', { name: 'Share link' }).click()
+  const link = window.getByRole('textbox', { name: 'Share link' })
+  await expect(link).toHaveValue(/^https:\/\/draw\.thias\.dev\/#\/s\/y[\w-]+x$/, { timeout: 15_000 })
+  const data = (await link.inputValue()).split('#/s/')[1]!
+  await window.keyboard.press('Escape')
+  await window.evaluate((hash) => {
+    location.hash = hash
+  }, `#/s/${data}`)
+  await expect(window.getByRole('heading', { name: 'Checkout flow' })).toBeVisible()
+  await expect(window.locator('.react-flow__node')).toHaveCount(7)
 })
