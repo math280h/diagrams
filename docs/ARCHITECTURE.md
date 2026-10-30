@@ -1000,6 +1000,12 @@ So a Mac or Linux user agent with a touch screen whose primary pointer is a fing
 tablet. A MacBook or Linux laptop with a touch screen keeps the offer, because its primary pointer is
 the trackpad. Windows keeps the offer on every device, because Windows tablets run the app.
 
+- A keyboard with a trackpad does not change this. Chromium on Android and WebKit on iPadOS keep the
+  touch screen as the primary pointer; the trackpad adds only to `any-pointer`.
+- Chrome on an Android computer (Samsung DeX, Android PC builds) also sends a Linux user agent, but
+  makes the mouse the primary pointer. A Linux user agent with `window.orientation` counts as Android:
+  Chrome and Firefox expose it only on Android, in every mode. The touch test stays as a second check.
+
 ### Command-line render
 
 `--render <file> --out <file>` makes the desktop app render a diagram file to a PNG, SVG, GIF, MP4 or WebM file and

@@ -23,13 +23,24 @@ interface BrowserDevice {
   maxTouchPoints: number
   /** True if the primary pointer is a finger, as the `(pointer: coarse)` media query tells. */
   coarsePointer: boolean
+  /** True if the browser has `window.orientation`. */
+  windowOrientation: boolean
 }
 
-/** Returns true for a browser on a computer that runs the desktop app, and false on phones and tablets. */
-export function isDesktopComputer({ userAgent, maxTouchPoints, coarsePointer }: BrowserDevice): boolean {
+/** Returns true for a browser on a computer that runs the desktop app, and false on phones, tablets and Android. */
+export function isDesktopComputer({
+  userAgent,
+  maxTouchPoints,
+  coarsePointer,
+  windowOrientation,
+}: BrowserDevice): boolean {
   if (MOBILE.test(userAgent)) return false
-  // iPadOS Safari sends the user agent of a Mac. Chrome on large Android tablets sends that of a Linux computer.
-  if (/Macintosh|Linux/.test(userAgent)) return !(maxTouchPoints > 0 && coarsePointer)
+  const fingerFirst = maxTouchPoints > 0 && coarsePointer
+  // iPadOS Safari sends the user agent of a Mac.
+  if (/Macintosh/.test(userAgent)) return !fingerFirst
+  // Chrome on large tablets and on Android computers sends the user agent of a Linux computer.
+  // Of the browsers with a Linux user agent, only the Android browsers have window.orientation.
+  if (/Linux/.test(userAgent)) return !fingerFirst && !windowOrientation
   return true
 }
 
@@ -42,6 +53,7 @@ export function canOpenInApp() {
       userAgent: navigator.userAgent,
       maxTouchPoints: navigator.maxTouchPoints,
       coarsePointer: matchMedia('(pointer: coarse)').matches,
+      windowOrientation: 'orientation' in window,
     })
   )
 }

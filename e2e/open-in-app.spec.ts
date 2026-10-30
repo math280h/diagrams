@@ -87,6 +87,18 @@ for (const device of PHONES_AND_TABLETS) {
   })
 }
 
+test.describe('an Android computer with a mouse', () => {
+  test.use({ userAgent: LINUX_CHROME })
+
+  test('does not offer the desktop app on an Android computer with a mouse', async ({ page }) => {
+    // Chrome on Android has window.orientation in every mode. Desktop Chromium has it only under mobile emulation.
+    await page.addInitScript(() => Object.defineProperty(window, 'orientation', { value: 0 }))
+    await page.goto('/')
+    await expect(page.getByRole('heading', { name: 'Keep diagrams with your code' })).toBeAttached()
+    await expect(page.getByRole('heading', { name: 'Let an AI agent draw with you' })).toHaveCount(0)
+  })
+})
+
 for (const { name, userAgent, touchPoints } of [
   { name: 'a Mac', userAgent: MAC_SAFARI, touchPoints: 0 },
   { name: 'a MacBook with a touch screen', userAgent: MAC_SAFARI, touchPoints: 10 },

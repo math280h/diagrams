@@ -8,14 +8,15 @@ const CHROME_ANDROID = 'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537
 const SAFARI_IPHONE =
   'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148'
 
-const mouse = { maxTouchPoints: 0, coarsePointer: false }
-const touchScreenWithTrackpad = { maxTouchPoints: 10, coarsePointer: false }
-const finger = { maxTouchPoints: 5, coarsePointer: true }
+const mouse = { maxTouchPoints: 0, coarsePointer: false, windowOrientation: false }
+const touchScreenWithTrackpad = { maxTouchPoints: 10, coarsePointer: false, windowOrientation: false }
+const tablet = { maxTouchPoints: 5, coarsePointer: true, windowOrientation: true }
+const androidWithMouse = { maxTouchPoints: 0, coarsePointer: false, windowOrientation: true }
 
 describe('isDesktopComputer', () => {
   it('accepts computers, also with a touch screen', () => {
     expect(isDesktopComputer({ userAgent: CHROME_WINDOWS, ...mouse })).toBe(true)
-    expect(isDesktopComputer({ userAgent: CHROME_WINDOWS, ...finger })).toBe(true)
+    expect(isDesktopComputer({ userAgent: CHROME_WINDOWS, ...tablet })).toBe(true)
     expect(isDesktopComputer({ userAgent: SAFARI_MAC, ...mouse })).toBe(true)
     expect(isDesktopComputer({ userAgent: SAFARI_MAC, ...touchScreenWithTrackpad })).toBe(true)
     expect(isDesktopComputer({ userAgent: CHROME_LINUX, ...mouse })).toBe(true)
@@ -23,12 +24,17 @@ describe('isDesktopComputer', () => {
   })
 
   it('refuses phones and tablets that name themselves', () => {
-    expect(isDesktopComputer({ userAgent: SAFARI_IPHONE, ...finger })).toBe(false)
-    expect(isDesktopComputer({ userAgent: CHROME_ANDROID, ...finger })).toBe(false)
+    expect(isDesktopComputer({ userAgent: SAFARI_IPHONE, ...tablet })).toBe(false)
+    expect(isDesktopComputer({ userAgent: CHROME_ANDROID, ...tablet })).toBe(false)
   })
 
   it('refuses tablets that send the user agent of a computer', () => {
-    expect(isDesktopComputer({ userAgent: SAFARI_MAC, ...finger })).toBe(false)
-    expect(isDesktopComputer({ userAgent: CHROME_LINUX, ...finger })).toBe(false)
+    expect(isDesktopComputer({ userAgent: SAFARI_MAC, ...tablet, windowOrientation: false })).toBe(false)
+    expect(isDesktopComputer({ userAgent: CHROME_LINUX, ...tablet })).toBe(false)
+    expect(isDesktopComputer({ userAgent: CHROME_LINUX, ...tablet, windowOrientation: false })).toBe(false)
+  })
+
+  it('refuses Android computers that send the user agent of a Linux computer', () => {
+    expect(isDesktopComputer({ userAgent: CHROME_LINUX, ...androidWithMouse })).toBe(false)
   })
 })
