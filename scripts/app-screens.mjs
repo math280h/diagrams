@@ -57,6 +57,13 @@ async function desktopScreens(page, url, theme) {
   await copyOrderSystem(page, url)
   await capture(page, 'editor', theme)
 
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('tab', { name: 'This diagram' }).waitFor()
+  await capture(page, 'settings-diagram', theme)
+  await page.getByRole('tab', { name: 'App' }).click()
+  await capture(page, 'settings-app', theme)
+  await page.keyboard.press('Escape')
+
   await page.locator('.react-flow__node', { hasText: 'Postgres' }).first().click()
   await capture(page, 'editor-node', theme)
 
