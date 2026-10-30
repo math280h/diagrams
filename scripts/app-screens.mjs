@@ -19,6 +19,22 @@ async function capture(page, name, theme) {
   await page.screenshot({ path: path.join(out, `${name}.${theme}.png`), animations: 'disabled', caret: 'hide' })
 }
 
+async function captureWholePage(page, name, theme) {
+  const viewport = page.viewportSize()
+  const hiddenPx = await page.locator('main').evaluate((element) => element.scrollHeight - element.clientHeight)
+  await page.setViewportSize({ width: viewport.width, height: viewport.height + hiddenPx })
+  await page.waitForFunction(
+    () =>
+      [...document.querySelectorAll('[class~="aspect-[16/10]"]')].every((frame) =>
+        frame.querySelector('.dg-preview'),
+      ) && [...document.querySelectorAll('.dg-preview > div')].every((canvas) => canvas.style.opacity === '1'),
+    null,
+    { timeout: READY_MS },
+  )
+  await capture(page, name, theme)
+  await page.setViewportSize(viewport)
+}
+
 async function copyOrderSystem(page, url) {
   await page.goto(`${url}#/`)
   await page
@@ -32,7 +48,7 @@ async function copyOrderSystem(page, url) {
 async function desktopScreens(page, url, theme) {
   await page.goto(`${url}#/`)
   await page.locator('.dg-preview .react-flow__node').first().waitFor({ timeout: READY_MS })
-  await capture(page, 'library', theme)
+  await captureWholePage(page, 'library', theme)
 
   await page.goto(`${url}#/t/order-system`)
   await page.locator('.react-flow__node').first().waitFor({ timeout: READY_MS })
@@ -78,7 +94,7 @@ async function laptopScreens(page, url, theme) {
 async function phoneScreens(page, url, theme) {
   await page.goto(`${url}#/`)
   await page.locator('.dg-preview .react-flow__node').first().waitFor({ timeout: READY_MS })
-  await capture(page, 'phone-library', theme)
+  await captureWholePage(page, 'phone-library', theme)
 
   await copyOrderSystem(page, url)
   await capture(page, 'phone-editor', theme)
