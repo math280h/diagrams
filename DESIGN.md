@@ -340,7 +340,7 @@ The protocol palette. Each protocol has a wire value (line, arrowhead) and a bri
 
 ### High contrast
 
-A setting of the viewer, not of the diagram: Contrast (System, Standard, High) in the App section of the properties panel, and "High contrast canvas" in the library theme menu and the command menu. System follows the "more contrast" setting of the operating system. It changes canvases on screen and the colour swatches; exports keep the standard colours. The values are under `[data-contrast='more']` in `src/styles/canvas.css`.
+A setting of the viewer, not of the diagram: Contrast (System, Standard, High) on the App tab of Settings, and "High contrast canvas" in the library theme menu and the command menu. System follows the "more contrast" setting of the operating system. It changes canvases on screen and the colour swatches; exports keep the standard colours. The values are under `[data-contrast='more']` in `src/styles/canvas.css`.
 
 - Every text colour reaches 7:1 (WCAG AAA) on Ground, Node Fill, Canvas Raised and a coloured card. Standard colours reach 4.5:1.
 - Node Line, Strong Line, Edge, Edge Strong, Signal Blue, the protocol wires and coloured card outlines reach 4.5:1 on Ground and Node Fill. Dim Line reaches 3:1, so idle nodes in a flow still show.

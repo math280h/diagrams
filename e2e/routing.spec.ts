@@ -25,7 +25,7 @@ async function rowWithLongEdge(page: Page, { routeAround }: { routeAround: boole
   await page.getByRole('button', { name: 'New diagram' }).first().click()
   await expect(page.getByText('Start with a node')).toBeVisible()
   if (routeAround) {
-    await page.getByRole('button', { name: 'Style and theme' }).click()
+    await page.getByRole('button', { name: 'Settings' }).click()
     const option = page.getByRole('switch', { name: 'Route connections around nodes' })
     await option.click()
     await expect(option).toBeChecked()

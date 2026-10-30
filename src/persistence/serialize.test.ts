@@ -169,7 +169,7 @@ describe('migrate', () => {
     const v15 = { ...createDiagram(), version: 15, theme, edges: [{ ...edge, data: { ...edge.data, route } }] }
     const migrated = migrate(JSON.parse(JSON.stringify(v15)))
     expect(migrated.theme.routeAround).toBe(false)
-    expect(migrated.edges[0]!.data!.route).toEqual(route)
+    expect(migrated.edges[0]!.data?.route).toEqual(route)
   })
 
   it('turns off the step numbers of version 14 flows', () => {

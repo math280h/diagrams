@@ -12,7 +12,8 @@ test('follows the system contrast, keeps a choice after a reload, and exports th
   const card = page.locator('[data-editor-canvas] .dg-card').first()
   const highOutline = await card.evaluate((element) => getComputedStyle(element).borderTopColor)
 
-  await page.getByRole('button', { name: 'Style and theme' }).click()
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('tab', { name: 'App' }).click()
   const contrast = page.getByRole('group', { name: 'Canvas contrast' })
   await contrast.getByRole('button', { name: 'Standard' }).click()
   await expect(canvas).not.toHaveAttribute('data-contrast')
