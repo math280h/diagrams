@@ -192,4 +192,24 @@ describe('marked images', () => {
     expect(viewRows([{ x: 0, y: 400, width: 10, height: 20 }], 1000, limits)).toEqual({ top: 360, height: 100 })
     expect(viewRows([{ x: 0, y: 100, width: 10, height: 800 }], 1000, limits)).toEqual({ top: 90, height: 300 })
   })
+
+  it('shows as many whole changes as fit, and ends the rows before a change that does not fit', () => {
+    const limits = { marginPx: 10, minHeightPx: 100, maxHeightPx: 300 }
+    const fitting = [
+      { x: 0, y: 100, width: 10, height: 100 },
+      { x: 0, y: 240, width: 10, height: 40 },
+      { x: 0, y: 350, width: 10, height: 100 },
+    ]
+    expect(viewRows(fitting, 1000, limits)).toEqual({ top: 90, height: 200 })
+    const short = [
+      { x: 0, y: 100, width: 10, height: 20 },
+      { x: 0, y: 160, width: 10, height: 400 },
+    ]
+    expect(viewRows(short, 1000, limits)).toEqual({ top: 53, height: 100 })
+    const close = [
+      { x: 0, y: 100, width: 10, height: 100 },
+      { x: 0, y: 240, width: 10, height: 400 },
+    ]
+    expect(viewRows(close, 1000, { ...limits, marginPx: 50 })).toEqual({ top: 50, height: 183 })
+  })
 })

@@ -1179,10 +1179,12 @@ images current without a person. `main.mjs` does the work in Node, and `lib.mjs`
   the corners of the logo and a button), and the nearest boxes merge until at most 8 are left on each image. A change
   that only one image has gives the other image a box without height at its place, which draws nothing but moves the
   cut-out there. An outline that would leave the image stays at its edge, so a box as wide as the page shows its sides.
-- An image that would be more than 1000 px tall in the comment, such as a whole library page, shows only the rows with
-  its changes (at most 800 px tall in the comment), and links the whole image. Each side is cut out around its own
-  boxes, because a change can sit at another height on each image. Whole pages side by side made the comment several
-  screens long, and a change was hard to find in them.
+- An image that would be more than 1000 px tall in the comment, such as a whole library page, shows only some rows
+  (at most 800 px tall in the comment): from its first change, as many whole boxes as fit, and it ends above the
+  outline of the next box. Only a first box taller than that is cut. The link under it opens the whole image and says
+  how many changes are outside the rows. Each side is cut out around its own boxes, because a change can sit at another
+  height on each image. Rows from the first to the last change cut a box that did not fit in half, and whole pages side
+  by side made the comment several screens long.
 - The featured stage and the template cards frame their diagram after the fonts load, and again when the measured
   node sizes change. Before, a font that arrived after the first measure left a frame for the fallback font, and two
   screens of the library differed by a few pixels.

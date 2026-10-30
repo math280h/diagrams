@@ -309,7 +309,11 @@ function markChanges(previews, entry) {
       maxHeightPx: VIEW_SHOWN_PX.maxHeightPx * scale,
     })
     const view = cropRows(image, rows.top, rows.height)
-    if (view.height < image.height) marked[`${side}View`] = writeImage(previews, `${folder}/${side}.view.png`, view)
+    if (view.height >= image.height) continue
+    marked[`${side}View`] = writeImage(previews, `${folder}/${side}.view.png`, view)
+    marked[`${side}Hidden`] = regions[side].filter(
+      (region) => region.height > 0 && (region.y < rows.top || region.y + region.height > rows.top + rows.height),
+    ).length
   }
   return { entry: marked, boxed }
 }

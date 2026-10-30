@@ -88,11 +88,19 @@ describe('render action', () => {
           after: 'https://x/after.marked.png',
           afterView: 'https://x/after.view.png',
         },
+        {
+          file: 'app/phone-library.dark.png',
+          before: 'https://x/2/before.marked.png',
+          after: 'https://x/2/after.marked.png',
+          afterView: 'https://x/2/after.view.png',
+          afterHidden: 3,
+        },
       ],
     })
     expect(body).toContain(
       '| `app/library.dark.png` | <img src="https://x/before.marked.png" alt="Before" width="420"> | <img src="https://x/after.view.png" alt="After, part of the image" width="420"><br><a href="https://x/after.marked.png">Whole image</a> |',
     )
+    expect(body).toContain('<a href="https://x/2/after.marked.png">Whole image, 3 more changes</a>')
   })
 
   it('writes a comment without a table when no diagram changed', () => {

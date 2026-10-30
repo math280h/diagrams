@@ -7,6 +7,8 @@ const CRC_TABLE = Array.from({ length: 256 }, (_, index) => {
   return value >>> 0
 })
 const BOX_COLOR = [229, 72, 77]
+const BOX_LINE_PX = 3
+const BOX_PADDING_PX = 4
 const UP_FILTER = 2
 
 /**
@@ -397,7 +399,7 @@ export function changedRegions(
  *
  * @param paddingPx - The space between a rectangle and its outline.
  */
-export function drawBoxes(image, regions, { lineWidthPx = 3, paddingPx = 4 } = {}) {
+export function drawBoxes(image, regions, { lineWidthPx = BOX_LINE_PX, paddingPx = BOX_PADDING_PX } = {}) {
   const pixels = new Uint8ClampedArray(image.pixels)
   const paint = (x, y) => pixels.set([...BOX_COLOR, 255], (y * image.width + x) * 4)
   for (const region of regions) {
@@ -433,20 +435,33 @@ export function cropRows(image, top, height) {
 }
 
 /**
- * Returns the rows of a tall image to show: the rows of the changes with a margin, at least `minHeightPx` and at most
- * `maxHeightPx` of them. Without changes, it gives the top rows.
+ * Returns the rows of a tall image to show: from the first change, as many whole changes as fit in `maxHeightPx`
+ * rows, each with a margin, and at least `minHeightPx` rows. A change that does not fit stays out of the rows, so the
+ * rows never end in a box. Only a first change that is taller than `maxHeightPx` is cut. Without changes, it gives the
+ * top rows.
  */
 export function viewRows(regions, imageHeight, { marginPx, minHeightPx, maxHeightPx }) {
   if (regions.length === 0) return { top: 0, height: Math.min(imageHeight, maxHeightPx) }
-  const first = Math.min(...regions.map((region) => region.y))
-  const last = Math.max(...regions.map((region) => region.y + region.height))
-  let top = Math.max(0, first - marginPx)
-  let height = Math.min(imageHeight, last + marginPx) - top
-  if (height < minHeightPx) {
-    top = Math.max(0, Math.min(imageHeight - minHeightPx, top - (minHeightPx - height) / 2))
-    height = Math.min(imageHeight - top, minHeightPx)
+  const sorted = regions.toSorted((first, second) => first.y - second.y)
+  const top = Math.max(0, sorted[0].y - marginPx)
+  let bottom = Math.min(imageHeight, top + maxHeightPx, sorted[0].y + sorted[0].height + marginPx)
+  let limit = imageHeight
+  for (const region of sorted.slice(1)) {
+    const end = region.y + region.height + marginPx
+    if (end - top > maxHeightPx) {
+      const outlineTop = region.y - BOX_PADDING_PX - BOX_LINE_PX
+      const firstOutlineBottom = sorted[0].y + sorted[0].height + BOX_PADDING_PX + BOX_LINE_PX
+      bottom = Math.min(imageHeight, Math.max(firstOutlineBottom, Math.min(bottom, outlineTop)))
+      limit = Math.max(bottom, outlineTop)
+      break
+    }
+    bottom = Math.max(bottom, Math.min(imageHeight, end))
   }
-  return { top: Math.round(top), height: Math.round(Math.min(height, maxHeightPx)) }
+  if (bottom - top >= minHeightPx) return { top: Math.round(top), height: Math.round(bottom - top) }
+  let start = Math.max(0, top - (minHeightPx - (bottom - top)) / 2)
+  const end = Math.min(limit, start + minHeightPx)
+  start = Math.max(0, Math.min(start, end - minHeightPx))
+  return { top: Math.round(start), height: Math.round(end - start) }
 }
 
 /**
