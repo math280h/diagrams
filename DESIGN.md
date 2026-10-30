@@ -302,7 +302,7 @@ A black, grey and white ramp carries all structure; one signal blue and four pro
 ### Primary
 
 - **Signal Blue** (signal): the walkthrough on edges without a protocol, the token dot and chip before the first protocol hop, the active node ring (border plus a 1 px ring), the active and hovered boundary outline at 2 px, the active log dot, the caption step badge, the flow dot in the library stage header, the focus outline, the caret, the text selection tint (34% mix) and the token in the app mark and favicon. Text on it uses Signal Ink.
-- **Signal Ink** (signal-ink): white text on Signal Blue in both themes.
+- **Signal Ink** (signal-ink): white text on Signal Blue in both themes; black in the dark high-contrast canvas.
 
 ### Secondary
 
@@ -337,6 +337,17 @@ The protocol palette. Each protocol has a wire value (line, arrowhead) and a bri
 - **Text** (text): primary text, the primary button fill, the dashed selection outline.
 - **Muted** (muted): secondary text, node detail lines, edge labels, pending log lines, icons.
 - **Faint** (faint): idle node text in a flow, least important metadata.
+
+### High contrast
+
+A setting of the viewer, not of the diagram: Contrast (System, Standard, High) in the App section of the properties panel, and "High contrast canvas" in the library theme menu and the command menu. System follows the "more contrast" setting of the operating system. It changes canvases on screen and the colour swatches; exports keep the standard colours. The values are under `[data-contrast='more']` in `src/styles/canvas.css`.
+
+- Every text colour reaches 7:1 (WCAG AAA) on Ground, Node Fill, Canvas Raised and a coloured card. Standard colours reach 4.5:1.
+- Node Line, Strong Line, Edge, Edge Strong, Signal Blue, the protocol wires and coloured card outlines reach 4.5:1 on Ground and Node Fill. Dim Line reaches 3:1, so idle nodes in a flow still show.
+- Node Fill moves closer to Ground, so the outline separates a node, not the fill.
+- Hues stay. A light value is the same hue at a lower OKLCH lightness. In dark, Signal Blue is lighter (#5e97ff) and Signal Ink is black.
+- Dimmed parts stay readable: nodes outside the explored neighbourhood at 45 % (standard 16 %), connections without sensitive data in the threat view at 50 % (25 %), and the art of idle nodes in a flow at 70 % (40 %).
+- `src/styles/contrast.browser.test.ts` checks every pair in both themes and both contrasts.
 
 ### Named Rules
 

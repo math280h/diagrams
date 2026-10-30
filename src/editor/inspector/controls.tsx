@@ -16,7 +16,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { swatchColor } from '@/canvas/canvas-theme'
 import { cn } from '@/lib/utils'
 import { COLOR_NAMES, COLORS, type Color } from '@/model/colors'
-import { useResolvedAppTheme } from '@/store/settings-store'
+import { useHighContrast, useResolvedAppTheme } from '@/store/settings-store'
 
 export function Section({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   return (
@@ -228,10 +228,12 @@ function Swatches({
   children?: ReactNode
 }) {
   const theme = useResolvedAppTheme()
+  const highContrast = useHighContrast()
   return (
     <ToggleGroup
       aria-label="Colour"
       data-theme={theme}
+      data-contrast={highContrast ? 'more' : undefined}
       value={value === null ? [] : [value]}
       onValueChange={(next) => {
         if (next[0] !== undefined) onChange(next[0])

@@ -32,6 +32,7 @@ Also:
 - **Tidy up.** Lay out the whole diagram at once, and keep pinned nodes in place.
 - **Walkthroughs.** Introduction and conclusion steps that show the whole path of a flow.
 - **Text description.** Every diagram described in words, for screen readers and alt text.
+- **High contrast.** Stronger text and outlines on the canvas, also from the system setting.
 - **README images.** A dark and a light image, and a snippet that shows the one for the reader's theme.
 - **Mermaid.** Import and export Mermaid flowcharts, and copy a flow as a sequence diagram.
 - **Version history.** Earlier versions, also each change of an agent, ready to restore.

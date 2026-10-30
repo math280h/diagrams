@@ -92,6 +92,70 @@
   --dg-wire-ink: #ffffff;
 }
 
+:is(.dg-canvas, .dg-zones)[data-theme='dark'][data-contrast='more'] {
+  --dg-hue-line: 85%;
+  --dg-panel: #141414;
+  --dg-panel-active: #1f1f1f;
+  --dg-raised: #262626;
+  --dg-line: #8f8f8f;
+  --dg-minimap-node: #8f8f8f;
+  --dg-line-dim: #6b6b6b;
+  --dg-line-strong: #c2c2c2;
+  --dg-text: #ffffff;
+  --dg-muted: #d6d6d6;
+  --dg-faint: #b5b5b5;
+  --dg-edge: #b3b3b3;
+  --dg-edge-strong: #e0e0e0;
+  --dg-particle: #d9d9d9;
+  --dg-select: #ffffff;
+  --dg-flow: #5e97ff;
+  --dg-flow-ink: #000000;
+  --dg-error: #ff7b78;
+  --dg-dim-explore: 0.45;
+  --dg-dim-threats: 0.5;
+  --dg-dim-art: 0.7;
+}
+
+:is(.dg-canvas, .dg-zones)[data-theme='light'][data-contrast='more'] {
+  --dg-zone-orange: #943900;
+  --dg-zone-yellow: #725000;
+  --dg-zone-green: #00651a;
+  --dg-zone-teal: #006062;
+  --dg-zone-blue: #035c7e;
+  --dg-zone-pink: #952e67;
+  --dg-zone-red: #9e2d2d;
+  --dg-hue-line: 85%;
+  --dg-panel: #f5f5f5;
+  --dg-panel-active: #ebebeb;
+  --dg-raised: #ebebeb;
+  --dg-line: #666666;
+  --dg-minimap-node: #858585;
+  --dg-line-dim: #858585;
+  --dg-line-strong: #3d3d3d;
+  --dg-text: #000000;
+  --dg-muted: #333333;
+  --dg-faint: #4a4a4a;
+  --dg-edge: #4d4d4d;
+  --dg-edge-strong: #1f1f1f;
+  --dg-particle: #333333;
+  --dg-select: #000000;
+  --dg-flow: #0046d8;
+  --dg-ok: #006421;
+  --dg-warn: #844600;
+  --dg-error: #b10009;
+  --dg-wire-http: #6a7900;
+  --dg-wire-rpc: #007f7c;
+  --dg-wire-data: #8261b6;
+  --dg-wire-messaging: #ae5382;
+  --dg-wire-text-http: #4f5c00;
+  --dg-wire-text-rpc: #00615f;
+  --dg-wire-text-data: #6941a1;
+  --dg-wire-text-messaging: #952e68;
+  --dg-dim-explore: 0.45;
+  --dg-dim-threats: 0.5;
+  --dg-dim-art: 0.7;
+}
+
 .dg-canvas[data-fonts='host'] {
   --dg-font-sans: 'Host Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
   --dg-font-mono: 'Fragment Mono', ui-monospace, monospace;
@@ -692,7 +756,7 @@
   color: var(--dg-faint);
 }
 .react-flow__node[data-flow='idle'] .dg-art {
-  opacity: 0.4;
+  opacity: var(--dg-dim-art, 0.4);
 }
 .react-flow__node[data-flow='idle'] .dg-shape-outline {
   fill: var(--dg-ground);
@@ -885,7 +949,7 @@
 }
 .dg-canvas[data-threats] .dg-edge:not([data-sensitive]),
 .dg-canvas[data-threats] .dg-edge-label:not([data-sensitive]) {
-  opacity: 0.25;
+  opacity: var(--dg-dim-threats, 0.25);
 }
 .dg-canvas[data-threats] .dg-edge[data-sensitive] .dg-edge-path {
   stroke: var(--dg-data);
@@ -1325,7 +1389,7 @@
 
 .dg-canvas[data-exploring] .react-flow__node:not(.dg-explore-near, .react-flow__node-group),
 .dg-canvas[data-exploring] .react-flow__edge:not(.dg-explore-near) {
-  opacity: 0.16;
+  opacity: var(--dg-dim-explore, 0.16);
   transition: opacity 200ms ease;
 }
 .dg-canvas[data-exploring] .react-flow__node.dg-explore-focus .dg-card,

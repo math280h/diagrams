@@ -74,6 +74,7 @@ export const MORE_FEATURES: readonly Feature[] = [
   { title: 'Tidy up', summary: 'Lay out the whole diagram at once, and keep pinned nodes in place.' },
   { title: 'Walkthroughs', summary: 'Introduction and conclusion steps that show the whole path of a flow.' },
   { title: 'Text description', summary: 'Every diagram described in words, for screen readers and alt text.' },
+  { title: 'High contrast', summary: 'Stronger text and outlines on the canvas, also from the system setting.' },
   {
     title: 'README images',
     summary: "A dark and a light image, and a snippet that shows the one for the reader's theme.",
