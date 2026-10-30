@@ -8,7 +8,7 @@ function withoutBrowserType(device: (typeof devices)[string]) {
   return options
 }
 
-const offer = (page: Page) => page.getByRole('region', { name: 'Install Diagrams on this device' })
+const offer = (page: Page) => page.getByRole('region', { name: 'Install this website as an app' })
 
 async function openLibrary(page: Page) {
   await page.goto('/')
@@ -48,7 +48,7 @@ test.describe('an Android tablet', () => {
   test('offers to install the website, and opens the install prompt of the browser', async ({ page }) => {
     await openLibrary(page)
     await expect(offer(page)).toContainText('Open the browser menu, then choose Install or Add to home screen.')
-    await expect(offer(page)).toContainText('It uses the diagrams in this browser.')
+    await expect(offer(page)).toContainText('It uses the same diagrams as this browser.')
 
     await page.evaluate(() => {
       const event = new Event('beforeinstallprompt', { cancelable: true })
@@ -95,7 +95,7 @@ test.describe('an iPad', () => {
   }) => {
     await openLibrary(page)
     await expect(offer(page)).toContainText('Choose Share, then Add to Home Screen.')
-    await expect(offer(page)).toContainText('The app keeps its own diagrams')
+    await expect(offer(page)).toContainText('Its diagrams are separate from the ones in this browser.')
   })
 })
 

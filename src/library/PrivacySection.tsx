@@ -10,15 +10,14 @@ interface PrivacyPoint {
 const POINTS: readonly PrivacyPoint[] = [
   {
     icon: HardDrive,
-    title: 'Stored only on your computer',
-    summary:
-      'The website keeps your diagrams in this browser, and the desktop app keeps them as files in a folder. No server stores a diagram.',
+    title: 'No server stores your diagrams',
+    summary: 'The website keeps them in your browser. The desktop app saves them as files on your disk.',
   },
   {
     icon: Link2,
     title: 'Share links without an upload',
     summary:
-      'A share link carries the whole diagram after the #. Browsers never send that part to a website, so only people with the link can open it.',
+      'A share link carries the whole diagram after the # in the address. Browsers do not send that part to a server, so the website never receives the diagram.',
   },
   {
     icon: ImageDown,
@@ -28,7 +27,7 @@ const POINTS: readonly PrivacyPoint[] = [
   {
     icon: EyeOff,
     title: 'No account, no tracking',
-    summary: 'There is nothing to sign in to, and the app has no analytics, tracking or crash reports.',
+    summary: 'There is nothing to sign in to. The app sends no analytics, telemetry or crash reports.',
   },
 ]
 
@@ -44,7 +43,7 @@ export function PrivacySection({ className }: { className?: string }) {
           Your diagrams stay on your computer
         </h2>
         <p className="mt-3 text-base leading-6 text-pretty text-muted-foreground">
-          A diagram leaves your computer only when you send it: as a link, as a file, or to an agent that you connect.
+          A diagram leaves your computer only when you send it as a link or a file, or let a connected agent read it.
         </p>
       </div>
       <div>
@@ -60,10 +59,10 @@ export function PrivacySection({ className }: { className?: string }) {
           ))}
         </ul>
         <p className="mt-8 border-t pt-4 text-[13px] leading-5 text-pretty text-muted-foreground">
-          What goes over the network: the website loads from its server, and on a computer it asks GitHub for the latest
-          desktop release to offer the right download. The desktop app asks GitHub for updates. None of these carry a
-          diagram. An agent that you connect to the desktop app sends what it reads to its model, like the rest of your
-          chat with it.
+          A few requests do go over the network. The website loads from its host. On a computer, it also asks GitHub for
+          the latest release to offer the right desktop download. The desktop app asks GitHub for updates. None of these
+          requests carry a diagram. An agent that you connect to the desktop app sends what it reads to its model
+          provider, like the rest of your chat with it.
         </p>
       </div>
     </section>

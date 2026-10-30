@@ -11,7 +11,7 @@ test('tells on the landing page that diagrams stay on the computer', async ({ pa
   ).toBeVisible()
   const section = page.getByRole('region', { name: 'Your diagrams stay on your computer' })
   await expect(section.getByRole('heading', { level: 3 })).toHaveText([
-    'Stored only on your computer',
+    'No server stores your diagrams',
     'Share links without an upload',
     'Exports made on your device',
     'No account, no tracking',

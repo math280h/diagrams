@@ -221,10 +221,10 @@ export function Features({ diagram, crossingsShown, onCrossingsShownChange, clas
     <section aria-labelledby="features-heading" className={className}>
       <div className="mb-8 max-w-2xl">
         <h2 id="features-heading" className="dg-display text-3xl leading-[1.1] sm:text-4xl">
-          What Diagrams does
+          What you can do
         </h2>
         <p className="mt-3 text-base leading-6 text-pretty text-muted-foreground">
-          The pictures come from the template above. Agents and the command line need the desktop app.
+          Most pictures on the cards come from the template above. Agents and the command line need the desktop app.
         </p>
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -286,7 +286,7 @@ export function Features({ diagram, crossingsShown, onCrossingsShownChange, clas
                 aria-pressed={crossingsShown}
                 onClick={() => onCrossingsShownChange(!crossingsShown)}
               >
-                {crossingsShown ? 'Hide on the stage' : 'Show on the stage'}
+                {crossingsShown ? 'Hide on the diagram' : 'Show on the diagram'}
               </Button>
             )
           }
@@ -352,7 +352,7 @@ export function Features({ diagram, crossingsShown, onCrossingsShownChange, clas
         />
       </div>
       <div className="mt-12 grid gap-x-8 gap-y-3 border-t pt-8 md:grid-cols-[minmax(0,1fr)_minmax(0,3fr)]">
-        <h3 className="text-[13px] text-muted-foreground">Also in Diagrams</h3>
+        <h3 className="text-[13px] text-muted-foreground">Also in the app</h3>
         <div className="grid sm:grid-cols-3 sm:gap-x-6">
           {inColumns(MORE_FEATURES, MORE_COLUMNS).map((column, index) => (
             <ul key={column[0]?.title} className={index > 0 ? 'sm:border-l sm:pl-6' : undefined}>

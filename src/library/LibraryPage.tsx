@@ -420,7 +420,7 @@ export function LibraryPage() {
                     Start from a template that is already playing
                   </h2>
                   <span className="text-[13px] text-muted-foreground">
-                    Open one to look around. Choose Use this template to edit a copy.
+                    Open a template to look around, then choose Use this template to edit a copy.
                   </span>
                 </div>
                 {featured && (
@@ -494,7 +494,7 @@ export function LibraryPage() {
                     Templates
                   </h2>
                   <span className="text-[13px] text-muted-foreground">
-                    Open one to look around. Choose Use this template to edit a copy.
+                    Open a template to look around, then choose Use this template to edit a copy.
                   </span>
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

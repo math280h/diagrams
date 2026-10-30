@@ -15,7 +15,7 @@ export function InstallIntro({ className }: { className?: string }) {
   return (
     <IntroStrip
       headingId="install-intro-heading"
-      title="Install Diagrams on this device"
+      title="Install this website as an app"
       actions={
         prompt ? (
           <Button variant="secondary" onClick={() => void promptInstall()}>
@@ -30,8 +30,8 @@ export function InstallIntro({ className }: { className?: string }) {
       className={className}
     >
       {apple
-        ? 'Open it from your Home Screen in its own window, also without internet. The app keeps its own diagrams, so export a diagram file here and import it there. Agents need the desktop app on a computer.'
-        : 'Open it from your home screen in its own window, also without internet. It uses the diagrams in this browser. Agents need the desktop app on a computer.'}
+        ? 'It opens from your Home Screen in its own window and works without internet. Its diagrams are separate from the ones in this browser. To move one, export it as a file here and import it in the installed app. Agents need the desktop app on a computer.'
+        : 'It opens from your home screen in its own window and works without internet. It uses the same diagrams as this browser. Agents need the desktop app on a computer.'}
     </IntroStrip>
   )
 }

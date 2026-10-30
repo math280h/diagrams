@@ -158,7 +158,7 @@ The visual system lives in `DESIGN.md` at the repository root.
   headline features have a picture made from the featured template when the page loads: the first steps of its flow,
   its operations with their latency, its first connection that carries sensitive data across a trust boundary, and the
   start of its sequence diagram (`flowToMermaidSequence`). So the pictures show the real data and stay in step with the
-  template. "Show on the stage" highlights those connections on the stage, as the Sensitive data view of the editor
+  template. "Show on the diagram" highlights those connections on the stage, as the Sensitive data view of the editor
   does. Every other feature follows as one short line, so that no feature hides in the editor.
 - The features section has a heading one size under the headline, and each card shows its picture first, as a
   template card shows its preview first. With a section title like the template headings and the pictures under the

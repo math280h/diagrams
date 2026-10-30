@@ -33,8 +33,8 @@ export function AgentIntro({ className }: { className?: string }) {
       className={className}
     >
       {desktop
-        ? `Connect Claude Code or another MCP client, then ask it to ${EXAMPLE_REQUEST}. You watch the diagram appear here, and you can undo any change it makes.`
-        : `The desktop app connects to Claude Code and other MCP clients. Ask one to ${EXAMPLE_REQUEST} and watch it appear, with the files on your computer.`}
+        ? `Connect Claude Code or another MCP client, then ask it to ${EXAMPLE_REQUEST}. The diagram appears here as the agent draws. You can undo each change.`
+        : `Claude Code and other MCP clients connect to the desktop app. Ask your agent to ${EXAMPLE_REQUEST} and watch the diagram appear.`}
     </IntroStrip>
   )
 }

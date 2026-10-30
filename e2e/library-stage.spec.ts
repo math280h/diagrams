@@ -71,9 +71,9 @@ test('draws the templates on the first visit with the small icon file and no ful
   expect(new Set(iconFiles)).toEqual(new Set(['templates.json']))
 })
 
-test('shows what Diagrams does under the playing template, with pictures from it', async ({ page }) => {
+test('shows what you can do under the playing template, with pictures from it', async ({ page }) => {
   await page.goto('/')
-  const section = page.getByRole('region', { name: 'What Diagrams does' })
+  const section = page.getByRole('region', { name: 'What you can do' })
   for (const { title } of HEADLINE_FEATURES) await expect(section.getByRole('heading', { name: title })).toBeVisible()
   for (const { title } of MORE_FEATURES) {
     await expect(section.getByRole('button', { name: title, exact: true })).toBeVisible()
@@ -102,10 +102,10 @@ test('shows what Diagrams does under the playing template, with pictures from it
 
   const crossings = page.locator('.dg-preview [data-crossing="true"]')
   await expect(crossings).toHaveCount(0)
-  const show = section.getByRole('button', { name: 'Show on the stage' })
+  const show = section.getByRole('button', { name: 'Show on the diagram' })
   await show.click()
-  await expect(section.getByRole('button', { name: 'Hide on the stage' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(section.getByRole('button', { name: 'Hide on the diagram' })).toHaveAttribute('aria-pressed', 'true')
   await expect(crossings).not.toHaveCount(0)
-  await section.getByRole('button', { name: 'Hide on the stage' }).click()
+  await section.getByRole('button', { name: 'Hide on the diagram' }).click()
   await expect(crossings).toHaveCount(0)
 })

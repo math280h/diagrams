@@ -11,31 +11,31 @@ only on your computer, never on a server ([privacy](#privacy)).
 
 <!-- features:start -->
 
-- **Play a request through it.** Record a path, add captions, and play it with a camera that follows. Read it as a log or a sequence diagram, with fan-out and alternate paths.
-- **Replay a real trace.** Import an OpenTelemetry, Jaeger or Zipkin trace, and watch the request move with each operation, latency and status.
-- **See where sensitive data goes.** Mark body fields as personal data or secrets, and see which connections carry them across a trust boundary.
-- **Let an AI agent draw it.** In the desktop app, Claude Code and other MCP clients draw, animate and check diagrams while you watch, also from Terraform, docker-compose or Kubernetes files.
-- **Share it anywhere.** Present in full screen, export PNG, SVG, MP4, WebM or GIF, or a web page that plays its flows. Copy an image, or a link that carries the whole diagram.
-- **Keep diagrams with your code.** A diagram is a JSON file that you review and diff. A GitHub Action shows each diagram before and after in a pull request.
+- **Follow a request step by step.** Record the path of a request and caption each step. Play it and the camera follows. Steps can fan out or branch. A flow also reads as a log or a sequence diagram.
+- **Replay a real trace.** Import an OpenTelemetry, Jaeger or Zipkin trace as a flow. Each step shows the real operation, its latency and its status.
+- **See where sensitive data goes.** Mark fields in request and response bodies as personal data or secrets. The Sensitive data view shows which connections carry them across a trust boundary.
+- **Ask an AI agent to draw.** In the desktop app, Claude Code and other MCP clients draw, animate and check diagrams while you watch. They can start from Terraform, docker-compose or Kubernetes files.
+- **Export and share.** Present in full screen. Export PNG, SVG, MP4, WebM, GIF or a web page that plays the flows. Copy an image, or a link that carries the whole diagram.
+- **Keep diagrams with your code.** A diagram is a JSON file that you can review and diff. A GitHub Action comments on pull requests with before and after images.
 
 Also:
 
-- **Templates.** C4, RAG, an agent with MCP tools, an OpenID Connect sign-in, webhooks, a deploy pipeline and more, ready to play.
+- **Templates.** Examples to play and copy, such as C4 models, RAG, an agent with MCP tools and an OpenID Connect sign-in.
 - **Node kinds.** Services, data stores, queues, clients and more, each with its own outline.
-- **Real icons.** Official AWS, Azure, Google Cloud, Kubernetes and Salesforce icons, and 220 software logos.
+- **Icons and logos.** Official AWS, Azure, Google Cloud, Kubernetes and Salesforce icons, and about 220 software logos.
 - **Boundaries.** Cloud, network and cluster boundaries, or your own groups, such as a team.
 - **Colours and metrics.** Colour nodes by kind or by group, and add numbers or meters.
-- **Moving connections.** Dots, comets, dashes or pulses that flow along a connection.
-- **Details on hover.** An owner, a description and links on a node, shown on hover in Present.
+- **Traffic on connections.** Dots, comets, dashes or pulses that flow along a connection.
+- **Details on hover.** Give a node an owner, a description and links. Present shows them on hover.
 - **Request and response bodies.** The JSON fields of a connection, shown in the log as a flow plays.
 - **Drill-down.** A node opens another diagram, and Present zooms into it.
-- **Tidy up.** Lay out the whole diagram at once, and keep pinned nodes in place.
+- **Tidy up.** Lay out the whole diagram in one go. Pinned nodes stay where you put them.
 - **Walkthroughs.** Introduction and conclusion steps that show the whole path of a flow.
 - **Text description.** Every diagram described in words, for screen readers and alt text.
-- **High contrast.** Stronger text and outlines on the canvas, also from the system setting.
+- **High contrast.** A canvas with stronger text and outlines. It can follow your system setting.
 - **README images.** A dark and a light image, and a snippet that shows the one for the reader's theme.
 - **Mermaid.** Import and export Mermaid flowcharts, and copy a flow as a sequence diagram.
-- **Version history.** Earlier versions, also each change of an agent, ready to restore.
+- **Version history.** Restore an earlier version. Each change an agent makes gets its own version.
 - **Open in the desktop app.** Send a diagram from the website to the desktop app in one step.
 - **Command-line render.** The desktop app renders diagram files to images and video for CI.
 - **App on a tablet.** Install the website as an app that opens from the home screen and works offline.
@@ -46,21 +46,22 @@ Also:
 
 Your diagrams stay on your computer. There is no account and no server that stores diagrams.
 
-- **Stored only on your computer.** The website keeps diagrams in your browser (`localStorage`). The desktop app keeps
+- **No server stores your diagrams.** The website keeps them in your browser (`localStorage`). The desktop app saves
   them as files in `Documents/Diagrams`.
-- **Share links without an upload.** A share link carries the whole diagram, compressed, after the `#`. Browsers never
-  send that part to a website.
-- **Exports made on your device.** Images, videos, GIFs and web pages render in the browser or in the desktop app.
-- **No account, no tracking.** No sign-in, no analytics, no tracking and no crash reports.
+- **Share links without an upload.** A share link carries the whole diagram, compressed, after the `#` in the address.
+  Browsers do not send that part to a server, so the website never receives the diagram.
+- **Exports made on your device.** Images, videos, GIFs and web pages render in your browser or in the desktop app, not
+  on a server.
+- **No account, no tracking.** There is nothing to sign in to. The app sends no analytics, telemetry or crash reports.
 
-The network connections, none of which carry a diagram:
+A few requests do go over the network. None of them carry a diagram:
 
 - The website loads from its host. On a computer, it asks the GitHub API for the latest release to offer the right
   desktop download.
 - The desktop app checks GitHub Releases for updates at start and every 6 hours.
 
 An agent that you connect to the desktop app reads diagrams through the agent server on `127.0.0.1`, and sends what it
-reads to its model, like the rest of your chat with it.
+reads to its model provider, like the rest of your chat with it.
 
 ## Desktop app
 
