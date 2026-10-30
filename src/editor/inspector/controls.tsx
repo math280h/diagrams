@@ -11,6 +11,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { swatchColor } from '@/canvas/canvas-theme'
 import { cn } from '@/lib/utils'
@@ -31,11 +32,20 @@ export function Section({ title, children, action }: { title: string; children: 
 
 const FieldLabelContext = createContext<string | undefined>(undefined)
 
-export function Field({ label, children }: { label: string; children: ReactNode }) {
+/**
+ * Puts a label beside a control.
+ *
+ * @param multiline - If true, the label lines up with the first line of a control that grows downwards.
+ */
+export function Field({ label, children, multiline }: { label: string; children: ReactNode; multiline?: boolean }) {
   const labelId = useId()
   return (
-    <div role="group" aria-label={label} className="grid min-h-7 grid-cols-[72px_minmax(0,1fr)] items-center gap-2">
-      <span id={labelId} className="truncate text-xs text-muted-foreground">
+    <div
+      role="group"
+      aria-label={label}
+      className={cn('grid min-h-7 grid-cols-[72px_minmax(0,1fr)] gap-2', multiline ? 'items-start' : 'items-center')}
+    >
+      <span id={labelId} className={cn('truncate text-xs text-muted-foreground', multiline && 'leading-7')}>
         {label}
       </span>
       <div className="min-w-0">
@@ -128,6 +138,38 @@ export function TextInput({
       spellCheck={false}
       onChange={(event) => onChange(event.target.value)}
       className={cn('h-7 px-2 py-0 text-xs md:text-xs dark:bg-transparent', mono && 'font-mono', className)}
+    />
+  )
+}
+
+/** Edits text with line breaks. It grows with its lines, and Enter starts a new line. */
+export function TextLines({
+  value,
+  onChange,
+  onBlur,
+  placeholder,
+  mono,
+}: {
+  value: string
+  onChange: (value: string) => void
+  onBlur?: () => void
+  placeholder?: string
+  mono?: boolean
+}) {
+  const labelId = use(FieldLabelContext)
+  return (
+    <Textarea
+      value={value}
+      aria-labelledby={labelId}
+      placeholder={placeholder}
+      spellCheck={false}
+      rows={Math.max(1, value.split('\n').length)}
+      onChange={(event) => onChange(event.target.value)}
+      onBlur={onBlur}
+      className={cn(
+        'min-h-7 resize-none px-2 py-[5px] text-xs leading-4 md:text-xs dark:bg-transparent',
+        mono && 'font-mono',
+      )}
     />
   )
 }

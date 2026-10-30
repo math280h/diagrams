@@ -67,6 +67,28 @@ test('edits a node in the properties panel', async ({ page }) => {
   )
 })
 
+test('writes the detail of a card on several lines', async ({ page }) => {
+  await openTemplate(page, 'Order system')
+  const node = page.locator('.react-flow__node', { hasText: 'API gateway' })
+  await node.click()
+  const detail = page.getByRole('group', { name: 'Detail', exact: true }).getByRole('textbox')
+  await expect(detail).toHaveValue('Envoy')
+  await detail.click()
+  await detail.press('End')
+  await page.keyboard.press('Enter')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('p99 {12} ms')
+  await page.keyboard.press('Enter')
+  await expect(detail).toHaveValue('Envoy\n\np99 {12} ms\n')
+  const lines = node.locator('.dg-card-line')
+  await expect(lines).toHaveText(['Envoy', '', 'p99 12 ms', ''])
+  await page.getByRole('group', { name: 'Name', exact: true }).getByRole('textbox').click()
+  await expect(detail).toHaveValue('Envoy\n\np99 {12} ms')
+  await expect(lines).toHaveText(['Envoy', '', 'p99 12 ms'])
+  const [first, blank] = await Promise.all([lines.nth(0).boundingBox(), lines.nth(1).boundingBox()])
+  expect(blank!.height).toBeCloseTo(first!.height, 0)
+})
+
 test('inserts a cloud service with its official icon from the insert menu', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'New diagram' }).first().click()
