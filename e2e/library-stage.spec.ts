@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { HEADLINE_FEATURES, MORE_FEATURES } from '@/library/feature-list'
 
 test('pauses and plays the template on the first-run stage', async ({ page }) => {
   await page.goto('/')
@@ -57,14 +58,32 @@ test('draws the templates on the first visit with the small icon file and no ful
   expect(new Set(iconFiles)).toEqual(new Set(['templates.json']))
 })
 
-test('shows how diagrams live with code on the first visit', async ({ page }) => {
+test('shows what Diagrams does under the playing template, with pictures from it', async ({ page }) => {
   await page.goto('/')
-  const section = page.getByRole('region', { name: 'Keep diagrams with your code' })
+  const section = page.getByRole('region', { name: 'What Diagrams does' })
+  for (const { title } of HEADLINE_FEATURES) await expect(section.getByRole('heading', { name: title })).toBeVisible()
+  for (const { title } of MORE_FEATURES) await expect(section.getByText(`${title}.`, { exact: true })).toBeVisible()
+
+  const sectionTop = (await section.boundingBox())!.y
+  const moreTemplatesTop = (await page.getByRole('heading', { name: 'More templates' }).boundingBox())!.y
+  expect(sectionTop).toBeLessThan(moreTemplatesTop)
+
+  await expect(section.getByLabel('The first steps of the flow above').getByRole('listitem')).toHaveCount(3)
+  await expect(section.getByLabel('Operations of the flow above with their latency')).toContainText(' ms')
+  const sequence = section.getByLabel('The start of the sequence diagram of the template above')
+  await expect(sequence).toContainText('sequenceDiagram')
+  await expect(sequence).toContainText('->>')
   await expect(section.getByRole('link', { name: /Set up the action/ })).toHaveAttribute(
     'href',
     /#keep-diagram-images-up-to-date-with-github-actions$/,
   )
-  const sequence = section.getByLabel('The start of the sequence diagram of the template above')
-  await expect(sequence).toContainText('sequenceDiagram')
-  await expect(sequence).toContainText('->>')
+
+  const crossings = page.locator('.dg-preview [data-crossing="true"]')
+  await expect(crossings).toHaveCount(0)
+  const show = section.getByRole('button', { name: 'Show on the stage' })
+  await show.click()
+  await expect(section.getByRole('button', { name: 'Hide on the stage' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(crossings).not.toHaveCount(0)
+  await section.getByRole('button', { name: 'Hide on the stage' }).click()
+  await expect(crossings).toHaveCount(0)
 })

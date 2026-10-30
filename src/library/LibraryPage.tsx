@@ -51,6 +51,8 @@ import { useReducedMotion } from '@/lib/motion'
 import { useIdleMount } from '@/lib/idle-mount'
 import { useInView } from '@/lib/use-in-view'
 import type { Diagram } from '@/model/schema'
+import { dataCrossings } from '@/model/threats'
+import { fromDiagram } from '@/persistence/serialize'
 import {
   createBlankDiagram,
   deleteDiagram,
@@ -65,7 +67,7 @@ import type { DiagramMeta } from '@/persistence/repository'
 import { storageCopy } from '@/persistence/storage-copy'
 import { useLibrary } from '@/store/library-store'
 import { TEMPLATES, type Template } from '@/templates'
-import { DocsAsCode } from './DocsAsCode'
+import { Features } from './Features'
 import { LivePreview } from './LivePreview'
 import { toast } from 'sonner'
 import { errorMessage } from '@/lib/error-message'
@@ -234,8 +236,22 @@ function TemplateCard({ template, diagram }: { template: Template; diagram: Diag
   )
 }
 
-function FeaturedTemplate({ template, diagram }: { template: Template; diagram: Diagram }) {
+function FeaturedTemplate({
+  template,
+  diagram,
+  showCrossings,
+}: {
+  template: Template
+  diagram: Diagram
+  /** If true, the stage highlights the connections that carry sensitive data across a trust boundary. */
+  showCrossings: boolean
+}) {
   const reducedMotion = useReducedMotion()
+  const threats = useMemo(() => {
+    if (!showCrossings) return undefined
+    const { nodes, edges } = fromDiagram(diagram)
+    return new Map(dataCrossings(nodes, edges).map((crossing) => [crossing.edgeId, crossing]))
+  }, [diagram, showCrossings])
   const [ref, inView] = useInView('0px')
   const [started, setStarted] = useState(false)
   const [paused, setPaused] = useState(false)
@@ -275,7 +291,15 @@ function FeaturedTemplate({ template, diagram }: { template: Template; diagram: 
         </Link>
       </div>
       <div className="min-h-0 flex-1">
-        <LivePreview diagram={diagram} playing={playing} paused={paused} minZoom={0.5} paddingPx={20} showCaption />
+        <LivePreview
+          diagram={diagram}
+          playing={playing}
+          paused={paused}
+          minZoom={0.5}
+          paddingPx={20}
+          showCaption
+          threats={threats}
+        />
       </div>
     </div>
   )
@@ -290,6 +314,7 @@ export function LibraryPage() {
   const [renaming, setRenaming] = useState<DiagramMeta | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [deleting, setDeleting] = useState<DiagramMeta | null>(null)
+  const [crossingsShown, setCrossingsShown] = useState(false)
   const openFiles = () =>
     void openDiagramFiles().then(
       (ids) => {
@@ -388,14 +413,26 @@ export function LibraryPage() {
                     Open one to look around. Choose Use this template to edit a copy.
                   </span>
                 </div>
-                {featured && <FeaturedTemplate template={featured} diagram={featured.preview} />}
-                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {featured && (
+                  <FeaturedTemplate template={featured} diagram={featured.preview} showCrossings={crossingsShown} />
+                )}
+              </section>
+              <Features
+                diagram={featured?.preview}
+                crossingsShown={crossingsShown}
+                onCrossingsShownChange={setCrossingsShown}
+                className="mt-12"
+              />
+              <section aria-labelledby="more-templates-heading" className="mt-12">
+                <h2 id="more-templates-heading" className="mb-4 text-xl font-medium tracking-[-0.015em]">
+                  More templates
+                </h2>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {others.map((template) => (
                     <TemplateCard key={template.id} template={template} diagram={template.preview} />
                   ))}
                 </div>
               </section>
-              <DocsAsCode diagram={featured?.preview} className="mt-12" />
               <AgentIntro className="mt-12" />
             </>
           ) : (

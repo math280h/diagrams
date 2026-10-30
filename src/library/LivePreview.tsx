@@ -9,6 +9,7 @@ import { compileFlow } from '@/engine/flow/compile'
 import { useEngine } from '@/engine/hooks'
 import { useReducedMotion } from '@/lib/motion'
 import type { Diagram } from '@/model/schema'
+import type { DataCrossing } from '@/model/threats'
 import { fromDiagram } from '@/persistence/serialize'
 import { useReadableFraming } from './use-readable-framing'
 
@@ -27,6 +28,8 @@ export interface LivePreviewProps {
   paddingPx?: number
   /** If true, the current log line shows in a strip at the bottom. */
   showCaption?: boolean
+  /** The connections that carry sensitive data across a trust boundary, by edge id, to highlight. */
+  threats?: ReadonlyMap<string, DataCrossing>
 }
 
 function PreviewCanvas({
@@ -37,7 +40,8 @@ function PreviewCanvas({
   maxZoom,
   paddingPx,
   showCaption,
-}: Required<LivePreviewProps>) {
+  threats,
+}: Required<Omit<LivePreviewProps, 'threats'>> & Pick<LivePreviewProps, 'threats'>) {
   const engine = useEngine()
   const reducedMotion = useReducedMotion()
   const initial = useMemo(() => fromDiagram(diagram), [diagram])
@@ -81,6 +85,7 @@ function PreviewCanvas({
         resolvedTheme={resolvedTheme}
         editable={false}
         showCaption={showCaption}
+        threats={threats}
         onNodesChange={onNodesChange}
         nodesFocusable={false}
         edgesFocusable={false}
@@ -102,6 +107,7 @@ export function LivePreview({
   maxZoom = 1,
   paddingPx = 24,
   showCaption = false,
+  threats,
 }: LivePreviewProps) {
   return (
     <div className="dg-preview pointer-events-none h-full w-full" aria-hidden>
@@ -115,6 +121,7 @@ export function LivePreview({
             maxZoom={maxZoom}
             paddingPx={paddingPx}
             showCaption={showCaption}
+            threats={threats}
           />
         </EngineProvider>
       </ReactFlowProvider>

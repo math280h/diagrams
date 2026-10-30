@@ -142,11 +142,16 @@ The visual system lives in `DESIGN.md` at the repository root.
   whole diagram with its text nodes (`withText`), so the user sees the whole system and its title
   first; a page that opened on a crop around one node hid the rest of the system, and a framing
   without the text nodes cut the title. The first flow plays on hover and focus.
-- After the templates, the first visit shows how diagrams live with code (`DocsAsCode`): the GitHub Action that
-  renders diagram files and comments on pull requests, flows as Mermaid sequence diagrams, and share links that carry
-  the diagram. The sequence card shows the first messages of the featured template's flow, made by
-  `flowToMermaidSequence` when the page loads, so it shows the real export and stays in step with it. The copy names
-  no other product: it says what a team keeps (a JSON file in its repository, no account, no hosted copy). On the first visit, the Order system flow plays in a loop in a full-width stage, with a Pause button,
+- Under the featured stage, the first visit shows what Diagrams does (`Features`), and then the other templates. Six
+  headline features have a picture made from the featured template when the page loads: the first steps of its flow,
+  its operations with their latency, its connections that carry sensitive data across a trust boundary, and the start
+  of its sequence diagram (`flowToMermaidSequence`). So the pictures show the real data and stay in step with the
+  template. "Show on the stage" highlights those connections on the stage, as the Sensitive data view of the editor
+  does. Every other feature follows as one short line, so that no feature hides in the editor.
+- `src/library/feature-list.ts` holds the titles and summaries for the library and the README.
+  `node scripts/readme-features.ts` writes them between the `features` markers of the README, and a test fails when
+  the README is out of date.
+- On the first visit, the Order system flow plays in a loop in a full-width stage, with a Pause button,
   because motion that starts by itself and lasts more than five seconds needs a way to stop it (WCAG 2.2.2). Pause
   holds the frame; with reduced motion the stage waits for Play. Static
   wireframe thumbnails hid the motion. Cards that cropped around one node showed a fragment with

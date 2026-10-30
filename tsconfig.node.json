@@ -26,6 +26,8 @@
     "scripts/standalone-player.ts",
     "scripts/release-notes.ts",
     "scripts/release-notes.test.ts",
+    "scripts/readme-features.ts",
+    "scripts/readme-features.test.ts",
     "electron-builder.ts"
   ]
 }
