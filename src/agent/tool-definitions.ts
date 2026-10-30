@@ -446,6 +446,10 @@ export const TOOL_DEFINITIONS = {
           snap: z.boolean().optional().describe('If true, nodes snap to the 16 pixel grid.'),
           boundaryColors: z.boolean().optional(),
           protocolColors: z.boolean().optional(),
+          routeAround: z
+            .boolean()
+            .optional()
+            .describe('If true, round and step connections go around the other nodes. Off by default.'),
         })
         .optional(),
     }),

@@ -1,3 +1,4 @@
+import { followBends } from '@/model/bends'
 import type { XY } from '@/model/schema'
 import type { DiagramEdge, DiagramNode } from '@/model/types'
 import type { LayoutResult } from './diagram-layout'
@@ -14,20 +15,22 @@ export function withRoute(edge: DiagramEdge, route: XY[] | undefined): DiagramEd
  *
  * The layout can come from an earlier copy of the diagram. The function keeps all changes since that copy: added and
  * removed nodes and edges, changed data, and nodes with a new parent. An edge takes the new route only if its ends are
- * the same as in the layout.
+ * the same as in the layout. The corners of a route drawn by hand move with both ends of their edge, and go when the
+ * ends move apart, as {@link followBends} describes.
  */
-export function applyLayout(nodes: readonly DiagramNode[], edges: readonly DiagramEdge[], laidOut: LayoutResult) {
+export function applyLayout(nodes: readonly DiagramNode[], edges: DiagramEdge[], laidOut: LayoutResult) {
   const placed = new Map(laidOut.nodes.map((node) => [node.id, node]))
   const routed = new Map(laidOut.edges.map((edge) => [edge.id, edge]))
+  const placedNodes = nodes.map((node): DiagramNode => {
+    const position = placed.get(node.id)
+    if (!position || position.parentId !== node.parentId) return node
+    return node.type === 'group'
+      ? { ...node, position: position.position, width: position.width, height: position.height }
+      : { ...node, position: position.position }
+  })
   return {
-    nodes: nodes.map((node): DiagramNode => {
-      const next = placed.get(node.id)
-      if (!next || next.parentId !== node.parentId) return node
-      return node.type === 'group'
-        ? { ...node, position: next.position, width: next.width, height: next.height }
-        : { ...node, position: next.position }
-    }),
-    edges: edges.map((edge): DiagramEdge => {
+    nodes: placedNodes,
+    edges: followBends(edges, nodes, placedNodes, { dropWhenApart: true }).map((edge): DiagramEdge => {
       const next = routed.get(edge.id)
       if (
         !next ||

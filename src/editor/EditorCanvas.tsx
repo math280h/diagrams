@@ -8,7 +8,7 @@ import {
 } from '@xyflow/react'
 import { Minimap, MINIMAP_MIN_NODES } from '@/canvas/Minimap'
 import { useSettings } from '@/store/settings-store'
-import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useCanvasTheme } from '@/canvas/canvas-theme'
 import { DiagramCanvas } from '@/canvas/DiagramCanvas'
 import { useDiagramDescription } from '@/export/use-description'
@@ -16,6 +16,7 @@ import { dataCrossings } from '@/model/threats'
 import type { DiagramNode } from '@/model/types'
 import {
   addNodes,
+  moveBendsAfterDrag,
   onConnect,
   onEdgesChange,
   onNodesChange,
@@ -110,8 +111,11 @@ export function EditorCanvas() {
     [lines],
   )
 
+  const dragStart = useRef<DiagramNode[]>([])
+
   const onDragStart = useCallback(() => {
     beginGesture()
+    dragStart.current = useDoc.getState().nodes
     setDragging(true)
   }, [])
 
@@ -119,6 +123,7 @@ export function EditorCanvas() {
     const ids = dragged.map((node) => node.id)
     snapAfterDrag(ids)
     reparentAfterDrag(ids)
+    moveBendsAfterDrag(dragStart.current)
     endGesture()
     setLines({})
     setDragging(false)

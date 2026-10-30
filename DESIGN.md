@@ -493,6 +493,8 @@ The top bar is the navigation. The mark returns to the library. On phones labels
 ### Edges and labels
 
 - Right-angled rounded routing (`smooth`) by default, 1.25px round-capped stroke in Edge grey or the protocol wire colour; dashed 5 4 and dotted variants.
+- With the diagram switch "Route connections around nodes" (off by default), `smooth` and `step` edges go around every node between their ends, keep a 20px clearance, and spread 12px apart where they share a channel. They reroute while a node is dragged.
+- With that switch on, a selected `smooth` or `step` edge in the editor shows a 12px handle on each middle segment: a ground-coloured ring in the selection colour, filled on hover, with a resize cursor along the axis it moves on. Dragging it sets the route by hand; the properties panel says "Route set by hand." with a Reset route button.
 - Labels are 11px mono knockouts on the ground, 4px side padding, in muted or the protocol text colour.
 - Visited and active edges draw 2px in the protocol text colour, or Signal Blue without a protocol. Idle edges in a flow recede to Node Line.
 - A label hides while the token passes over it.

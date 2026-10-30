@@ -135,6 +135,7 @@ export const DEFAULT_THEME: DiagramTheme = {
   snap: true,
   boundaryColors: true,
   protocolColors: true,
+  routeAround: false,
 }
 
 export function createFlow(name = 'User flow'): Flow {
