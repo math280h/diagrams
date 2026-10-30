@@ -473,6 +473,11 @@ diagram with its real operations, latencies and statuses.
   browser computes style and layout once per frame; the labels follow one frame late. A read after
   the writes made the browser compute style and layout twice in each frame. Exports read after the
   writes, so each export frame stays exact.
+- While the flow stands still, the engine reads the boxes again at the start of an idle frame: once
+  after a frame that moved the token, and every 100 ms while the token shows. Labels can change size
+  after the last flow frame, for example when a camera cut changes the zoom and the level of detail
+  draws the labels again, or when a font loads. A single read after the last frame missed those, so
+  a label far from the token could stay hidden.
 - On a phone profile (Chromium, Pixel 7 size, 4× and 6× CPU throttling) these two changes and the
   zoom scopes raised the frame rate of Present in the multi-cloud template from 25 to 35 fps at 6×
   and cut frames longer than 50 ms by half or more. `will-change: transform` on the React Flow
