@@ -405,7 +405,7 @@ export function LibraryPage() {
                     Draw how your system works, then play a request through it.
                   </h1>
                   <p className="mt-4 max-w-xl text-base leading-6 text-pretty text-muted-foreground">
-                    Free architecture diagrams that move, for docs, pull requests and talks.
+                    Architecture diagrams that move, for docs, pull requests and talks.
                   </p>
                   <p className="mt-2 flex max-w-2xl gap-2 text-[15px] leading-6 text-pretty">
                     <HardDrive aria-hidden className="mt-1 size-4 shrink-0 text-muted-foreground" />
