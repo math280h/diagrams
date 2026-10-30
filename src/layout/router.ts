@@ -1,5 +1,5 @@
 import type { Rect } from '@/model/rect'
-import type { XY } from '@/model/schema'
+import type { Side, XY } from '@/model/schema'
 import { roundHalf } from './types'
 
 export interface RouterNode {
@@ -13,6 +13,10 @@ export interface RouterEdge {
   id: string
   source: string
   target: string
+  /** The side of the source node where the route starts. Without it, the route can start on any side. */
+  sourceSide?: Side
+  /** The side of the target node where the route ends. Without it, the route can end on any side. */
+  targetSide?: Side
 }
 
 /** The distance between a route and a node that it passes. */
@@ -36,6 +40,7 @@ const STEP_X = [1, 0, -1, 0]
 const STEP_Y = [0, 1, 0, -1]
 
 const opposite = (direction: number) => (direction + 2) % 4
+const SIDE_DIRECTION: Record<Side, number> = { right: RIGHT, bottom: DOWN, left: LEFT, top: UP }
 
 interface Port {
   point: XY
@@ -44,17 +49,18 @@ interface Port {
   outward: number
 }
 
-function portsOf(rect: Rect): Port[] {
+function portsOf(rect: Rect, side?: Side): Port[] {
   const cx = rect.x + rect.width / 2
   const cy = rect.y + rect.height / 2
   const right = rect.x + rect.width
   const bottom = rect.y + rect.height
-  return [
+  const ports = [
     { point: { x: right, y: cy }, stub: { x: right + CLEARANCE_PX, y: cy }, outward: RIGHT },
     { point: { x: cx, y: bottom }, stub: { x: cx, y: bottom + CLEARANCE_PX }, outward: DOWN },
     { point: { x: rect.x, y: cy }, stub: { x: rect.x - CLEARANCE_PX, y: cy }, outward: LEFT },
     { point: { x: cx, y: rect.y }, stub: { x: cx, y: rect.y - CLEARANCE_PX }, outward: UP },
   ]
+  return side ? ports.filter((port) => port.outward === SIDE_DIRECTION[side]) : ports
 }
 
 /** Returns the sorted unique coordinates, with the middle of each gap between neighbours added as a channel line. */
@@ -122,7 +128,8 @@ class MinHeap {
   }
 }
 
-function simplify(points: XY[]): XY[] {
+/** Returns the points without repeated points and without points in the middle of a straight run. */
+export function simplifyRoute(points: readonly XY[]): XY[] {
   const out: XY[] = []
   for (const point of points) {
     const last = out.at(-1)
@@ -258,9 +265,15 @@ function createSearch(grid: Grid) {
    * Finds the route between two nodes.
    *
    * @param open - Marks the nodes that the route may pass: its ends and the groups that hold them.
+   * @param sides - The sides where the route must start and end, if any.
    * @returns The points from the source border to the target border, or `null` if no route exists.
    */
-  return function route(source: Rect, target: Rect, open: Uint8Array): XY[] | null {
+  return function route(
+    source: Rect,
+    target: Rect,
+    open: Uint8Array,
+    sides: { source?: Side; target?: Side } = {},
+  ): XY[] | null {
     generation++
     const blocked = (cover: readonly number[]) => {
       for (const index of cover) if (!open[index]) return true
@@ -269,7 +282,7 @@ function createSearch(grid: Grid) {
     const inEnd = (x: number, y: number) => strictlyInside(source, x, y, 0) || strictlyInside(target, x, y, 0)
 
     const goals = new Map<number, Port>()
-    for (const port of portsOf(target)) {
+    for (const port of portsOf(target, sides.target)) {
       const point = grid.pointNear(port.stub)
       if (point !== undefined && !blocked(grid.pointCover[point]!)) goals.set(point, port)
     }
@@ -285,7 +298,7 @@ function createSearch(grid: Grid) {
     const heap = new MinHeap()
     let doneCost = Infinity
     let doneState = -1
-    for (const port of portsOf(source)) {
+    for (const port of portsOf(source, sides.source)) {
       const point = grid.pointNear(port.stub)
       if (point === undefined || blocked(grid.pointCover[point]!)) continue
       const state = point * 4 + port.outward
@@ -356,7 +369,7 @@ function createSearch(grid: Grid) {
       usage[segment] = usage[segment]! + 1
     }
     const start = portsOf(source).find((port) => port.outward === startDirection)!
-    return simplify([start.point, ...cells.map(grid.pointAt), goals.get(doneState >> 2)!.point])
+    return simplifyRoute([start.point, ...cells.map(grid.pointAt), goals.get(doneState >> 2)!.point])
   }
 }
 
@@ -369,8 +382,9 @@ interface RoutedEdge {
 /**
  * Routes edges at right angles around the nodes between their ends.
  *
- * A route starts and ends on a node side. It never passes through a node that is not one of its ends. It passes
- * through a group only when the group holds one of its ends. Parallel routes that share a channel move apart.
+ * A route starts and ends on a node side, the given side of an edge with fixed sides. It never passes through a node
+ * that is not one of its ends. It passes through a group only when the group holds one of its ends. Parallel routes
+ * that share a channel move apart.
  *
  * @returns The route of each edge from the source border to the target border. An edge without a possible route
  * has no entry.
@@ -407,7 +421,10 @@ export function routeEdges(nodes: readonly RouterNode[], edges: readonly RouterE
     const target = indexOf.get(edge.target)!
     open.fill(0)
     for (const index of [source, target, ...ancestors[source]!, ...ancestors[target]!]) open[index] = 1
-    const points = route(nodes[source]!.rect, nodes[target]!.rect, open)
+    const points = route(nodes[source]!.rect, nodes[target]!.rect, open, {
+      source: edge.sourceSide,
+      target: edge.targetSide,
+    })
     if (points) routed.set(edge.id, { points, source, target })
   }
 
@@ -416,7 +433,7 @@ export function routeEdges(nodes: readonly RouterNode[], edges: readonly RouterE
   return new Map(
     [...routed].map(([id, { points }]) => [
       id,
-      simplify(points).map((point) => ({ x: roundHalf(point.x), y: roundHalf(point.y) })),
+      simplifyRoute(points).map((point) => ({ x: roundHalf(point.x), y: roundHalf(point.y) })),
     ]),
   )
 }

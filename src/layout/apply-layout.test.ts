@@ -13,8 +13,25 @@ function graph() {
   return { ...fromDiagram(b.build('Shop')), vpc, api, db, edge }
 }
 
-function moved(nodes: DiagramNode[], dx: number): DiagramNode[] {
-  return nodes.map((node) => ({ ...node, position: { x: node.position.x + dx, y: node.position.y } }))
+function moved(nodes: DiagramNode[], dx: number, only?: string): DiagramNode[] {
+  return nodes.map((node) =>
+    only === undefined || node.id === only
+      ? { ...node, position: { x: node.position.x + dx, y: node.position.y } }
+      : node,
+  )
+}
+
+function bent(edges: DiagramEdge[]): DiagramEdge[] {
+  return edges.map((edge) => ({
+    ...edge,
+    data: edge.data && {
+      ...edge.data,
+      bends: [
+        { x: 300, y: 80 },
+        { x: 300, y: 30 },
+      ],
+    },
+  }))
 }
 
 function routed(edges: DiagramEdge[]): DiagramEdge[] {
@@ -41,6 +58,17 @@ describe('applyLayout', () => {
     expect(result.nodes.map((node) => node.position.x)).toEqual(laidOut.nodes.map((node) => node.position.x))
     expect(result.nodes.find((node) => node.id === vpc)).toMatchObject({ width: 600, height: 360 })
     expect(result.edges.find((candidate) => candidate.id === edge)?.data?.route).toHaveLength(2)
+  })
+
+  it('moves the corners of a route drawn by hand with both ends, and drops them when the ends move apart', () => {
+    const { nodes, edges, vpc, db } = graph()
+    const together = applyLayout(nodes, bent(edges), { nodes: moved(moved(nodes, 100, vpc), 100, db), edges })
+    expect(together.edges[0]?.data?.bends).toEqual([
+      { x: 400, y: 80 },
+      { x: 400, y: 30 },
+    ])
+    const apart = applyLayout(nodes, bent(edges), { nodes: moved(moved(nodes, 100, vpc), 40, db), edges })
+    expect(apart.edges[0]?.data?.bends).toBeUndefined()
   })
 
   it('keeps edits, new nodes and reparented nodes from the time the layout ran', () => {

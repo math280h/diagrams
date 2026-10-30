@@ -39,6 +39,7 @@ import {
 import { withPayload, type PayloadPart } from '@/model/payload'
 import { takesColor, type DiagramEdge, type DiagramNode } from '@/model/types'
 import { applyLayout } from '@/layout/apply-layout'
+import { followBends } from '@/model/bends'
 import type { LayoutResult } from '@/layout/diagram-layout'
 import { unionRects, type Rect } from '@/model/rect'
 import { fromDiagram } from '@/persistence/serialize'
@@ -706,15 +707,38 @@ export function distributeSelection(axis: 'x' | 'y') {
 }
 
 export function nudgeSelection(dx: number, dy: number) {
-  const { nodes } = useDoc.getState()
+  const { nodes, edges } = useDoc.getState()
   if (!nodes.some((node) => node.selected)) return
   record('nudge')
+  const next = nodes.map((node) =>
+    node.selected && !(node.parentId && nodes.find((parent) => parent.id === node.parentId)?.selected)
+      ? { ...node, position: { x: node.position.x + dx, y: node.position.y + dy } }
+      : node,
+  )
+  useDoc.setState({ nodes: next, edges: followBends(edges, nodes, next) })
+}
+
+/**
+ * Moves the corners of the routes drawn by hand whose two ends moved together since `before`, as {@link followBends}
+ * describes. Call it after a drag. The function does not record an undo step.
+ */
+export function moveBendsAfterDrag(before: readonly DiagramNode[]) {
+  const { nodes, edges } = useDoc.getState()
+  const next = followBends(edges, before, nodes)
+  if (next !== edges) useDoc.setState({ edges: next })
+}
+
+/** Removes the corners drawn by hand from edges, so that the canvas routes them around the nodes again. */
+export function resetEdgeRoutes(ids: ReadonlySet<string>) {
+  const { edges } = useDoc.getState()
+  if (!edges.some((edge) => ids.has(edge.id) && edge.data?.bends)) return
+  record()
   useDoc.setState({
-    nodes: nodes.map((node) =>
-      node.selected && !(node.parentId && nodes.find((parent) => parent.id === node.parentId)?.selected)
-        ? { ...node, position: { x: node.position.x + dx, y: node.position.y + dy } }
-        : node,
-    ),
+    edges: edges.map((edge) => {
+      if (!ids.has(edge.id) || !edge.data?.bends) return edge
+      const { bends: _bends, ...data } = edge.data
+      return { ...edge, data }
+    }),
   })
 }
 

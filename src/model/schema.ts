@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { COLORS } from './colors'
 
-export const DIAGRAM_VERSION = 15
+export const DIAGRAM_VERSION = 16
 
 const colorSchema = z.enum(COLORS)
 
@@ -204,6 +204,12 @@ export const edgeDataSchema = z.object({
    * An edge with automatic sides follows it while its ends still touch both nodes.
    */
   route: z.array(xySchema).optional(),
+  /**
+   * The corners of a route that a person drew, in canvas coordinates. When the diagram routes edges around nodes, a
+   * `smooth` or `step` edge with corners goes through them at right angles, and its ends attach to its nodes wherever
+   * they are.
+   */
+  bends: z.array(xySchema).optional(),
   /** The body that the source sends to the target. */
   request: payloadSchema.optional(),
   /** The body that the target sends back to the source. */
@@ -356,6 +362,8 @@ export const themeSchema = z.object({
   boundaryColors: z.boolean(),
   /** If false, all edges use the neutral colour. */
   protocolColors: z.boolean(),
+  /** If true, `smooth` and `step` edges go around the other nodes, and a person can set their routes by hand. */
+  routeAround: z.boolean(),
 })
 export type DiagramTheme = z.infer<typeof themeSchema>
 

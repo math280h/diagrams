@@ -62,7 +62,8 @@ The visual system lives in `DESIGN.md` at the repository root.
   or `secret`) to body fields. Version 14 added `cameraStyle` (`frame`, `follow` or `still`) and `cameraMotion`
   (`gentle`, `quick` or `slow`) to flows; the migration gives earlier flows the frame camera with the gentle motion.
   Version 15 added overview steps (a step `target` of kind `flow` with an empty id) and `stepNumbers` to flows; the
-  migration turns the numbers off for earlier flows.
+  migration turns the numbers off for earlier flows. Version 16 added `routeAround` to the theme, off for earlier
+  diagrams and by default, and the optional `bends` of a route that a person drew to edges.
 - Groups are boundaries. A group's `kind` points into the catalogue in `src/model/boundaries.ts`:
   AWS, Azure, Google Cloud, Kubernetes and general kinds, plus the custom group. Each kind has a
   family (scope, logical, location, zone, network, subnet, security, runtime) that sets its line
@@ -85,7 +86,8 @@ The visual system lives in `DESIGN.md` at the repository root.
 - Nodes separate from the ground by their fill; the outline is only a quiet edge. Outlines that
   carried all of the separation made every element sit on one plane.
 - New edges route at right angles with rounded corners (`smooth`). Bezier curves read as a React
-  Flow demo.
+  Flow demo. With the diagram setting `routeAround`, `smooth` and `step` edges go around the nodes between their ends
+  (see "Routing on the canvas").
 - An edge has a protocol: HTTP, RPC, database or messaging. With `auto`, `detectProtocol` reads it
   from the label ("HTTPS", "gRPC", "SQL", "publish"); the properties panel can set it. Each protocol
   colours the line, the arrow, the traffic and the label. The diagram setting `protocolColors`
@@ -602,6 +604,33 @@ has to clear routes. Without routes, edges ran behind the nodes between their en
 met a node at the middle of its side. Agent placement keeps the routes inside a block of new nodes;
 it snaps the block origin to the grid, not each node, because a snapped node would no longer touch
 its route.
+
+### Routing on the canvas
+
+The diagram setting "Route connections around nodes" (`theme.routeAround`) makes the canvas run the router itself
+(`EdgeRouter` in `src/canvas/edges/routing.ts`), in the editor, Present, previews and every export, for each `smooth`
+or `step` edge. Curves and straight lines keep their own shape. The canvas then ignores the routes of the layout. An edge
+with fixed sides starts and ends on those sides.
+
+- It is off by default and for diagrams from before version 16, so that existing diagrams and templates keep the
+  routes that they were arranged with. Measured on the templates in the editor: with it off, as shipped no edge passes
+  through a node, and after one drag of the card in the middle of each template 9 of 180 edges do, in 9 of the 13
+  templates. With it on, none do.
+- The full routing takes about 19 ms for Multi-cloud platform (55 nodes, 38 edges) and under 8 ms for every other
+  template. It runs when a node, its size, a parent or a routed edge changes; panning and zooming do not run it. While
+  a drag moves nodes, the router routes only the edges of the moving nodes and the edges whose route comes within
+  24 px of them, once for each animation frame (about 4 ms on Multi-cloud platform), and routes all edges again after
+  the drop.
+- The routes go to a small store (`RouteStore`). Each edge reads its own route with `useSyncExternalStore`, and an
+  unchanged route keeps its array, so a drag renders only the edges whose routes change.
+- With the setting on, a person can set a route by hand: a selected `smooth` or `step` edge shows a handle on each
+  segment that touches no node, and a drag moves the segment across its direction (to the grid when snapping is on).
+  The edge then keeps the corners of its route in `bends`, and the router leaves it out. Its ends attach at right
+  angles to the sides of its nodes that face the first and the last corner (`manualRoute`), so the route follows its
+  nodes when they move. When both ends move by the same distance, as in a drag of both or of their group, or a nudge
+  with the arrow keys, the corners move with them (`followBends`). Tidy up and agent layouts keep the corners of edges
+  whose ends kept their places or moved together, and remove the others. Reset route in the properties panel removes
+  them. With the setting off, the canvas keeps the corners but does not draw them.
 
 ### Portals
 

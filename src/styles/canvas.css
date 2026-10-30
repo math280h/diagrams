@@ -997,6 +997,29 @@
   transition: opacity 240ms ease;
 }
 
+.dg-route-handle {
+  position: absolute;
+  pointer-events: all;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 999px;
+  background: var(--dg-ground);
+  box-shadow:
+    inset 0 0 0 2px var(--dg-select),
+    0 0 0 2px var(--dg-ground);
+  touch-action: none;
+}
+.dg-route-handle:hover {
+  background: var(--dg-select);
+}
+.dg-route-handle[data-axis='x'] {
+  cursor: ew-resize;
+}
+.dg-route-handle[data-axis='y'] {
+  cursor: ns-resize;
+}
+
 .dg-canvas .react-flow__viewport {
   opacity: var(--dg-view-opacity, 1);
 }

@@ -97,6 +97,11 @@ export function StylePanel() {
         </Field>
         <SwitchField label="Snap to grid" checked={theme.snap} onChange={(snap) => setTheme({ snap })} />
         <SwitchField
+          label="Route connections around nodes"
+          checked={theme.routeAround}
+          onChange={(routeAround) => setTheme({ routeAround })}
+        />
+        <SwitchField
           label="Colour boundaries by kind"
           checked={theme.boundaryColors}
           onChange={(boundaryColors) => setTheme({ boundaryColors })}

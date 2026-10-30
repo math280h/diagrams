@@ -171,6 +171,12 @@ function toVersion15(raw: Record<string, unknown>): Record<string, unknown> {
   return { ...raw, flows: flows.map((flow: Record<string, unknown>) => ({ stepNumbers: false, ...flow })) }
 }
 
+/** Version 16 adds `routeAround` to the theme, and `bends` to edges. Earlier diagrams keep the routes of the layout. */
+function toVersion16(raw: Record<string, unknown>): Record<string, unknown> {
+  const theme = typeof raw.theme === 'object' && raw.theme !== null ? (raw.theme as Record<string, unknown>) : {}
+  return { ...raw, theme: { routeAround: false, ...theme } }
+}
+
 /** The migration at index `n` converts a diagram from version `n + 1` to version `n + 2`. */
 const MIGRATIONS: Migration[] = [
   toVersion2,
@@ -187,6 +193,7 @@ const MIGRATIONS: Migration[] = [
   toVersion13,
   toVersion14,
   toVersion15,
+  toVersion16,
 ]
 
 export class DiagramFormatError extends Error {}
