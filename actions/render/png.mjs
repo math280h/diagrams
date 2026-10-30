@@ -160,11 +160,16 @@ function union(a, b) {
  * @param tolerance - The largest channel difference, from 0 to 255, that counts as the same.
  * @param cellPx - The side of the squares that the images are compared in.
  * @param gapPx - Changes closer than this share one rectangle.
- * @param strayPixels - A group of at most this many changed pixels is noise at a text edge, unless all groups are.
+ * @param strayPixels - A group of at most this many changed pixels is noise at a text edge or a rounded corner, as in
+ *   {@link samePixels}. Without a larger group, the result is empty.
  * @param maxRegions - The most rectangles to return. The nearest rectangles merge until no more are left.
  * @returns Rectangles in pixels, from the top.
  */
-export function changedRegions(a, b, { tolerance = 8, cellPx = 16, gapPx = 32, strayPixels = 3, maxRegions = 8 } = {}) {
+export function changedRegions(
+  a,
+  b,
+  { tolerance = 8, cellPx = 16, gapPx = 32, strayPixels = 16, maxRegions = 8 } = {},
+) {
   const width = Math.max(a.width, b.width)
   const height = Math.max(a.height, b.height)
   const columns = Math.ceil(width / cellPx)
@@ -206,8 +211,7 @@ export function changedRegions(a, b, { tolerance = 8, cellPx = 16, gapPx = 32, s
     }
     groups.push(group)
   }
-  const real = groups.filter((group) => group.pixels > strayPixels)
-  groups = real.length > 0 ? real : groups.toSorted((first, second) => second.pixels - first.pixels).slice(0, 1)
+  groups = groups.filter((group) => group.pixels > strayPixels)
   for (let merged = true; merged;) {
     merged = false
     for (let first = 0; first < groups.length && !merged; first++) {

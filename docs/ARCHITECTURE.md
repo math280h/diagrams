@@ -1168,8 +1168,10 @@ images current without a person. `main.mjs` does the work in Node, and `lib.mjs`
   screens that did not change.
 - On a changed PNG, the action draws red boxes around the parts that differ (`changedRegions` and `drawBoxes` in
   `png.mjs`), on the before and the after image. It compares squares of 16 px, joins changes less than 32 px apart,
-  leaves out a group of 3 or fewer changed pixels as noise at a text edge, and merges the nearest boxes until at most
-  8 are left. Rows that only the taller image has count as changed. An image that would be more than 1000 px tall in
+  leaves out a group of 16 or fewer changed pixels as noise at a text edge or a rounded corner, and merges the
+  nearest boxes until at most 8 are left. 16 is the limit of `samePixels` for a whole screen; with a limit of 3, two
+  builds of the same code got boxes around the corners of the logo and a button. Without a larger group, the image
+  has no box. Rows that only the taller image has count as changed. An image that would be more than 1000 px tall in
   the comment, such as a whole library page, shows only the rows with the changes (at most 800 px tall in the comment,
   the same rows on both sides) and links the whole image. Whole pages side by side made the comment several screens
   long, and a change was hard to find in them.

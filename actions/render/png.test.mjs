@@ -118,6 +118,8 @@ describe('changed regions', () => {
   it('leaves out a few stray pixels at a text edge, and small differences in colour', () => {
     const noise = paint(paint(base, { x: 20, y: 20, width: 1, height: 1 }), { x: 100, y: 100, width: 40, height: 4 })
     expect(changedRegions(base, noise)).toEqual([{ x: 96, y: 96, width: 48, height: 16 }])
+    const corners = paint(paint(base, { x: 0, y: 0, width: 4, height: 4 }), { x: 390, y: 290, width: 3, height: 3 })
+    expect(changedRegions(base, corners)).toEqual([])
     expect(changedRegions(base, paint(base, { x: 0, y: 0, width: 50, height: 50 }, [250, 250, 250, 255]))).toEqual([])
   })
 
