@@ -51,7 +51,7 @@ import {
   ungroupSelection,
 } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
-import { useResolvedAppTheme } from '@/store/settings-store'
+import { useHighContrast, useResolvedAppTheme } from '@/store/settings-store'
 import { setUi, useUi } from '@/store/ui-store'
 import { flushPendingSave } from '@/store/document'
 import { useLibrary } from '@/store/library-store'
@@ -202,6 +202,7 @@ export function CanvasContextMenu({ target, children }: { target: ContextTarget;
 
 function ColorMenu() {
   const theme = useResolvedAppTheme()
+  const highContrast = useHighContrast()
   const nodes = useDoc(useShallow((state) => state.nodes.filter((node) => node.selected).filter(takesColor)))
   if (nodes.length === 0) return null
   const colors = new Set(nodes.map((node) => node.data.color))
@@ -210,7 +211,11 @@ function ColorMenu() {
       <ContextMenuSubTrigger>
         <Palette /> Colour
       </ContextMenuSubTrigger>
-      <ContextMenuSubContent className="dg-zones w-36 shadow-lg" data-theme={theme}>
+      <ContextMenuSubContent
+        className="dg-zones w-36 shadow-lg"
+        data-theme={theme}
+        data-contrast={highContrast ? 'more' : undefined}
+      >
         <ContextMenuRadioGroup
           value={colors.size === 1 ? nodes[0]!.data.color : null}
           onValueChange={(value) => {

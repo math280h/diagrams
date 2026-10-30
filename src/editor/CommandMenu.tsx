@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react'
 import {
   BookOpen,
   Bot,
+  Contrast,
   CopyPlus,
   Download,
   FileCode,
@@ -66,7 +67,7 @@ import {
 import { useDoc } from '@/store/doc-store'
 import { currentDiagram, flushPendingSave } from '@/store/document'
 import { redo, undo } from '@/store/history'
-import { useSettings } from '@/store/settings-store'
+import { useHighContrast, useSettings } from '@/store/settings-store'
 import { setUi, useUi } from '@/store/ui-store'
 import { tidyUp } from './layout-command'
 import { presetNodeAt } from './preset-node'
@@ -90,6 +91,8 @@ export function CommandMenu() {
   const { screenToFlowPosition, fitView } = useReactFlow()
   const fit = useFitToScreen()
   const setTheme = useSettings((state) => state.setTheme)
+  const setContrast = useSettings((state) => state.setContrast)
+  const highContrast = useHighContrast()
   const [search, setSearch] = useState('')
   const nodes = useDoc((state) => state.nodes)
   const targets = useMemo(
@@ -286,6 +289,9 @@ export function CommandMenu() {
           </CommandItem>
           <CommandItem onSelect={run(() => setTheme('light'))}>
             <Sun /> Light theme
+          </CommandItem>
+          <CommandItem onSelect={run(() => setContrast(highContrast ? 'standard' : 'high'))}>
+            <Contrast /> {highContrast ? 'Standard contrast canvas' : 'High contrast canvas'}
           </CommandItem>
           <CommandItem onSelect={run(() => setUi({ shortcutsOpen: true }))}>
             <Keyboard /> Keyboard shortcuts <CommandShortcut>?</CommandShortcut>

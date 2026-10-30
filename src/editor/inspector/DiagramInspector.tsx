@@ -45,6 +45,8 @@ export function StylePanel() {
   const edges = useDoc((state) => state.edges)
   const appTheme = useSettings((state) => state.theme)
   const setAppTheme = useSettings((state) => state.setTheme)
+  const contrast = useSettings((state) => state.contrast)
+  const setContrast = useSettings((state) => state.setContrast)
   const ambientMotion = useSettings((state) => state.ambientMotion)
   const setAmbientMotion = useSettings((state) => state.setAmbientMotion)
   const fitToScreen = useFitToScreen()
@@ -159,6 +161,18 @@ export function StylePanel() {
               { value: 'system', label: 'System' },
               { value: 'light', label: 'Light' },
               { value: 'dark', label: 'Dark' },
+            ]}
+          />
+        </Field>
+        <Field label="Canvas contrast">
+          <Segmented
+            label="Canvas contrast"
+            value={contrast}
+            onChange={setContrast}
+            options={[
+              { value: 'system', label: 'System' },
+              { value: 'standard', label: 'Standard' },
+              { value: 'high', label: 'High' },
             ]}
           />
         </Field>

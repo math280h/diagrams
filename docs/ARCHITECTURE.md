@@ -76,6 +76,12 @@ The visual system lives in `DESIGN.md` at the repository root.
   was GitHub Primer before; it read as a GitHub feature, not as a product of its own.
 - Signal blue is the walkthrough colour, the focus ring and the token in the app mark. Nothing else
   uses it, so a boundary palette or protocol palette never has a saturated blue.
+- High contrast is a setting of the viewer, not of the diagram, because the need belongs to the person who reads the
+  canvas. `contrast` in the settings store is `system` (follows `prefers-contrast: more`), `standard` or `high`.
+  `DiagramCanvas` sets `data-contrast="more"`, and `src/styles/canvas.css` replaces the colour tokens under it. Export
+  stages leave it out, so that a file looks the same for each reader. Text reaches 7:1 and lines 4.5:1;
+  `src/styles/contrast.browser.test.ts` checks the token pairs. A scan of the text on all 13 templates in both themes
+  found none below 7:1 with high contrast; with standard contrast none is below 4.5:1, and 661 of 1,356 are below 7:1.
 - Nodes separate from the ground by their fill; the outline is only a quiet edge. Outlines that
   carried all of the separation made every element sit on one plane.
 - New edges route at right angles with rounded corners (`smooth`). Bezier curves read as a React

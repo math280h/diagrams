@@ -14,6 +14,7 @@ import type { DiagramEdge, DiagramNode } from '@/model/types'
 import { hasDetails } from '@/model/details'
 import type { DiagramDescription } from '@/export/describe'
 import type { DataCrossing } from '@/model/threats'
+import { useHighContrast } from '@/store/settings-store'
 import { CanvasDescription } from './CanvasDescription'
 import { edgeAriaLabel, nodeAriaLabel, nodeName } from './aria'
 import { FlowEdge } from './edges/FlowEdge'
@@ -85,6 +86,7 @@ export function DiagramCanvas({
     [editable, theme.background, onOpenDiagram, threats],
   )
   const [hover] = useState(createDetailsHover)
+  const highContrast = useHighContrast() && !exportMode
   const nodes = useMemo(() => {
     const layered = flowProps.nodes && layerNodes(flowProps.nodes)
     return layered?.map((node) => {
@@ -113,6 +115,7 @@ export function DiagramCanvas({
         ref={rootRef}
         className="dg-canvas"
         data-theme={resolvedTheme}
+        data-contrast={highContrast ? 'more' : undefined}
         data-fonts={theme.fonts}
         data-boundary-colors={theme.boundaryColors ? 'true' : undefined}
         data-protocol-colors={theme.protocolColors ? 'true' : undefined}
