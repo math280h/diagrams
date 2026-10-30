@@ -171,6 +171,22 @@ function toVersion15(raw: Record<string, unknown>): Record<string, unknown> {
   return { ...raw, flows: flows.map((flow: Record<string, unknown>) => ({ stepNumbers: false, ...flow })) }
 }
 
+/**
+ * Version 16 routes edges on the canvas and removes `route`, the stored path of the last layout. It adds `bends`, the
+ * corners of a route that a person drew, which earlier edges do not have.
+ */
+function toVersion16(raw: Record<string, unknown>): Record<string, unknown> {
+  const edges = Array.isArray(raw.edges) ? raw.edges : []
+  return {
+    ...raw,
+    edges: edges.map((edge: Record<string, unknown>) => {
+      if (typeof edge.data !== 'object' || edge.data === null || !('route' in edge.data)) return edge
+      const { route: _route, ...data } = edge.data as Record<string, unknown>
+      return { ...edge, data }
+    }),
+  }
+}
+
 /** The migration at index `n` converts a diagram from version `n + 1` to version `n + 2`. */
 const MIGRATIONS: Migration[] = [
   toVersion2,
@@ -187,6 +203,7 @@ const MIGRATIONS: Migration[] = [
   toVersion13,
   toVersion14,
   toVersion15,
+  toVersion16,
 ]
 
 export class DiagramFormatError extends Error {}

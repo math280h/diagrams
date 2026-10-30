@@ -29,6 +29,7 @@ import { ShapeNode } from './nodes/ShapeNode'
 import { TextNode } from './nodes/TextNode'
 import { ViewportLayerPortal } from './portal'
 import { LevelOfDetail } from './level-of-detail'
+import { createRouteStore, EdgeRouter, RouteStoreContext } from './edges/routing'
 import { StepNumbers } from './StepNumbers'
 import { ZoomProperty } from './zoom'
 
@@ -81,9 +82,10 @@ export function DiagramCanvas({
   const ownRef = useRef<HTMLDivElement>(null)
   const rootRef = givenRef ?? ownRef
   const mode = useMemo(
-    () => ({ editable, background: theme.background, openDiagram: onOpenDiagram, threats }),
-    [editable, theme.background, onOpenDiagram, threats],
+    () => ({ editable, background: theme.background, openDiagram: onOpenDiagram, threats, snap: theme.snap }),
+    [editable, theme.background, onOpenDiagram, threats, theme.snap],
   )
+  const [routes] = useState(createRouteStore)
   const [hover] = useState(createDetailsHover)
   const nodes = useMemo(() => {
     const layered = flowProps.nodes && layerNodes(flowProps.nodes)
@@ -109,83 +111,86 @@ export function DiagramCanvas({
 
   return (
     <CanvasModeContext value={mode}>
-      <div
-        ref={rootRef}
-        className="dg-canvas"
-        data-theme={resolvedTheme}
-        data-fonts={theme.fonts}
-        data-boundary-colors={theme.boundaryColors ? 'true' : undefined}
-        data-protocol-colors={theme.protocolColors ? 'true' : undefined}
-        data-readonly={editable ? undefined : 'true'}
-        data-export={exportMode ? 'true' : undefined}
-        data-details={details ? 'true' : undefined}
-        data-threats={threats ? 'true' : undefined}
-        data-exploring={exploring ? 'true' : undefined}
-      >
-        <ReactFlow<DiagramNode, DiagramEdge>
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          connectionMode={ConnectionMode.Loose}
-          minZoom={0.08}
-          maxZoom={4}
-          nodesDraggable={editable}
-          nodesConnectable={editable}
-          elementsSelectable={editable}
-          edgesReconnectable={false}
-          selectionMode={SelectionMode.Partial}
-          deleteKeyCode={editable ? ['Backspace', 'Delete'] : null}
-          multiSelectionKeyCode={['Shift', 'Meta', 'Control']}
-          selectionKeyCode={editable ? 'Shift' : null}
-          selectionOnDrag={false}
-          panOnDrag={editable ? [0, 1] : true}
-          panOnScroll={editable}
-          zoomOnDoubleClick={false}
-          colorMode={resolvedTheme}
-          proOptions={{ hideAttribution: true }}
-          {...flowProps}
-          {...(details
-            ? {
-                onNodeMouseEnter: (event, node) => {
-                  flowProps.onNodeMouseEnter?.(event, node)
-                  if (nodeHasDetails(node)) hover.enter(node.id)
-                },
-                onNodeMouseLeave: (event, node) => {
-                  flowProps.onNodeMouseLeave?.(event, node)
-                  hover.leave()
-                },
-                onNodeClick: (event, node) => {
-                  flowProps.onNodeClick?.(event, node)
-                  if (nodeHasDetails(node)) hover.toggle(node.id)
-                },
-                onPaneClick: (event) => {
-                  flowProps.onPaneClick?.(event)
-                  hover.close()
-                },
-              }
-            : {})}
-          nodes={nodes}
-          edges={edges}
+      <RouteStoreContext value={routes}>
+        <div
+          ref={rootRef}
+          className="dg-canvas"
+          data-theme={resolvedTheme}
+          data-fonts={theme.fonts}
+          data-boundary-colors={theme.boundaryColors ? 'true' : undefined}
+          data-protocol-colors={theme.protocolColors ? 'true' : undefined}
+          data-readonly={editable ? undefined : 'true'}
+          data-export={exportMode ? 'true' : undefined}
+          data-details={details ? 'true' : undefined}
+          data-threats={threats ? 'true' : undefined}
+          data-exploring={exploring ? 'true' : undefined}
         >
-          {theme.background === 'dots' && (
-            <Background variant={BackgroundVariant.Dots} gap={GRID_PX} size={GRID_DOT_PX} color="var(--dg-grid)" />
-          )}
-          {theme.background === 'grid' && (
-            <Background variant={BackgroundVariant.Lines} gap={GRID_PX} lineWidth={1} color="var(--dg-grid-line)" />
-          )}
-          <EngineBinding rootRef={rootRef} />
-          <ZoomProperty rootRef={rootRef} />
-          {levelOfDetail && <LevelOfDetail rootRef={rootRef} />}
-          <ViewportLayerPortal>
-            <StepNumbers />
-            <FlowToken />
-          </ViewportLayerPortal>
-          {details && <NodeDetailsCard hover={hover} nodes={flowProps.nodes} />}
-          {children}
-        </ReactFlow>
-        {description && <CanvasDescription description={description} />}
-        {showCaption && <FlowCaption />}
-        {overlay}
-      </div>
+          <ReactFlow<DiagramNode, DiagramEdge>
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            connectionMode={ConnectionMode.Loose}
+            minZoom={0.08}
+            maxZoom={4}
+            nodesDraggable={editable}
+            nodesConnectable={editable}
+            elementsSelectable={editable}
+            edgesReconnectable={false}
+            selectionMode={SelectionMode.Partial}
+            deleteKeyCode={editable ? ['Backspace', 'Delete'] : null}
+            multiSelectionKeyCode={['Shift', 'Meta', 'Control']}
+            selectionKeyCode={editable ? 'Shift' : null}
+            selectionOnDrag={false}
+            panOnDrag={editable ? [0, 1] : true}
+            panOnScroll={editable}
+            zoomOnDoubleClick={false}
+            colorMode={resolvedTheme}
+            proOptions={{ hideAttribution: true }}
+            {...flowProps}
+            {...(details
+              ? {
+                  onNodeMouseEnter: (event, node) => {
+                    flowProps.onNodeMouseEnter?.(event, node)
+                    if (nodeHasDetails(node)) hover.enter(node.id)
+                  },
+                  onNodeMouseLeave: (event, node) => {
+                    flowProps.onNodeMouseLeave?.(event, node)
+                    hover.leave()
+                  },
+                  onNodeClick: (event, node) => {
+                    flowProps.onNodeClick?.(event, node)
+                    if (nodeHasDetails(node)) hover.toggle(node.id)
+                  },
+                  onPaneClick: (event) => {
+                    flowProps.onPaneClick?.(event)
+                    hover.close()
+                  },
+                }
+              : {})}
+            nodes={nodes}
+            edges={edges}
+          >
+            {theme.background === 'dots' && (
+              <Background variant={BackgroundVariant.Dots} gap={GRID_PX} size={GRID_DOT_PX} color="var(--dg-grid)" />
+            )}
+            {theme.background === 'grid' && (
+              <Background variant={BackgroundVariant.Lines} gap={GRID_PX} lineWidth={1} color="var(--dg-grid-line)" />
+            )}
+            <EdgeRouter store={routes} />
+            <EngineBinding rootRef={rootRef} />
+            <ZoomProperty rootRef={rootRef} />
+            {levelOfDetail && <LevelOfDetail rootRef={rootRef} />}
+            <ViewportLayerPortal>
+              <StepNumbers />
+              <FlowToken />
+            </ViewportLayerPortal>
+            {details && <NodeDetailsCard hover={hover} nodes={flowProps.nodes} />}
+            {children}
+          </ReactFlow>
+          {description && <CanvasDescription description={description} />}
+          {showCaption && <FlowCaption />}
+          {overlay}
+        </div>
+      </RouteStoreContext>
     </CanvasModeContext>
   )
 }

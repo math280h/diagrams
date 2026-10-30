@@ -65,6 +65,15 @@ describe('routeEdges', () => {
     for (const x of ab) for (const other of ac) expect(Math.abs(x - other)).toBeGreaterThanOrEqual(6)
   })
 
+  it('starts and ends a route with fixed sides on those sides', () => {
+    const nodes = [card('a', 0, 0), card('b', 400, 300)]
+    const route = routeEdges(nodes, [
+      { id: 'e', source: 'a', target: 'b', sourceSide: 'bottom', targetSide: 'left' },
+    ]).get('e')!
+    expect(route[0]).toEqual({ x: 100, y: 60 })
+    expect(route.at(-1)).toEqual({ x: 400, y: 330 })
+  })
+
   it('leaves out an edge between a node and itself', () => {
     expect(routeEdges([card('a', 0, 0)], [{ id: 'loop', source: 'a', target: 'a' }]).has('loop')).toBe(false)
   })

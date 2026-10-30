@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { COLORS } from './colors'
 
-export const DIAGRAM_VERSION = 15
+export const DIAGRAM_VERSION = 16
 
 const colorSchema = z.enum(COLORS)
 
@@ -199,11 +199,11 @@ export const edgeDataSchema = z.object({
   protocol: z.enum(EDGE_PROTOCOLS),
   traffic: trafficSchema,
   /**
-   * The path of the last automatic layout, in canvas coordinates, from the source node to the target node.
-   *
-   * An edge with automatic sides follows it while its ends still touch both nodes.
+   * The corners of a route that a person drew, in canvas coordinates. A `smooth` or `step` edge with corners goes
+   * through them at right angles, and its ends attach to its nodes wherever they are. Without corners, the canvas
+   * routes the edge around the other nodes.
    */
-  route: z.array(xySchema).optional(),
+  bends: z.array(xySchema).optional(),
   /** The body that the source sends to the target. */
   request: payloadSchema.optional(),
   /** The body that the target sends back to the source. */

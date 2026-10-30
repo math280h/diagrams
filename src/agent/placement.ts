@@ -12,7 +12,6 @@ import {
 } from '@/model/graph'
 import { BOUNDARY_SIZE } from '@/model/presets'
 import { rectsOverlap, unionRects, type Rect } from '@/model/rect'
-import type { XY } from '@/model/schema'
 import type { DiagramEdge, DiagramNode, GroupNodeType } from '@/model/types'
 
 export type LayoutFunction = (
@@ -56,8 +55,6 @@ export interface PlacementResult {
   added: DiagramNode[]
   /** The groups of the diagram that got new nodes. They grow around them when the change commits. */
   containers: string[]
-  /** The routes of edges inside a block of new nodes, in canvas coordinates. */
-  routes: Map<string, XY[]>
 }
 
 /**
@@ -104,7 +101,6 @@ export async function placeNodes(input: PlacementInput): Promise<PlacementResult
 
   const rectOf = (id: string): Rect => ({ ...absolute.get(id)!, ...sizes.get(id)! })
   const sizedByLayout = new Set<string>()
-  const routes = new Map<string, XY[]>()
   const laidOutBlocks = await Promise.all(
     [...blocks].map(async ([container, members]) => {
       const memberIds = new Set(members.map((node) => node.id))
@@ -155,14 +151,6 @@ export async function placeNodes(input: PlacementInput): Promise<PlacementResult
       hasNode: (id) => absolute.has(id) && !floating.has(id),
     })
     const offset = { x: snapToGrid(free.x) - block.x, y: snapToGrid(free.y) - block.y }
-    for (const edge of result.edges) {
-      const route = edge.data?.route
-      if (route)
-        routes.set(
-          edge.id,
-          route.map((point) => ({ x: point.x + offset.x, y: point.y + offset.y })),
-        )
-    }
 
     const visit = (node: DiagramNode, parentAbsolute: Point) => {
       const position = relative.get(node.id)!.position
@@ -199,7 +187,7 @@ export async function placeNodes(input: PlacementInput): Promise<PlacementResult
   const containers = laidOutBlocks.flatMap(({ container }) =>
     container !== null && existingById.has(container) ? [container] : [],
   )
-  return { added, containers, routes }
+  return { added, containers }
 }
 
 function occupiedRects(

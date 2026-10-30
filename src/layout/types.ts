@@ -1,5 +1,3 @@
-import type { XY } from '@/model/schema'
-
 export const LAYOUT_DIRECTIONS = ['RIGHT', 'DOWN', 'LEFT', 'UP'] as const
 export type LayoutDirection = (typeof LAYOUT_DIRECTIONS)[number]
 
@@ -36,8 +34,6 @@ export interface PlacedNode {
 
 export interface LayoutResponse {
   nodes: PlacedNode[]
-  /** The route of each routed edge, in canvas coordinates. */
-  routes: Record<string, XY[]>
 }
 
 /** Rounds a canvas coordinate to the nearest half pixel, the precision of routes. */

@@ -1,8 +1,7 @@
 import type { ELK, ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk-api'
 import { GROUP_PADDING_PX } from '@/model/graph'
-import type { XY } from '@/model/schema'
 import type { LayoutTree } from './tree'
-import { roundHalf, type LayoutDirection, type LayoutRequest, type LayoutResponse, type PlacedNode } from './types'
+import type { LayoutDirection, LayoutRequest, LayoutResponse, PlacedNode } from './types'
 
 /** Returns spacing options for the root and for each group. ELK reads spacing from the parent of each node. */
 export function spacingOptions(layerGapPx: number) {
@@ -36,20 +35,7 @@ function groupOptions(minWidth: number, direction: LayoutDirection, layerGapPx: 
   }
 }
 
-/** Returns the points of an ELK edge from start to end, or `undefined` if ELK gave no route. */
-function routeOf(edge: ElkExtendedEdge): XY[] | undefined {
-  const points: XY[] = []
-  for (const section of edge.sections ?? []) {
-    for (const point of [section.startPoint, ...(section.bendPoints ?? []), section.endPoint]) {
-      const rounded = { x: roundHalf(point.x), y: roundHalf(point.y) }
-      const previous = points.at(-1)
-      if (!previous || previous.x !== rounded.x || previous.y !== rounded.y) points.push(rounded)
-    }
-  }
-  return points.length >= 2 ? points : undefined
-}
-
-/** Lays out the whole hierarchy in one ELK layered run, with orthogonal routes for all edges. */
+/** Lays out the whole hierarchy in one ELK layered run. */
 export async function layoutHierarchy(elk: ELK, request: LayoutRequest, tree: LayoutTree): Promise<LayoutResponse> {
   const elkNodes = new Map<string, ElkNode>()
   for (const node of request.nodes) {
@@ -94,10 +80,5 @@ export async function layoutHierarchy(elk: ELK, request: LayoutRequest, tree: La
     }
   }
   visit(result)
-  const routes: Record<string, XY[]> = {}
-  for (const edge of result.edges ?? []) {
-    const route = routeOf(edge)
-    if (route) routes[edge.id] = route
-  }
-  return { nodes, routes }
+  return { nodes }
 }

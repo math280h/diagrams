@@ -1,13 +1,14 @@
-import { useInternalNode, type EdgeProps } from '@xyflow/react'
+import { useInternalNode, useReactFlow, type EdgeProps } from '@xyflow/react'
 import { ShieldAlert } from 'lucide-react'
-import { useLayoutEffect, useMemo, useRef } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState, type PointerEvent } from 'react'
 import { useEngine } from '@/engine/hooks'
 import { hashUnit } from '@/engine/hash'
 import { buildArcTable, pointAt } from '@/engine/path-sampler'
 import { COMET_TRAIL, dashPattern, particleCount } from '@/engine/traffic'
 import { defaultEdgeData } from '@/model/defaults'
+import { snapToGrid } from '@/model/graph'
 import { edgeProtocol } from '@/model/protocols'
-import type { EdgeData } from '@/model/schema'
+import type { EdgeData, XY } from '@/model/schema'
 import { crossingText } from '@/model/threats'
 import type { DiagramEdge } from '@/model/types'
 import { selectOnly, updateEdgeData } from '@/store/actions'
@@ -16,17 +17,19 @@ import { EditableText } from '@/canvas/nodes/EditableText'
 import { EdgeLabelPortal, ViewportLayerPortal } from '@/canvas/portal'
 import {
   autoEndpoints,
+  bendsWithSegmentAt,
   edgePath,
   internalRect,
+  manualRoute,
+  middleSegments,
   positionSide,
-  routeFits,
   routePath,
   type EdgeEndpoints,
+  type RouteSegment,
 } from './geometry'
+import { ROUTED_PATHS, useEdgeRoute } from './routing'
 
 const FALLBACK_DATA = defaultEdgeData()
-/** The path styles that can follow a layout route. Curves and straight lines keep their own shape. */
-const ROUTED_PATHS: ReadonlySet<EdgeData['path']> = new Set(['smooth', 'step'])
 const ROUTE_RADIUS: Partial<Record<EdgeData['path'], number>> = { smooth: 12, step: 0 }
 const RAD_TO_DEG = 180 / Math.PI
 
@@ -69,25 +72,72 @@ function bodyTitle(requestFields: number, responseFields: number): string {
     .join('. ')
 }
 
+function SegmentHandle({
+  segment,
+  route,
+  snap,
+  onDraft,
+  onDrop,
+}: {
+  segment: RouteSegment
+  route: readonly XY[]
+  snap: boolean
+  onDraft: (bends: XY[]) => void
+  onDrop: () => void
+}) {
+  const { screenToFlowPosition } = useReactFlow()
+  const start = useRef<readonly XY[] | null>(null)
+  const move = (event: PointerEvent<HTMLDivElement>) => {
+    if (!start.current) return
+    const point = screenToFlowPosition({ x: event.clientX, y: event.clientY }, { snapToGrid: false })
+    const at = snap ? snapToGrid(point[segment.axis]) : Math.round(point[segment.axis])
+    onDraft(bendsWithSegmentAt(start.current, segment, at))
+  }
+  return (
+    <div
+      className="dg-route-handle nodrag nopan"
+      data-axis={segment.axis}
+      style={{ transform: `translate(${segment.middle.x}px, ${segment.middle.y}px)` }}
+      onPointerDown={(event) => {
+        event.stopPropagation()
+        event.currentTarget.setPointerCapture(event.pointerId)
+        start.current = route
+      }}
+      onPointerMove={move}
+      onPointerUp={(event) => {
+        event.currentTarget.releasePointerCapture(event.pointerId)
+        if (start.current) onDrop()
+        start.current = null
+      }}
+    />
+  )
+}
+
 export function FlowEdge(props: EdgeProps<DiagramEdge>) {
   const { id, source, target, data = FALLBACK_DATA, selected } = props
   const engine = useEngine()
-  const { editable, threats } = useCanvasMode()
+  const { editable, threats, snap } = useCanvasMode()
   const threat = threats?.get(id)
   const crossing = threat !== undefined && threat.boundaries.length > 0 ? 'true' : undefined
   const sourceNode = useInternalNode(source)
   const targetNode = useInternalNode(target)
   const trafficRef = useRef<SVGGElement>(null)
+  const automatic = useEdgeRoute(id)
+  const [draft, setDraft] = useState<XY[] | null>(null)
 
   const auto = data.sides === 'auto' && sourceNode && targetNode
   const ends: EdgeEndpoints = auto ? autoEndpoints(internalRect(sourceNode), internalRect(targetNode)) : props
-  const routed =
-    auto &&
-    data.route &&
-    ROUTED_PATHS.has(data.path) &&
-    routeFits(data.route, internalRect(sourceNode), internalRect(targetNode))
-  const path = routed && data.route ? routePath(data.route, ROUTE_RADIUS[data.path] ?? 0) : edgePath(data.path, ends)[0]
+  const orthogonal = ROUTED_PATHS.has(data.path)
+  const bends = draft ?? data.bends
+  const drawn =
+    orthogonal && bends?.length && sourceNode && targetNode
+      ? manualRoute(internalRect(sourceNode), internalRect(targetNode), bends)
+      : undefined
+  const route = drawn ?? (orthogonal ? automatic : undefined)
+  const path =
+    route && route.length >= 2 ? routePath(route, ROUTE_RADIUS[data.path] ?? 0) : edgePath(data.path, ends)[0]
   const table = useMemo(() => buildArcTable(path), [path])
+  const segments = editable && selected && route ? middleSegments(route) : []
 
   useLayoutEffect(() => {
     engine.tables.set(id, table)
@@ -207,6 +257,24 @@ export function FlowEdge(props: EdgeProps<DiagramEdge>) {
             )}
           </div>
         </EdgeLabelPortal>
+      )}
+
+      {segments.length > 0 && route && (
+        <ViewportLayerPortal>
+          {segments.map((segment) => (
+            <SegmentHandle
+              key={segment.index}
+              segment={segment}
+              route={route}
+              snap={snap}
+              onDraft={setDraft}
+              onDrop={() => {
+                if (draft) updateEdgeData(id, { bends: draft }, `edge-bends:${id}:${Date.now()}`)
+                setDraft(null)
+              }}
+            />
+          ))}
+        </ViewportLayerPortal>
       )}
 
       {data.ports && (

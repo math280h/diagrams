@@ -5,7 +5,7 @@ import { SIDES, type EdgeData, type Side, type Traffic } from '@/model/schema'
 import { crossingText, dataCrossings } from '@/model/threats'
 import type { DiagramEdge } from '@/model/types'
 import { useDoc } from '@/store/doc-store'
-import { reverseEdge, setEdgeSides, updateEdgesData, updateEdgesTraffic } from '@/store/actions'
+import { resetEdgeRoutes, reverseEdge, setEdgeSides, updateEdgesData, updateEdgesTraffic } from '@/store/actions'
 import { Choice, Field, Section, Segmented, SliderField, SwitchField, TextInput } from './controls'
 import { PayloadSection } from './PayloadFields'
 
@@ -114,6 +114,8 @@ export function EdgeInspector({ edges }: { edges: DiagramEdge[] }) {
   const single = edges.length === 1
   const set = (patch: Partial<EdgeData>, key?: string) => updateEdgesData(ids, patch, key)
   const setTraffic = (patch: Partial<Traffic>, key?: string) => updateEdgesTraffic(ids, patch, key)
+  const routed = data.path === 'smooth' || data.path === 'step'
+  const drawn = edges.some((edge) => (edge.data?.bends?.length ?? 0) > 0)
 
   return (
     <>
@@ -180,6 +182,18 @@ export function EdgeInspector({ edges }: { edges: DiagramEdge[] }) {
             ]}
           />
         </Field>
+        {routed && (
+          <div className="flex min-h-7 items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">
+              {drawn ? 'Route set by hand.' : 'Goes around other nodes. Drag a segment on the canvas to set the route.'}
+            </p>
+            {drawn && (
+              <Button variant="ghost" size="xs" className="shrink-0" onClick={() => resetEdgeRoutes(ids)}>
+                Reset route
+              </Button>
+            )}
+          </div>
+        )}
         <Field label="Stroke">
           <Segmented
             value={data.stroke}

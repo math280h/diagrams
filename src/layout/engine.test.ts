@@ -81,10 +81,9 @@ describe('computeLayout', () => {
     const rects = absolute(response.nodes, request)
     const order = ['client', 'lb', 'api', 'db'].map((id) => rects.get(id)!.x)
     expect(order).toEqual(order.toSorted((a, b) => a - b))
-    expect(Object.keys(response.routes)).toHaveLength(request.edges.length)
   })
 
-  it('puts a hub of many groups in a compact grid and routes every edge', async () => {
+  it('puts a hub of many groups in a compact grid', async () => {
     const request = hub()
     const response = await computeLayout(elk, request)
     const rects = absolute(response.nodes, request)
@@ -103,7 +102,6 @@ describe('computeLayout', () => {
         expect(apart).toBe(true)
       }
     }
-    expect(Object.keys(response.routes)).toHaveLength(request.edges.length)
   })
 
   it('places children inside their group with the group padding', async () => {
