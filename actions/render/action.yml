@@ -21,7 +21,9 @@ inputs:
     description: >-
       write renders each diagram to an image next to its file, for example docs/orders.diagram.json to docs/orders.png.
       compare renders each diagram that a pull request changes as it was and as it is, and comments on the pull
-      request. auto uses compare on pull_request events and write on other events.
+      request. On a PNG, red boxes mark the parts that changed, and an image too tall for the comment shows only the
+      rows with the changes and links the whole image. auto uses compare on pull_request events and write on other
+      events.
     default: auto
   publish:
     description: In compare mode, false keeps the images on the runner and does not push or comment.

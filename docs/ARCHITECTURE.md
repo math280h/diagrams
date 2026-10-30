@@ -1149,7 +1149,9 @@ images current without a person. `main.mjs` does the work in Node, and `lib.mjs`
   Present at its first step and five steps later, an empty diagram at 1440 × 900, the editor with the properties and
   the flow panel open at 1280 × 720, and the library, the editor and Present on a phone at 390 × 844, each in the dark
   and the light theme. It asks for reduced motion and turns off CSS animations, so nothing moves while it takes a
-  screen.
+  screen. The library screens show the whole page: the script makes the viewport as tall as the page and waits until
+  every card preview has framed its diagram. With only the first screen, a change to the features section or the
+  template cards did not show.
 - `e2e/accessibility-scan.spec.ts` runs axe (`@axe-core/playwright`, the WCAG 2.2 A and AA rules) over the library, a
   template page, the editor with a selection and the flow panel, the command menu, the insert menu, the shortcut
   sheet, the image export, the minimap, Present with Explore, and the phone library and editor, in both themes. The scan
@@ -1164,6 +1166,13 @@ images current without a person. `main.mjs` does the work in Node, and `lib.mjs`
   in tests), and can draw a rounded corner a few pixels differently (2 pixels, 37 levels apart, at the corner of a
   button), while a change of text, colour or layout moves hundreds of pixels much further. An exact compare would show
   screens that did not change.
+- On a changed PNG, the action draws red boxes around the parts that differ (`changedRegions` and `drawBoxes` in
+  `png.mjs`), on the before and the after image. It compares squares of 16 px, joins changes less than 32 px apart,
+  leaves out a group of 3 or fewer changed pixels as noise at a text edge, and merges the nearest boxes until at most
+  8 are left. Rows that only the taller image has count as changed. An image that would be more than 1000 px tall in
+  the comment, such as a whole library page, shows only the rows with the changes (at most 800 px tall in the comment,
+  the same rows on both sides) and links the whole image. Whole pages side by side made the comment several screens
+  long, and a change was hard to find in them.
 - The featured stage and the template cards frame their diagram after the fonts load, and again when the measured
   node sizes change. Before, a font that arrived after the first measure left a frame for the fallback font, and two
   screens of the library differed by a few pixels.
