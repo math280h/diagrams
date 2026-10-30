@@ -9,42 +9,38 @@ computer.
 
 ## Features
 
-- **Node kinds with their own outlines**: services, data stores, queues, clients, external systems and functions.
-  Shapes, text and boundaries for AWS, Azure, Google Cloud, Kubernetes and custom groupings, coloured by kind or in
-  one colour. Give nodes a colour to group them, for example by team. Metrics and meters are optional.
-- **Details on hover**: give a node an owner, a description and links to its code, docs or dashboards. Readers see
-  them when they point at the node in Present and on an exported web page.
-- **Real icons**: the official AWS, Azure, Google Cloud and Kubernetes architecture icons, and 220 software logos.
-  Search them in the insert menu or the icon picker.
-- **Moving connections**: dots, comets, dashes or pulses that flow along a connection. Turn them on for one
-  connection or for all.
-- **Flows**: record a path through the diagram, add captions, and play it back with a camera that follows the user.
-  Read a flow as a log or as a sequence diagram. A timeline adds camera paths and fades. A step can reach several
-  nodes at once, for example all consumers of one event, and a flow can have alternate paths, such as what happens
-  when a payment fails.
-- **Traces as flows**: import an OpenTelemetry, Jaeger or Zipkin trace, and watch the real request move through your
-  diagram with each operation, latency and status in the log. Services use the cards with the same name.
-- **Request and response bodies**: list the JSON fields that a connection carries, or paste an example body to fill
-  them. Copy an example body back as JSON, and see the body in the log line while a flow plays.
-- **Sensitive data**: mark body fields as personal data or secrets, and see which connections carry them across a
-  trust boundary, such as an account, a network or the edge of the system. An agent can mark the fields and check each
-  crossing with STRIDE.
-- **Present and export**: present in full screen, or export PNG, SVG, MP4, WebM or GIF. Video export is exact to the
-  frame. Export a web page to share a diagram that plays its flows in any browser, as one HTML file with no network.
-  Or copy a share link that carries the whole diagram, so nothing is uploaded.
-- **Text description**: every diagram has a text description of its parts, connections and flows. Screen readers
-  read it on the canvas and in Present, SVG exports carry it, and you can copy it as alt text for an image.
-- **README images**: save a dark and a light PNG or GIF, and copy a `<picture>` snippet that shows the one that
-  matches the reader's theme on GitHub, with the text description as alt text.
-- **Mermaid import and export**: paste a Mermaid flowchart and get a laid-out diagram, or copy a diagram as a
-  Mermaid flowchart for Markdown. Node colours go both ways. Copy a flow as a Mermaid sequence diagram.
-- **Version history**: see how a diagram looked earlier, including each change that an agent made, and restore any
-  version.
-- **Local first**: the website keeps diagrams in your browser. Export a diagram file (JSON) to move it to another
-  browser. On a tablet, install the website as an app that opens from the home screen and works without internet.
-- **Desktop app and AI agents**: the desktop app keeps diagrams as files, and AI agents such as Claude Code can draw,
-  animate and render diagrams in it while you watch. An agent can draw a diagram from Terraform, docker-compose or
-  Kubernetes files, and later check the diagram against them and report what is missing or gone.
+<!-- features:start -->
+
+- **Play a request through it.** Record a path, add captions, and play it with a camera that follows. Read it as a log or a sequence diagram, with fan-out and alternate paths.
+- **Replay a real trace.** Import an OpenTelemetry, Jaeger or Zipkin trace, and watch the request move with each operation, latency and status.
+- **See where sensitive data goes.** Mark body fields as personal data or secrets, and see which connections carry them across a trust boundary.
+- **Let an AI agent draw it.** In the desktop app, Claude Code and other MCP clients draw, animate and check diagrams while you watch, also from Terraform, docker-compose or Kubernetes files.
+- **Share it anywhere.** Present in full screen, export PNG, SVG, MP4, WebM or GIF, or a web page that plays its flows. Copy an image, or a link that carries the whole diagram.
+- **Keep diagrams with your code.** A diagram is a JSON file that you review and diff. A GitHub Action shows each diagram before and after in a pull request.
+
+Also:
+
+- **Templates.** C4, RAG, an agent with MCP tools, event pipelines and more, ready to play.
+- **Node kinds.** Services, data stores, queues, clients and more, each with its own outline.
+- **Real icons.** Official AWS, Azure, Google Cloud and Kubernetes icons, and 220 software logos.
+- **Boundaries.** Cloud, network and cluster boundaries, or your own groups, such as a team.
+- **Colours and metrics.** Colour nodes by kind or by group, and add numbers or meters.
+- **Moving connections.** Dots, comets, dashes or pulses that flow along a connection.
+- **Details on hover.** An owner, a description and links on a node, shown on hover in Present.
+- **Request and response bodies.** The JSON fields of a connection, shown in the log as a flow plays.
+- **Drill-down.** A node opens another diagram, and Present zooms into it.
+- **Tidy up.** Lay out the whole diagram at once, and keep pinned nodes in place.
+- **Walkthroughs.** Introduction and conclusion steps that show the whole path of a flow.
+- **Text description.** Every diagram described in words, for screen readers and alt text.
+- **README images.** A dark and a light image, and a snippet that shows the one for the reader's theme.
+- **Mermaid.** Import and export Mermaid flowcharts, and copy a flow as a sequence diagram.
+- **Version history.** Earlier versions, also each change of an agent, ready to restore.
+- **Open in the desktop app.** Send a diagram from the website to the desktop app in one step.
+- **Command-line render.** The desktop app renders diagram files to images and video for CI.
+- **Local first.** No account. The website keeps diagrams in your browser, the desktop app as files.
+- **App on a tablet.** Install the website as an app that opens from the home screen and works offline.
+
+<!-- features:end -->
 
 ## Desktop app
 
