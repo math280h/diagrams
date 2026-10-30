@@ -1,6 +1,17 @@
-import { Activity, ArrowUpRight, Bot, GitPullRequest, type LucideIcon, Play, Share2, ShieldAlert } from 'lucide-react'
+import {
+  Activity,
+  ArrowUpRight,
+  Bot,
+  GitPullRequest,
+  type LucideIcon,
+  Play,
+  Plus,
+  Share2,
+  ShieldAlert,
+} from 'lucide-react'
 import { type ReactNode, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { REPOSITORY_URL } from '@/desktop/constants'
 import { flowToMermaidSequence } from '@/export/sequence'
 import type { Diagram } from '@/model/schema'
@@ -15,6 +26,7 @@ const TRACE_PREVIEW_COUNT = 4
 const CROSSING_PREVIEW_COUNT = 2
 const EXPORT_FORMATS = ['PNG', 'SVG', 'MP4', 'WebM', 'GIF', 'Web page', 'Share link']
 const EXAMPLE_REQUEST = '“Draw our checkout with Stripe”'
+const MORE_COLUMNS = 3
 
 const ICONS: Record<HeadlineId, LucideIcon> = {
   flows: Play,
@@ -23,6 +35,11 @@ const ICONS: Record<HeadlineId, LucideIcon> = {
   agents: Bot,
   share: Share2,
   code: GitPullRequest,
+}
+
+function inColumns<T>(items: readonly T[], count: number): T[][] {
+  const size = Math.ceil(items.length / count)
+  return Array.from({ length: count }, (_, index) => items.slice(index * size, (index + 1) * size))
 }
 
 interface FeaturesProps {
@@ -178,15 +195,30 @@ export function Features({ diagram, crossingsShown, onCrossingsShownChange, clas
           </div>
         </Card>
       </div>
-      <div className="mt-8">
-        <h3 className="mb-3 text-[15px] font-medium tracking-[-0.01em]">Also in Diagrams</h3>
-        <ul className="grid grid-cols-1 gap-x-8 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3">
-          {MORE_FEATURES.map(({ title, summary }) => (
-            <li key={title} className="text-[13px] leading-5 text-pretty">
-              <span className="font-medium">{title}.</span> <span className="text-muted-foreground">{summary}</span>
-            </li>
+      <div className="mt-12 grid gap-x-8 gap-y-3 border-t pt-8 md:grid-cols-[minmax(0,1fr)_minmax(0,3fr)]">
+        <h3 className="text-[13px] text-muted-foreground">Also in Diagrams</h3>
+        <div className="grid sm:grid-cols-3 sm:gap-x-6">
+          {inColumns(MORE_FEATURES, MORE_COLUMNS).map((column, index) => (
+            <ul key={column[0]?.title} className={index > 0 ? 'sm:border-l sm:pl-6' : undefined}>
+              {column.map(({ title, summary }) => (
+                <li key={title}>
+                  <Collapsible>
+                    <CollapsibleTrigger className="group flex items-center gap-1.5 py-1.5 text-left text-[15px] text-foreground/80 transition-colors hover:text-foreground data-[panel-open]:text-foreground motion-reduce:transition-none">
+                      {title}
+                      <Plus
+                        aria-hidden
+                        className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[panel-open]:rotate-45 motion-reduce:transition-none"
+                      />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pb-2 text-[13px] leading-5 text-pretty text-muted-foreground">
+                      {summary}
+                    </CollapsibleContent>
+                  </Collapsible>
+                </li>
+              ))}
+            </ul>
           ))}
-        </ul>
+        </div>
       </div>
     </section>
   )

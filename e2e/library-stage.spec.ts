@@ -62,7 +62,14 @@ test('shows what Diagrams does under the playing template, with pictures from it
   await page.goto('/')
   const section = page.getByRole('region', { name: 'What Diagrams does' })
   for (const { title } of HEADLINE_FEATURES) await expect(section.getByRole('heading', { name: title })).toBeVisible()
-  for (const { title } of MORE_FEATURES) await expect(section.getByText(`${title}.`, { exact: true })).toBeVisible()
+  for (const { title } of MORE_FEATURES) {
+    await expect(section.getByRole('button', { name: title, exact: true })).toBeVisible()
+  }
+  const tidyUp = MORE_FEATURES.find((feature) => feature.title === 'Tidy up')!
+  await expect(section.getByText(tidyUp.summary)).toBeHidden()
+  await section.getByRole('button', { name: 'Tidy up', exact: true }).click()
+  await expect(section.getByText(tidyUp.summary)).toBeVisible()
+  await expect(section.getByRole('button', { name: 'Tidy up', exact: true })).toHaveAttribute('aria-expanded', 'true')
 
   const sectionTop = (await section.boundingBox())!.y
   const moreTemplatesTop = (await page.getByRole('heading', { name: 'More templates' }).boundingBox())!.y
