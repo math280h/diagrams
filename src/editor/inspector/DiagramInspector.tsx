@@ -164,7 +164,7 @@ export function StylePanel() {
             ]}
           />
         </Field>
-        <Field label="Canvas contrast">
+        <Field label="Contrast">
           <Segmented
             label="Canvas contrast"
             value={contrast}

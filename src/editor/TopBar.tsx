@@ -261,7 +261,7 @@ export function TopBar() {
               <TooltipContent>Style and theme</TooltipContent>
             </Tooltip>
             <PopoverContent align="end" className="w-80 p-0">
-              <ScrollArea className="max-h-[70vh]">
+              <ScrollArea className="**:data-[slot=scroll-area-viewport]:max-h-[70vh]">
                 <StylePanel />
               </ScrollArea>
             </PopoverContent>
