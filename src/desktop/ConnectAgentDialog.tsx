@@ -139,7 +139,8 @@ export function ConnectAgentDialog() {
           <DialogTitle>Connect an agent</DialogTitle>
           <DialogDescription>
             Agents such as Claude Code can read, change and render your diagrams while you watch. They connect to this
-            app on your computer, and your diagrams stay here.
+            app on your computer. An agent sends the diagrams that it reads to its model, like the rest of your chat
+            with it.
           </DialogDescription>
         </DialogHeader>
         <Status info={info} />

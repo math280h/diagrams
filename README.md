@@ -1,7 +1,7 @@
 # Diagrams
 
-Architecture diagrams and user flows that look finished and move. Free, with no account. Your diagrams stay on your
-computer.
+Architecture diagrams and user flows that look finished and move. Free, with no account. Your diagrams are stored
+only on your computer, never on a server ([privacy](#privacy)).
 
 **Try it at [draw.thias.dev](https://draw.thias.dev).**
 
@@ -38,10 +38,29 @@ Also:
 - **Version history.** Earlier versions, also each change of an agent, ready to restore.
 - **Open in the desktop app.** Send a diagram from the website to the desktop app in one step.
 - **Command-line render.** The desktop app renders diagram files to images and video for CI.
-- **Local first.** No account. The website keeps diagrams in your browser, the desktop app as files.
 - **App on a tablet.** Install the website as an app that opens from the home screen and works offline.
 
 <!-- features:end -->
+
+## Privacy
+
+Your diagrams stay on your computer. There is no account and no server that stores diagrams.
+
+- **Stored only on your computer.** The website keeps diagrams in your browser (`localStorage`). The desktop app keeps
+  them as files in `Documents/Diagrams`.
+- **Share links without an upload.** A share link carries the whole diagram, compressed, after the `#`. Browsers never
+  send that part to a website.
+- **Exports made on your device.** Images, videos, GIFs and web pages render in the browser or in the desktop app.
+- **No account, no tracking.** No sign-in, no analytics, no tracking and no crash reports.
+
+The network connections, none of which carry a diagram:
+
+- The website loads from its host. On a computer, it asks the GitHub API for the latest release to offer the right
+  desktop download.
+- The desktop app checks GitHub Releases for updates at start and every 6 hours.
+
+An agent that you connect to the desktop app reads diagrams through the agent server on `127.0.0.1`, and sends what it
+reads to its model, like the rest of your chat with it.
 
 ## Desktop app
 

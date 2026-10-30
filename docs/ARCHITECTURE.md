@@ -843,8 +843,8 @@ every release. It also lists, marked Preview:
 - `cleanReleaseHtml` rebuilds the notes from an allowlist of text elements. It drops every attribute except a link
   target with an `http`, `https` or `mailto` address, and drops scripts, frames and every element outside the HTML
   namespace with their content. The page inserts the rebuilt nodes; it never sets HTML from a string.
-- The page links only on the website. The desktop app allows connections only to itself, and it tells about its
-  updates through the updater.
+- The page links only on the website. The desktop window allows connections only to the app itself, and it tells
+  about its updates through the updater.
 
 ### Share links
 
@@ -1273,6 +1273,28 @@ to the file on the code host), so that a later check matches nodes to resources 
 
 The `skills/list` and `skills/get` methods of the MCP skills extension (SEP-2640) wait until
 ViteMCP can declare extensions. Tests fail when a skill names a tool or an icon that does not exist.
+
+## Network connections
+
+The landing page (`src/library/PrivacySection.tsx`), the first line of the landing page (`storageCopy().promise`)
+and the README promise that no diagram is stored outside the computer of the user. These are all the connections that
+the app makes. A change that adds one updates this list and those texts.
+
+| Connection                                        | When                                                                                     | Data                                                                        |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| The website and its files, from its host          | On a visit, and when a feature loads its code or an icon set                             | Fixed paths. Hash routing keeps diagram ids and share data out of requests. |
+| `api.github.com`, the latest release              | On a computer, while the agent introduction shows, and in "Could not open the app", once | No diagram. It picks the installer for the system.                          |
+| `api.github.com`, release notes                   | At build time. At run time only on the dev server, or when the build could not load them | No diagram                                                                  |
+| `github.com` releases, through `electron-updater` | Desktop app: at start, every 6 hours, and "Check for updates"                            | No diagram. The updater sends a random install id.                          |
+| `127.0.0.1:27419` handoff                         | "Open in desktop app"                                                                    | The diagram, on the loopback interface only                                 |
+| `127.0.0.1:27419/mcp`                             | While the desktop app runs and an agent calls it                                         | Diagrams and images, to the agent that the user connected                   |
+
+- Share links carry the diagram in the fragment, which a browser never sends. Making a link and every export use no
+  network.
+- The renderer of the desktop app may connect only to `'self'`, `data:` and `blob:`. `https:` links open in the system
+  browser.
+- There is no analytics, telemetry, tracking or crash reporting. Fonts, icons and Mermaid ship in the bundle.
+- An agent that the user connects sends what it reads to its model. The "Connect an agent" dialog says so.
 
 ## Third-party licences
 

@@ -84,10 +84,6 @@ export const MORE_FEATURES: readonly Feature[] = [
   { title: 'Open in the desktop app', summary: 'Send a diagram from the website to the desktop app in one step.' },
   { title: 'Command-line render', summary: 'The desktop app renders diagram files to images and video for CI.' },
   {
-    title: 'Local first',
-    summary: 'No account. The website keeps diagrams in your browser, the desktop app as files.',
-  },
-  {
     title: 'App on a tablet',
     summary: 'Install the website as an app that opens from the home screen and works offline.',
   },

@@ -39,8 +39,11 @@ that follows the token, and frame-exact video and GIF export, all in the browser
 
 ## Capabilities and Constraints
 
-- No server and no account. The desktop app listens on 127.0.0.1 only, for AI agents and for the
-  handoff from the website.
+- No server that stores diagrams, and no account. The website is static files, and the desktop app
+  listens on 127.0.0.1 only, for AI agents and for the handoff from the website.
+- Privacy is part of the promise: no diagram is stored outside the computer of the user. The landing
+  page and the README say so, and "Network connections" in `docs/ARCHITECTURE.md` lists what the
+  app sends.
 - Local-first is a principle: diagrams live in the browser (`localStorage`, about 5 MB), or as
   files in `Documents/Diagrams` in the desktop app. Optional sync may come later; an account must
   never be required.
