@@ -121,8 +121,12 @@ test.describe('with reduced motion', () => {
           underToken: labels.filter(under).map((label) => label.textContent),
         }
       })
-    await expect.poll(async () => (await labelsAtToken()).underToken).not.toEqual([])
-    await expect.poll(async () => (await labelsAtToken()).covered).toEqual((await labelsAtToken()).underToken)
+    await expect
+      .poll(async () => {
+        const { covered, underToken } = await labelsAtToken()
+        return underToken.length > 0 && covered.join('\n') === underToken.join('\n')
+      })
+      .toBe(true)
   })
 })
 

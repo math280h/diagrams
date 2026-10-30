@@ -64,6 +64,7 @@ const END_FADE = 0.06
 const CULL_MARGIN_PX = 40
 const LABEL_VISIBLE = 0.05
 const DOT_CLEAR_PX = 6
+const IDLE_COVER_INTERVAL_MS = 100
 const HANDOFF_MS = 700
 
 /** The state of a playback at one moment. A change gives a new object. */
@@ -212,6 +213,7 @@ export class Engine {
   private tokenLabelShown = false
   /** True if the edge labels were measured against the token place of an earlier frame. */
   private labelCoverStale = false
+  private lastIdleCoverMs = 0
   private point: PathPoint = { x: 0, y: 0, angleRad: 0 }
   private frameRequest = 0
   private lastTimestamp: number | null = null
@@ -314,7 +316,7 @@ export class Engine {
     this.stop()
     if (this.manual) return
     this.render(this.ambient.time.get(), this.playback.time.get())
-    this.coverStaleEdgeLabels()
+    this.coverEdgeLabelsWhileIdle()
   }
 
   private loop = (timestamp: number) => {
@@ -451,9 +453,12 @@ export class Engine {
     })
   }
 
-  private coverStaleEdgeLabels() {
-    if (!this.labelCoverStale) return
+  private coverEdgeLabelsWhileIdle() {
+    const now = performance.now()
+    const due = this.tokenShown && now - this.lastIdleCoverMs >= IDLE_COVER_INTERVAL_MS
+    if (!this.labelCoverStale && !due) return
     this.labelCoverStale = false
+    this.lastIdleCoverMs = now
     this.coverEdgeLabels(this.tokenShown, this.tokenLabelShown)
   }
 
@@ -534,7 +539,7 @@ export class Engine {
       timeline === this.lastTimeline &&
       timeMs === this.lastFlowMs
     if (unchanged && !this.manual) {
-      this.coverStaleEdgeLabels()
+      this.coverEdgeLabelsWhileIdle()
       return null
     }
     this.flowDirty = false
