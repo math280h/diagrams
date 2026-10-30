@@ -26,6 +26,8 @@
     "scripts/standalone-player.ts",
     "scripts/release-notes.ts",
     "scripts/release-notes.test.ts",
+    "scripts/service-worker.ts",
+    "scripts/service-worker.test.ts",
     "electron-builder.ts"
   ]
 }

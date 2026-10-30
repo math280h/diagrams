@@ -795,6 +795,47 @@ plays without an account, a server or a file (`src/share/share-link.ts`).
 - The desktop app makes links to the website (`WEBSITE_ORIGIN`); the website makes links to its own address, so the
   preview site shares preview links.
 
+### Installable website
+
+A tablet cannot run the desktop app, so the library offers to install the website instead
+(`src/install`). The installed app opens from the home screen in its own window and works without
+internet. Agents and diagram files in a folder stay with the desktop app.
+
+- `public/manifest.webmanifest` and the icons in `public/icons` (from `pnpm app-icon`; the maskable
+  icon and the Apple touch icon fill the whole square) make the website installable. Chrome needs no
+  service worker for that.
+- Chromium browsers fire `beforeinstallprompt`, and the offer then shows an Install button. On
+  tablets the website keeps the event, so that Chrome on Android shows no install bar of its own
+  next to the offer. Other browsers get one line of steps. On an iPad the offer also says that the
+  Home Screen app keeps its own diagrams, because iPadOS gives it storage apart from the browser.
+- The offer shows on tablets, not on phones or in the installed app, and closing it hides it
+  permanently.
+
+#### Service worker
+
+Only the installed app registers the service worker (`src/sw/service-worker.ts`, its own
+`tsconfig.sw.json` with the WebWorker library). A browser tab never gets one, so the website in a tab
+works as before. The desktop app does not register it either.
+
+- `scripts/service-worker.ts` plans the files of each build (`planAssetList`) and writes them to
+  `assets/sw-assets-<hash>.json`. The hash names the build. It then builds the worker on its own as
+  one script, `sw.js` at the site root, with the path of that list in it.
+- At install the worker fetches the page, the public files and the precache: the entry with its
+  static imports, the chunks that the entry loads on demand (the editor, Present, the template and
+  share pages) with their static imports, and the WOFF2 fonts of their style sheets, about 4 MB. Then
+  the installed app asks it to fetch every other file (icon sets, the layout engine, Mermaid, video
+  export), about 13 MB in total, unless the browser saves data.
+- Files under `assets/` have a content hash, so the worker answers them from its cache first. It
+  ignores `Vary`, because a server can vary on `Origin` and module script requests send one.
+- Pages and the other files (the standalone player, the licence texts) keep their names from build to
+  build, so the worker asks the network first and uses its cache only without internet. A navigation
+  waits 4 seconds for the network. A new version therefore shows at once while there is internet.
+- A new worker waits until no page of the old one is open, and until the old one ends its work. Then
+  it deletes the page cache of the old build and every hashed file that is not part of the new build.
+- `e2e/offline.spec.ts` builds the website, serves it, and checks a tab without a worker, the
+  installed app without internet (also Tidy up after the full fetch), a new version while online, and
+  the clean-up after an update.
+
 ## Desktop app
 
 The desktop app is the same React app in an Electron window. It adds file storage, agent control,
@@ -993,12 +1034,20 @@ passes the link to the running app. The website then posts the diagram to the lo
 tries again for 15 seconds while the app starts. Chrome asks once before a website reaches the
 local device.
 
-The website offers the app (the agent card and "Open in desktop app") only on a computer
-(`isDesktopComputer`). A phone or tablet that names itself in the user agent gets no offer. iPadOS
-Safari sends the user agent of a Mac, and Chrome on large Android tablets that of a Linux computer.
-So a Mac or Linux user agent with a touch screen whose primary pointer is a finger also counts as a
-tablet. A MacBook or Linux laptop with a touch screen keeps the offer, because its primary pointer is
-the trackpad. Windows keeps the offer on every device, because Windows tablets run the app.
+The website offers the app (the agent card and "Open in desktop app") only on a computer.
+`deviceKind` (`src/lib/device.ts`) sorts a browser into `computer`, `tablet` or `phone`. A phone or
+tablet that names itself in the user agent is easy. iPadOS Safari sends the user agent of a Mac, and
+Chrome on large Android tablets that of a Linux computer. So a Mac or Linux user agent with a touch
+screen whose primary pointer is a finger also counts as a tablet. A MacBook or Linux laptop with a
+touch screen stays a computer, because its primary pointer is the trackpad. Windows is always a
+computer, because Windows tablets run the app.
+
+- A keyboard with a trackpad does not change this. Chromium on Android and WebKit on iPadOS keep the
+  touch screen as the primary pointer; the trackpad adds only to `any-pointer`.
+- Chrome on an Android computer (Samsung DeX, Android PC builds) also sends a Linux user agent, but
+  makes the mouse the primary pointer. A Linux user agent with `window.orientation` counts as a
+  tablet: Chrome and Firefox expose it only on Android, in every mode. The touch test stays as a
+  second check.
 
 ### Command-line render
 

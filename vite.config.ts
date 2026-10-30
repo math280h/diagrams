@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { releaseNotes } from './scripts/release-notes.ts'
+import { serviceWorker } from './scripts/service-worker.ts'
 import { standalonePlayer } from './scripts/standalone-player.ts'
 import { thirdPartyLicenses } from './scripts/third-party-licenses.ts'
 
@@ -17,6 +18,7 @@ export default defineConfig({
     licenses.main,
     standalonePlayer(),
     releaseNotes(),
+    serviceWorker(),
   ],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
