@@ -983,6 +983,12 @@ The React app in Electron, plus file storage, agent control, the website handoff
   Sigstore) after the test and before the upload. The attestation names the workflow file and the tag, so
   `gh attestation verify --signer-workflow --source-ref` rejects a file from another workflow or branch. A tag needs
   an admin, but any branch can change a workflow file. electron-updater does not check attestations.
+- SBOM: the "Write the SBOM" job runs `pnpm sbom --prod` (CycloneDX 1.6) once per release, and
+  `scripts/sbom.ts` completes it. The list of production packages includes every package of the bundles, plus some
+  that the bundles leave out, such as `@types` packages. It does not have Electron, a dev dependency, or the Graphviz
+  build in `@hpcc-js/wasm-graphviz`, so the script adds them with a purl and a CPE. It also gives the app a
+  `pkg:github` purl, because the npm purl of the private package names another package. Each platform job attests the
+  same SBOM for its installers.
 - Preview tags (`v0.2.0-beta.1`) build in the `preview` environment without approval and publish as GitHub
   pre-releases.
 - Channels: a normal version reads `/releases/latest` (never a pre-release); a beta or alpha takes the newest release

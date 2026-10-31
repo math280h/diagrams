@@ -21,14 +21,15 @@ interface PackageNotice {
 const NOTICE_FILE = /^(licen[cs]e|copying|notice)([.-].*)?$/i
 
 /** Software that a package holds in compiled form, under its own licence, with a file that has the licence text. */
-const EMBEDDED_SOFTWARE: Record<string, { name: string; license: string; source: string; licenseText: string }> = {
-  '@hpcc-js/wasm-graphviz': {
-    name: 'Graphviz',
-    license: 'EPL-2.0',
-    source: 'https://gitlab.com/graphviz/graphviz',
-    licenseText: 'node_modules/elkjs/LICENSE.md',
-  },
-}
+export const EMBEDDED_SOFTWARE: Record<string, { name: string; license: string; source: string; licenseText: string }> =
+  {
+    '@hpcc-js/wasm-graphviz': {
+      name: 'Graphviz',
+      license: 'EPL-2.0',
+      source: 'https://gitlab.com/graphviz/graphviz',
+      licenseText: 'node_modules/elkjs/LICENSE.md',
+    },
+  }
 const SEPARATOR = '='.repeat(80)
 
 function packageRoot(moduleId: string): string | null {

@@ -23,6 +23,8 @@
     "playwright.config.ts",
     "vite.electron.config.ts",
     "scripts/third-party-licenses.ts",
+    "scripts/sbom.ts",
+    "scripts/sbom.test.ts",
     "scripts/standalone-player.ts",
     "scripts/release-notes.ts",
     "scripts/release-notes.test.ts",

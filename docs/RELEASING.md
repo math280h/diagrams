@@ -95,8 +95,9 @@ Test a package on your own computer with `pnpm desktop:package`. It writes the i
 The `latest*.yml` and `.blockmap` files tell installed apps about the release. Keep them in the release.
 
 Each package job attests the build provenance of its installers before it uploads them, and the Preview app workflow
-does the same for builds of `main`. The attestations are on the Attestations page of the repository. `SECURITY.md`
-shows how to verify a downloaded file.
+does the same for builds of `main`. The "Write the SBOM" job adds `Diagrams-<version>-sbom.cdx.json` to the release,
+and each package job attests that SBOM for its installers. The attestations are on the Attestations page of the
+repository. `SECURITY.md` shows how to verify a downloaded file.
 
 ## Signing
 
