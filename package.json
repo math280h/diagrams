@@ -90,7 +90,6 @@
     "electron-builder": "26.17.0",
     "fflate": "^0.8.3",
     "ffmpeg-static": "5.2.0",
-    "lodash": "4.17.20",
     "oxfmt": "^0.73.0",
     "oxlint": "^1.81.0",
     "oxlint-tsgolint": "^7.0.2004",

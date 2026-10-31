@@ -165,9 +165,6 @@ importers:
       ffmpeg-static:
         specifier: 5.2.0
         version: 5.2.0
-      lodash:
-        specifier: 4.17.20
-        version: 4.17.20
       oxfmt:
         specifier: ^0.73.0
         version: 0.73.0
