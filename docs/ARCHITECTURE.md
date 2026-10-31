@@ -39,6 +39,10 @@ moves along connections; a flow walks a user through the system while the camera
   - A Dependabot security update to a version younger than one day can fail. Wait one day, or add the package to
     `minimumReleaseAgeExclude`. A version that fails the trust check for a known reason goes in
     `trustPolicyExclude`.
+  - `pmOnFail: ignore`: pnpm does not switch to the `packageManager` version. With any other value, pnpm writes
+    that version as a first YAML document in `pnpm-lock.yaml`. The GitHub dependency graph reads only the first
+    document, so Dependabot alerts and the dependency review see no packages. CI installs the `packageManager`
+    version with `pnpm/action-setup`, and a CI step fails when the lockfile has more than one document.
 - **Tests**: Vitest 5 (node and Chromium browser mode), Playwright. Real browser for Mermaid and export.
 - **Desktop**: Electron 45. Vite builds main and preload. It uses the same Chromium as the tests, so export and capture
   match the browser. Node runs the agent server.

@@ -26,6 +26,12 @@ jobs:
           node-version-file: package.json
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Keep the lockfile one YAML document
+        run: |
+          if grep -qx -- '---' pnpm-lock.yaml; then
+            echo "::error::pnpm-lock.yaml has more than one YAML document. GitHub's dependency graph reads only the first one."
+            exit 1
+          fi
       - uses: ./.github/actions/playwright-chromium
       - run: pnpm typecheck
       - run: pnpm lint
