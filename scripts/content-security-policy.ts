@@ -3,8 +3,8 @@ import { type ContentSecurityPolicy, policyText, RENDERER_POLICY } from '../src/
 import { AGENT_HOST, AGENT_PORT, REPOSITORY_API_URL } from '../src/desktop/constants.ts'
 
 /**
- * Returns the policy of the website: the renderer policy of the desktop app, and the connections that only the website
- * makes (the GitHub API and the handoff to the desktop app).
+ * Returns the policy of the website. It holds the renderer policy of the desktop app and the connections that only the
+ * website makes. These connections go to the GitHub API and to the desktop app for the handoff.
  */
 export function websitePolicy(): ContentSecurityPolicy {
   // Browsers ignore frame-ancestors in a meta element and log a warning.

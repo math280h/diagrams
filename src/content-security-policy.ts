@@ -1,6 +1,6 @@
 export type ContentSecurityPolicy = Readonly<Record<string, readonly string[]>>
 
-/** The sources that the renderer of the desktop app may load, by directive. */
+/** The sources that the renderer of the desktop app can load, by directive. */
 export const RENDERER_POLICY: ContentSecurityPolicy = {
   'default-src': ["'self'"],
   'script-src': ["'self'"],
