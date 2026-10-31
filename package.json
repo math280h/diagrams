@@ -111,7 +111,10 @@
     ],
     "ignoredBuiltDependencies": [
       "electron-winstaller"
-    ]
+    ],
+    "overrides": {
+      "minimatch@>=9 <11.0.1": "^11.0.3"
+    }
   },
   "desktopName": "diagrams.desktop",
   "productName": "Diagrams"
