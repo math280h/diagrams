@@ -33,10 +33,16 @@ The command fails if the file changed after the build, or if a different workflo
 
 ### Software bill of materials
 
-Each release newer than v0.1.4 has `Diagrams-<version>-sbom.cdx.json`, a CycloneDX 1.6 SBOM. It lists the npm
-packages that the app uses at run time, with their licences and SHA-512 hashes, the Electron runtime, and the compiled
-programs inside packages (Graphviz in `@hpcc-js/wasm-graphviz`, llhttp in undici). The release fails when the app
-bundles hold a package that the SBOM does not list. Builds of `main` have `Diagrams-preview-sbom.cdx.json`. Each
+Each release newer than v0.1.4 has `Diagrams-<version>-sbom.cdx.json`, a CycloneDX 1.6 SBOM. It lists:
+
+- the npm packages that the app uses at run time, with their licences and SHA-512 hashes;
+- the compiled programs inside packages (Graphviz in `@hpcc-js/wasm-graphviz`, llhttp in undici);
+- Electron, with the versions of Chromium, V8, Node.js and the projects inside Node.js, and the projects that
+  `LICENSES.chromium.html` names for Chromium (without versions);
+- the fonts and the icon sets as data, with the SHA-256 of each icon data file and the logos with their own licence.
+
+The release fails when the app bundles hold a package that the SBOM does not list. Builds of `main` have
+`Diagrams-preview-sbom.cdx.json`. Each
 installer also has an SBOM attestation, so you can check that the SBOM belongs to it:
 
 ```sh

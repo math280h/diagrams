@@ -1,25 +1,23 @@
+import { execFileSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import path from 'node:path'
+import * as simpleIcons from 'simple-icons'
+import type { SimpleIcon } from 'simple-icons'
 import { REPOSITORY_URL, WEBSITE_ORIGIN } from '../src/desktop/constants.ts'
-import { type BundledSoftware, EMBEDDED_SOFTWARE, readNoticeText } from './third-party-licenses.ts'
-
-interface ExternalReference {
-  type: string
-  url: string
-}
-
-export interface Component {
-  type: string
-  name: string
-  group?: string
-  version?: string
-  'bom-ref'?: string
-  purl?: string
-  cpe?: string
-  licenses?: { license: { id: string } }[]
-  externalReferences?: ExternalReference[]
-  components?: Component[]
-  [field: string]: unknown
-}
+import { ICON_SOURCES } from './icons/sources.ts'
+import {
+  chromiumProjects,
+  type Component,
+  electronComponent,
+  embeddedComponent,
+  type FontMetadata,
+  fontComponent,
+  iconSetComponent,
+  type LicensedLogo,
+} from './sbom-components.ts'
+import { type BundledSoftware, readNoticeText } from './third-party-licenses.ts'
 
 export interface Bom {
   metadata: { component: Component; [field: string]: unknown }
@@ -34,11 +32,14 @@ export interface Release {
   version: string
   /** The git tag of the build, which the purl of the app names. */
   tag: string
-  electronVersion: string
   /** The packages and the programs inside packages in the licence files of the bundles. */
   bundled: readonly BundledSoftware[]
-  /** The version of each program inside a package, by `<package>@<package version>`. */
-  embeddedVersions: Readonly<Record<string, string>>
+  /** The components inside packages of the SBOM of pnpm, such as programs and fonts, by `<package>@<version>`. */
+  inside: Readonly<Record<string, readonly Component[]>>
+  /** Electron, with the projects inside it. */
+  runtime: Component
+  /** The data that the app ships outside packages, such as icon sets. */
+  data: readonly Component[]
 }
 
 const LICENCE_FILES = [
@@ -46,64 +47,21 @@ const LICENCE_FILES = [
   'dist/standalone/licenses.txt',
   'dist-electron/third-party-licenses.main.txt',
 ]
+const ICON_DATA = 'src/canvas/icons/data'
 
 function packageName(component: Component): string {
   return component.group ? `${component.group}/${component.name}` : component.name
-}
-
-function embeddedComponent(holder: string, version: string): Component {
-  const embedded = EMBEDDED_SOFTWARE[holder]!
-  const product = embedded.name.toLowerCase()
-  const purl = `pkg:generic/${product}@${version}`
-  return {
-    type: 'library',
-    name: embedded.name,
-    version,
-    'bom-ref': purl,
-    purl,
-    cpe: `cpe:2.3:a:${product}:${product}:${version}:*:*:*:*:*:*:*`,
-    licenses: [{ license: { id: embedded.license } }],
-    externalReferences: [{ type: 'vcs', url: embedded.source }],
-  }
-}
-
-function electronComponent(version: string): Component {
-  const purl = `pkg:npm/electron@${version}`
-  return {
-    type: 'framework',
-    name: 'electron',
-    version,
-    'bom-ref': purl,
-    purl,
-    cpe: `cpe:2.3:a:electronjs:electron:${version}:*:*:*:*:node.js:*:*`,
-    licenses: [{ license: { id: 'MIT' } }],
-    externalReferences: [{ type: 'vcs', url: 'https://github.com/electron/electron' }],
-  }
-}
-
-function embeddedComponents(bundled: readonly BundledSoftware[], versions: Release['embeddedVersions']) {
-  const byHolder = new Map<string, Component[]>()
-  for (const software of bundled) {
-    if (!('holder' in software)) continue
-    const holder = `${software.holder.name}@${software.holder.version}`
-    const version = versions[holder]
-    if (!version) throw new Error(`The release has no version for ${software.name} in ${holder}.`)
-    const components = byHolder.get(holder) ?? []
-    if (!components.some((component) => component.name === software.name)) {
-      byHolder.set(holder, [...components, embeddedComponent(software.holder.name, version)])
-    }
-  }
-  return byHolder
 }
 
 /**
  * Turns the production SBOM of `pnpm sbom` into the SBOM of a desktop release.
  *
  * The root component becomes the app at the release version, with a `pkg:github` purl in place of the npm purl of the
- * private package. The Electron runtime becomes a dependency of the app, and each program inside a bundled package
- * becomes a component inside that package.
+ * private package. The Electron runtime and the data become dependencies of the app, and each component in
+ * `release.inside` goes inside its package.
  *
- * @throws Error If a bundled package is not in the SBOM of pnpm, or a program inside a package has no version.
+ * @throws Error If a bundled package is not in the SBOM of pnpm, or `release.inside` has no component for a program
+ * inside a bundled package.
  */
 export function releaseSbom(bom: Bom, release: Release): Bom {
   const listed = new Set(bom.components.map((component) => `${packageName(component)}@${component.version}`))
@@ -118,12 +76,18 @@ export function releaseSbom(bom: Bom, release: Release): Bom {
         'Make each one a production dependency in package.json.',
     )
   }
-  const embedded = embeddedComponents(release.bundled, release.embeddedVersions)
+  for (const software of release.bundled) {
+    if (!('holder' in software)) continue
+    const holder = `${software.holder.name}@${software.holder.version}`
+    if (!release.inside[holder]?.some((component) => component.name === software.name)) {
+      throw new Error(`The release has no component for ${software.name} in ${holder}.`)
+    }
+  }
   const oldRootRef = bom.metadata.component['bom-ref']
   const rootRef = `pkg:github/${new URL(REPOSITORY_URL).pathname.slice(1)}@${release.tag}`
-  const electron = electronComponent(release.electronVersion)
+  const added = [release.runtime, ...release.data]
   const components = bom.components.map((component) => {
-    const inside = embedded.get(`${packageName(component)}@${component.version}`)
+    const inside = release.inside[`${packageName(component)}@${component.version}`]
     return inside ? { ...component, components: [...(component.components ?? []), ...inside] } : component
   })
   return {
@@ -143,14 +107,14 @@ export function releaseSbom(bom: Bom, release: Release): Bom {
         ],
       },
     },
-    components: [...components, electron],
+    components: [...components, ...added],
     dependencies: [
       ...bom.dependencies.map((dependency) =>
         dependency.ref === oldRootRef
-          ? { ref: rootRef, dependsOn: [...(dependency.dependsOn ?? []), electron['bom-ref']!] }
+          ? { ref: rootRef, dependsOn: [...(dependency.dependsOn ?? []), ...added.map((one) => one['bom-ref']!)] }
           : dependency,
       ),
-      { ref: electron['bom-ref']!, dependsOn: [] },
+      ...added.map((one) => ({ ref: one['bom-ref']!, dependsOn: [] })),
     ],
   }
 }
@@ -172,10 +136,87 @@ async function llhttpVersion(undiciVersion: string): Promise<string> {
   return parts.join('.')
 }
 
-/** Finds the version of the program in each package of {@link EMBEDDED_SOFTWARE}, from the version of the package. */
+/**
+ * Finds the version of the program in each package of `EMBEDDED_SOFTWARE` in `scripts/third-party-licenses.ts`, from
+ * the version of the package.
+ */
 export const EMBEDDED_VERSIONS: Record<string, (holderVersion: string) => Promise<string>> = {
   '@hpcc-js/wasm-graphviz': graphvizVersion,
   undici: llhttpVersion,
+}
+
+function readJson(file: string): unknown {
+  return JSON.parse(readFileSync(file, 'utf8'))
+}
+
+async function programsInside(bundled: readonly BundledSoftware[]): Promise<Record<string, Component[]>> {
+  const inside: Record<string, Component[]> = {}
+  for (const software of bundled) {
+    if (!('holder' in software)) continue
+    const key = `${software.holder.name}@${software.holder.version}`
+    if (inside[key]?.some((component) => component.name === software.name)) continue
+    const findVersion = EMBEDDED_VERSIONS[software.holder.name]
+    if (!findVersion) throw new Error(`EMBEDDED_VERSIONS in scripts/sbom.ts has no entry for ${software.holder.name}.`)
+    const component = embeddedComponent(software.holder.name, await findVersion(software.holder.version))
+    inside[key] = [...(inside[key] ?? []), component]
+  }
+  return inside
+}
+
+function fontsInside(bom: Bom): Record<string, Component[]> {
+  const inside: Record<string, Component[]> = {}
+  for (const component of bom.components) {
+    if (!component.group?.startsWith('@fontsource')) continue
+    const name = packageName(component)
+    const installed = readJson(`node_modules/${name}/package.json`) as { version: string }
+    if (installed.version !== component.version) {
+      throw new Error(`node_modules holds ${name} ${installed.version}, but the SBOM lists ${component.version}.`)
+    }
+    inside[`${name}@${component.version}`] = [
+      fontComponent(readJson(`node_modules/${name}/metadata.json`) as FontMetadata),
+    ]
+  }
+  return inside
+}
+
+function electronRuntime(): Component {
+  const binary = createRequire(import.meta.url)('electron') as string
+  const versions = JSON.parse(
+    execFileSync(binary, ['-p', 'JSON.stringify(process.versions)'], {
+      encoding: 'utf8',
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+    }),
+  ) as Record<string, string>
+  const licences = path.join(path.dirname(binary), 'LICENSES.chromium.html')
+  const chromium = existsSync(licences) ? chromiumProjects(readFileSync(licences, 'utf8')) : []
+  if (chromium.length === 0) throw new Error(`${licences} names no projects.`)
+  return electronComponent(versions, chromium)
+}
+
+function iconSets(): Component[] {
+  const icons = new Map(
+    Object.values(simpleIcons)
+      .filter((icon): icon is SimpleIcon => typeof icon === 'object' && 'slug' in icon)
+      .map((icon) => [`logo:${icon.slug}`, icon]),
+  )
+  return ICON_SOURCES.map((source) => {
+    const file = path.join(ICON_DATA, `${source.file}.json`)
+    const data = readFileSync(file)
+    const sha256 = createHash('sha256').update(data).digest('hex')
+    const version = source.npmPackage
+      ? (readJson(`node_modules/${source.npmPackage}/package.json`) as { version: string }).version
+      : undefined
+    const logos =
+      source.file === 'logos'
+        ? (JSON.parse(data.toString('utf8')) as { entries: { id: string }[] }).entries.flatMap(
+            (entry): LicensedLogo[] => {
+              const icon = icons.get(entry.id)
+              return icon?.license ? [{ title: icon.title, source: icon.source, license: icon.license }] : []
+            },
+          )
+        : []
+    return iconSetComponent(source, { version, sha256, logos })
+  })
 }
 
 async function main() {
@@ -186,20 +227,11 @@ async function main() {
   const absent = LICENCE_FILES.filter((file) => !existsSync(file))
   if (absent.length > 0) throw new Error(`Run pnpm desktop:build first. These files are missing: ${absent.join(', ')}.`)
   const bundled = LICENCE_FILES.flatMap((file) => readNoticeText(readFileSync(file, 'utf8')))
-  const holders = new Map(
-    bundled.flatMap((software) =>
-      'holder' in software ? [[`${software.holder.name}@${software.holder.version}`, software.holder] as const] : [],
-    ),
-  )
-  const embeddedVersions: Record<string, string> = {}
-  for (const [key, holder] of holders) {
-    const findVersion = EMBEDDED_VERSIONS[holder.name]
-    if (!findVersion) throw new Error(`EMBEDDED_VERSIONS in scripts/sbom.ts has no entry for ${holder.name}.`)
-    embeddedVersions[key] = await findVersion(holder.version)
-  }
-  const electron = JSON.parse(readFileSync('node_modules/electron/package.json', 'utf8')) as { version: string }
-  const bom = JSON.parse(readFileSync(input, 'utf8')) as Bom
-  const release = { version, tag, electronVersion: electron.version, bundled, embeddedVersions }
+  const bom = readJson(input) as Bom
+  const inside = { ...(await programsInside(bundled)) }
+  for (const [key, components] of Object.entries(fontsInside(bom)))
+    inside[key] = [...(inside[key] ?? []), ...components]
+  const release = { version, tag, bundled, inside, runtime: electronRuntime(), data: iconSets() }
   writeFileSync(output, `${JSON.stringify(releaseSbom(bom, release), null, 2)}\n`)
 }
 

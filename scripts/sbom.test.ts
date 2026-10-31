@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { embeddedComponent } from './sbom-components.ts'
 import { type Bom, EMBEDDED_VERSIONS, type Release, releaseSbom } from './sbom.ts'
 import { EMBEDDED_SOFTWARE } from './third-party-licenses.ts'
 
@@ -52,7 +53,6 @@ const PNPM_SBOM: Bom = {
 const RELEASE: Release = {
   version: '0.2.0',
   tag: 'v0.2.0',
-  electronVersion: '45.0.0',
   bundled: [
     { name: '@hpcc-js/wasm-graphviz', version: '1.30.0' },
     { name: 'Graphviz', holder: { name: '@hpcc-js/wasm-graphviz', version: '1.30.0' } },
@@ -60,7 +60,12 @@ const RELEASE: Release = {
     { name: 'llhttp', holder: { name: 'undici', version: '7.30.1' } },
     { name: 'zod', version: '4.6.7' },
   ],
-  embeddedVersions: { '@hpcc-js/wasm-graphviz@1.30.0': '16.1.0', 'undici@7.30.1': '9.3.0' },
+  inside: {
+    '@hpcc-js/wasm-graphviz@1.30.0': [embeddedComponent('@hpcc-js/wasm-graphviz', '16.1.0')],
+    'undici@7.30.1': [embeddedComponent('undici', '9.3.0')],
+  },
+  runtime: { type: 'framework', name: 'electron', version: '45.0.0', 'bom-ref': 'pkg:npm/electron@45.0.0' },
+  data: [{ type: 'data', name: 'Simple Icons', 'bom-ref': 'icons:logos' }],
 }
 
 function component(sbom: Bom, name: string, version: string) {
@@ -89,20 +94,18 @@ describe('release SBOM', () => {
     expect(sbom.metadata.component.purl).toBe('pkg:github/math280h/diagrams@preview-57')
   })
 
-  it('adds the Electron runtime as a dependency of the app', () => {
+  it('adds the Electron runtime and the data as dependencies of the app', () => {
     const sbom = releaseSbom(PNPM_SBOM, RELEASE)
-    expect(component(sbom, 'electron', '45.0.0')).toMatchObject({
-      type: 'framework',
-      purl: 'pkg:npm/electron@45.0.0',
-      cpe: 'cpe:2.3:a:electronjs:electron:45.0.0:*:*:*:*:node.js:*:*',
-    })
+    expect(sbom.components.slice(-2)).toEqual([RELEASE.runtime, ...RELEASE.data])
     const root = sbom.dependencies.find((dependency) => dependency.ref === 'pkg:github/math280h/diagrams@v0.2.0')
     expect(root?.dependsOn).toEqual([
       'pkg:npm/%40hpcc-js/wasm-graphviz@1.30.0',
       'pkg:npm/zod@4.6.7',
       'pkg:npm/electron@45.0.0',
+      'icons:logos',
     ])
     expect(sbom.dependencies).toContainEqual({ ref: 'pkg:npm/electron@45.0.0', dependsOn: [] })
+    expect(sbom.dependencies).toContainEqual({ ref: 'icons:logos', dependsOn: [] })
   })
 
   it('puts each program inside the version of the package that holds it in the bundles', () => {
@@ -131,8 +134,10 @@ describe('release SBOM', () => {
     expect(() => releaseSbom(PNPM_SBOM, { ...RELEASE, bundled })).toThrow(/does not list: fflate@0\.8\.3\./)
   })
 
-  it('fails when a program inside a package has no version', () => {
-    expect(() => releaseSbom(PNPM_SBOM, { ...RELEASE, embeddedVersions: {} })).toThrow(/no version for Graphviz/)
+  it('fails when a program inside a bundled package has no component', () => {
+    expect(() => releaseSbom(PNPM_SBOM, { ...RELEASE, inside: {} })).toThrow(
+      /no component for Graphviz in @hpcc-js\/wasm-graphviz@1\.30\.0/,
+    )
   })
 
   it('finds a version for the program in each package of the embedded software list', () => {
