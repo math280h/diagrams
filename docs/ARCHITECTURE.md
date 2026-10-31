@@ -1109,6 +1109,9 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
   when the pull request adds or changes a package with a high or critical advisory, in runtime or development scope.
   It also fails for a licence outside `allow-licenses`, which holds the licences of the lockfile. A package with no
   licence only shows in the summary.
+- `.github/workflows/scorecard.yml` runs OpenSSF Scorecard on each push to `main`, each Monday and after a change to
+  branch protection. It publishes the result to the Scorecard API for the README badge, and it uploads the findings
+  to code scanning. The Scorecard API accepts a result only from a job with approved actions and no `run` steps.
 
 ### Skills
 
