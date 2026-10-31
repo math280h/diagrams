@@ -960,6 +960,10 @@ The React app in Electron, plus file storage, agent control, the website handoff
   (`-c.extraMetadata.version`); a release needs no commit. `pnpm release:tag` calculates the tag. One job creates
   the draft, because parallel electron-builder jobs could each create one. Platform jobs package, drive the app
   through the agent server (`scripts/smoke-package.mjs`) and upload. The maintainer publishes the draft.
+- Each platform job attests the build provenance of its installers (`actions/attest`, SLSA provenance signed with
+  Sigstore) after the test and before the upload. The attestation names the workflow file and the tag, so
+  `gh attestation verify --signer-workflow --source-ref` rejects a file from another workflow or branch. A tag needs
+  an admin, but any branch can change a workflow file. electron-updater does not check attestations.
 - Preview tags (`v0.2.0-beta.1`) build in the `preview` environment without approval and publish as GitHub
   pre-releases.
 - Channels: a normal version reads `/releases/latest` (never a pre-release); a beta or alpha takes the newest release
