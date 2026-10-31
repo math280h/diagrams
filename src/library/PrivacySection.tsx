@@ -16,8 +16,7 @@ const POINTS: readonly PrivacyPoint[] = [
   {
     icon: Link2,
     title: 'Share links without an upload',
-    summary:
-      'A share link carries the whole diagram after the # in the address. Browsers do not send that part to a server, so the website never receives the diagram.',
+    summary: 'A share link carries the whole diagram.',
   },
   {
     icon: ImageDown,
@@ -58,12 +57,6 @@ export function PrivacySection({ className }: { className?: string }) {
             </li>
           ))}
         </ul>
-        <p className="mt-8 border-t pt-4 text-[13px] leading-5 text-pretty text-muted-foreground">
-          A few requests do go over the network. The website loads from its host. On a computer, it also asks GitHub for
-          the latest release to offer the right desktop download. The desktop app asks GitHub for updates. None of these
-          requests carry a diagram. An agent that you connect to the desktop app sends what it reads to its model
-          provider, like the rest of your chat with it.
-        </p>
       </div>
     </section>
   )

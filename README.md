@@ -48,20 +48,10 @@ Your diagrams stay on your computer. There is no account and no server that stor
 
 - **No server stores your diagrams.** The website keeps them in your browser (`localStorage`). The desktop app saves
   them as files in `Documents/Diagrams`.
-- **Share links without an upload.** A share link carries the whole diagram, compressed, after the `#` in the address.
-  Browsers do not send that part to a server, so the website never receives the diagram.
+- **Share links without an upload.** A share link carries the whole diagram.
 - **Exports made on your device.** Images, videos, GIFs and web pages render in your browser or in the desktop app, not
   on a server.
 - **No account.** There is nothing to sign up for.
-
-A few requests do go over the network. None of them carry a diagram:
-
-- The website loads from its host. On a computer, it asks the GitHub API for the latest release to offer the right
-  desktop download.
-- The desktop app checks GitHub Releases for updates at start and every 6 hours.
-
-An agent that you connect to the desktop app reads diagrams through the agent server on `127.0.0.1`, and sends what it
-reads to its model provider, like the rest of your chat with it.
 
 ## Desktop app
 

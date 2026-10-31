@@ -6,7 +6,7 @@ const ALLOWED_HOSTS = new Set(['127.0.0.1:5173', 'api.github.com'])
 
 test('tells on the landing page that diagrams stay on the computer', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByText('Your diagrams are stored only on your computer. No account, no uploads.')).toBeVisible()
+  await expect(page.getByText('Your diagrams are stored only on your computer. No account needed.')).toBeVisible()
   const section = page.getByRole('region', { name: 'Your diagrams stay on your computer' })
   await expect(section.getByRole('heading', { level: 3 })).toHaveText([
     'No server stores your diagrams',
