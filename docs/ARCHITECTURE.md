@@ -1093,6 +1093,9 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
   libraries, which a cache cannot hold.
 - Playwright keeps a trace of each failed CI test (`trace: 'retain-on-failure'`); the failed job uploads it in
   `test-results`. No retries, so a test that fails only sometimes stays visible.
+- `.github/workflows/scorecard.yml` runs OpenSSF Scorecard on each push to `main`, each Monday and after a change to
+  branch protection. It publishes the result to the Scorecard API for the README badge, and it uploads the findings
+  to code scanning. The Scorecard API accepts a result only from a job with approved actions and no `run` steps.
 
 ### Skills
 
