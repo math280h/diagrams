@@ -5,7 +5,7 @@ import {
   createRouter,
   lazyRouteComponent,
 } from '@tanstack/react-router'
-import { z } from 'zod'
+import { z } from '@/lib/zod'
 import { LibraryPage } from './library/LibraryPage'
 import { RootLayout } from './RootLayout'
 import { RouteError, RouteNotFound } from './RouteError'

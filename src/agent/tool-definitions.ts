@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from '@/lib/zod'
 import { LAYOUT_DIRECTIONS, LAYOUT_STYLES } from '@/layout/types'
 import { BOUNDARY_PROVIDER_IDS } from '@/model/boundaries'
 import { COLORS } from '@/model/colors'

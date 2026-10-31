@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from '@/lib/zod'
 import type { Diagram } from '@/model/schema'
 import { errorMessage } from '@/lib/error-message'
 import { migrate } from './migrations'

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { z } from 'zod'
+import { z } from '@/lib/zod'
 import type { IconSet } from '@/canvas/icons/library'
 import type { ToolContent } from '@/desktop/contract'
 import { createDiagram } from '@/model/defaults'
