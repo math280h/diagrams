@@ -44,6 +44,12 @@ moves along connections; a flow walks a user through the system while the camera
     document, so Dependabot alerts and the dependency review see no packages. CI installs the `packageManager`
     version with `pnpm/action-setup`, and a CI step fails when the lockfile has more than one document.
 - **Tests**: Vitest 5 (node and Chromium browser mode), Playwright. Real browser for Mermaid and export.
+  - Fuzz tests (`*.fuzz.test.ts`, `*.fuzz.browser.test.ts`) use fast-check. They give random and changed input to
+    each reader of untrusted data.
+  - The readers are diagram files and migrations, copied nodes, share links, trace files, images with a diagram,
+    `diagrams://` links and release notes HTML.
+  - Each test checks the contract of the reader: a valid result, or the error class of that reader. Any other error
+    or unsafe output fails the test.
 - **Desktop**: Electron 45. Vite builds main and preload. It uses the same Chromium as the tests, so export and capture
   match the browser. Node runs the agent server.
 - **Agent server**: `@vitemcp/server` (MCP over HTTP), hono. Tools come from the zod schemas; the same loopback server
