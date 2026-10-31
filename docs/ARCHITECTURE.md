@@ -26,6 +26,16 @@ moves along connections; a flow walks a user through the system while the camera
 - **Mermaid import**: `mermaid` 12, which the app loads on demand. `getDiagramFromText` + `db.getData()` parse
   flowcharts without a render.
 - **Lint and format**: oxlint (type-aware), oxfmt. create-vite default.
+- **Packages**: pnpm 10. `pnpm-workspace.yaml` sets what pnpm accepts when it resolves a version:
+  - `minimumReleaseAge`: only versions that are at least one day old. Registries often remove a malicious version
+    in that time.
+  - `trustPolicy: no-downgrade`: pnpm stops when a version has less proof of origin than an earlier version, for
+    example no provenance after releases with provenance.
+  - `blockExoticSubdeps`: no git or tarball sources in sub-dependencies.
+  - `strictDepBuilds`: pnpm stops at an install script that `package.json` does not allow or ignore.
+  - A Dependabot security update to a version younger than one day can fail. Wait one day, or add the package to
+    `minimumReleaseAgeExclude`. A version that fails the trust check for a known reason goes in
+    `trustPolicyExclude`.
 - **Tests**: Vitest 5 (node and Chromium browser mode), Playwright. Real browser for Mermaid and export.
 - **Desktop**: Electron 45. Vite builds main and preload. It uses the same Chromium as the tests, so export and capture
   match the browser. Node runs the agent server.
