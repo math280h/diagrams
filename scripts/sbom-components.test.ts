@@ -11,6 +11,7 @@ import {
   iconSetComponent,
   INSTALLER_BUNDLES,
   installerComponent,
+  packageComponent,
 } from './sbom-components.ts'
 
 const VERSIONS = {
@@ -198,6 +199,42 @@ describe('SBOM components', () => {
         'libindicator',
       ]),
     )
+  })
+
+  it('describes an npm package from its package.json, with the hash from the lockfile', () => {
+    const component = packageComponent(
+      {
+        name: '@scope/styles',
+        version: '1.2.3',
+        description: 'Styles',
+        license: '(MIT OR Apache-2.0)',
+        homepage: 'https://example.com',
+        repository: { url: 'git+https://github.com/scope/styles.git' },
+      },
+      `sha512-${Buffer.from([1, 2, 255]).toString('base64')}`,
+    )
+    expect(component).toEqual({
+      type: 'library',
+      name: 'styles',
+      group: '@scope',
+      version: '1.2.3',
+      'bom-ref': 'pkg:npm/%40scope/styles@1.2.3',
+      purl: 'pkg:npm/%40scope/styles@1.2.3',
+      description: 'Styles',
+      licenses: [{ expression: '(MIT OR Apache-2.0)' }],
+      externalReferences: [
+        {
+          type: 'distribution',
+          url: 'https://registry.npmjs.org/@scope/styles/-/styles-1.2.3.tgz',
+          hashes: [{ alg: 'SHA-512', content: '0102ff' }],
+        },
+        { type: 'website', url: 'https://example.com' },
+        { type: 'vcs', url: 'https://github.com/scope/styles' },
+      ],
+    })
+    expect(packageComponent({ name: 'shadcn', version: '4.22.0', license: 'MIT' }).licenses).toEqual([
+      { license: { id: 'MIT' } },
+    ])
   })
 
   it('has a source for each icon set in the data folder', () => {

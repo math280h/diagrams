@@ -1,7 +1,27 @@
 import { describe, expect, it } from 'vitest'
-import { noticeText, readNoticeText } from './third-party-licenses.ts'
+import { noticeText, readNoticeText, styleSheetImports } from './third-party-licenses.ts'
 
 describe('third-party licences', () => {
+  it('finds the packages that a style sheet imports, and leaves out local files and comments', () => {
+    const css = [
+      "@import 'tailwindcss';",
+      '@import "tw-animate-css";',
+      "@import 'shadcn/tailwind.css';",
+      "@import url('@xyflow/react/dist/base.css');",
+      "@plugin '@tailwindcss/typography';",
+      "@import './styles/canvas.css';",
+      "@import 'https://example.com/font.css';",
+      "/* @import 'commented-out'; */",
+    ].join('\n')
+    expect(styleSheetImports(css)).toEqual([
+      'tailwindcss',
+      'tw-animate-css',
+      'shadcn',
+      '@xyflow/react',
+      '@tailwindcss/typography',
+    ])
+  })
+
   it('reads the packages and the programs inside packages back from the notice text', () => {
     const text = noticeText([
       { name: '@hpcc-js/wasm-graphviz', version: '1.30.0', license: 'Apache-2.0', source: null, texts: ['Apache'] },

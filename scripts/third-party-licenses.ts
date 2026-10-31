@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs'
 import path from 'node:path'
 import type { Plugin } from 'vite'
 
@@ -50,6 +50,38 @@ export type BundledSoftware =
   | { name: string; holder: { name: string; version: string } }
 
 const NOTICE_HEADER = /^(\S+) (?:in (\S+) (\S+)|(\S+))$/
+
+const STYLE_SHEET_IMPORT = /@(?:import|plugin)\s+(?:url\(\s*)?['"]([^'"]+)['"]/g
+
+/**
+ * Returns the packages that a style sheet imports with `@import` or `@plugin`.
+ */
+export function styleSheetImports(css: string): string[] {
+  const names = new Set<string>()
+  for (const match of css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(STYLE_SHEET_IMPORT)) {
+    const specifier = match[1]!
+    if (/^(?:\.|\/|[a-z][a-z\d+.-]*:)/i.test(specifier)) continue
+    const parts = specifier.split('/')
+    names.add(specifier.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0]!)
+  }
+  return [...names]
+}
+
+function installedPackage(name: string, fromDirectory: string): string | null {
+  for (let directory = fromDirectory; ; directory = path.dirname(directory)) {
+    const root = path.join(directory, 'node_modules', name)
+    if (existsSync(path.join(root, 'package.json'))) return realpathSync(root)
+    if (path.dirname(directory) === directory) return null
+  }
+}
+
+function styleSheetPackages(moduleId: string): string[] {
+  const file = moduleId.replace(/^\0/, '').split('?')[0]!
+  if (!file.endsWith('.css') || !existsSync(file)) return []
+  return styleSheetImports(readFileSync(file, 'utf8')).flatMap(
+    (name) => installedPackage(name, path.dirname(file)) ?? [],
+  )
+}
 
 function packageRoot(moduleId: string): string | null {
   const file = moduleId.replace(/^\0/, '').split('?')[0]!.replaceAll('\\', '/')
@@ -137,7 +169,10 @@ export function readNoticeText(text: string): BundledSoftware[] {
   })
 }
 
-/** Creates a Vite plugin that fails a build that bundles a package, for a build that ships no licence file. */
+/**
+ * Creates a Vite plugin for a build that ships no licence file. The plugin fails the build when the build bundles a
+ * package.
+ */
 export function withoutPackages(): Plugin {
   return {
     name: 'without-packages',
@@ -164,7 +199,10 @@ export function thirdPartyLicenses(fileName = 'third-party-licenses.txt'): { mai
   const collect = (moduleIds: Iterable<string>, codeOf: (id: string) => string | null | undefined) => {
     for (const id of moduleIds) {
       const root = packageRoot(id)
-      if (!root) continue
+      if (!root) {
+        for (const imported of styleSheetPackages(id)) roots.add(imported)
+        continue
+      }
       roots.add(root)
       const code = codeOf(id) ?? ''
       if (id.split('?')[0]!.endsWith('.wasm') || WEBASSEMBLY_API.test(code) || WEBASSEMBLY_BASE64_LITERAL.test(code)) {

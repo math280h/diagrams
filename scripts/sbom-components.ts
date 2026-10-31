@@ -4,6 +4,7 @@ import { EMBEDDED_SOFTWARE } from './third-party-licenses.ts'
 interface ExternalReference {
   type: string
   url: string
+  hashes?: { alg: string; content: string }[]
 }
 
 type License = { license: { id: string } } | { license: { name: string; url?: string } } | { expression: string }
@@ -114,7 +115,7 @@ function decodeEntities(text: string): string {
 /**
  * Reads the projects that Chromium holds from the `LICENSES.chromium.html` file of Electron.
  *
- * @returns One component for each project, with its homepage. The file names no versions.
+ * @returns One component for each project, with its homepage. The file does not give versions.
  */
 export function chromiumProjects(html: string): Component[] {
   const projects = new Map<string, Component>()
@@ -270,7 +271,7 @@ const BUILDER_BINARIES = 'https://github.com/electron-userland/electron-builder-
 
 /**
  * The bundles of the default toolsets of electron-builder, from which the installers take code. A test compares the
- * names and SHA-256 checksums with app-builder-lib, so an electron-builder update that changes a bundle fails.
+ * names and SHA-256 checksums with app-builder-lib.
  */
 export const INSTALLER_BUNDLES = {
   nsis: { name: 'nsis-3.0.4.1', sha256: '9877df902530f96357d13a7a31ae2b9df67f48b11ffc9a1700a7c961574ec5fa' },
@@ -310,8 +311,8 @@ function bundleReference(bundle: { name: string; sha256: string }) {
 }
 
 /**
- * Returns the component of electron-builder, with the code that it puts in the installers next to the app: NSIS and
- * its plugins in the Windows installer, Elevate, and the runtime and the libraries of the AppImage.
+ * Returns the component of electron-builder, with the code that it adds to the installers. That code is NSIS with its
+ * plugins, Elevate, and the runtime and libraries of the AppImage.
  *
  * @param version - The version of app-builder-lib, the package of electron-builder that builds the installers.
  */
@@ -382,6 +383,58 @@ export function installerComponent(version: string): Component {
         description: `In usr/lib of the AppImage, as ${file}.`,
         externalReferences: [bundleReference(appImage)],
       })),
+    ],
+  }
+}
+
+/** The fields of a `package.json` file that {@link packageComponent} reads. */
+export interface PackageManifest {
+  name: string
+  version: string
+  description?: string
+  license?: string
+  homepage?: string
+  repository?: string | { url?: string }
+}
+
+function packageLicense(license: string): License {
+  return /^[\w.+-]+$/.test(license) ? { license: { id: license } } : { expression: license }
+}
+
+function repositoryUrl(repository: PackageManifest['repository']): string | undefined {
+  const url = typeof repository === 'string' ? repository : repository?.url
+  return url?.replace(/^git\+/, '').replace(/\.git$/, '')
+}
+
+/**
+ * Returns the component of an npm package from its `package.json`, without its dependencies.
+ *
+ * @param integrity - The integrity of the package in `pnpm-lock.yaml`, such as `sha512-…`.
+ */
+export function packageComponent(manifest: PackageManifest, integrity?: string): Component {
+  const [scope, name] = manifest.name.startsWith('@') ? manifest.name.split('/') : [undefined, manifest.name]
+  const purl = `pkg:npm/${scope ? `${encodeURIComponent(scope)}/` : ''}${name}@${manifest.version}`
+  const sha512 = integrity?.startsWith('sha512-')
+    ? Buffer.from(integrity.slice('sha512-'.length), 'base64').toString('hex')
+    : undefined
+  const vcs = repositoryUrl(manifest.repository)
+  return {
+    type: 'library',
+    name,
+    ...(scope && { group: scope }),
+    version: manifest.version,
+    'bom-ref': purl,
+    purl,
+    ...(manifest.description && { description: manifest.description }),
+    ...(manifest.license && { licenses: [packageLicense(manifest.license)] }),
+    externalReferences: [
+      {
+        type: 'distribution',
+        url: `https://registry.npmjs.org/${manifest.name}/-/${name}-${manifest.version}.tgz`,
+        ...(sha512 && { hashes: [{ alg: 'SHA-512', content: sha512 }] }),
+      },
+      ...(manifest.homepage ? [{ type: 'website', url: manifest.homepage }] : []),
+      ...(vcs && /^https?:\/\//.test(vcs) ? [{ type: 'vcs', url: vcs }] : []),
     ],
   }
 }

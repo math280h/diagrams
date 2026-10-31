@@ -16,6 +16,8 @@ import {
   fontComponent,
   iconSetComponent,
   installerComponent,
+  type PackageManifest,
+  packageComponent,
   type LicensedLogo,
 } from './sbom-components.ts'
 import { type BundledSoftware, readNoticeText } from './third-party-licenses.ts'
@@ -43,6 +45,8 @@ export interface Release {
   installer: Component
   /** The data that the app ships outside packages, such as icon sets. */
   data: readonly Component[]
+  /** The bundled packages that the SBOM of pnpm does not list, such as dev dependencies whose CSS ships. */
+  unlisted: readonly Component[]
 }
 
 const LICENCE_FILES = [
@@ -60,24 +64,21 @@ function packageName(component: Component): string {
  * Turns the production SBOM of `pnpm sbom` into the SBOM of a desktop release.
  *
  * The root component becomes the app at the release version, with a `pkg:github` purl in place of the npm purl of the
- * private package. The Electron runtime and the data become dependencies of the app, and each component in
- * `release.inside` goes inside its package.
+ * private package. Electron, the installer builder, the data and the unlisted packages become dependencies of the app.
+ * Each component in `release.inside` goes inside its package.
  *
- * @throws Error If a bundled package is not in the SBOM of pnpm, or `release.inside` has no component for a program
- * inside a bundled package.
+ * @throws Error If a bundled package, or a program inside a bundled package, has no component.
  */
 export function releaseSbom(bom: Bom, release: Release): Bom {
   const listed = new Set(bom.components.map((component) => `${packageName(component)}@${component.version}`))
-  const missing = release.bundled.flatMap((software) =>
-    'version' in software && !listed.has(`${software.name}@${software.version}`)
-      ? [`${software.name}@${software.version}`]
-      : [],
-  )
+  const unlisted = new Set(release.unlisted.map((component) => `${packageName(component)}@${component.version}`))
+  const missing = release.bundled.flatMap((software) => {
+    if (!('version' in software)) return []
+    const key = `${software.name}@${software.version}`
+    return listed.has(key) || unlisted.has(key) ? [] : [key]
+  })
   if (missing.length > 0) {
-    throw new Error(
-      `The bundles hold packages that the SBOM of pnpm does not list: ${missing.join(', ')}. ` +
-        'Make each one a production dependency in package.json.',
-    )
+    throw new Error(`The release has no component for these bundled packages: ${missing.join(', ')}.`)
   }
   for (const software of release.bundled) {
     if (!('holder' in software)) continue
@@ -88,7 +89,7 @@ export function releaseSbom(bom: Bom, release: Release): Bom {
   }
   const oldRootRef = bom.metadata.component['bom-ref']
   const rootRef = `pkg:github/${new URL(REPOSITORY_URL).pathname.slice(1)}@${release.tag}`
-  const added = [release.runtime, release.installer, ...release.data]
+  const added = [...release.unlisted, release.runtime, release.installer, ...release.data]
   const components = bom.components.map((component) => {
     const inside = release.inside[`${packageName(component)}@${component.version}`]
     return inside ? { ...component, components: [...(component.components ?? []), ...inside] } : component
@@ -182,6 +183,31 @@ function fontsInside(bom: Bom): Record<string, Component[]> {
   return inside
 }
 
+function lockfileIntegrity(lockfile: string, name: string, version: string): string | undefined {
+  const key = name.startsWith('@') ? `'${name}@${version}'` : `${name}@${version}`
+  const start = lockfile.indexOf(`\n  ${key}:\n`)
+  if (start === -1) return undefined
+  return lockfile.slice(start, start + 400).match(/integrity: (sha512-[A-Za-z0-9+/=]+)/)?.[1]
+}
+
+function unlistedPackages(bom: Bom, bundled: readonly BundledSoftware[]): Component[] {
+  const listed = new Set(bom.components.map((component) => `${packageName(component)}@${component.version}`))
+  const lockfile = readFileSync('pnpm-lock.yaml', 'utf8')
+  const packages = new Map<string, Component>()
+  for (const software of bundled) {
+    if (!('version' in software) || listed.has(`${software.name}@${software.version}`)) continue
+    const manifest = readJson(`node_modules/${software.name}/package.json`) as PackageManifest
+    if (manifest.version !== software.version) {
+      throw new Error(
+        `node_modules holds ${software.name} ${manifest.version}, but the bundles hold ${software.version}.`,
+      )
+    }
+    const integrity = lockfileIntegrity(lockfile, software.name, software.version)
+    packages.set(`${software.name}@${software.version}`, packageComponent(manifest, integrity))
+  }
+  return [...packages.values()]
+}
+
 function electronRuntime(): Component {
   const binary = createRequire(import.meta.url)('electron') as string
   const versions = JSON.parse(
@@ -236,7 +262,8 @@ async function main() {
     inside[key] = [...(inside[key] ?? []), ...components]
   const builder = createRequire(createRequire(import.meta.url).resolve('electron-builder/package.json'))
   const installer = installerComponent((builder('app-builder-lib/package.json') as { version: string }).version)
-  const release = { version, tag, bundled, inside, runtime: electronRuntime(), installer, data: iconSets() }
+  const unlisted = unlistedPackages(bom, bundled)
+  const release = { version, tag, bundled, inside, runtime: electronRuntime(), installer, data: iconSets(), unlisted }
   writeFileSync(output, `${JSON.stringify(releaseSbom(bom, release), null, 2)}\n`)
 }
 

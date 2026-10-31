@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { embeddedComponent } from './sbom-components.ts'
+import { embeddedComponent, packageComponent } from './sbom-components.ts'
 import { type Bom, EMBEDDED_VERSIONS, type Release, releaseSbom } from './sbom.ts'
 import { EMBEDDED_SOFTWARE } from './third-party-licenses.ts'
 
@@ -67,7 +67,10 @@ const RELEASE: Release = {
   runtime: { type: 'framework', name: 'electron', version: '45.0.0', 'bom-ref': 'pkg:npm/electron@45.0.0' },
   installer: { type: 'application', name: 'app-builder-lib', 'bom-ref': 'pkg:npm/app-builder-lib@26.17.0' },
   data: [{ type: 'data', name: 'Simple Icons', 'bom-ref': 'icons:logos' }],
+  unlisted: [],
 }
+
+const TAILWIND = packageComponent({ name: 'tailwindcss', version: '4.3.3', license: 'MIT' }, 'sha512-AAEC')
 
 function component(sbom: Bom, name: string, version: string) {
   return sbom.components.find((found) => found.name === name && found.version === version)
@@ -131,9 +134,20 @@ describe('release SBOM', () => {
     expect(component(sbom, 'zod', '4.6.7')).toEqual(PNPM_SBOM.components[3])
   })
 
-  it('fails when the bundles hold a package that the SBOM of pnpm does not list', () => {
+  it('adds a bundled package that the SBOM of pnpm does not list, without its dependencies', () => {
+    const bundled = [...RELEASE.bundled, { name: 'tailwindcss', version: '4.3.3' }]
+    const sbom = releaseSbom(PNPM_SBOM, { ...RELEASE, bundled, unlisted: [TAILWIND] })
+    expect(component(sbom, 'tailwindcss', '4.3.3')).toEqual(TAILWIND)
+    const root = sbom.dependencies.find((dependency) => dependency.ref === sbom.metadata.component['bom-ref'])
+    expect(root?.dependsOn).toContain('pkg:npm/tailwindcss@4.3.3')
+    expect(sbom.dependencies).toContainEqual({ ref: 'pkg:npm/tailwindcss@4.3.3', dependsOn: [] })
+  })
+
+  it('fails when a bundled package has no component', () => {
     const bundled = [...RELEASE.bundled, { name: 'fflate', version: '0.8.3' }]
-    expect(() => releaseSbom(PNPM_SBOM, { ...RELEASE, bundled })).toThrow(/does not list: fflate@0\.8\.3\./)
+    expect(() => releaseSbom(PNPM_SBOM, { ...RELEASE, bundled })).toThrow(
+      /no component for these bundled packages: fflate@0.8.3./,
+    )
   })
 
   it('fails when a program inside a bundled package has no component', () => {
