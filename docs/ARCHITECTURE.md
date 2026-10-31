@@ -960,6 +960,8 @@ The React app in Electron, plus file storage, agent control, the website handoff
   (`-c.extraMetadata.version`); a release needs no commit. `pnpm release:tag` calculates the tag. One job creates
   the draft, because parallel electron-builder jobs could each create one. Platform jobs package, drive the app
   through the agent server (`scripts/smoke-package.mjs`) and upload. The maintainer publishes the draft.
+- Release and `main` builds do not restore the Actions cache. Other workflow runs can write that cache, and a
+  changed package in it goes into the installers.
 - Preview tags (`v0.2.0-beta.1`) build in the `preview` environment without approval and publish as GitHub
   pre-releases.
 - Channels: a normal version reads `/releases/latest` (never a pre-release); a beta or alpha takes the newest release
