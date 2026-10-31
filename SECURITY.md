@@ -17,6 +17,20 @@ fix is out, the advisory names you, unless you ask not to be named.
 | The desktop app                                         | The latest version |
 | Older desktop versions and forks                        | No                 |
 
+## Verify a download
+
+Each installer in a release newer than v0.1.4 has a build provenance attestation. It records which workflow built
+the file, from which commit and tag. Check a downloaded file with the [GitHub CLI](https://cli.github.com), with the
+file name and tag of your download:
+
+```sh
+gh attestation verify Diagrams-0.2.0-win-x64.exe --repo math280h/diagrams \
+  --signer-workflow math280h/diagrams/.github/workflows/release.yml --source-ref refs/tags/v0.2.0
+```
+
+The command fails if the file changed after the build, or if a different workflow, branch or tag built it. Builds of
+`main` (`preview-<run>` pre-releases) come from `.github/workflows/preview-app.yml` and `refs/heads/main`.
+
 ## Scope
 
 These parts handle data from outside the app:

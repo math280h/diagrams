@@ -979,6 +979,10 @@ The React app in Electron, plus file storage, agent control, the website handoff
   through the agent server (`scripts/smoke-package.mjs`) and upload. The maintainer publishes the draft.
 - Release and `main` builds do not restore the Actions cache. Other workflow runs can write that cache, and a
   changed package in it goes into the installers.
+- Each platform job attests the build provenance of its installers (`actions/attest`, SLSA provenance signed with
+  Sigstore) after the test and before the upload. The attestation names the workflow file and the tag, so
+  `gh attestation verify --signer-workflow --source-ref` rejects a file from another workflow or branch. A tag needs
+  an admin, but any branch can change a workflow file. electron-updater does not check attestations.
 - Preview tags (`v0.2.0-beta.1`) build in the `preview` environment without approval and publish as GitHub
   pre-releases.
 - Channels: a normal version reads `/releases/latest` (never a pre-release); a beta or alpha takes the newest release
@@ -1116,6 +1120,9 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
   when the pull request adds or changes a package with a high or critical advisory, in runtime or development scope.
   It also fails for a licence outside `allow-licenses`, which holds the licences of the lockfile. A package with no
   licence only shows in the summary.
+- `.github/workflows/scorecard.yml` runs OpenSSF Scorecard on each push to `main`, each Monday and after a change to
+  branch protection. It publishes the result to the Scorecard API for the README badge, and it uploads the findings
+  to code scanning. The Scorecard API accepts a result only from a job with approved actions and no `run` steps.
 
 ### Skills
 

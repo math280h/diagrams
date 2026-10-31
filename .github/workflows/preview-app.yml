@@ -47,6 +47,8 @@ jobs:
     needs: prepare
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     strategy:
       fail-fast: false
       matrix:
@@ -84,6 +86,14 @@ jobs:
       - name: Test the packaged app
         if: runner.os == 'Linux'
         run: xvfb-run --auto-servernum node scripts/smoke-package.mjs
+      - name: Attest the build provenance of the installers
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: |
+            release/*.exe
+            release/*.dmg
+            release/*.AppImage
+            release/*.deb
       - name: Upload the installers
         shell: bash
         env:
