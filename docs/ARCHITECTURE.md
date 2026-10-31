@@ -46,8 +46,8 @@ moves along connections; a flow walks a user through the system while the camera
 - **Tests**: Vitest 5 (node and Chromium browser mode), Playwright. Real browser for Mermaid and export.
   - Fuzz tests (`*.fuzz.test.ts`, `*.fuzz.browser.test.ts`) use fast-check. They give random and changed input to
     each reader of untrusted data.
-  - The readers are diagram files and migrations, copied nodes, share links, trace files, images with a diagram,
-    `diagrams://` links and release notes HTML.
+  - The readers are for diagram files and migrations, copied nodes, share links, trace files, images with a
+    diagram, `diagrams://` links and release notes HTML.
   - Each test checks the contract of the reader: a valid result, or the error class of that reader. Any other error
     or unsafe output fails the test.
 - **Desktop**: Electron 45. Vite builds main and preload. It uses the same Chromium as the tests, so export and capture
