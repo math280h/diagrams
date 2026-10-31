@@ -104,18 +104,7 @@
   "engines": {
     "node": ">=24"
   },
-  "packageManager": "pnpm@10.33.0",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "electron"
-    ],
-    "ignoredBuiltDependencies": [
-      "electron-winstaller"
-    ],
-    "overrides": {
-      "minimatch@>=9 <11.0.1": "^11.0.3"
-    }
-  },
+  "packageManager": "pnpm@12.16.1",
   "desktopName": "diagrams.desktop",
   "productName": "Diagrams"
 }
