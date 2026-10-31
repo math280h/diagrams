@@ -15,6 +15,7 @@ import {
   type FontMetadata,
   fontComponent,
   iconSetComponent,
+  installerComponent,
   type LicensedLogo,
 } from './sbom-components.ts'
 import { type BundledSoftware, readNoticeText } from './third-party-licenses.ts'
@@ -38,6 +39,8 @@ export interface Release {
   inside: Readonly<Record<string, readonly Component[]>>
   /** Electron, with the projects inside it. */
   runtime: Component
+  /** electron-builder, with the code that it puts in the installers. */
+  installer: Component
   /** The data that the app ships outside packages, such as icon sets. */
   data: readonly Component[]
 }
@@ -85,7 +88,7 @@ export function releaseSbom(bom: Bom, release: Release): Bom {
   }
   const oldRootRef = bom.metadata.component['bom-ref']
   const rootRef = `pkg:github/${new URL(REPOSITORY_URL).pathname.slice(1)}@${release.tag}`
-  const added = [release.runtime, ...release.data]
+  const added = [release.runtime, release.installer, ...release.data]
   const components = bom.components.map((component) => {
     const inside = release.inside[`${packageName(component)}@${component.version}`]
     return inside ? { ...component, components: [...(component.components ?? []), ...inside] } : component
@@ -231,7 +234,9 @@ async function main() {
   const inside = { ...(await programsInside(bundled)) }
   for (const [key, components] of Object.entries(fontsInside(bom)))
     inside[key] = [...(inside[key] ?? []), ...components]
-  const release = { version, tag, bundled, inside, runtime: electronRuntime(), data: iconSets() }
+  const builder = createRequire(createRequire(import.meta.url).resolve('electron-builder/package.json'))
+  const installer = installerComponent((builder('app-builder-lib/package.json') as { version: string }).version)
+  const release = { version, tag, bundled, inside, runtime: electronRuntime(), installer, data: iconSets() }
   writeFileSync(output, `${JSON.stringify(releaseSbom(bom, release), null, 2)}\n`)
 }
 

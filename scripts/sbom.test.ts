@@ -65,6 +65,7 @@ const RELEASE: Release = {
     'undici@7.30.1': [embeddedComponent('undici', '9.3.0')],
   },
   runtime: { type: 'framework', name: 'electron', version: '45.0.0', 'bom-ref': 'pkg:npm/electron@45.0.0' },
+  installer: { type: 'application', name: 'app-builder-lib', 'bom-ref': 'pkg:npm/app-builder-lib@26.17.0' },
   data: [{ type: 'data', name: 'Simple Icons', 'bom-ref': 'icons:logos' }],
 }
 
@@ -94,14 +95,15 @@ describe('release SBOM', () => {
     expect(sbom.metadata.component.purl).toBe('pkg:github/math280h/diagrams@preview-57')
   })
 
-  it('adds the Electron runtime and the data as dependencies of the app', () => {
+  it('adds the Electron runtime, the installer builder and the data as dependencies of the app', () => {
     const sbom = releaseSbom(PNPM_SBOM, RELEASE)
-    expect(sbom.components.slice(-2)).toEqual([RELEASE.runtime, ...RELEASE.data])
+    expect(sbom.components.slice(-3)).toEqual([RELEASE.runtime, RELEASE.installer, ...RELEASE.data])
     const root = sbom.dependencies.find((dependency) => dependency.ref === 'pkg:github/math280h/diagrams@v0.2.0')
     expect(root?.dependsOn).toEqual([
       'pkg:npm/%40hpcc-js/wasm-graphviz@1.30.0',
       'pkg:npm/zod@4.6.7',
       'pkg:npm/electron@45.0.0',
+      'pkg:npm/app-builder-lib@26.17.0',
       'icons:logos',
     ])
     expect(sbom.dependencies).toContainEqual({ ref: 'pkg:npm/electron@45.0.0', dependsOn: [] })

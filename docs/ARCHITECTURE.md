@@ -999,6 +999,11 @@ The React app in Electron, plus file storage, agent control, the website handoff
   - Each Fontsource package gets its font as a `data` component, from the `metadata.json` of the package.
   - Each icon set in `src/canvas/icons/data` becomes a `data` component, from `scripts/icons/sources.ts`, with the
     SHA-256 of its data file. Simple Icons holds a component for each bundled logo with its own licence.
+  - app-builder-lib (electron-builder) holds the code that the installers add next to the app: NSIS 3.04 with the
+    plugins of nsis-resources 3.4.1 (Windows installer and uninstaller), Elevate (installed as
+    `resources\elevate.exe`), the AppImage runtime (AppImageKit `effcebc`, with squashfuse and liblzma) and six
+    libraries that the AppImage holds in `usr/lib`. `INSTALLER_BUNDLES` names the toolset bundles with their SHA-256. A
+    test fails when app-builder-lib downloads other bundles, or when `electron-builder.ts` sets `toolsets`.
   - The app gets a `pkg:github` purl, because the npm purl of the private package names another package.
 - Preview tags (`v0.2.0-beta.1`) build in the `preview` environment without approval and publish as GitHub
   pre-releases.

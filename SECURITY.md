@@ -39,7 +39,9 @@ Each release newer than v0.1.4 has `Diagrams-<version>-sbom.cdx.json`, a Cyclone
 - the compiled programs inside packages (Graphviz in `@hpcc-js/wasm-graphviz`, llhttp in undici);
 - Electron, with the versions of Chromium, V8, Node.js and the projects inside Node.js, and the projects that
   `LICENSES.chromium.html` names for Chromium (without versions);
-- the fonts and the icon sets as data, with the SHA-256 of each icon data file and the logos with their own licence.
+- the fonts and the icon sets as data, with the SHA-256 of each icon data file and the logos with their own licence;
+- the code that the installers add next to the app: NSIS and its plugins in the Windows installer, Elevate, and the
+  runtime and the libraries of the AppImage.
 
 The release fails when the app bundles hold a package that the SBOM does not list. Builds of `main` have
 `Diagrams-preview-sbom.cdx.json`. Each

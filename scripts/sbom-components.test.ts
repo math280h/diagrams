@@ -1,7 +1,17 @@
-import { readdirSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
+import builderConfig from '../electron-builder.ts'
 import { ICON_SOURCES } from './icons/sources.ts'
-import { chromiumProjects, electronComponent, fontComponent, iconSetComponent } from './sbom-components.ts'
+import {
+  chromiumProjects,
+  electronComponent,
+  fontComponent,
+  iconSetComponent,
+  INSTALLER_BUNDLES,
+  installerComponent,
+} from './sbom-components.ts'
 
 const VERSIONS = {
   node: '24.22.0',
@@ -139,6 +149,55 @@ describe('SBOM components', () => {
     )
     expect(gcp.version).toBeUndefined()
     expect(gcp.externalReferences).toHaveLength(3)
+  })
+
+  it('names the toolset bundles that app-builder-lib downloads for the installers', () => {
+    const builder = createRequire(createRequire(import.meta.url).resolve('electron-builder/package.json'))
+    const toolsets = path.join(path.dirname(builder.resolve('app-builder-lib/package.json')), 'out', 'toolsets')
+    const windows = readFileSync(path.join(toolsets, 'windows.js'), 'utf8')
+    const linux = readFileSync(path.join(toolsets, 'linux.js'), 'utf8')
+    const { nsis, nsisResources, appImage } = INSTALLER_BUNDLES
+    for (const bundle of [nsis, nsisResources]) {
+      expect(windows, bundle.name).toContain(`("${bundle.name}", "${bundle.name}.7z", "${bundle.sha256}")`)
+    }
+    expect(linux).toContain(`"${appImage.name}.7z": "${appImage.sha256}"`)
+  })
+
+  it('uses the default toolsets of electron-builder, which INSTALLER_BUNDLES describes', () => {
+    expect(
+      builderConfig.toolsets,
+      'Describe the new toolsets in INSTALLER_BUNDLES and installerComponent',
+    ).toBeUndefined()
+  })
+
+  it('describes the code that electron-builder puts in the installers', () => {
+    const installer = installerComponent('26.17.0')
+    expect(installer).toMatchObject({
+      name: 'app-builder-lib',
+      version: '26.17.0',
+      purl: 'pkg:npm/app-builder-lib@26.17.0',
+    })
+    const parts = Object.fromEntries(installer.components!.map((part) => [part.name, part]))
+    expect(parts['NSIS']).toMatchObject({
+      version: '3.04',
+      cpe: 'cpe:2.3:a:nullsoft:nullsoft_scriptable_install_system:3.04:*:*:*:*:*:*:*',
+    })
+    expect(parts['NSIS']!.components![0]!.components).toHaveLength(9)
+    expect(parts['AppImage runtime']).toMatchObject({
+      version: 'effcebc',
+      purl: 'pkg:github/AppImage/AppImageKit@effcebc',
+    })
+    expect(Object.keys(parts)).toEqual(
+      expect.arrayContaining([
+        'Elevate',
+        'libnotify',
+        'libgconf-2',
+        'libXss',
+        'libXtst',
+        'libappindicator',
+        'libindicator',
+      ]),
+    )
   })
 
   it('has a source for each icon set in the data folder', () => {

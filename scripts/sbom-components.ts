@@ -265,3 +265,123 @@ export function iconSetComponent(
     }),
   }
 }
+
+const BUILDER_BINARIES = 'https://github.com/electron-userland/electron-builder-binaries/releases/download'
+
+/**
+ * The bundles of the default toolsets of electron-builder, from which the installers take code. A test compares the
+ * names and SHA-256 checksums with app-builder-lib, so an electron-builder update that changes a bundle fails.
+ */
+export const INSTALLER_BUNDLES = {
+  nsis: { name: 'nsis-3.0.4.1', sha256: '9877df902530f96357d13a7a31ae2b9df67f48b11ffc9a1700a7c961574ec5fa' },
+  nsisResources: {
+    name: 'nsis-resources-3.4.1',
+    sha256: '593a9a92ef958321293ac6a2ee61e64bf1bd543142a5bd6b3d310709cc924103',
+  },
+  appImage: { name: 'appimage-12.0.1', sha256: 'd12ff7eb8f1d1ec4652ca5237a7fbdca33acc0c758045636feca62dc6ecb8ec4' },
+} as const
+
+const NSIS_PLUGINS = [
+  'EmbedHTML',
+  'INetC',
+  'nsis7z',
+  'nsisunz',
+  'nsProcess',
+  'SpiderBanner',
+  'StdUtils',
+  'UAC',
+  'WinShell',
+]
+const APPIMAGE_LIBRARIES = [
+  'libappindicator.so.1',
+  'libgconf-2.so.4',
+  'libindicator.so.7',
+  'libnotify.so.4',
+  'libXss.so.1',
+  'libXtst.so.6',
+]
+
+function bundleReference(bundle: { name: string; sha256: string }) {
+  return {
+    type: 'distribution',
+    url: `${BUILDER_BINARIES}/${bundle.name}/${bundle.name}.7z`,
+    hashes: [{ alg: 'SHA-256', content: bundle.sha256 }],
+  }
+}
+
+/**
+ * Returns the component of electron-builder, with the code that it puts in the installers next to the app: NSIS and
+ * its plugins in the Windows installer, Elevate, and the runtime and the libraries of the AppImage.
+ *
+ * @param version - The version of app-builder-lib, the package of electron-builder that builds the installers.
+ */
+export function installerComponent(version: string): Component {
+  const purl = `pkg:npm/app-builder-lib@${version}`
+  const { nsis, nsisResources, appImage } = INSTALLER_BUNDLES
+  return {
+    type: 'application',
+    name: 'app-builder-lib',
+    version,
+    'bom-ref': purl,
+    purl,
+    description:
+      'The installer builder of electron-builder. Its installer scripts and the components inside it are in the ' +
+      'installers, not in the app bundles.',
+    licenses: [{ license: { id: 'MIT' } }],
+    externalReferences: [{ type: 'vcs', url: 'https://github.com/electron-userland/electron-builder' }],
+    components: [
+      {
+        type: 'application',
+        name: 'NSIS',
+        version: '3.04',
+        purl: 'pkg:generic/nsis@3.04',
+        cpe: cpe('nullsoft:nullsoft_scriptable_install_system', '3.04'),
+        description: 'The code of the Windows installer, and of the uninstaller that it installs.',
+        licenses: [{ license: { id: 'Zlib' } }],
+        externalReferences: [{ type: 'website', url: 'https://nsis.sourceforge.io' }, bundleReference(nsis)],
+        components: [
+          {
+            type: 'library',
+            name: 'NSIS plugins of electron-builder',
+            version: '3.4.1',
+            description: 'The Windows installer holds the plugins that its script calls.',
+            externalReferences: [bundleReference(nsisResources)],
+            components: NSIS_PLUGINS.map((name) => ({ type: 'library', name })),
+          },
+        ],
+      },
+      {
+        type: 'application',
+        name: 'Elevate',
+        version: '1.0.0.2894',
+        authors: [{ name: 'Johannes Passing' }],
+        description:
+          'Installed with the app on Windows as resources\\elevate.exe. It starts the installer with administrator ' +
+          'rights when needed.',
+        externalReferences: [bundleReference(nsis)],
+      },
+      {
+        type: 'application',
+        name: 'AppImage runtime',
+        version: 'effcebc',
+        purl: 'pkg:github/AppImage/AppImageKit@effcebc',
+        description: 'The start code of the AppImage. It loads libfuse2 and zlib from the system.',
+        licenses: [{ license: { id: 'MIT' } }],
+        externalReferences: [
+          { type: 'vcs', url: 'https://github.com/AppImage/AppImageKit' },
+          bundleReference(appImage),
+        ],
+        components: [
+          { type: 'library', name: 'squashfuse', licenses: [{ license: { id: 'BSD-2-Clause' } }] },
+          { type: 'library', name: 'liblzma' },
+        ],
+      },
+      ...APPIMAGE_LIBRARIES.map((file) => ({
+        type: 'library',
+        name: file.replace(/\.so\.\d+$/, ''),
+        description: `In usr/lib of the AppImage, as ${file}.`,
+        externalReferences: [bundleReference(appImage)],
+      })),
+    ],
+  }
+}
