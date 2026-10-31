@@ -136,7 +136,7 @@ test('registers no service worker and offers no install of the website', async (
     'serviceWorker' in navigator ? (await navigator.serviceWorker.getRegistrations().catch(() => [])).length : 0,
   )
   expect(registrations).toBe(0)
-  await expect(window.getByRole('region', { name: 'Install Diagrams on this device' })).toHaveCount(0)
+  await expect(window.getByRole('region', { name: 'Install this website as an app' })).toHaveCount(0)
 })
 
 test('holds the playing template while the window is minimized or hidden', async ({ app, window }) => {

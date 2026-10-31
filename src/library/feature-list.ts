@@ -14,39 +14,39 @@ export interface HeadlineFeature extends Feature {
 export const HEADLINE_FEATURES: readonly HeadlineFeature[] = [
   {
     id: 'flows',
-    title: 'Play a request through it',
+    title: 'Follow a request step by step',
     summary:
-      'Record a path, add captions, and play it with a camera that follows. Read it as a log or a sequence diagram, with fan-out and alternate paths.',
+      'Record the path of a request and caption each step. Play it and the camera follows. Steps can fan out or branch. A flow also reads as a log or a sequence diagram.',
   },
   {
     id: 'traces',
     title: 'Replay a real trace',
     summary:
-      'Import an OpenTelemetry, Jaeger or Zipkin trace, and watch the request move with each operation, latency and status.',
+      'Import an OpenTelemetry, Jaeger or Zipkin trace as a flow. Each step shows the real operation, its latency and its status.',
   },
   {
     id: 'sensitive',
     title: 'See where sensitive data goes',
     summary:
-      'Mark body fields as personal data or secrets, and see which connections carry them across a trust boundary.',
+      'Mark fields in request and response bodies as personal data or secrets. The Sensitive data view shows which connections carry them across a trust boundary.',
   },
   {
     id: 'agents',
-    title: 'Let an AI agent draw it',
+    title: 'Ask an AI agent to draw',
     summary:
-      'In the desktop app, Claude Code and other MCP clients draw, animate and check diagrams while you watch, also from Terraform, docker-compose or Kubernetes files.',
+      'In the desktop app, Claude Code and other MCP clients draw, animate and check diagrams while you watch. They can start from Terraform, docker-compose or Kubernetes files.',
   },
   {
     id: 'share',
-    title: 'Share it anywhere',
+    title: 'Export and share',
     summary:
-      'Present in full screen, export PNG, SVG, MP4, WebM or GIF, or a web page that plays its flows. Copy an image, or a link that carries the whole diagram.',
+      'Present in full screen. Export PNG, SVG, MP4, WebM, GIF or a web page that plays the flows. Copy an image, or a link that carries the whole diagram.',
   },
   {
     id: 'code',
     title: 'Keep diagrams with your code',
     summary:
-      'A diagram is a JSON file that you review and diff. A GitHub Action shows each diagram before and after in a pull request.',
+      'A diagram is a JSON file that you can review and diff. A GitHub Action comments on pull requests with before and after images.',
   },
 ]
 
@@ -55,38 +55,34 @@ export const MORE_FEATURES: readonly Feature[] = [
   {
     title: 'Templates',
     summary:
-      'C4, RAG, an agent with MCP tools, an OpenID Connect sign-in, webhooks, a deploy pipeline and more, ready to play.',
+      'Examples to play and copy, such as C4 models, RAG, an agent with MCP tools and an OpenID Connect sign-in.',
   },
   { title: 'Node kinds', summary: 'Services, data stores, queues, clients and more, each with its own outline.' },
   {
-    title: 'Real icons',
-    summary: 'Official AWS, Azure, Google Cloud, Kubernetes and Salesforce icons, and 220 software logos.',
+    title: 'Icons and logos',
+    summary: 'Official AWS, Azure, Google Cloud, Kubernetes and Salesforce icons, and about 220 software logos.',
   },
   { title: 'Boundaries', summary: 'Cloud, network and cluster boundaries, or your own groups, such as a team.' },
   { title: 'Colours and metrics', summary: 'Colour nodes by kind or by group, and add numbers or meters.' },
-  { title: 'Moving connections', summary: 'Dots, comets, dashes or pulses that flow along a connection.' },
-  { title: 'Details on hover', summary: 'An owner, a description and links on a node, shown on hover in Present.' },
+  { title: 'Traffic on connections', summary: 'Dots, comets, dashes or pulses that flow along a connection.' },
+  { title: 'Details on hover', summary: 'Give a node an owner, a description and links. Present shows them on hover.' },
   {
     title: 'Request and response bodies',
     summary: 'The JSON fields of a connection, shown in the log as a flow plays.',
   },
   { title: 'Drill-down', summary: 'A node opens another diagram, and Present zooms into it.' },
-  { title: 'Tidy up', summary: 'Lay out the whole diagram at once, and keep pinned nodes in place.' },
+  { title: 'Tidy up', summary: 'Lay out the whole diagram in one go. Pinned nodes stay where you put them.' },
   { title: 'Walkthroughs', summary: 'Introduction and conclusion steps that show the whole path of a flow.' },
   { title: 'Text description', summary: 'Every diagram described in words, for screen readers and alt text.' },
-  { title: 'High contrast', summary: 'Stronger text and outlines on the canvas, also from the system setting.' },
+  { title: 'High contrast', summary: 'A canvas with stronger text and outlines. It can follow your system setting.' },
   {
     title: 'README images',
     summary: "A dark and a light image, and a snippet that shows the one for the reader's theme.",
   },
   { title: 'Mermaid', summary: 'Import and export Mermaid flowcharts, and copy a flow as a sequence diagram.' },
-  { title: 'Version history', summary: 'Earlier versions, also each change of an agent, ready to restore.' },
+  { title: 'Version history', summary: 'Restore an earlier version. Each change an agent makes gets its own version.' },
   { title: 'Open in the desktop app', summary: 'Send a diagram from the website to the desktop app in one step.' },
   { title: 'Command-line render', summary: 'The desktop app renders diagram files to images and video for CI.' },
-  {
-    title: 'Local first',
-    summary: 'No account. The website keeps diagrams in your browser, the desktop app as files.',
-  },
   {
     title: 'App on a tablet',
     summary: 'Install the website as an app that opens from the home screen and works offline.',

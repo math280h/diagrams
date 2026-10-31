@@ -8,82 +8,70 @@ web and desktop (Windows, macOS, Linux)
 
 ## Users
 
-- **Engineers explaining systems.** Developers and architects who need diagrams of applications,
-  architecture and request paths for docs, READMEs, pull requests, RFCs and talks.
-- **Educators and content creators.** People who make animated explainers of how software works
-  for courses, blog posts, videos and social media.
+- **Engineers explaining systems.** Developers and architects; diagrams of applications, architecture and request
+  paths for docs, READMEs, PRs, RFCs, talks.
+- **Educators and content creators.** Animated software explainers for courses, blogs, videos, social media.
 
-Both groups need the result to look finished without a design tool, and often need it to move.
+Both need a finished look without a design tool, often with motion.
 
 ## Product Purpose
 
-Make very pretty diagrams and flows that explain applications and architecture, and animate
-them: traffic flows along connections, and a flow follows a user through the system step by step.
-Success means a diagram that goes straight into a talk, a README or a video without retouching,
-and an animation that exports as a file the user can publish.
+Good-looking diagrams and flows of applications and architecture, animated: traffic along connections, a user followed
+step by step. Success: no retouching before a talk, README or video; animations export as publishable files.
 
 ## Positioning
 
-Free, with no account. Tools in this space either charge for it or look dated; this one looks
-modern by default and makes motion a core feature: living edges, recorded user flows with a camera
-that follows the token, and frame-exact video and GIF export, all in the browser.
+Free, no account; other tools charge or look dated. Modern by default, motion-first: living edges, user flows with a
+camera that follows the token, frame-exact video and GIF export, in the browser.
 
 ## Operating Context
 
-- Desktop browser, usually next to the material the diagram explains: docs, slides, a video edit,
-  a pull request.
-- Outputs leave the app: PNG and SVG for docs and slides, MP4, WebM and GIF for videos and posts,
-  JSON files to move a diagram between browsers.
-- Existing diagrams often start as Mermaid flowcharts in docs; the app imports them.
-- Full-screen present mode for live talks and walkthroughs.
+- Desktop browser, beside docs, slides, video edits, pull requests.
+- Imports Mermaid flowcharts, where existing diagrams often start.
+- Full-screen present mode for talks and walkthroughs.
 
 ## Capabilities and Constraints
 
-- No server and no account. The desktop app listens on 127.0.0.1 only, for AI agents and for the
-  handoff from the website.
-- Local-first is a principle: diagrams live in the browser (`localStorage`, about 5 MB), or as
-  files in `Documents/Diagrams` in the desktop app. Optional sync may come later; an account must
-  never be required.
-- AI agents such as Claude Code can read, change and render diagrams in the desktop app through
-  MCP, guided by bundled skills. Each agent call that changes a diagram is one undo step, and the
-  user watches the change happen.
-- Node kinds carry meaning through their shape (service, datastore, queue or stream, client,
-  external system, function). Boundaries group nodes by tier, from an account or
-  subscription down to a network, a subnet and a runtime such as a cluster.
-  Metrics, meters and status are optional extras, off by default.
-- Canvas-first editing: the diagram is the largest thing on screen; panels appear on demand.
-- Edges with animated traffic (dots, comets, dashes, pulse) and labels.
-- Flows: steps recorded by clicking nodes, captions, camera modes, and a keyframe timeline for
-  camera, opacity and traffic.
-- Request and response bodies on connections: JSON fields with types, examples and notes, filled
-  from a pasted example, copied out as example JSON, and shown in the log line of a flow.
-- Export: PNG, SVG, MP4, WebM, GIF, JSON, Mermaid flowcharts. Import: JSON, Mermaid flowcharts.
-- Version history: saved versions of each diagram, by the user, by an agent or from outside the
-  editor, kept locally. Any version shows on the canvas and restores as one undo step.
-- Dark and light themes are both required.
-- Open decision: the product name. "Diagrams" is a working name only.
+- No account or diagram server. Website: static files; desktop app: 127.0.0.1 only, for AI agents and the website
+  handoff.
+- Privacy: diagrams stay on the user's computer (stated on landing page and README). "Network connections" in
+  `docs/ARCHITECTURE.md` lists what the app sends.
+- Local-first: browser `localStorage` (about 5 MB) or desktop files in `Documents/Diagrams`. Optional sync may follow;
+  never a required account.
+- Desktop: AI agents (such as Claude Code) read, change and render diagrams via MCP and bundled skills. Each change
+  call is one undo step, shown live.
+- Node shape shows kind: service, datastore, queue or stream, client, external system, function. Boundaries group by
+  tier: account or subscription, network, subnet, runtime (such as a cluster). Metrics, meters, status: off by
+  default.
+- Canvas-first: diagram largest on screen, panels on demand.
+- Edges: labels, animated traffic (dots, comets, dashes, pulse).
+- Flows: steps recorded by clicking nodes, captions, camera modes, keyframe timeline for camera, opacity, traffic.
+- Connection request and response bodies: JSON fields with types, examples, notes; filled from pasted JSON, copied as
+  example JSON, shown in flow log lines.
+- Export: PNG, SVG (docs, slides); MP4, WebM, GIF (videos, posts); JSON (between browsers); Mermaid flowcharts.
+  Import: JSON, Mermaid flowcharts.
+- Local version history (saves by the user, an agent or outside edits); any version previews on the canvas, restores
+  as one undo step.
+- Dark and light themes required.
+- Open decision: product name; "Diagrams" is a working name.
 
 ## Brand Commitments
 
-- Free to use.
-- The product must not look dated, and it must not look like a generic AI-generated dark dev
-  tool.
-- Developer-focused: the audience is engineers and technical educators.
+- Free.
+- Not dated; not a generic AI-generated dark dev tool.
+- For engineers and technical educators.
 
 ## Evidence on Hand
 
-- Five starter templates in `src/templates/` (Multi-cloud platform, Collaborative editor, Order
-  system, Event pipeline, Checkout flow). Their numbers and names are illustrative sample content,
-  not real data.
-- No users, testimonials, customers, usage numbers, press or benchmarks exist yet. Do not invent
-  them.
+- Five starter templates in `src/templates/`: Multi-cloud platform, Collaborative editor, Order system, Event pipeline,
+  Checkout flow. Sample content, not real data.
+- No users, testimonials, customers, usage numbers, press or benchmarks yet. Do not invent them.
 
 ## Product Principles
 
-1. **Beautiful by default.** A new diagram looks presentation-ready before the user styles anything.
-2. **Motion explains.** Animation shows how requests, data and users move; it is never decoration.
-3. **Free and local-first.** No account and no paywall; the browser holds the data and export is
-   how work leaves the app.
+1. **Beautiful by default.** New diagrams are presentation-ready without styling.
+2. **Motion explains.** Animation shows how requests, data and users move; never decoration.
+3. **Free and local-first.** No account, no paywall; the browser holds the data; export is how work leaves.
 4. **What you see is what you export.** Images and videos match the canvas exactly.
-5. **Versatile, without lock-in.** Architecture and user flows from one set of parts; JSON export
-   and Mermaid import and export keep the work portable.
+5. **Versatile, without lock-in.** One set of parts for architecture and user flows; JSON and Mermaid keep work
+   portable.

@@ -1,11 +1,13 @@
 import { Link, useNavigate } from '@tanstack/react-router'
 import {
   AppWindow,
+  ArrowDown,
   ArrowRight,
   Copy,
   Download,
   FileUp,
   FolderOpen,
+  HardDrive,
   Megaphone,
   MoreHorizontal,
   Pencil,
@@ -15,7 +17,7 @@ import {
   Search,
   Trash2,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { isDesktop } from '@/desktop/bridge'
 import {
@@ -69,6 +71,7 @@ import { storageCopy } from '@/persistence/storage-copy'
 import { useLibrary } from '@/store/library-store'
 import { TEMPLATES, type Template } from '@/templates'
 import { Features } from './Features'
+import { PrivacySection } from './PrivacySection'
 import { LivePreview } from './LivePreview'
 import { toast } from 'sonner'
 import { errorMessage } from '@/lib/error-message'
@@ -325,6 +328,13 @@ export function LibraryPage() {
     [],
   )
   const agentIntroVisible = useAgentIntroVisible()
+  const reducedMotion = useReducedMotion()
+  const moreTemplatesHeading = useRef<HTMLHeadingElement>(null)
+  const showAllTemplates = () => {
+    const heading = moreTemplatesHeading.current
+    heading?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' })
+    heading?.focus({ preventScroll: true })
+  }
 
   useEffect(() => discardUnusedBlankDiagrams(), [])
 
@@ -403,7 +413,11 @@ export function LibraryPage() {
                     Draw how your system works, then play a request through it.
                   </h1>
                   <p className="mt-4 max-w-xl text-base leading-6 text-pretty text-muted-foreground">
-                    Architecture diagrams that move, for docs, pull requests and talks. {storageCopy().promise}
+                    Architecture diagrams that move, for docs, pull requests and talks.
+                  </p>
+                  <p className="mt-2 flex max-w-2xl gap-2 text-[15px] leading-6 text-pretty">
+                    <HardDrive aria-hidden className="mt-1 size-4 shrink-0 text-muted-foreground" />
+                    {storageCopy().promise}
                   </p>
                 </div>
                 <AgentIntro />
@@ -413,9 +427,9 @@ export function LibraryPage() {
                   <h2 id="templates-heading" className="text-xl font-medium tracking-[-0.015em]">
                     Start from a template that is already playing
                   </h2>
-                  <span className="text-[13px] text-muted-foreground">
-                    Open one to look around. Choose Use this template to edit a copy.
-                  </span>
+                  <Button variant="link" size="sm" className="h-auto px-0 text-[13px]" onClick={showAllTemplates}>
+                    All {templates.length} templates <ArrowDown />
+                  </Button>
                 </div>
                 {featured && (
                   <FeaturedTemplate template={featured} diagram={featured.preview} showCrossings={crossingsShown} />
@@ -427,8 +441,14 @@ export function LibraryPage() {
                 onCrossingsShownChange={setCrossingsShown}
                 className="mt-20"
               />
-              <section aria-labelledby="more-templates-heading" className="mt-12">
-                <h2 id="more-templates-heading" className="mb-4 text-xl font-medium tracking-[-0.015em]">
+              <PrivacySection className="mt-20" />
+              <section aria-labelledby="more-templates-heading" className="mt-20">
+                <h2
+                  id="more-templates-heading"
+                  ref={moreTemplatesHeading}
+                  tabIndex={-1}
+                  className="mb-4 scroll-mt-6 text-xl font-medium tracking-[-0.015em] outline-none"
+                >
                   More templates
                 </h2>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -487,7 +507,7 @@ export function LibraryPage() {
                     Templates
                   </h2>
                   <span className="text-[13px] text-muted-foreground">
-                    Open one to look around. Choose Use this template to edit a copy.
+                    Open a template to look around, then choose Use this template to edit a copy.
                   </span>
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

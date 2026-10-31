@@ -17,7 +17,7 @@ export interface StorageCopy {
 }
 
 const BROWSER_COPY: StorageCopy = {
-  promise: 'Free, no account, and your diagrams stay in this browser.',
+  promise: 'Your diagrams are stored only on your computer. No account needed.',
   saveFailed: 'Could not save the diagram to this browser.',
   changedElsewhere: 'This diagram changed in another tab.',
   removedElsewhere: 'This diagram was deleted in another tab.',
@@ -30,7 +30,7 @@ const BROWSER_COPY: StorageCopy = {
 }
 
 const FOLDER_COPY: StorageCopy = {
-  promise: 'Free, no account, and your diagrams stay on this computer as files.',
+  promise: 'Your diagrams are stored only as files on this computer. No account needed.',
   saveFailed: 'Could not save the diagram file.',
   changedElsewhere: 'This diagram changed on disk.',
   removedElsewhere: 'The file of this diagram was deleted or moved.',

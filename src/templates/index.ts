@@ -3107,7 +3107,7 @@ export const TEMPLATES: Template[] = [
     id: 'collaborative-editor',
     name: 'Collaborative editor',
     description:
-      'The inside of a real-time document editor: a CRDT in the browser, a sync server, an API and workers. Three flows follow an edit, a mention and an offline session.',
+      'A real-time document editor with a CRDT in the browser, a sync server, an API and workers. Three flows follow an edit, a mention and an offline session.',
     build: collaborativeEditor,
     cover: collaborativeEditorCover,
   },
@@ -3147,35 +3147,35 @@ export const TEMPLATES: Template[] = [
     id: 'webhook-delivery',
     name: 'Webhook delivery',
     description:
-      'An outbox, a queue and a worker that retries with backoff. A path follows an event to the dead letters and a page.',
+      'An outbox, a queue and a worker that retries with backoff. A path follows a failing event to the dead-letter queue and the on-call engineer.',
     build: webhookDelivery,
   },
   {
     id: 'deploy-pipeline',
     name: 'Deploy pipeline',
     description:
-      'A merged commit goes through GitHub Actions and Argo CD to a canary on Kubernetes. A path shows a canary that fails and rolls back.',
+      'A merged commit goes through GitHub Actions and Argo CD to a canary on Kubernetes. A path shows a failed canary and the rollback.',
     build: deployPipeline,
   },
   {
     id: 'rag-assistant',
     name: 'RAG assistant',
     description:
-      'Docs become vectors and keywords, and a question gets an answer with sources from Claude. Two flows: index a document and answer a question.',
+      'One flow indexes a document as vectors and keywords. The other answers a question with Claude and cites the sources.',
     build: ragAssistant,
   },
   {
     id: 'mcp-agent',
     name: 'Agent with MCP tools',
     description:
-      'An ops agent asks Claude, which calls tools on local and remote MCP servers, some at the same time. A path shows a write that needs approval.',
+      'An ops agent uses Claude to call tools on local and remote MCP servers, some in parallel. A path shows a write that needs approval.',
     build: mcpAgent,
   },
   {
     id: 'c4-context',
     name: 'C4 system context',
     description:
-      'Staybook, its users and the systems it needs, as a C4 system context. The Staybook card opens the containers diagram, and a copy brings both.',
+      'Staybook, its users and the systems it needs, as a C4 system context. The Staybook card opens the containers diagram. A copy includes both diagrams.',
     build: c4Context,
     inside: () => [c4Containers()],
   },
