@@ -23,6 +23,8 @@
     "playwright.config.ts",
     "vite.electron.config.ts",
     "scripts/third-party-licenses.ts",
+    "scripts/content-security-policy.ts",
+    "scripts/content-security-policy.test.ts",
     "scripts/standalone-player.ts",
     "scripts/release-notes.ts",
     "scripts/release-notes.test.ts",

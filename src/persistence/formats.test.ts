@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { z } from 'zod'
+import { z } from '@/lib/zod'
 import { nodeName } from '@/model/labels'
 import { DIAGRAM_VERSION, diagramSchema, type Diagram } from '@/model/schema'
 import { migrate } from './migrations'

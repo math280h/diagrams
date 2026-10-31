@@ -57,6 +57,28 @@
   },
   "overrides": [
     {
+      "files": ["src/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "zod",
+                "message": "Import z from '@/lib/zod', which turns off the eval test that the Content-Security-Policy blocks."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/lib/zod.ts"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    },
+    {
       "files": ["e2e/**/fixtures.ts"],
       "rules": {
         "react/rules-of-hooks": "off",
