@@ -34,8 +34,9 @@ The command fails if the file changed after the build, or if a different workflo
 ### Software bill of materials
 
 Each release newer than v0.1.4 has `Diagrams-<version>-sbom.cdx.json`, a CycloneDX 1.6 SBOM. It lists the npm
-packages that the app uses at run time, with their licences and SHA-512 hashes, the Electron runtime, and the
-Graphviz version that `@hpcc-js/wasm-graphviz` holds. Builds of `main` have `Diagrams-preview-sbom.cdx.json`. Each
+packages that the app uses at run time, with their licences and SHA-512 hashes, the Electron runtime, and the compiled
+programs inside packages (Graphviz in `@hpcc-js/wasm-graphviz`, llhttp in undici). The release fails when the app
+bundles hold a package that the SBOM does not list. Builds of `main` have `Diagrams-preview-sbom.cdx.json`. Each
 installer also has an SBOM attestation, so you can check that the SBOM belongs to it:
 
 ```sh

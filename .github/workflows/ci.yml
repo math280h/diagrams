@@ -101,6 +101,12 @@ jobs:
       - uses: ./.github/actions/playwright-chromium
       - run: pnpm test
       - run: pnpm desktop:build
+      - name: Check the SBOM against the bundles
+        if: runner.os == 'Linux'
+        run: |
+          pnpm sbom --sbom-format cyclonedx --sbom-type application --sbom-spec-version 1.6 --prod \
+            --out "$RUNNER_TEMP/pnpm.cdx.json"
+          node scripts/sbom.ts "$RUNNER_TEMP/pnpm.cdx.json" 0.0.0 "$GITHUB_SHA" "$RUNNER_TEMP/sbom.cdx.json"
       - name: Allow the Electron sandbox
         if: runner.os == 'Linux'
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0

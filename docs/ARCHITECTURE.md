@@ -983,12 +983,15 @@ The React app in Electron, plus file storage, agent control, the website handoff
   Sigstore) after the test and before the upload. The attestation names the workflow file and the tag, so
   `gh attestation verify --signer-workflow --source-ref` rejects a file from another workflow or branch. A tag needs
   an admin, but any branch can change a workflow file. electron-updater does not check attestations.
-- SBOM: the "Write the SBOM" job runs `pnpm sbom --prod` (CycloneDX 1.6) once per release, and
-  `scripts/sbom.ts` completes it. The list of production packages includes every package of the bundles, plus some
-  that the bundles leave out, such as `@types` packages. It does not have Electron, a dev dependency, or the Graphviz
-  build in `@hpcc-js/wasm-graphviz`, so the script adds them with a purl and a CPE. It also gives the app a
-  `pkg:github` purl, because the npm purl of the private package names another package. Each platform job attests the
-  same SBOM for its installers.
+- SBOM: the "Write the SBOM" job builds the bundles and runs `pnpm sbom --prod` (CycloneDX 1.6) once per release.
+  `scripts/sbom.ts` completes it. Each platform job attests the same SBOM for its installers.
+  - The production packages of pnpm include some that the bundles leave out, such as `@types` packages. The script
+    fails when the licence files of the bundles name a package that pnpm does not list, for example a dev
+    dependency that app code imports. CI runs the same check on each pull request.
+  - The script adds Electron, a dev dependency, and each program in `EMBEDDED_SOFTWARE` inside the package version
+    that holds it, with a purl and a CPE. `EMBEDDED_VERSIONS` finds the program versions: Graphviz from the loaded
+    module, llhttp from `deps/llhttp/include/llhttp.h` at the undici release tag on GitHub.
+  - The app gets a `pkg:github` purl, because the npm purl of the private package names another package.
 - Preview tags (`v0.2.0-beta.1`) build in the `preview` environment without approval and publish as GitHub
   pre-releases.
 - Channels: a normal version reads `/releases/latest` (never a pre-release); a beta or alpha takes the newest release
@@ -1182,6 +1185,14 @@ those texts.
 writes `third-party-licenses.txt` with each licence text. The desktop main build writes
 `third-party-licenses.main.txt`. The fonts (OFL), elkjs (EPL) and mediabunny (MPL) need a licence text or source
 statement in each copy. A hand-kept list drifts from the lockfile.
+
+Some packages hold another program in compiled form, with its own licence: Graphviz in `@hpcc-js/wasm-graphviz`
+(web worker and main), llhttp in undici (main). `EMBEDDED_SOFTWARE` names each one with its licence text. The build
+fails when a bundled module loads WebAssembly or holds a base64 WebAssembly module, and its package has no entry.
+
+The standalone player build writes `dist/standalone/licenses.txt`, which each web page export holds. The preload
+build writes no licence file, so `withoutPackages` fails it when it bundles a package. The SBOM check reads the
+licence files of the web, player and main builds.
 
 `THIRD-PARTY-NOTICES.md` covers icons and logos (data, not packages). A test checks that it lists every bundled Simple
 Icons logo that has its own licence.

@@ -1,7 +1,7 @@
 import { builtinModules } from 'node:module'
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
-import { thirdPartyLicenses } from './scripts/third-party-licenses.ts'
+import { thirdPartyLicenses, withoutPackages } from './scripts/third-party-licenses.ts'
 
 const NODE_BUILTINS = [...builtinModules, ...builtinModules.map((name) => `node:${name}`)]
 
@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => {
   const entry = mode === 'preload' ? ENTRIES.preload : ENTRIES.main
   return {
     publicDir: false,
-    plugins: mode === 'preload' ? [] : [thirdPartyLicenses('third-party-licenses.main.txt').main],
+    plugins: mode === 'preload' ? [withoutPackages()] : [thirdPartyLicenses('third-party-licenses.main.txt').main],
     resolve: {
       alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
     },

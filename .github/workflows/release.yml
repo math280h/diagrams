@@ -69,6 +69,8 @@ jobs:
         with:
           node-version-file: package.json
       - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Build the bundles, which list their packages
+        run: pnpm desktop:build
       - name: Write the SBOM
         env:
           VERSION: ${{ needs.draft.outputs.version }}
