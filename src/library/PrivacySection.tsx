@@ -26,8 +26,8 @@ const POINTS: readonly PrivacyPoint[] = [
   },
   {
     icon: EyeOff,
-    title: 'No account, no tracking',
-    summary: 'There is nothing to sign in to. The app sends no analytics, telemetry or crash reports.',
+    title: 'No account',
+    summary: 'There is nothing to sign up for. Open the website or the desktop app and start drawing.',
   },
 ]
 

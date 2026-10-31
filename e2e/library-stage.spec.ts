@@ -109,3 +109,12 @@ test('shows what you can do under the playing template, with pictures from it', 
   await section.getByRole('button', { name: 'Hide on the diagram' }).click()
   await expect(crossings).toHaveCount(0)
 })
+
+test('takes people from the playing template to all the other templates', async ({ page }) => {
+  await page.goto('/')
+  const heading = page.getByRole('heading', { name: 'More templates' })
+  await expect(heading).not.toBeInViewport()
+  await page.getByRole('button', { name: /^All \d+ templates$/ }).click()
+  await expect(heading).toBeInViewport()
+  await expect(heading).toBeFocused()
+})

@@ -52,7 +52,7 @@ Your diagrams stay on your computer. There is no account and no server that stor
   Browsers do not send that part to a server, so the website never receives the diagram.
 - **Exports made on your device.** Images, videos, GIFs and web pages render in your browser or in the desktop app, not
   on a server.
-- **No account, no tracking.** There is nothing to sign in to. The app sends no analytics, telemetry or crash reports.
+- **No account.** There is nothing to sign up for.
 
 A few requests do go over the network. None of them carry a diagram:
 

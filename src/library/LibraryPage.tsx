@@ -1,6 +1,7 @@
 import { Link, useNavigate } from '@tanstack/react-router'
 import {
   AppWindow,
+  ArrowDown,
   ArrowRight,
   Copy,
   Download,
@@ -16,7 +17,7 @@ import {
   Search,
   Trash2,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { isDesktop } from '@/desktop/bridge'
 import {
@@ -327,6 +328,13 @@ export function LibraryPage() {
     [],
   )
   const agentIntroVisible = useAgentIntroVisible()
+  const reducedMotion = useReducedMotion()
+  const moreTemplatesHeading = useRef<HTMLHeadingElement>(null)
+  const showAllTemplates = () => {
+    const heading = moreTemplatesHeading.current
+    heading?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' })
+    heading?.focus({ preventScroll: true })
+  }
 
   useEffect(() => discardUnusedBlankDiagrams(), [])
 
@@ -419,9 +427,9 @@ export function LibraryPage() {
                   <h2 id="templates-heading" className="text-xl font-medium tracking-[-0.015em]">
                     Start from a template that is already playing
                   </h2>
-                  <span className="text-[13px] text-muted-foreground">
-                    Open a template to look around, then choose Use this template to edit a copy.
-                  </span>
+                  <Button variant="link" size="sm" className="h-auto px-0 text-[13px]" onClick={showAllTemplates}>
+                    All {templates.length} templates <ArrowDown />
+                  </Button>
                 </div>
                 {featured && (
                   <FeaturedTemplate template={featured} diagram={featured.preview} showCrossings={crossingsShown} />
@@ -435,7 +443,12 @@ export function LibraryPage() {
               />
               <PrivacySection className="mt-20" />
               <section aria-labelledby="more-templates-heading" className="mt-20">
-                <h2 id="more-templates-heading" className="mb-4 text-xl font-medium tracking-[-0.015em]">
+                <h2
+                  id="more-templates-heading"
+                  ref={moreTemplatesHeading}
+                  tabIndex={-1}
+                  className="mb-4 scroll-mt-6 text-xl font-medium tracking-[-0.015em] outline-none"
+                >
                   More templates
                 </h2>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

@@ -1129,7 +1129,7 @@ those texts.
 
 - Share links carry the diagram in the fragment, which a browser never sends. Links and exports use no network.
 - The desktop renderer connects only to `'self'`, `data:` and `blob:`. `https:` links open in the system browser.
-- No analytics, telemetry, tracking or crash reporting. Fonts, icons and Mermaid ship in the bundle.
+- Fonts, icons and Mermaid ship in the bundle.
 - A connected agent sends what it reads to its model. The "Connect an agent" dialog says so.
 
 ## Third-party licences
