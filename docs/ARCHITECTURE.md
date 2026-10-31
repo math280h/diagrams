@@ -1093,6 +1093,10 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
   libraries, which a cache cannot hold.
 - Playwright keeps a trace of each failed CI test (`trace: 'retain-on-failure'`); the failed job uploads it in
   `test-results`. No retries, so a test that fails only sometimes stays visible.
+- `.github/workflows/dependency-review.yml` compares the dependency graph of a pull request with its base. It fails
+  when the pull request adds or changes a package with a high or critical advisory, in runtime or development scope.
+  It also fails for a licence outside `allow-licenses`, which holds the licences of the lockfile. A package with no
+  licence only shows in the summary.
 
 ### Skills
 
