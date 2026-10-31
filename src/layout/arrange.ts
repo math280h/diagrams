@@ -3,6 +3,7 @@ import { GROUP_PADDING_PX } from '@/model/graph'
 import { unionRects, type Rect } from '@/model/rect'
 import type { XY } from '@/model/schema'
 import { LAYERED_OPTIONS, spacingOptions } from './hierarchy'
+import { graphvizWasm, type GraphvizRunner } from './graphviz'
 import { placeLevel } from './styles'
 import { childUnder, lowestCommonContainer, type LayoutTree } from './tree'
 import type { LayoutRequest, PlacedNode } from './types'
@@ -323,8 +324,15 @@ function gridPositions(
  * Lays out each container on its own, from the deepest up. With the flow style, a level with two or more groups becomes
  * a grid when the grid scores clearly better than layers. The other styles place each level with {@link placeLevel}.
  * The returned positions are relative to the parent of each node.
+ *
+ * @param graphviz - Runs Graphviz for the Graphviz styles.
  */
-export async function arrangeLevels(elk: ELK, request: LayoutRequest, tree: LayoutTree): Promise<Arrangement> {
+export async function arrangeLevels(
+  elk: ELK,
+  request: LayoutRequest,
+  tree: LayoutTree,
+  graphviz: GraphvizRunner = graphvizWasm,
+): Promise<Arrangement> {
   const sizes = new Map<string, { width: number; height: number }>()
   const local = new Map<string, XY>()
   const contents = new Map<string | null, Map<string, Rect>>()
@@ -350,6 +358,7 @@ export async function arrangeLevels(elk: ELK, request: LayoutRequest, tree: Layo
             edges,
             request,
             request.center ? childUnder(tree, container, request.center) : null,
+            graphviz,
           )
     if (style === 'flow' && boxes.filter((box) => box.container).length >= 2) {
       const ends = levelEnds(request, tree, contents, container, boxes)

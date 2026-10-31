@@ -1,5 +1,6 @@
 import type { ELK } from 'elkjs/lib/elk-api'
 import { arrangeLevels } from './arrange'
+import { graphvizWasm, type GraphvizRunner } from './graphviz'
 import { layoutHierarchy } from './hierarchy'
 import { laneLayout } from './lanes'
 import { routeEdges, type RouterNode } from './router'
@@ -40,8 +41,14 @@ function absoluteNodes(nodes: PlacedNode[], tree: LayoutTree): RouterNode[] {
  * more groups, a grid of the groups replaces that result if the grid gets a better score. The lanes style arranges the
  * top-level groups as lanes ({@link laneLayout}). The other styles place each level on its own. The orthogonal router
  * then draws all edges.
+ *
+ * @param graphviz - Runs Graphviz for the Graphviz styles. The default runs it in this thread.
  */
-export async function computeLayout(elk: ELK, request: LayoutRequest): Promise<LayoutResponse> {
+export async function computeLayout(
+  elk: ELK,
+  request: LayoutRequest,
+  graphviz: GraphvizRunner = graphvizWasm,
+): Promise<LayoutResponse> {
   if (request.nodes.length === 0) return { nodes: [], routes: {} }
   const tree = buildTree(request)
   if (request.style === 'lanes') {
@@ -49,7 +56,7 @@ export async function computeLayout(elk: ELK, request: LayoutRequest): Promise<L
     return { nodes, routes: Object.fromEntries(routeEdges(absoluteNodes(nodes, tree), request.edges)) }
   }
   if (request.style !== 'flow') {
-    const { nodes } = await arrangeLevels(elk, request, tree)
+    const { nodes } = await arrangeLevels(elk, request, tree, graphviz)
     return { nodes, routes: Object.fromEntries(routeEdges(absoluteNodes(nodes, tree), request.edges)) }
   }
   const hierarchy = await layoutHierarchy(elk, request, tree)

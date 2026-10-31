@@ -631,11 +631,13 @@ its route.
   diagram, with the same length for all lanes. Each box in a lane gets a column from the longest path in the edges
   (`laneColumns`); the columns are the same in all lanes. Top-level nodes outside every group get a band before the
   first lane. With `RIGHT` or `LEFT` the lanes are rows; with `DOWN` or `UP` they are columns.
-- Graphviz comes from `@hpcc-js/wasm-graphviz`. The layout worker loads its chunk (about 820 kB, with the WebAssembly
-  module inline) only for a Graphviz layout. Each level is a flat graph with fixed node sizes in points; `neato` and
-  `fdp` get `start=1` for the same result each time. The desktop app allows `'wasm-unsafe-eval'` in `script-src`,
-  because Chromium compiles WebAssembly only with it. Graphviz is EPL-2.0, so `third-party-licenses.txt` lists it with
-  the licence text.
+- Graphviz comes from `@hpcc-js/wasm-graphviz`, with the WebAssembly module inline. Each level is a flat graph with
+  fixed node sizes in points; `neato` and `fdp` get `start=1` for the same result each time.
+- The desktop renderer allows only `script-src 'self'`, and Chromium compiles WebAssembly only with
+  `'wasm-unsafe-eval'`. So in the desktop app the layout worker does not run Graphviz. It sends each DOT text to its
+  page, and the page sends it to the main process (`layout.graphviz`, `electron/graphviz.ts`), where Node runs Graphviz.
+  The website has no such policy; its worker loads the Graphviz chunk (about 820 kB) only for a Graphviz layout.
+- Graphviz is EPL-2.0, so `third-party-licenses.txt` and `third-party-licenses.main.txt` list it with the licence text.
 - The style is a parameter of the request. The diagram does not store it.
 - Rejected engines: ELK `force` gave worse results than `stress`; dagre repeats `layered` and has open bugs with
   nested groups; cytoscape fCoSE is not deterministic; WebCola has no maintenance; MSAGL and libavoid failed earlier

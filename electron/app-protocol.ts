@@ -24,8 +24,7 @@ const MIME_TYPES: Record<string, string> = {
 
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
-  // Chromium compiles WebAssembly only with 'wasm-unsafe-eval'; it still blocks eval of JavaScript.
-  "script-src 'self' 'wasm-unsafe-eval'",
+  "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",

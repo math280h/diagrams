@@ -2,6 +2,7 @@ import { ipcMain, type IpcMainInvokeEvent } from 'electron'
 import { z } from 'zod'
 import { HEX_COLOR_PATTERN } from '@/desktop/constants'
 import { IPC_CHANNELS, type MainRequests } from '@/desktop/contract'
+import { GRAPHVIZ_ENGINES } from '@/layout/types'
 import { originOf } from './app-protocol'
 
 export type MainHandlers = {
@@ -9,6 +10,8 @@ export type MainHandlers = {
 }
 
 const HEX_COLOR = z.string().regex(HEX_COLOR_PATTERN)
+/** The longest DOT text that the main process lays out. */
+const MAX_DOT_CHARS = 2_000_000
 
 const INPUTS = {
   'files.list': z.null(),
@@ -25,6 +28,7 @@ const INPUTS = {
   'update.info': z.null(),
   'update.check': z.null(),
   'update.install': z.null(),
+  'layout.graphviz': z.object({ dot: z.string().max(MAX_DOT_CHARS), engine: z.enum(GRAPHVIZ_ENGINES) }),
 } satisfies { [M in keyof MainRequests]: z.ZodType<MainRequests[M]['input']> }
 
 function isRequest(method: unknown): method is keyof MainRequests {

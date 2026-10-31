@@ -20,11 +20,15 @@ const BOX_GAP_PX = 64
 
 const RANK_DIRECTIONS: Record<LayoutDirection, string> = { RIGHT: 'LR', DOWN: 'TB', LEFT: 'RL', UP: 'BT' }
 
+/** Lays out a DOT text with a Graphviz engine and returns the `plain` output. */
+export type GraphvizRunner = (dot: string, engine: GraphvizEngine) => Promise<string>
+
 let loaded: Promise<Graphviz> | null = null
 
-function graphviz(): Promise<Graphviz> {
+/** Runs Graphviz in WebAssembly in the current thread. */
+export const graphvizWasm: GraphvizRunner = async (dot, engine) => {
   loaded ??= import('@hpcc-js/wasm-graphviz').then(({ Graphviz }) => Graphviz.load())
-  return loaded
+  return (await loaded).layout(dot, 'plain', engine)
 }
 
 const inches = (px: number) => (px / POINTS_PER_INCH).toFixed(4)
@@ -115,6 +119,7 @@ export function plainPositions(plain: string, boxes: readonly Box[]): Map<string
  * origin. Edges are not routed here.
  *
  * @param center - The box of the level that holds the root of a `twopi` layout, or null.
+ * @param run - Runs Graphviz, in this thread or in another process.
  */
 export async function graphvizPositions(
   engine: GraphvizEngine,
@@ -122,8 +127,8 @@ export async function graphvizPositions(
   links: readonly Link[],
   request: LayoutRequest,
   center: string | null,
+  run: GraphvizRunner,
 ): Promise<Map<string, XY>> {
   if (boxes.length <= 1) return new Map(boxes.map((box) => [box.id, { x: 0, y: 0 }]))
-  const plain = (await graphviz()).layout(levelDot(engine, boxes, links, request, center), 'plain', engine)
-  return plainPositions(plain, boxes)
+  return plainPositions(await run(levelDot(engine, boxes, links, request, center), engine), boxes)
 }

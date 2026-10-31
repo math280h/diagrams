@@ -32,6 +32,7 @@ import { committedText } from './storage/git'
 import { createLinkedFiles, isLinkedId } from './storage/linked-files'
 import { watchDiagramFolder, watchLinkedFiles } from './storage/watcher'
 import { createUpdates, updatePolicy, type UpdatePolicy } from './updates'
+import { layoutGraphviz } from './graphviz'
 import {
   createMainWindow,
   currentWindow,
@@ -235,6 +236,7 @@ async function start() {
         setTitleBarColors(colors)
         return null
       },
+      'layout.graphviz': layoutGraphviz,
       'update.info': async () => updates.info(),
       'update.check': () => updates.check(),
       'update.install': async () => {
