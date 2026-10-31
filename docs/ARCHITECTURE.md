@@ -26,6 +26,16 @@ moves along connections; a flow walks a user through the system while the camera
 - **Mermaid import**: `mermaid` 12, which the app loads on demand. `getDiagramFromText` + `db.getData()` parse
   flowcharts without a render.
 - **Lint and format**: oxlint (type-aware), oxfmt. create-vite default.
+- **Packages**: pnpm 10. `pnpm-workspace.yaml` sets what pnpm accepts when it resolves a version:
+  - `minimumReleaseAge`: only versions that are at least one day old. Registries often remove a malicious version
+    in that time.
+  - `trustPolicy: no-downgrade`: pnpm stops when a version has less proof of origin than an earlier version, for
+    example no provenance after releases with provenance.
+  - `blockExoticSubdeps`: no git or tarball sources in sub-dependencies.
+  - `strictDepBuilds`: pnpm stops at an install script that `package.json` does not allow or ignore.
+  - A Dependabot security update to a version younger than one day can fail. Wait one day, or add the package to
+    `minimumReleaseAgeExclude`. A version that fails the trust check for a known reason goes in
+    `trustPolicyExclude`.
 - **Tests**: Vitest 5 (node and Chromium browser mode), Playwright. Real browser for Mermaid and export.
 - **Desktop**: Electron 45. Vite builds main and preload. It uses the same Chromium as the tests, so export and capture
   match the browser. Node runs the agent server.
@@ -960,6 +970,8 @@ The React app in Electron, plus file storage, agent control, the website handoff
   (`-c.extraMetadata.version`); a release needs no commit. `pnpm release:tag` calculates the tag. One job creates
   the draft, because parallel electron-builder jobs could each create one. Platform jobs package, drive the app
   through the agent server (`scripts/smoke-package.mjs`) and upload. The maintainer publishes the draft.
+- Release and `main` builds do not restore the Actions cache. Other workflow runs can write that cache, and a
+  changed package in it goes into the installers.
 - Preview tags (`v0.2.0-beta.1`) build in the `preview` environment without approval and publish as GitHub
   pre-releases.
 - Channels: a normal version reads `/releases/latest` (never a pre-release); a beta or alpha takes the newest release
@@ -1093,6 +1105,10 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
   libraries, which a cache cannot hold.
 - Playwright keeps a trace of each failed CI test (`trace: 'retain-on-failure'`); the failed job uploads it in
   `test-results`. No retries, so a test that fails only sometimes stays visible.
+- `.github/workflows/dependency-review.yml` compares the dependency graph of a pull request with its base. It fails
+  when the pull request adds or changes a package with a high or critical advisory, in runtime or development scope.
+  It also fails for a licence outside `allow-licenses`, which holds the licences of the lockfile. A package with no
+  licence only shows in the summary.
 - `.github/workflows/scorecard.yml` runs OpenSSF Scorecard on each push to `main`, each Monday and after a change to
   branch protection. It publishes the result to the Scorecard API for the README badge, and it uploads the findings
   to code scanning. The Scorecard API accepts a result only from a job with approved actions and no `run` steps.
