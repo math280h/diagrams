@@ -343,9 +343,9 @@ colours" off: all wires neutral edge grey.
 
 ### High contrast
 
-Per viewer, not per diagram: Contrast (System, Standard, High) in the properties panel App section; "High contrast
-canvas" in the library theme and command menus. System follows the OS "more contrast" setting. On-screen canvases
-and colour swatches only; exports keep standard colours. Values: `[data-contrast='more']` in `src/styles/canvas.css`.
+Per viewer, not per diagram: Contrast (System, Standard, High) on the App tab of Settings; "High contrast canvas" in
+the library theme and command menus. System follows the OS "more contrast" setting. On-screen canvases and colour
+swatches only; exports keep standard colours. Values: `[data-contrast='more']` in `src/styles/canvas.css`.
 
 - Text colours: 7:1 (WCAG AAA) on Ground, Node Fill, Canvas Raised, coloured cards (standard 4.5:1).
 - Node Line, Strong Line, Edge, Edge Strong, Signal Blue, protocol wires, coloured card outlines: 4.5:1 on Ground and

@@ -26,8 +26,8 @@ export function createBrowserContext(signal: AbortSignal): Omit<HandlerContext, 
     async goHome() {
       await router.navigate({ to: '/' })
     },
-    async layout(nodes, edges, direction) {
-      return (await import('@/layout/diagram-layout')).layoutDiagram(nodes, edges, direction)
+    async layout(nodes, edges, direction, choice) {
+      return (await import('@/layout/diagram-layout')).layoutDiagram(nodes, edges, direction, choice)
     },
     async iconSets() {
       return (await import('@/canvas/icons/library')).loadIconSets()

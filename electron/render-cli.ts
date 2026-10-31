@@ -92,6 +92,7 @@ export async function runRender(args: RenderArgs): Promise<number> {
       'update.info': async () => UPDATES_OFF,
       'update.check': async () => UPDATES_OFF,
       'update.install': refuse,
+      'layout.graphviz': refuse,
     }
     registerIpc(handlers, rendererOrigin)
     serveRenderer(rendererFolder())

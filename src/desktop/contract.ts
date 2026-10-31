@@ -1,3 +1,5 @@
+import type { GraphvizEngine } from '@/layout/types'
+
 export interface StoredFile {
   id: string
   text: string
@@ -81,6 +83,8 @@ export interface MainRequests {
   'update.check': { input: null; output: UpdateInfo }
   /** Quits the app, installs the downloaded update and starts the app again. */
   'update.install': { input: null; output: null }
+  /** Lays out a DOT text with a Graphviz engine and returns the `plain` output. */
+  'layout.graphviz': { input: { dot: string; engine: GraphvizEngine }; output: { plain: string } }
 }
 
 /** Requests from the main process to the renderer. */

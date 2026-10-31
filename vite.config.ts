@@ -38,6 +38,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['@zumer/snapdom', 'mediabunny', 'mermaid', 'elkjs/lib/elk-api', 'cmdk'],
+    include: ['@zumer/snapdom', 'mediabunny', 'mermaid', 'elkjs/lib/elk-api', 'cmdk', '@hpcc-js/wasm-graphviz'],
   },
 })

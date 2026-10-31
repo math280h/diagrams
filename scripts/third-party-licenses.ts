@@ -19,6 +19,16 @@ interface PackageNotice {
 }
 
 const NOTICE_FILE = /^(licen[cs]e|copying|notice)([.-].*)?$/i
+
+/** Software that a package holds in compiled form, under its own licence, with a file that has the licence text. */
+const EMBEDDED_SOFTWARE: Record<string, { name: string; license: string; source: string; licenseText: string }> = {
+  '@hpcc-js/wasm-graphviz': {
+    name: 'Graphviz',
+    license: 'EPL-2.0',
+    source: 'https://gitlab.com/graphviz/graphviz',
+    licenseText: 'node_modules/elkjs/LICENSE.md',
+  },
+}
 const SEPARATOR = '='.repeat(80)
 
 function packageRoot(moduleId: string): string | null {
@@ -54,6 +64,21 @@ function readNotice(root: string): PackageNotice | null {
     .toSorted()
     .map((file) => readFileSync(path.join(root, file), 'utf8').trim())
   return { name: manifest.name, version: manifest.version, license, source: sourceUrl(manifest), texts }
+}
+
+function embeddedNotices(notice: PackageNotice): PackageNotice[] {
+  const embedded = EMBEDDED_SOFTWARE[notice.name]
+  if (!embedded) return []
+  const file = path.resolve(embedded.licenseText)
+  return [
+    {
+      name: embedded.name,
+      version: `in ${notice.name} ${notice.version}`,
+      license: embedded.license,
+      source: embedded.source,
+      texts: existsSync(file) ? [readFileSync(file, 'utf8').trim()] : [],
+    },
+  ]
 }
 
 function noticeText(notices: readonly PackageNotice[]): string {
@@ -101,7 +126,8 @@ export function thirdPartyLicenses(fileName = 'third-party-licenses.txt'): { mai
         const notices = new Map<string, PackageNotice>()
         for (const root of roots) {
           const notice = readNotice(root)
-          if (notice) notices.set(`${notice.name}@${notice.version}`, notice)
+          if (!notice) continue
+          for (const found of [notice, ...embeddedNotices(notice)]) notices.set(`${found.name}@${found.version}`, found)
         }
         const sorted = [...notices.values()].toSorted(
           (a, b) => a.name.localeCompare(b.name) || a.version.localeCompare(b.version),

@@ -246,11 +246,18 @@ export const deleteElementsHandler: ToolHandler<'delete_elements'> = async (inpu
   )
 }
 
-export const layoutDiagramHandler: ToolHandler<'layout_diagram'> = async ({ diagramId, direction }, ctx) => {
+export const layoutDiagramHandler: ToolHandler<'layout_diagram'> = async (
+  { diagramId, layout, direction, center },
+  ctx,
+) => {
   const id = await openForEdit(ctx, diagramId)
   const { nodes, edges } = useDoc.getState()
   if (nodes.length === 0) return json({ diagramId: id, nodes: 0 })
-  const result = await ctx.layout(nodes, edges, direction ?? 'RIGHT')
+  const centerId = center === undefined ? undefined : createResolver(nodes, edges).node(center).id
+  const result = await ctx.layout(nodes, edges, direction ?? 'RIGHT', {
+    style: layout ?? 'flow',
+    ...(centerId === undefined ? {} : { center: centerId }),
+  })
   await commitEdit(ctx, id, () => applyLayoutResult(result))
   return json({ diagramId: id, nodes: nodes.length, hint: CHECK_HINT })
 }
