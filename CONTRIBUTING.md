@@ -7,7 +7,7 @@ Report security problems privately, as [SECURITY.md](SECURITY.md) says.
 
 ## Set up
 
-You need Node.js 24 or later and pnpm 10.33 (`corepack enable` installs the version that `package.json` names).
+You need Node.js 24 or later and pnpm 12.16 (`corepack enable` installs the version that `package.json` names).
 
 ```sh
 pnpm install

@@ -1,4 +1,14 @@
+pmOnFail: ignore
+
 minimumReleaseAge: 1440
 trustPolicy: no-downgrade
 blockExoticSubdeps: true
 strictDepBuilds: true
+
+allowBuilds:
+  electron: true
+  electron-winstaller: false
+
+overrides:
+  'minimatch@>=9 <11.0.1': ^11.0.3
+  'semver@<7': ^7.8.5
