@@ -1165,6 +1165,14 @@ those texts.
 
 - Share links carry the diagram in the fragment, which a browser never sends. Links and exports use no network.
 - The desktop renderer connects only to `'self'`, `data:` and `blob:`. `https:` links open in the system browser.
+- `src/content-security-policy.ts` holds the renderer policy. `electron/app-protocol.ts` sends it as a header. The
+  website build puts it in a meta element at the start of the page (`scripts/content-security-policy.ts`), with
+  `connect-src` for `api.github.com` and `127.0.0.1:27419` from the table. A meta element cannot set
+  `frame-ancestors`, so only a header from the host stops other sites from framing the website.
+- zod tests for eval when it creates an object schema, and the policy reports that test as a violation. App code
+  imports `z` from `@/lib/zod`, which turns the test off (`jitless`); a lint rule blocks direct `zod` imports.
+- `e2e/content-security-policy.spec.ts` builds the website and fails on each violation while it uses the main
+  features: release lookups, Tidy up, image and GIF export, Present, Mermaid import, share links and the handoff.
 - Fonts, icons and Mermaid ship in the bundle.
 - A connected agent sends what it reads to its model. The "Connect an agent" dialog says so.
 

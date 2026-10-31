@@ -1,5 +1,5 @@
 import { toast } from 'sonner'
-import { z } from 'zod'
+import { z } from '@/lib/zod'
 import { DIAGRAM_VERSION, type StoredEdge, type StoredNode } from '@/model/schema'
 import { DiagramFormatError, migrateElements } from '@/persistence/migrations'
 import { toStoredEdge, toStoredNode } from '@/persistence/serialize'

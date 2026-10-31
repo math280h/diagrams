@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from '@/lib/zod'
 import type { ToolOutcome } from '@/desktop/contract'
 import { errorMessage } from '@/lib/error-message'
 import { createSerialQueue } from '@/lib/serial-queue'

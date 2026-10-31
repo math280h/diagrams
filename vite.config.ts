@@ -3,6 +3,7 @@ import babel from '@rolldown/plugin-babel'
 import tailwindcss from '@tailwindcss/vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import { contentSecurityPolicy } from './scripts/content-security-policy.ts'
 import { releaseNotes } from './scripts/release-notes.ts'
 import { serviceWorker } from './scripts/service-worker.ts'
 import { standalonePlayer } from './scripts/standalone-player.ts'
@@ -19,6 +20,7 @@ export default defineConfig({
     standalonePlayer(),
     releaseNotes(),
     serviceWorker(),
+    contentSecurityPolicy(),
   ],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },

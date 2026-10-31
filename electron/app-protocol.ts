@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { protocol } from 'electron'
+import { policyText, RENDERER_POLICY } from '@/content-security-policy'
 
 export const APP_SCHEME = 'app'
 export const APP_HOST = 'diagrams'
@@ -22,19 +23,7 @@ const MIME_TYPES: Record<string, string> = {
   '.map': 'application/json; charset=utf-8',
 }
 
-const CONTENT_SECURITY_POLICY = [
-  "default-src 'self'",
-  "script-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "font-src 'self' data:",
-  "connect-src 'self' data: blob:",
-  "worker-src 'self' blob:",
-  "media-src 'self' blob:",
-  "object-src 'none'",
-  "base-uri 'none'",
-  "frame-ancestors 'none'",
-].join('; ')
+const CONTENT_SECURITY_POLICY = policyText(RENDERER_POLICY)
 
 /**
  * Returns the scheme, host and port of a URL.

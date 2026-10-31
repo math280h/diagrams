@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from '@/lib/zod'
 import { COLORS } from './colors'
 
 export const DIAGRAM_VERSION = 16
