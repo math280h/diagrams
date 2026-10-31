@@ -609,25 +609,37 @@ its route.
 
 `layout_diagram` takes a `layout` (`LAYOUT_STYLES` in `src/layout/types.ts`). Tidy up and Mermaid import use `flow`.
 
-| Style     | Use                                                 | ELK algorithm                            |
-| --------- | --------------------------------------------------- | ---------------------------------------- |
-| `flow`    | Request paths and layered architectures             | `layered`, as in the section above       |
-| `tree`    | A hierarchy from one root                           | `mrtree`                                 |
-| `hub`     | One central node, such as an event bus or a gateway | `radial`                                 |
-| `network` | A mesh with many connections and no main direction  | `sporeOverlap` over `stress`             |
-| `grid`    | An inventory with few connections                   | `rectpacking`, with the aspect ratio 1.6 |
+| Style                                            | Use                                                  | Engine                                       |
+| ------------------------------------------------ | ---------------------------------------------------- | -------------------------------------------- |
+| `flow`                                           | Request paths and layered architectures              | ELK `layered`, as in the section above       |
+| `tree`                                           | A hierarchy from one root                            | ELK `mrtree`                                 |
+| `hub`                                            | One central node, such as an event bus or a gateway  | ELK `radial`                                 |
+| `network`                                        | A mesh with many connections and no main direction   | ELK `sporeOverlap` over `stress`             |
+| `grid`                                           | An inventory with few connections                    | ELK `rectpacking`, with the aspect ratio 1.6 |
+| `lanes`                                          | Swimlanes: one top-level group for each team or tier | Own (`src/layout/lanes.ts`)                  |
+| `dot`, `neato`, `fdp`, `circo`, `twopi`, `osage` | The Graphviz engines of the same names               | Graphviz 16 (`src/layout/graphviz.ts`)       |
 
-- Only `layered` lays out nested groups in one run. The other styles use the recursion of `arrangeLevels` and place
-  each level with `placeLevel` (`src/layout/styles.ts`). `flow` alone aligns nodes across groups.
+- Only ELK `layered` lays out nested groups in one run. The other styles, except `lanes`, use the recursion of
+  `arrangeLevels` and place each level with `placeLevel` (`src/layout/styles.ts`). `flow` and `lanes` align nodes
+  across groups.
 - `router.ts` routes the edges of all styles except `flow`.
 - ELK `radial` accepts only a tree with edges away from the root. Without it, ELK throws, overflows the stack, or
   overlaps nodes. `hubTree` gives ELK a breadth-first tree from the hub. The hub is the node in `center`, or else the
-  box with the most links. A box that no link reaches gets a link from the hub.
+  box with the most links. A box that no link reaches gets a link from the hub. `twopi` uses the same hub as its root.
 - `stress` took about 4 s for 150 cards in a test. So a level with more than 80 boxes gets `grid` instead of `network`.
+- `lanes` uses a `flow` layout for the inside of each box. Then each top-level group becomes a lane, in the order of the
+  diagram, with the same length for all lanes. Each box in a lane gets a column from the longest path in the edges
+  (`laneColumns`); the columns are the same in all lanes. Top-level nodes outside every group get a band before the
+  first lane. With `RIGHT` or `LEFT` the lanes are rows; with `DOWN` or `UP` they are columns.
+- Graphviz comes from `@hpcc-js/wasm-graphviz`. The layout worker loads its chunk (about 820 kB, with the WebAssembly
+  module inline) only for a Graphviz layout. Each level is a flat graph with fixed node sizes in points; `neato` and
+  `fdp` get `start=1` for the same result each time. The desktop app allows `'wasm-unsafe-eval'` in `script-src`,
+  because Chromium compiles WebAssembly only with it. Graphviz is EPL-2.0, so `third-party-licenses.txt` lists it with
+  the licence text.
 - The style is a parameter of the request. The diagram does not store it.
 - Rejected engines: ELK `force` gave worse results than `stress`; dagre repeats `layered` and has open bugs with
-  nested groups; Graphviz in WebAssembly adds about 0.5 MB; cytoscape fCoSE is not deterministic; WebCola has no
-  maintenance; MSAGL and libavoid failed earlier (see "Stack and why").
+  nested groups; cytoscape fCoSE is not deterministic; WebCola has no maintenance; MSAGL and libavoid failed earlier
+  (see "Stack and why").
 
 ### Routing on the canvas
 

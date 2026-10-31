@@ -341,7 +341,7 @@ export async function arrangeLevels(elk: ELK, request: LayoutRequest, tree: Layo
     const edges = levelEdges(request, tree, container)
     const style = request.style
     let positions =
-      style === 'flow'
+      style === 'flow' || style === 'lanes'
         ? await layeredPositions(elk, boxes, edges, request)
         : await placeLevel(
             elk,

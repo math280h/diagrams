@@ -2,6 +2,7 @@ import ELK from 'elkjs/lib/elk.bundled.js'
 import { describe, expect, it } from 'vitest'
 import { GROUP_PADDING_PX } from '@/model/graph'
 import { computeLayout } from './engine'
+import { laneColumns } from './lanes'
 import { hubTree } from './styles'
 import type { LayoutEdge, LayoutNode, LayoutRequest, PlacedNode } from './types'
 
@@ -303,5 +304,127 @@ describe('hubTree', () => {
     const tree = hubTree(boxes, links, 'd')
     expect(tree.every((link) => link.target !== 'd')).toBe(true)
     expect(tree).toHaveLength(boxes.length - 1)
+  })
+})
+
+describe('Graphviz layouts', () => {
+  it.each(['dot', 'neato', 'fdp', 'circo', 'twopi', 'osage', 'lanes'] as const)(
+    'keeps nested groups around their nodes, keeps siblings apart and routes every edge with %s',
+    async (style) => {
+      const request = { ...hub(), style }
+      const response = await computeLayout(elk, request)
+      const rects = absolute(response.nodes, request)
+      expect(insideParents(rects, request)).toBe(true)
+      expect(siblingsApart(rects, request)).toBe(true)
+      expect(Object.keys(response.routes)).toHaveLength(request.edges.length)
+    },
+  )
+
+  it('puts each child after its parent with dot', async () => {
+    const request = { ...orgChart(), style: 'dot' as const }
+    const rects = absolute((await computeLayout(elk, request)).nodes, request)
+    for (const edge of request.edges) {
+      const parent = rects.get(edge.source)!
+      expect(rects.get(edge.target)!.y).toBeGreaterThanOrEqual(parent.y + parent.height)
+    }
+  })
+
+  it('puts a ring on a circle with circo', async () => {
+    const b = builder()
+    const ids = Array.from({ length: 8 }, (_, index) => b.card(`r${index}`))
+    ids.forEach((id, index) => b.edge(id, ids[(index + 1) % ids.length]!))
+    const request: LayoutRequest = {
+      nodes: b.nodes,
+      edges: b.edges,
+      direction: 'RIGHT',
+      layerGapPx: 120,
+      style: 'circo',
+    }
+    const centres = [...absolute((await computeLayout(elk, request)).nodes, request).values()].map(centreOf)
+    const middle = {
+      x: centres.reduce((sum, point) => sum + point.x, 0) / centres.length,
+      y: centres.reduce((sum, point) => sum + point.y, 0) / centres.length,
+    }
+    const distances = centres.map((point) => Math.hypot(point.x - middle.x, point.y - middle.y))
+    expect(Math.min(...distances) / Math.max(...distances)).toBeGreaterThan(0.8)
+  })
+
+  it('puts the root in the middle with twopi', async () => {
+    const request = { ...star('s3'), style: 'twopi' as const }
+    const rects = absolute((await computeLayout(elk, request)).nodes, request)
+    const others = [...rects.keys()].filter((id) => id !== 's3').map((id) => centreOf(rects.get(id)!))
+    const mean = {
+      x: others.reduce((sum, point) => sum + point.x, 0) / others.length,
+      y: others.reduce((sum, point) => sum + point.y, 0) / others.length,
+    }
+    const spread = Math.max(...others.map((point) => Math.hypot(point.x - mean.x, point.y - mean.y)))
+    const root = centreOf(rects.get('s3')!)
+    expect(Math.hypot(root.x - mean.x, root.y - mean.y)).toBeLessThan(spread / 2)
+  })
+})
+
+/** Lanes for clients, services and data, with a user outside every lane. */
+function lanesRequest(direction: LayoutRequest['direction']): LayoutRequest {
+  const b = builder()
+  const user = b.card('user')
+  b.group('clients')
+  const web = b.card('web', 'clients')
+  const app = b.card('app', 'clients')
+  b.group('services')
+  const api = b.card('api', 'services')
+  const worker = b.card('worker', 'services')
+  b.group('data')
+  const db = b.card('db', 'data')
+  b.edge(user, web)
+  b.edge(user, app)
+  b.edge(web, api)
+  b.edge(app, api)
+  b.edge(api, worker)
+  b.edge(worker, db)
+  b.edge(api, db)
+  return { nodes: b.nodes, edges: b.edges, direction, layerGapPx: 120, style: 'lanes' }
+}
+
+describe('lanes', () => {
+  it('stacks the top-level groups as lanes of one width, with columns that follow the edges', async () => {
+    const request = lanesRequest('RIGHT')
+    const rects = absolute((await computeLayout(elk, request)).nodes, request)
+    const lanes = ['clients', 'services', 'data'].map((id) => rects.get(id)!)
+    expect(new Set(lanes.map((lane) => Math.round(lane.width))).size).toBe(1)
+    expect(new Set(lanes.map((lane) => Math.round(lane.x))).size).toBe(1)
+    lanes
+      .slice(1)
+      .forEach((lane, index) => expect(lane.y).toBeGreaterThanOrEqual(lanes[index]!.y + lanes[index]!.height))
+    expect(rects.get('user')!.y + rects.get('user')!.height).toBeLessThanOrEqual(lanes[0]!.y)
+    for (const edge of request.edges) expect(rects.get(edge.target)!.x).toBeGreaterThan(rects.get(edge.source)!.x)
+    expect(Math.round(centreOf(rects.get('web')!).x)).toBe(Math.round(centreOf(rects.get('app')!).x))
+    expect(insideParents(rects, request)).toBe(true)
+    expect(siblingsApart(rects, request)).toBe(true)
+  })
+
+  it('turns the lanes into columns with DOWN', async () => {
+    const request = lanesRequest('DOWN')
+    const rects = absolute((await computeLayout(elk, request)).nodes, request)
+    const lanes = ['clients', 'services', 'data'].map((id) => rects.get(id)!)
+    expect(new Set(lanes.map((lane) => Math.round(lane.height))).size).toBe(1)
+    lanes
+      .slice(1)
+      .forEach((lane, index) => expect(lane.x).toBeGreaterThanOrEqual(lanes[index]!.x + lanes[index]!.width))
+    for (const edge of request.edges) expect(rects.get(edge.target)!.y).toBeGreaterThan(rects.get(edge.source)!.y)
+    expect(insideParents(rects, request)).toBe(true)
+  })
+
+  it('gives each unit a column, also in a cycle', () => {
+    const columns = laneColumns(
+      ['a', 'b', 'c', 'd'],
+      [
+        ['a', 'b'],
+        ['b', 'c'],
+        ['c', 'a'],
+        ['c', 'd'],
+        ['a', 'b'],
+      ],
+    )
+    expect(Object.fromEntries(columns)).toEqual({ a: 0, b: 1, c: 2, d: 3 })
   })
 })

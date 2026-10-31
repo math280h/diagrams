@@ -1,6 +1,7 @@
 import type { ELK } from 'elkjs/lib/elk-api'
 import { arrangeLevels } from './arrange'
 import { layoutHierarchy } from './hierarchy'
+import { laneLayout } from './lanes'
 import { routeEdges, type RouterNode } from './router'
 import { buildTree, type LayoutTree } from './tree'
 import type { LayoutRequest, LayoutResponse, PlacedNode } from './types'
@@ -36,12 +37,17 @@ function absoluteNodes(nodes: PlacedNode[], tree: LayoutTree): RouterNode[] {
  * Computes positions, group sizes and edge routes.
  *
  * With the flow style, the positions come from one ELK layered run over the whole hierarchy. At a level with two or
- * more groups, a grid of the groups replaces that result if the grid gets a better score. The other styles place each
- * level on its own. The orthogonal router then draws all edges.
+ * more groups, a grid of the groups replaces that result if the grid gets a better score. The lanes style arranges the
+ * top-level groups as lanes ({@link laneLayout}). The other styles place each level on its own. The orthogonal router
+ * then draws all edges.
  */
 export async function computeLayout(elk: ELK, request: LayoutRequest): Promise<LayoutResponse> {
   if (request.nodes.length === 0) return { nodes: [], routes: {} }
   const tree = buildTree(request)
+  if (request.style === 'lanes') {
+    const nodes = laneLayout(request, tree, (await arrangeLevels(elk, request, tree)).nodes)
+    return { nodes, routes: Object.fromEntries(routeEdges(absoluteNodes(nodes, tree), request.edges)) }
+  }
   if (request.style !== 'flow') {
     const { nodes } = await arrangeLevels(elk, request, tree)
     return { nodes, routes: Object.fromEntries(routeEdges(absoluteNodes(nodes, tree), request.edges)) }

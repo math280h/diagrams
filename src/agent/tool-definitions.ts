@@ -536,13 +536,15 @@ export const TOOL_DEFINITIONS = {
         .enum(LAYOUT_STYLES)
         .optional()
         .describe(
-          'flow (the default): layers along the direction, for request paths and layered architectures; it also lines up nodes across groups. tree: a hierarchy from one root, such as an org chart or a dependency tree. hub: one central node, such as an event bus or a gateway, with the other nodes around it. network: a mesh with many connections and no main direction. grid: compact rows, for an inventory with few connections. tree, hub, network and grid arrange each group on its own. network uses grid in a group with more than 80 nodes.',
+          'flow (the default) puts layers along the direction, for request paths and layered architectures, and lines up nodes across groups. tree: a hierarchy from one root. hub: one central node, such as an event bus or a gateway, with the others around it. network: a mesh with many connections and no main direction. grid: compact rows for an inventory with few connections. lanes: each top-level group becomes a lane, such as a team or a tier (clients, edge, services, data); columns follow the edges and line up across lanes. The Graphviz engines: dot (layered), neato and fdp (force-directed network), circo (nodes on a circle, for rings and cycles), twopi (radial around center), osage (packed boxes). Except flow and lanes, each group is arranged on its own. network uses grid in a group with more than 80 nodes.',
         ),
       direction: z
         .enum(LAYOUT_DIRECTIONS)
         .optional()
-        .describe('The main direction of the edges, for flow and tree. The default is RIGHT.'),
-      center: nodeRef('The node in the middle of a hub layout. The default is the node with the most edges').optional(),
+        .describe('The main direction of the edges, for flow, tree, lanes and dot. The default is RIGHT.'),
+      center: nodeRef(
+        'The node in the middle of a hub or twopi layout. The default is the node with the most edges',
+      ).optional(),
     }),
     annotations: CHANGE,
     timeoutMs: LONG_MS,
