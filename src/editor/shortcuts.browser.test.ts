@@ -14,7 +14,7 @@ import { useVersions } from '@/store/versions'
 import { bindInsertProjection } from './insert'
 import { useEditorShortcuts } from './shortcuts'
 
-// React warns about each act() call when this flag is not set.
+// React writes a warning for each act() call if IS_REACT_ACT_ENVIRONMENT is not true.
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47]

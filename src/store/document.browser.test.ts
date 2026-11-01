@@ -8,7 +8,7 @@ import { memoryVersionStore, setVersionStore } from '@/persistence/version-store
 import { useDoc } from './doc-store'
 import { flushPendingSave, openDiagramId, useDiagramDocument, whenDiagramReady, type LoadStatus } from './document'
 
-// React warns about each act() call when this flag is not set.
+// React writes a warning for each act() call if IS_REACT_ACT_ENVIRONMENT is not true.
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 let container: HTMLElement

@@ -8,7 +8,7 @@ import type { EdgeData, XY } from '@/model/schema'
 import type { DiagramEdge, DiagramNode } from '@/model/types'
 import { createRouteStore, EdgeRouter, type RouteStore } from './routing'
 
-// React warns about each act() call when this flag is not set.
+// React writes a warning for each act() call if IS_REACT_ACT_ENVIRONMENT is not true.
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 type FlowStore = ReturnType<typeof useStoreApi<DiagramNode, DiagramEdge>>
