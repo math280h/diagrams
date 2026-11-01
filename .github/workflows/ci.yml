@@ -183,6 +183,20 @@ jobs:
           executable=$(dpkg -L diagrams | grep -E '^/opt/.+/diagrams$')
           xvfb-run --auto-servernum node scripts/smoke-package.mjs "$executable"
           sudo apt-get remove -y diagrams
+      - name: Keep the installers
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: installers-${{ matrix.os }}
+          path: |
+            release/*-win-x64.exe
+            release/*.dmg
+            release/*.AppImage
+            release/*.deb
+            !release/*__uninstaller*
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

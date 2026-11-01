@@ -1148,6 +1148,8 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
   - The job installs or mounts each installer and runs `scripts/smoke-package.mjs` on the installed app. On Windows,
     the job then runs the uninstaller and checks that the uninstaller removed `Diagrams.exe`.
   - The AppImage of the default toolset needs FUSE 2, so the Linux job installs `libfuse2t64`.
+  - Each job uploads its installers as the workflow artifact `installers-<runner>`. GitHub keeps them for 7 days. A
+    reviewer can install the app from the installers of a pull request before the merge.
 - `.github/actions/playwright-chromium` caches Chromium by Playwright version. Linux still installs the system
   libraries, which a cache cannot hold.
 - Playwright keeps a trace of each failed CI test (`trace: 'retain-on-failure'`); the failed job uploads it in
