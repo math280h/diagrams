@@ -14,6 +14,7 @@ reasons behind it.
 | Lint                 | `pnpm lint` (oxlint, type-aware)                                                               |
 | Format               | `pnpm format` (oxfmt; `pnpm format:check` only checks)                                         |
 | Unit + browser tests | `pnpm test` (Vitest 5; `*.browser.test.ts` runs in Chromium)                                   |
+| Test coverage        | `pnpm test:coverage` (writes `coverage/`)                                                      |
 | End-to-end tests     | `pnpm e2e` (Playwright; reuses a running dev server)                                           |
 | Production build     | `pnpm build`                                                                                   |
 | Desktop dev (HMR)    | `pnpm desktop:dev` (Electron window on the Vite dev server)                                    |
