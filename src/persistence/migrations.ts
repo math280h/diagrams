@@ -209,7 +209,12 @@ function upgrade(raw: Record<string, unknown>, subject: string): Record<string, 
   while (version < DIAGRAM_VERSION) {
     const step = MIGRATIONS[version - 1]
     if (!step) throw new DiagramFormatError(`This app cannot read diagrams of version ${version}.`)
-    current = step(current)
+    try {
+      current = step(current)
+    } catch (error) {
+      if (error instanceof DiagramFormatError) throw error
+      throw new DiagramFormatError(`${subject} format ${version}, but the data does not match that format.`)
+    }
     version++
     current.version = version
   }

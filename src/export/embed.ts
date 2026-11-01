@@ -110,16 +110,27 @@ export async function svgWithDiagram(svg: Blob, diagram: Diagram): Promise<Blob>
   return new Blob([text.slice(0, at), metadata, text.slice(at)], { type: 'image/svg+xml' })
 }
 
+/** The image holds diagram data that the app cannot read. */
+export class EmbeddedDiagramError extends Error {}
+
+async function readText(read: () => Promise<Uint8Array> | Uint8Array): Promise<string> {
+  try {
+    return new TextDecoder().decode(await read())
+  } catch {
+    throw new EmbeddedDiagramError('The diagram data in this image is damaged.')
+  }
+}
+
 async function pngText(bytes: Uint8Array): Promise<string | null> {
   for (const { type, data } of chunks(bytes)) {
     if (type !== ITXT) continue
     const keywordEnd = data.indexOf(0)
-    if (String.fromCharCode(...data.subarray(0, keywordEnd)) !== EMBED_TYPE) continue
+    if (keywordEnd === -1 || new TextDecoder('latin1').decode(data.subarray(0, keywordEnd)) !== EMBED_TYPE) continue
     const compressed = data[keywordEnd + 1] === 1
     const languageEnd = data.indexOf(0, keywordEnd + 3)
     const translationEnd = data.indexOf(0, languageEnd + 1)
     const body = data.subarray(translationEnd + 1)
-    return new TextDecoder().decode(compressed ? await inflate(body) : body)
+    return readText(() => (compressed ? inflate(body) : body))
   }
   return null
 }
@@ -128,10 +139,11 @@ async function pngText(bytes: Uint8Array): Promise<string | null> {
  * Returns the diagram JSON that an exported PNG or SVG image holds.
  *
  * @returns `null` if the file is not such an image or holds no diagram.
+ * @throws EmbeddedDiagramError If the image holds diagram data that is damaged.
  */
 export async function embeddedDiagramText(file: Blob): Promise<string | null> {
   const bytes = new Uint8Array(await file.arrayBuffer())
   if (isPng(bytes)) return pngText(bytes)
   const match = SVG_METADATA.exec(new TextDecoder().decode(bytes))
-  return match ? new TextDecoder().decode(await inflate(fromBase64(match[1]!))) : null
+  return match ? readText(() => inflate(fromBase64(match[1]!))) : null
 }
