@@ -171,8 +171,8 @@ importers:
         specifier: ^5.0.5
         version: 5.0.5(@vitest/browser@5.0.5)(vitest@5.0.5)
       '@vitest/istanbul-lib-coverage':
-        specifier: ^1.0.2
-        version: 1.0.2
+        specifier: ^2.0.0
+        version: 2.1.0
       '@vitest/istanbul-lib-report':
         specifier: ^2.0.0
         version: 2.1.0
