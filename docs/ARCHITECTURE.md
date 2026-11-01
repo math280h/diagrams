@@ -70,8 +70,8 @@ moves along connections; a flow walks a user through the system while the camera
     (`e2e/fixtures.ts`). The web specs import `test` from that file, and a lint rule blocks an import from
     `@playwright/test`.
   - `scripts/coverage.ts` converts that coverage with `ast-v8-to-istanbul`, the converter of `@vitest/coverage-v8`.
-    The script also uses `@vitest/istanbul-lib-coverage` and `@vitest/istanbul-lib-report` 1.x, the major version
-    that `@vitest/coverage-v8` uses. Then the script adds the converted coverage to the unit coverage.
+    The script also uses `@vitest/istanbul-lib-coverage` and `@vitest/istanbul-lib-report`, the coverage libraries of
+    Vitest. Then the script adds the converted coverage to the unit coverage.
   - The React Compiler runs only for the client (`applyToEnvironmentHook`), so a component has more statements in
     the browser than in the unit tests. The script keeps the statements, functions and branches of the unit coverage.
     The script adds to each one the counts of the end-to-end entries that start at the same line and column.
