@@ -31,6 +31,15 @@ gh attestation verify Diagrams-0.2.0-win-x64.exe --repo math280h/diagrams \
 The command fails if the file changed after the build, or if a different workflow, branch or tag built it. Builds of
 `main` (`preview-<run>` pre-releases) come from `.github/workflows/preview-app.yml` and `refs/heads/main`.
 
+The release also has each attestation as a file: `Diagrams-<version>-<platform>-provenance.sigstore.json` and
+`Diagrams-<version>-<platform>-sbom.sigstore.json`, where `<platform>` is `win`, `mac` or `linux`. With `--bundle`,
+the command reads the attestation from that file and does not get it from GitHub:
+
+```sh
+gh attestation verify Diagrams-0.2.0-win-x64.exe --bundle Diagrams-0.2.0-win-provenance.sigstore.json \
+  --repo math280h/diagrams --signer-workflow math280h/diagrams/.github/workflows/release.yml --source-ref refs/tags/v0.2.0
+```
+
 ### Software bill of materials
 
 Each release newer than v0.1.4 has `Diagrams-<version>-sbom.cdx.json`, a CycloneDX 1.6 SBOM. It lists:
