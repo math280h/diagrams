@@ -1,0 +1,52 @@
+name: Test the Windows signing
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sign:
+    name: Sign a Windows build
+    runs-on: windows-latest
+    environment: signing-test
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: package.json
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm desktop:build
+      - uses: ./.github/actions/windows-signing
+        with:
+          workload-identity-provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service-account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          certificate: ${{ vars.WINDOWS_SIGNING_CERTIFICATE }}
+      - name: Package and sign the app
+        shell: bash
+        env:
+          WINDOWS_SIGNING_KEY: ${{ vars.WINDOWS_SIGNING_KEY }}
+          WINDOWS_SIGNING_TIMESTAMP_URL: ${{ vars.WINDOWS_SIGNING_TIMESTAMP_URL }}
+        run: |
+          [ -n "$WINDOWS_SIGNING_TIMESTAMP_URL" ] || unset WINDOWS_SIGNING_TIMESTAMP_URL
+          pnpm exec electron-builder --win --publish never
+      - name: Check that each file has a signature of the certificate
+        shell: pwsh
+        run: |
+          $certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::CreateFromPem(
+            (Get-Content -Raw $env:WINDOWS_SIGNING_CERTIFICATE_FILE))
+          $files = @(Get-ChildItem release -Filter '*.exe') + @(Get-Item release\win-unpacked\Diagrams.exe)
+          foreach ($file in $files) {
+            $signature = Get-AuthenticodeSignature $file.FullName
+            if ($signature.SignerCertificate.Thumbprint -ne $certificate.Thumbprint) {
+              throw "$($file.Name) has no signature of the certificate: $($signature.StatusMessage)"
+            }
+            Write-Output "$($file.Name): $($signature.Status), $($signature.StatusMessage)"
+          }
