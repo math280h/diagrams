@@ -114,15 +114,18 @@ export function openInApp(getDiagram: () => Diagram) {
   launchDeepLink(code)
   const current = new AbortController()
   controller = current
-  useHandoff.setState({ status: 'opening', name: diagram.name })
+  useHandoff.setState({ status: 'opening', name: diagram.name }, true)
   void sendToApp(diagram, code, current.signal).then((result) => {
     if (current.signal.aborted) return
     if (result.ok) {
       lastRequest = null
       useOpenedInApp.setState((state) => ({ opened: { ...state.opened, [diagram.id]: Date.now() } }))
-      useHandoff.setState({ status: 'opened', name: diagram.name })
+      useHandoff.setState({ status: 'opened', name: diagram.name }, true)
     } else {
-      useHandoff.setState({ status: 'failed', name: diagram.name, reason: result.reason, message: result.message })
+      useHandoff.setState(
+        { status: 'failed', name: diagram.name, reason: result.reason, message: result.message },
+        true,
+      )
     }
   })
 }
@@ -136,5 +139,5 @@ export function closeOpenInApp() {
   controller?.abort()
   controller = null
   lastRequest = null
-  useHandoff.setState({ status: 'idle' })
+  useHandoff.setState({ status: 'idle' }, true)
 }

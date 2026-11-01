@@ -65,7 +65,6 @@ beforeEach(() => {
   fetchMock = vi.fn<typeof fetch>((_url, init) => answer(answers.shift() ?? 'offline', init))
   vi.spyOn(window, 'fetch').mockImplementation(fetchMock)
   closeOpenInApp()
-  useHandoff.setState({ status: 'idle' }, true)
   useOpenedInApp.setState({ opened: {} })
 })
 
@@ -183,6 +182,24 @@ describe('openInApp', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
     retryOpenInApp()
     expect(links).toHaveLength(1)
+  })
+
+  it('keeps no error of a failed handoff after a retry or a close', async () => {
+    answers = [{ status: 500 }]
+    openInApp(shop)
+    await settle()
+    expect(useHandoff.getState().status).toBe('failed')
+    answers = [{ status: 200, body: { diagramId: 'd_new' } }]
+    retryOpenInApp()
+    expect(useHandoff.getState()).toEqual({ status: 'opening', name: 'Shop' })
+    await settle()
+    expect(useHandoff.getState()).toEqual({ status: 'opened', name: 'Shop' })
+
+    answers = [{ status: 500 }]
+    openInApp(shop)
+    await settle()
+    closeOpenInApp()
+    expect(useHandoff.getState()).toEqual({ status: 'idle' })
   })
 
   it('replaces a handoff that waits with a new one', async () => {
