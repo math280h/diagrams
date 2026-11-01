@@ -1,0 +1,9 @@
+[[IgnoredVulns]]
+id = "GHSA-g3hv-75wg-m249"
+ignoreUntil = 2027-05-01
+reason = "The affected code, firstPhasePreProcess(), exists from minimatch 7.0. Version 7.0 always runs it, and the versions from 7.1 run it only with optimizationLevel 2 or higher. The advisory also lists the versions before 7.0. The lockfile has minimatch 3.1.5 and 5.1.9 for the build tools of electron-builder, and minimatch 11.0.3. The override in pnpm-workspace.yaml replaces the versions 7.0.0 to 11.0.0 with ^11.0.3."
+
+[[IgnoredVulns]]
+id = "GHSA-gcqx-w48m-w2h4"
+ignoreUntil = 2027-05-01
+reason = "No fixed version exists. deepmerge 4.3.1 comes only from the dev dependency shadcn 4.22.0, through @shadcn/registry 0.2.0. The app uses only shadcn/tailwind.css, and no app bundle contains deepmerge."

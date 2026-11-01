@@ -10,5 +10,5 @@ allowBuilds:
   electron-winstaller: false
 
 overrides:
-  'minimatch@>=9 <11.0.1': ^11.0.3
+  'minimatch@>=7.0.0 <11.0.1': ^11.0.3
   'semver@<7': ^7.8.5
