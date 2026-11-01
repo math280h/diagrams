@@ -74,6 +74,7 @@ export async function recordStage(stage: StageHandle, options: RecordOptions): P
       `This browser cannot encode ${options.format.toUpperCase()} video. Try ${options.format === 'mp4' ? 'WebM' : 'MP4'} or GIF.`,
     )
   const output = new mediabunny.Output({ format, target: new mediabunny.BufferTarget() })
+  output.setMetadataTags({ creationTime: null })
   const source = new mediabunny.CanvasSource(target, { codec, bitrate: mediabunny.QUALITY_HIGH })
   output.addVideoTrack(source, { frameRate: options.fps })
   await output.start()

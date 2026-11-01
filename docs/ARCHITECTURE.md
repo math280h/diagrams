@@ -20,8 +20,9 @@ moves along connections; a flow walks a user through the system while the camera
   needs exact frames. Motion limits each step to 40 ms.
 - **Layout**: elkjs 0.12 and an own grid and edge router, in a web worker. ELK layers flows. The grid places groups
   that ELK stacks badly. The router keeps edges out of groups that hold neither end.
-- **Image export**: `@zumer/snapdom` 3.3. DOM capture that embeds fonts.
-- **Video export**: mediabunny 1.61 (MP4 H.264, WebM VP9), a WebCodecs muxer.
+- **Image export**: `@zumer/snapdom` 3.7. DOM capture that embeds fonts.
+- **Video export**: mediabunny 1.65 (MP4 H.264, WebM VP9), a WebCodecs muxer. `creationTime: null` keeps the export
+  time out of the file, because mediabunny writes the current time by default.
 - **GIF export**: modern-gif 2.1, a maintained encoder with a worker.
 - **Mermaid import**: `mermaid` 12, which the app loads on demand. `getDiagramFromText` + `db.getData()` parse
   flowcharts without a render.
