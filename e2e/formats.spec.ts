@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './fixtures'
 
 function card(page: Page, title: string) {
   return page.locator('[data-editor-canvas] .react-flow__node', { hasText: title }).first().locator('.dg-card')

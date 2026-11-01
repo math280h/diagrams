@@ -43,3 +43,5 @@ playwright-report
 .app-screens
 
 coverage
+coverage-e2e
+coverage-all

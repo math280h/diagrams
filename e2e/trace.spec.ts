@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { copyTemplate } from './helpers'
 
 test('plays a trace on the cards of a diagram', async ({ page }) => {

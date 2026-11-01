@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { copyTemplate } from './helpers'
 
 test('shows the pointer cursor on buttons that work, and not on disabled ones', async ({ page }) => {

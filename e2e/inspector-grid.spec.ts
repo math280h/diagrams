@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { copyTemplate } from './helpers'
 
 test('lines up the value controls of the properties panel on one left edge', async ({ page }) => {

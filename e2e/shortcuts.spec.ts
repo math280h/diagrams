@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { copyTemplate } from './helpers'
 
 test('lists the shortcuts of the editor, flows and Present, and shows keys in tooltips', async ({ page }) => {

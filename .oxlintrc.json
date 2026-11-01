@@ -84,7 +84,33 @@
         "react/rules-of-hooks": "off",
         "no-empty-pattern": "off"
       }
+    },
+    {
+      "files": ["e2e/*.spec.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@playwright/test",
+                "message": "Import from './fixtures'. It records the coverage of the test when you set E2E_COVERAGE."
+              }
+            ]
+          }
+        ]
+      }
     }
   ],
-  "ignorePatterns": ["dist", "dist-electron", "out", "release", "node_modules", ".playwright-mcp"]
+  "ignorePatterns": [
+    "dist",
+    "dist-electron",
+    "out",
+    "release",
+    "node_modules",
+    ".playwright-mcp",
+    "coverage",
+    "coverage-e2e",
+    "coverage-all"
+  ]
 }
