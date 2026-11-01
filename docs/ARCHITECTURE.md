@@ -48,6 +48,10 @@ moves along connections; a flow walks a user through the system while the camera
   - `osv-scanner.toml` tells OSV-Scanner to ignore the deepmerge advisory (GHSA-gcqx-w48m-w2h4), with a reason and
     an `ignoreUntil` date. The advisory has no fix, and deepmerge is only in the shadcn CLI. OpenSSF Scorecard reads
     this file for its Vulnerabilities check. Dependabot does not read it.
+  - `ajv`, `ajv-formats` and `jose` are dependencies of the app. `@vitemcp/server` loads them as optional peers, and
+    the main bundle holds them. Without these entries in `package.json`, pnpm takes the peers from the packages of the
+    dev dependencies. When no package has a version in the peer range, the bundler takes a hoisted copy that the SBOM
+    does not list.
   - A Dependabot security update to a version that is less than one day old can fail. Wait one day, or add the
     package to `minimumReleaseAgeExclude`. A version that fails the trust check for a known reason goes in
     `trustPolicyExclude`.
