@@ -16,6 +16,13 @@ const ALL_COVERAGE = path.join(ROOT, 'coverage-all')
 const INLINE_SOURCE_MAP =
   /\/\/# sourceMappingURL=data:application\/json;(?:charset=utf-8;)?base64,([A-Za-z0-9+/=]+)\s*$/
 const METRICS = ['statements', 'branches', 'functions', 'lines'] as const
+const BADGE_COLORS = [
+  [90, 'brightgreen'],
+  [80, 'green'],
+  [70, 'yellowgreen'],
+  [60, 'yellow'],
+  [50, 'orange'],
+] as const
 const METRIC_NAMES: Record<Metric, string> = {
   statements: 'Statements',
   branches: 'Branches',
@@ -159,6 +166,23 @@ export function summaryTable(
   ].join('\n')
 }
 
+/**
+ * Returns the shields.io endpoint badge for the line coverage of a `coverage-summary.json` file. The message is the
+ * percentage, rounded down to a whole number.
+ *
+ * @see https://shields.io/badges/endpoint-badge
+ */
+export function coverageBadge(summary: Record<Metric, { pct: number | 'Unknown' }>) {
+  const pct = summary.lines.pct
+  const color = typeof pct === 'number' ? (BADGE_COLORS.find(([min]) => pct >= min)?.[1] ?? 'red') : 'lightgrey'
+  return {
+    schemaVersion: 1,
+    label: 'coverage',
+    message: typeof pct === 'number' ? `${Math.floor(pct)}%` : 'unknown',
+    color,
+  }
+}
+
 function readScripts(folders: readonly string[]): ScriptCoverage[] {
   return folders.flatMap((folder) =>
     readdirSync(folder)
@@ -192,7 +216,8 @@ function runWebTests(options: readonly string[]) {
 const USAGE = `Usage:
   node scripts/coverage.ts run [playwright options]
   node scripts/coverage.ts merge <coverage-final.json> <out dir> <e2e folder>... [--thresholds s,b,f,l]
-  node scripts/coverage.ts summary <coverage-summary.json> <title>`
+  node scripts/coverage.ts summary <coverage-summary.json> <title>
+  node scripts/coverage.ts badge <coverage-summary.json>`
 
 async function main() {
   const [command, ...args] = process.argv.slice(2)
@@ -213,6 +238,8 @@ async function main() {
   } else if (command === 'summary' && args.length === 2) {
     const [file, title] = args as [string, string]
     console.log(summaryTable(JSON.parse(readFileSync(file, 'utf8')).total, title))
+  } else if (command === 'badge' && args.length === 1) {
+    console.log(JSON.stringify(coverageBadge(JSON.parse(readFileSync(args[0]!, 'utf8')).total)))
   } else {
     throw new Error(USAGE)
   }
