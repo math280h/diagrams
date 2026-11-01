@@ -24,6 +24,8 @@ export default mergeConfig(
           test: {
             name: 'unit',
             environment: 'node',
+            // Node.js 26 has a localStorage global, and its value is undefined without --localstorage-file.
+            execArgv: ['--no-experimental-webstorage'],
             include: ['src/**/*.test.ts', 'electron/**/*.test.ts', 'scripts/**/*.test.ts', 'actions/**/*.test.mjs'],
             exclude: ['src/**/*.browser.test.ts'],
           },
