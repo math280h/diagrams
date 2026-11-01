@@ -14,8 +14,23 @@ const KINDS: ChangeKind[] = ['New', 'Improvements', 'Fixes']
 const NEW_VERBS = new Set(['add', 'allow', 'copy', 'explore', 'export', 'import', 'introduce', 'let', 'support'])
 const FIX_VERBS = new Set(['fix', 'prevent', 'repair', 'restore', 'stop'])
 
+const REPOSITORY_FILES = [
+  /\.test\.(ts|mjs)$/,
+  /^e2e\//,
+  /^\.github\//,
+  /^docs\//,
+  /^scripts\//,
+  /\/formats\//,
+  /^[^/]+\.md$/,
+  /^LICENSE$/,
+  /^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|osv-scanner\.toml|\.gitignore|\.oxlintrc\.json)$/,
+  /^(tsconfig[^/]*\.json|vite\.config\.ts|vite\.electron\.config\.ts|vitest\.config\.ts|playwright\.config\.ts)$/,
+]
+
 const AREAS: [RegExp, string][] = [
   [/^(src\/agent|electron\/agent|claude-plugin)\//, 'MCP server and skills'],
+  [/^(electron-builder\.ts|build\/)/, 'Desktop app'],
+  [/^(index\.html|public\/)/, 'App'],
   [/^(src\/player|src\/engine|src\/editor\/flow)\//, 'Flows and Present'],
   [/^src\/export\//, 'Export'],
   [/^(src\/library|src\/templates)\//, 'Library and templates'],
@@ -24,7 +39,9 @@ const AREAS: [RegExp, string][] = [
   [/^src\/(editor|components|store)\//, 'Editor'],
   [/^src\/(model|persistence|io|import)\//, 'Diagrams and files'],
   [/^src\//, 'App'],
+  [/^actions\//, 'GitHub Action'],
 ]
+const AREA_ORDER = [...new Set(AREAS.map(([, area]) => area))]
 const NO_AREA = 'Build and docs'
 
 /**
@@ -40,16 +57,27 @@ export function changeKind(pullRequest: Pick<MergedPullRequest, 'title' | 'label
   return 'Improvements'
 }
 
-/** Returns the area with the most changed files of a pull request, leaving tests, docs and format samples out. */
+/**
+ * Returns true when the list has files and each one is a repository file, not an app file. Repository files are tests,
+ * CI, docs, build tools, configuration and dependency files.
+ */
+export function repositoryOnly(files: readonly string[]): boolean {
+  return files.length > 0 && files.every((file) => REPOSITORY_FILES.some((pattern) => pattern.test(file)))
+}
+
+/**
+ * Returns the area with the most changed files of a pull request, without the files of the repository. With the same
+ * count, an area of the app goes before the GitHub Action. When no file counts, it returns `Build and docs`.
+ */
 export function changeArea(files: readonly string[]): string {
   const counts = new Map<string, number>()
   for (const file of files) {
-    if (/\.test\.ts$|^e2e\/|^docs\/|\/formats\//.test(file)) continue
+    if (repositoryOnly([file])) continue
     const area = AREAS.find(([pattern]) => pattern.test(file))?.[1]
     if (area) counts.set(area, (counts.get(area) ?? 0) + 1)
   }
   let best = NO_AREA
-  for (const [area, count] of counts) if (count > (counts.get(best) ?? 0)) best = area
+  for (const area of AREA_ORDER) if ((counts.get(area) ?? 0) > (counts.get(best) ?? 0)) best = area
   return best
 }
 
@@ -83,9 +111,18 @@ export interface DraftInput {
 /**
  * Writes the notes of a draft release in Markdown: New, Improvements and Fixes grouped by area, then the MCP server
  * and Keyboard shortcuts sections when those changed. A comment that GitHub does not show lists the new items that want
- * a still and a short clip before the release goes out.
+ * a still and a short clip before the release goes out. The notes leave out the pull requests that change only files
+ * of the repository ({@link repositoryOnly}). The full changelog link shows their commits.
  */
-export function draftNotes({ repository, previousTag, tag, pullRequests, tools, shortcuts }: DraftInput): string {
+export function draftNotes({
+  repository,
+  previousTag,
+  tag,
+  pullRequests: merged,
+  tools,
+  shortcuts,
+}: DraftInput): string {
+  const pullRequests = merged.filter((pullRequest) => !repositoryOnly(pullRequest.files))
   const lines: string[] = []
   const fresh = pullRequests.filter((pullRequest) => changeKind(pullRequest) === 'New')
   if (fresh.length > 0) {
