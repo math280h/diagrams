@@ -1,5 +1,6 @@
-import { readdirSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
+import { parseAst } from 'vite'
 import { describe, expect, it } from 'vitest'
 import builderConfig from '../electron-builder.ts'
 import { ICON_SOURCES } from './icons/sources.ts'
@@ -28,6 +29,41 @@ const VERSIONS = {
   v8: '15.6.75.19-electron.0',
   electron: '45.0.0',
   chrome: '156.0.8078.48',
+}
+
+type Expression = Extract<ReturnType<typeof parseAst>['body'][number], { type: 'ExpressionStatement' }>['expression']
+
+function literalValue(node: Expression): unknown {
+  if (node.type === 'Literal') return node.value
+  if (node.type !== 'ObjectExpression') throw new Error(`${node.type} is not a literal.`)
+  return Object.fromEntries(
+    node.properties.map((property) => {
+      if (property.type !== 'Property' || property.computed) throw new Error('The object has a computed key.')
+      const { key } = property
+      if (key.type === 'Identifier') return [key.name, literalValue(property.value)]
+      if (key.type === 'Literal') return [String(key.value), literalValue(property.value)]
+      throw new Error(`${key.type} is not a key.`)
+    }),
+  )
+}
+
+function exportedObject(file: string, name: string): unknown {
+  for (const statement of parseAst(readFileSync(file, 'utf8')).body) {
+    if (statement.type !== 'ExpressionStatement') continue
+    const { expression } = statement
+    if (
+      expression.type === 'AssignmentExpression' &&
+      expression.left.type === 'MemberExpression' &&
+      expression.left.object.type === 'Identifier' &&
+      expression.left.object.name === 'exports' &&
+      expression.left.property.type === 'Identifier' &&
+      expression.left.property.name === name &&
+      expression.right.type === 'ObjectExpression'
+    ) {
+      return literalValue(expression.right)
+    }
+  }
+  throw new Error(`${file} has no exports.${name} object.`)
 }
 
 describe('SBOM components', () => {
@@ -155,12 +191,14 @@ describe('SBOM components', () => {
 
   it('names the toolset bundles that app-builder-lib downloads for the installers', () => {
     const builder = createRequire(createRequire(import.meta.url).resolve('electron-builder/package.json'))
-    const { nsisChecksums } = builder('app-builder-lib/out/toolsets/windows') as {
-      nsisChecksums: Record<string, Record<string, string>>
-    }
-    const { appimageChecksums } = builder('app-builder-lib/out/toolsets/linux') as {
-      appimageChecksums: Record<string, Record<string, string>>
-    }
+    const nsisChecksums = exportedObject(
+      builder.resolve('app-builder-lib/out/toolsets/windows'),
+      'nsisChecksums',
+    ) as Record<string, Record<string, string>>
+    const appimageChecksums = exportedObject(
+      builder.resolve('app-builder-lib/out/toolsets/linux'),
+      'appimageChecksums',
+    ) as Record<string, Record<string, string>>
     const { nsis, appimage } = INSTALLER_TOOLSETS
     expect(nsisChecksums[nsis.version]).toEqual({ [nsis.file]: nsis.sha256 })
     expect(appimageChecksums[appimage.version]).toEqual({ [appimage.file]: appimage.sha256 })
