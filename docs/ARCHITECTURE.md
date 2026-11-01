@@ -1142,8 +1142,14 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
   workers; four shards give the 8 of a developer computer. The matrix sets the number (`strategy.job-total`).
 - "Checks and web tests": the required check of the "Protect main" ruleset. It fails unless each job above passed. It
   has `if: always()`, because GitHub counts a required job skipped after a failed dependency as passed.
-- "Desktop app on …": unit tests, desktop end-to-end tests, the render action and a packaged app on Windows, macOS and
-  Linux.
+- "Desktop app on …": unit tests, desktop end-to-end tests and the render action on Windows, macOS and Linux.
+  - Each job builds the installers of its system for its own architecture: NSIS on Windows, dmg on macOS, AppImage
+    and deb on Linux.
+  - The job installs or mounts each installer and runs `scripts/smoke-package.mjs` on the installed app. On Windows,
+    the job then runs the uninstaller and checks that the uninstaller removed `Diagrams.exe`.
+  - The AppImage of the default toolset needs FUSE 2, so the Linux job installs `libfuse2t64`.
+  - Each job uploads its installers as the workflow artifact `installers-<runner>`. GitHub keeps them for 7 days. A
+    reviewer can install the app from the installers of a pull request before the merge.
 - `.github/actions/playwright-chromium` caches Chromium by Playwright version. Linux still installs the system
   libraries, which a cache cannot hold.
 - Playwright keeps a trace of each failed CI test (`trace: 'retain-on-failure'`); the failed job uploads it in

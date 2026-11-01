@@ -58,7 +58,7 @@ async function callTool(client, name, args) {
   return result.content
 }
 
-const executable = packagedApp()
+const executable = process.argv[2] ?? packagedApp()
 if (!existsSync(executable)) throw new Error(`No packaged app at ${executable}. Run electron-builder first.`)
 const temp = mkdtempSync(path.join(tmpdir(), 'diagrams-smoke-'))
 const userData = path.join(temp, 'user-data')
