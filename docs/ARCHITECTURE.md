@@ -1085,9 +1085,10 @@ The React app in Electron, plus file storage, agent control, the website handoff
   (`build/installer.nsh`); an update keeps it.
 - Before an update Restart, main saves the open diagram and waits for the writes (`prepareQuit`): on macOS, the
   update quit skips the window close step.
-- Signing waits for secrets in the release environment. Mac builds without a certificate get an ad-hoc signature,
-  which Apple Silicon needs after the fuses change the binary. Windows checks update publishers only after a signed
-  release.
+- Only the Mac builds of releases get a Developer ID signature. Mac builds without a certificate get an ad-hoc
+  signature, which Apple Silicon needs after the fuses change the binary.
+- `scripts/windows-signing.ts` signs the Windows build with `signtool.exe` (`docs/RELEASING.md`). After a signed
+  release, the updater accepts updates only from the publisher in `app-update.yml`.
 
 ### Handoff from the website
 

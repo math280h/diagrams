@@ -1,16 +1,9 @@
 import type { Configuration } from 'electron-builder'
+import { windowsSigner } from './scripts/windows-signing.ts'
 
 const env = process.env
 const hasMacCertificate = Boolean(env.CSC_LINK || env.CSC_NAME)
-const azureSignOptions =
-  env.AZURE_SIGNING_ENDPOINT && env.AZURE_SIGNING_ACCOUNT && env.AZURE_SIGNING_PROFILE && env.AZURE_SIGNING_PUBLISHER
-    ? {
-        endpoint: env.AZURE_SIGNING_ENDPOINT,
-        codeSigningAccountName: env.AZURE_SIGNING_ACCOUNT,
-        certificateProfileName: env.AZURE_SIGNING_PROFILE,
-        publisherName: env.AZURE_SIGNING_PUBLISHER,
-      }
-    : null
+const windowsSigning = windowsSigner(env)
 
 const config: Configuration = {
   appId: 'dev.thias.diagrams',
@@ -48,7 +41,13 @@ const config: Configuration = {
   },
   win: {
     target: [{ target: 'nsis', arch: ['x64'] }],
-    ...(azureSignOptions && { azureSignOptions }),
+    ...(windowsSigning && {
+      signtoolOptions: {
+        sign: windowsSigning.sign,
+        signingHashAlgorithms: ['sha256'],
+        publisherName: windowsSigning.publisherName,
+      },
+    }),
   },
   nsis: { oneClick: true, perMachine: false, deleteAppDataOnUninstall: false },
   linux: {

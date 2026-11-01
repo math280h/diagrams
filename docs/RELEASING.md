@@ -102,12 +102,12 @@ verify a downloaded file.
 
 ## Signing
 
-The workflow signs only when the `release` environment of the repository has the secrets below. Without them the
-builds are unsigned: Windows SmartScreen and macOS Gatekeeper warn before the first start, and macOS cannot install
-updates.
+Signing is optional. Without the settings below, the builds are unsigned: Windows SmartScreen and macOS Gatekeeper
+warn before the first start, and macOS cannot install updates. A fork can sign its own builds with its own
+certificates in the same way, or leave the settings empty.
 
-Add required reviewers to the `release` environment in the repository settings, so that no workflow run uses the
-secrets without your approval.
+The Release workflow signs the Windows builds of previews and releases, and the macOS builds of releases.
+`ci.yml` and `preview-app.yml`, the workflows of pull requests and of `main`, do not sign.
 
 ### macOS: Developer ID and notarization
 
@@ -122,19 +122,10 @@ secrets without your approval.
 With the certificate, the build uses the hardened runtime and notarizes itself, and signed apps install updates. Users
 of an unsigned macOS build must install the first signed version by hand.
 
-### Windows: Azure Artifact Signing
+### Windows
 
-| Name                      | Kind     | Value                                   |
-| ------------------------- | -------- | --------------------------------------- |
-| `AZURE_TENANT_ID`         | Secret   | The tenant of the app registration      |
-| `AZURE_CLIENT_ID`         | Secret   | The client ID of the app registration   |
-| `AZURE_CLIENT_SECRET`     | Secret   | A client secret of the app registration |
-| `AZURE_SIGNING_ENDPOINT`  | Variable | The endpoint of the signing account     |
-| `AZURE_SIGNING_ACCOUNT`   | Variable | The name of the signing account         |
-| `AZURE_SIGNING_PROFILE`   | Variable | The name of the certificate profile     |
-| `AZURE_SIGNING_PUBLISHER` | Variable | The publisher name of the certificate   |
-
-After the first signed release, the installed app accepts only updates from the same publisher.
+`scripts/windows-signing.ts` and `.github/actions/windows-signing` sign the Windows build when the environment of
+the job has `WINDOWS_SIGNING_CERTIFICATE`. The inputs of the action name the other settings.
 
 ## Keep stable
 

@@ -1,0 +1,63 @@
+name: Prepare the Windows signing
+description: >-
+  Logs in to Google Cloud with the OIDC token of the job and installs the Cloud KMS CNG provider for signtool.exe.
+  Writes the certificate to a file and sets WINDOWS_SIGNING_CERTIFICATE_FILE. electron-builder then signs with the
+  Cloud KMS key in WINDOWS_SIGNING_KEY.
+
+inputs:
+  workload-identity-provider:
+    description: The full name of the workload identity provider in Google Cloud.
+    required: true
+  service-account:
+    description: The email address of the service account that can sign with the key.
+    required: true
+  certificate:
+    description: The PEM certificate of the Cloud KMS key, then the certificates of the CAs between it and the root.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+      with:
+        workload_identity_provider: ${{ inputs.workload-identity-provider }}
+        service_account: ${{ inputs.service-account }}
+    - name: Download and check the Cloud KMS CNG provider
+      shell: bash
+      env:
+        KMSCNG_URL: https://github.com/GoogleCloudPlatform/kms-integrations/releases/download/cng-v1.4/kmscng-1.4-windows-amd64.zip
+        KMSCNG_SHA256: 3c3570e4c7ff6e5ce21874b9cd595227e9e8bbe8183023f8121124c0e80738a3
+        # The release signing key of the CNG provider, from kmscng/docs/user_guide.md of GoogleCloudPlatform/kms-integrations.
+        KMSCNG_SIGNING_KEY: |
+          -----BEGIN PUBLIC KEY-----
+          MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEtfLbXkHUVc9oUPTNyaEK3hIwmuGRoTtd
+          6zDhwqjJuYaMwNd1aaFQLMawTwZgR0Xn27ymVWtqJHBe0FU9BPIQ+SFmKw+9jSwu
+          /FuqbJnLmTnWMJ1jRCtyHNZawvv2wbiB
+          -----END PUBLIC KEY-----
+      run: |
+        set -euo pipefail
+        folder="$RUNNER_TEMP/kmscng"
+        mkdir -p "$folder"
+        cd "$folder"
+        curl -sSfL -o kmscng.zip "$KMSCNG_URL"
+        echo "$KMSCNG_SHA256  kmscng.zip" | sha256sum -c -
+        unzip -q -j kmscng.zip '*/kmscng.msi' '*/kmscng.msi.sig'
+        printf '%s' "$KMSCNG_SIGNING_KEY" > signing-key.pem
+        openssl dgst -sha384 -verify signing-key.pem -signature kmscng.msi.sig kmscng.msi
+    - name: Install the Cloud KMS CNG provider
+      shell: pwsh
+      run: |
+        $msi = Join-Path $env:RUNNER_TEMP 'kmscng\kmscng.msi'
+        $install = Start-Process msiexec.exe -ArgumentList '/i', "`"$msi`"", '/qn', '/norestart' -Wait -PassThru
+        if ($install.ExitCode -ne 0) { throw "The installer of the CNG provider ended with exit code $($install.ExitCode)." }
+        if (-not (certutil -csplist | Select-String -SimpleMatch 'Google Cloud KMS Provider')) {
+          throw 'Windows does not list the Google Cloud KMS Provider after the installation.'
+        }
+    - name: Write the signing certificate
+      shell: bash
+      env:
+        CERTIFICATE: ${{ inputs.certificate }}
+      run: |
+        file="$RUNNER_TEMP/windows-signing-certificate.pem"
+        printf '%s\n' "$CERTIFICATE" > "$file"
+        echo "WINDOWS_SIGNING_CERTIFICATE_FILE=$file" >> "$GITHUB_ENV"

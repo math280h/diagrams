@@ -124,6 +124,13 @@ jobs:
           node-version-file: package.json
       - run: pnpm install --frozen-lockfile
       - run: pnpm desktop:build
+      - name: Prepare the Windows signing
+        if: runner.os == 'Windows' && vars.WINDOWS_SIGNING_CERTIFICATE != ''
+        uses: ./.github/actions/windows-signing
+        with:
+          workload-identity-provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service-account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          certificate: ${{ vars.WINDOWS_SIGNING_CERTIFICATE }}
       - name: Package the app
         shell: bash
         env:
@@ -132,24 +139,28 @@ jobs:
           APPLE_ID: ${{ runner.os == 'macOS' && secrets.APPLE_ID || '' }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ runner.os == 'macOS' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
           APPLE_TEAM_ID: ${{ runner.os == 'macOS' && secrets.APPLE_TEAM_ID || '' }}
-          AZURE_TENANT_ID: ${{ runner.os == 'Windows' && secrets.AZURE_TENANT_ID || '' }}
-          AZURE_CLIENT_ID: ${{ runner.os == 'Windows' && secrets.AZURE_CLIENT_ID || '' }}
-          AZURE_CLIENT_SECRET: ${{ runner.os == 'Windows' && secrets.AZURE_CLIENT_SECRET || '' }}
-          AZURE_SIGNING_ENDPOINT: ${{ runner.os == 'Windows' && vars.AZURE_SIGNING_ENDPOINT || '' }}
-          AZURE_SIGNING_ACCOUNT: ${{ runner.os == 'Windows' && vars.AZURE_SIGNING_ACCOUNT || '' }}
-          AZURE_SIGNING_PROFILE: ${{ runner.os == 'Windows' && vars.AZURE_SIGNING_PROFILE || '' }}
-          AZURE_SIGNING_PUBLISHER: ${{ runner.os == 'Windows' && vars.AZURE_SIGNING_PUBLISHER || '' }}
+          WINDOWS_SIGNING_KEY: ${{ runner.os == 'Windows' && vars.WINDOWS_SIGNING_CERTIFICATE != '' && vars.WINDOWS_SIGNING_KEY || '' }}
+          WINDOWS_SIGNING_TIMESTAMP_URL: ${{ runner.os == 'Windows' && vars.WINDOWS_SIGNING_TIMESTAMP_URL || '' }}
           VERSION: ${{ needs.draft.outputs.version }}
         run: |
           for name in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID \
-            AZURE_TENANT_ID AZURE_CLIENT_ID AZURE_CLIENT_SECRET \
-            AZURE_SIGNING_ENDPOINT AZURE_SIGNING_ACCOUNT AZURE_SIGNING_PROFILE AZURE_SIGNING_PUBLISHER; do
+            WINDOWS_SIGNING_KEY WINDOWS_SIGNING_TIMESTAMP_URL; do
             [ -n "${!name}" ] || unset "$name"
           done
           pnpm exec electron-builder ${{ matrix.target }} --publish never -c.extraMetadata.version="$VERSION"
       - name: Allow the Electron sandbox
         if: runner.os == 'Linux'
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Check the Windows signatures
+        if: runner.os == 'Windows' && vars.WINDOWS_SIGNING_CERTIFICATE != ''
+        shell: pwsh
+        run: |
+          $files = @(Get-ChildItem release -Filter '*.exe') + @(Get-Item release\win-unpacked\Diagrams.exe)
+          foreach ($file in $files) {
+            $signature = Get-AuthenticodeSignature $file.FullName
+            if ($signature.Status -ne 'Valid') { throw "$($file.Name) has no valid signature: $($signature.StatusMessage)" }
+            Write-Output "$($file.Name): $($signature.SignerCertificate.Subject)"
+          }
       - name: Test the packaged app
         if: runner.os != 'Linux'
         run: node scripts/smoke-package.mjs
