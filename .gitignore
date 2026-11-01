@@ -45,3 +45,5 @@ playwright-report
 coverage
 coverage-e2e
 coverage-all
+
+gha-creds-*.json
