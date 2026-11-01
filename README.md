@@ -2,6 +2,7 @@
 
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/math280h/diagrams/badge)](https://scorecard.dev/viewer/?uri=github.com/math280h/diagrams)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16147/badge)](https://www.bestpractices.dev/projects/16147)
+[![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fmath280h%2Fdiagrams%2Fcoverage-badge%2Fcoverage.json)](https://github.com/math280h/diagrams/actions/workflows/ci.yml?query=branch%3Amain)
 
 Architecture diagrams and user flows that look finished and move. Free, with no account. Your diagrams are stored
 only on your computer, never on a server ([privacy](#privacy)).

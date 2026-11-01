@@ -16,7 +16,7 @@ export default mergeConfig(
         exclude: COVERAGE_EXCLUDE,
         reporter: ['text-summary', 'json-summary', 'json', 'html'],
         reportOnFailure: true,
-        thresholds: { statements: 50, branches: 42, functions: 39, lines: 51 },
+        thresholds: { statements: 58, branches: 49, functions: 49, lines: 61 },
       },
       projects: [
         {

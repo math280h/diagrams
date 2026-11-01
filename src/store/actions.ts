@@ -110,10 +110,9 @@ export function addNodes(nodes: DiagramNode[], edges: DiagramEdge[] = [], select
  * @throws Error If the patch has a field that the data of this node type does not have.
  */
 export function updateNodeData(id: string, patch: NodeDataPatch, key = `node-data:${id}`) {
+  const nodes = useDoc.getState().nodes.map((node) => (node.id === id ? withData(node, patch) : node))
   record(key)
-  useDoc.setState({
-    nodes: useDoc.getState().nodes.map((node) => (node.id === id ? withData(node, patch) : node)),
-  })
+  useDoc.setState({ nodes })
 }
 
 export function updateEdgeData(id: string, patch: Partial<EdgeData>, key = `edge-data:${id}`) {
@@ -554,13 +553,12 @@ export function updateEdges(updates: readonly EdgeUpdate[]) {
  */
 export function patchNodesData(patches: ReadonlyMap<string, NodeDataPatch>) {
   if (patches.size === 0) return
-  record()
-  useDoc.setState({
-    nodes: useDoc.getState().nodes.map((node) => {
-      const patch = patches.get(node.id)
-      return patch ? withData(node, patch) : node
-    }),
+  const nodes = useDoc.getState().nodes.map((node) => {
+    const patch = patches.get(node.id)
+    return patch ? withData(node, patch) : node
   })
+  record()
+  useDoc.setState({ nodes })
 }
 
 /** Pins or unpins the nodes, as one undo step. A layout keeps a pinned node in its place. */
