@@ -60,7 +60,7 @@ interface Session {
 function startSession(diagram: Diagram): Session {
   const id = diagram.id
   let timer: ReturnType<typeof setTimeout> | undefined
-  let lastSaved = savedContent(diagram)
+  let lastSaved = savedContent(currentDiagram())
 
   const save = () => {
     clearTimeout(timer)
@@ -82,7 +82,7 @@ function startSession(diagram: Diagram): Session {
     timer = undefined
     openDiagram(loaded)
     beginVersions(loaded)
-    lastSaved = savedContent(loaded)
+    lastSaved = savedContent(currentDiagram())
   }
 
   const stopDoc = useDoc.subscribe((state, previous) => {

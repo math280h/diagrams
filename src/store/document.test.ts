@@ -5,6 +5,8 @@ import { repository, setRepository } from '@/persistence/active-repository'
 import { createCachedRepository } from '@/persistence/cached-repository'
 import { deleteDiagram } from '@/persistence/library-actions'
 import { memoryVersionStore, setVersionStore } from '@/persistence/version-store'
+import { migrate } from '@/persistence/migrations'
+import { DiagramBuilder } from '@/templates/builder'
 import { useDoc } from './doc-store'
 import { useHistory } from './history'
 import {
@@ -79,6 +81,22 @@ describe('diagram session', () => {
     useDoc.setState({ nodes: [...useDoc.getState().nodes] })
     flushPendingSave()
     expect(saves).toBe(0)
+  })
+
+  it('writes nothing for a selection in a diagram that a file load gave in another key order', () => {
+    const b = new DiagramBuilder()
+    const zone = b.group(0, 0, 640, 320, { label: 'VPC' })
+    const api = b.card(40.125, 60, { title: 'API' }, 216, zone)
+    const db = b.card(360, 60, { title: 'Orders DB' }, 216, zone)
+    b.edge(api, db, { label: 'SQL' })
+    const diagram = migrate(JSON.parse(JSON.stringify(b.build('Shop'))))
+    openDiagramSession(diagram)
+    useDoc.setState({ nodes: useDoc.getState().nodes.map((node) => ({ ...node, selected: node.id === api })) })
+    flushPendingSave()
+    expect(saves).toBe(0)
+    useDoc.setState({ name: 'Store' })
+    flushPendingSave()
+    expect(saves).toBe(1)
   })
 
   it('drops the waiting save of a diagram that is deleted, also when its editor closes after', () => {
