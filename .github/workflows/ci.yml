@@ -117,6 +117,41 @@ jobs:
           name: coverage-all
           path: coverage-all
           retention-days: 7
+      - name: Write the coverage badge
+        run: |
+          mkdir coverage-badge
+          node scripts/coverage.ts badge coverage-all/coverage-summary.json > coverage-badge/coverage.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-badge
+          path: coverage-badge
+          retention-days: 1
+
+  coverage-badge:
+    name: Coverage badge
+    needs: coverage
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: coverage-badge
+          path: coverage-badge
+      - name: Publish the badge on the coverage-badge branch
+        working-directory: coverage-badge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          credentials=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          echo "::add-mask::$credentials"
+          git init -q -b coverage-badge
+          git add coverage.json
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -q -m "Coverage of $GITHUB_SHA"
+          GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraheader GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $credentials" \
+            git push -q --force "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" HEAD:refs/heads/coverage-badge
 
   checks:
     name: Checks and web tests

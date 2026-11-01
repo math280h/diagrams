@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { mergeScriptCovs } from '@bcoe/v8-coverage'
@@ -15,15 +16,12 @@ function isAppSource(url: string): boolean {
 
 export const test = base.extend<{ scriptCoverage: void }, { workerCoverage: Map<string, ScriptCoverage> }>({
   workerCoverage: [
-    async ({}, use, workerInfo) => {
+    async ({}, use) => {
       const scripts = new Map<string, ScriptCoverage>()
       await use(scripts)
       if (scripts.size === 0) return
       mkdirSync(E2E_COVERAGE_DIR, { recursive: true })
-      writeFileSync(
-        path.join(E2E_COVERAGE_DIR, `${process.pid}-${workerInfo.workerIndex}.json`),
-        JSON.stringify([...scripts.values()]),
-      )
+      writeFileSync(path.join(E2E_COVERAGE_DIR, `${randomUUID()}.json`), JSON.stringify([...scripts.values()]))
     },
     { scope: 'worker' },
   ],

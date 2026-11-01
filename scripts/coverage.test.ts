@@ -5,6 +5,7 @@ import * as libCoverage from '@vitest/istanbul-lib-coverage'
 import {
   addE2eHits,
   belowThresholds,
+  coverageBadge,
   e2eCoverageData,
   inlineSourceMap,
   isMeasured,
@@ -171,5 +172,29 @@ describe('summaryTable', () => {
         '| Lines | 50% | 1 of 2 |',
       ].join('\n'),
     )
+  })
+})
+
+describe('coverageBadge', () => {
+  const summary = (pct: number | 'Unknown') => ({
+    statements: { pct: 0 },
+    branches: { pct: 0 },
+    functions: { pct: 0 },
+    lines: { pct },
+  })
+
+  it('shows the line coverage, rounded down, with a colour for its range', () => {
+    expect(coverageBadge(summary(78.9))).toEqual({
+      schemaVersion: 1,
+      label: 'coverage',
+      message: '78%',
+      color: 'yellowgreen',
+    })
+    expect(coverageBadge(summary(90)).color).toBe('brightgreen')
+    expect(coverageBadge(summary(49.99)).color).toBe('red')
+  })
+
+  it('shows unknown when no line counts', () => {
+    expect(coverageBadge(summary('Unknown'))).toMatchObject({ message: 'unknown', color: 'lightgrey' })
   })
 })
