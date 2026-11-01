@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 const RELEASES = 'https://api.github.com/repos/math280h/diagrams/releases?per_page=30'
 

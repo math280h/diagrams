@@ -64,9 +64,21 @@ moves along connections; a flow walks a user through the system while the camera
     version with `pnpm/action-setup`, and a CI step fails when the lockfile has more than one document.
 - **Tests**: Vitest 5 (node and Chromium browser mode), Playwright. Real browser for Mermaid and export.
   - `pnpm test:coverage` measures the coverage of the unit and browser tests (V8) for `src`, `electron`, `scripts`
-    and `actions`. The end-to-end tests do not count. Each threshold in `vitest.config.ts` is the value of 2026-11-01,
-    rounded down to a whole number, minus 1. Vitest fails the run when a value is below its threshold. CI shows the
-    values in the job summary.
+    and `actions`. Each threshold in `vitest.config.ts` is the value of 2026-11-01, rounded down to a whole number,
+    minus 1. Vitest fails the run when a value is below its threshold. CI shows the values in the job summary.
+  - When you set `E2E_COVERAGE`, the web end-to-end tests record the V8 coverage of the app scripts in Chromium
+    (`e2e/fixtures.ts`). The web specs import `test` from that file, and a lint rule blocks an import from
+    `@playwright/test`.
+  - `scripts/coverage.ts` converts that coverage with `ast-v8-to-istanbul`, the converter of `@vitest/coverage-v8`.
+    The script also uses `@vitest/istanbul-lib-coverage` and `@vitest/istanbul-lib-report` 1.x, the major version
+    that `@vitest/coverage-v8` uses. Then the script adds the converted coverage to the unit coverage.
+  - The React Compiler runs only for the client (`applyToEnvironmentHook`), so a component has more statements in
+    the browser than in the unit tests. The script keeps the statements, functions and branches of the unit coverage.
+    The script adds to each one the counts of the end-to-end entries that start at the same line and column.
+  - `pnpm coverage:all` needs `coverage/coverage-final.json` from `pnpm test:coverage`. `pnpm coverage:all` runs
+    the web end-to-end tests with coverage and writes `coverage-all/`. In CI, the "Coverage of all tests" job merges
+    the coverage of the four web shards with the unit coverage. Its thresholds follow the same rule. The desktop
+    end-to-end tests do not count.
   - Fuzz tests (`*.fuzz.test.ts`, `*.fuzz.browser.test.ts`) use fast-check. They give random and changed input to
     each reader of untrusted data.
   - The readers are for diagram files and migrations, copied nodes, share links, trace files, images with a

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { copyTemplate } from './helpers'
 
 test('follows the system contrast, keeps a choice after a reload, and exports the standard colours', async ({

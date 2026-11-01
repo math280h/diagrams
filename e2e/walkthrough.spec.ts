@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './fixtures'
 import { copyTemplate } from './helpers'
 
 async function openFlows(page: Page) {

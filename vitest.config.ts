@@ -1,5 +1,6 @@
 import { playwright } from '@vitest/browser-playwright'
 import { defineConfig, mergeConfig } from 'vitest/config'
+import { COVERAGE_EXCLUDE, COVERAGE_INCLUDE } from './scripts/coverage-files.ts'
 import viteConfig from './vite.config.ts'
 
 // Vite optimizes the dependencies of warm-up files while browser tests run, and then reloads a running test.
@@ -11,9 +12,9 @@ export default mergeConfig(
     test: {
       coverage: {
         provider: 'v8',
-        include: ['src/**/*.{ts,tsx}', 'electron/**/*.ts', 'scripts/**/*.ts', 'actions/**/*.mjs'],
-        exclude: ['**/*.test.{ts,mjs}', '**/*.d.ts'],
-        reporter: ['text-summary', 'json-summary', 'html'],
+        include: COVERAGE_INCLUDE,
+        exclude: COVERAGE_EXCLUDE,
+        reporter: ['text-summary', 'json-summary', 'json', 'html'],
         reportOnFailure: true,
         thresholds: { statements: 50, branches: 42, functions: 39, lines: 51 },
       },

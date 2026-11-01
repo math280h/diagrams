@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { copyTemplate } from './helpers'
 
 test('resizes the properties and the flow panel, and keeps the sizes', async ({ page }) => {

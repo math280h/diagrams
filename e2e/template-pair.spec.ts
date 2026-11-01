@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { copyTemplate } from './helpers'
 
 test('copies the containers diagram with the C4 context and opens it from the system card', async ({ page }) => {

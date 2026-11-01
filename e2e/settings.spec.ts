@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { copyTemplate } from './helpers'
 
 test('keeps the settings of the diagram and of the app on separate tabs', async ({ page }) => {

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { copyTemplate } from './helpers'
 
 test('shows less detail and larger titles when zoomed out, and a minimap that hides', async ({ page }) => {

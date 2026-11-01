@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test('follows the system colour scheme until the user picks a theme', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' })
