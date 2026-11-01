@@ -6,19 +6,19 @@ import { unzipSync } from 'fflate'
 import * as simpleIcons from 'simple-icons'
 import { optimize } from 'svgo'
 import { AWS, AZURE, GCP, KUBERNETES, LOGO_ALIASES, LOGOS, SALESFORCE } from './catalog.mjs'
+import {
+  AWS_PACKAGE_URL,
+  AZURE_PACKAGE_URL,
+  GCP_CATEGORY_URL,
+  GCP_CORE_URL,
+  KUBERNETES_ICONS_URL,
+  SALESFORCE_ICONS_URL,
+} from './sources.ts'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const CACHE = join(ROOT, 'node_modules', '.cache', 'diagram-icons')
 const OUT = join(ROOT, 'src', 'canvas', 'icons', 'data')
 
-const AWS_PACKAGE_URL =
-  'https://d1.awsstatic.com/onedam/marketing-channels/website/public/shared/architecture-icon-release/Icon-package_07312026.5846e92413caa21490223536cc97f1269e44fa92.zip'
-const AZURE_PACKAGE_URL = 'https://arch-center.azureedge.net/icons/Azure_Public_Service_Icons_V24.zip'
-const GCP_CORE_URL = 'https://services.google.com/fh/files/misc/core-products-icons.zip'
-const GCP_CATEGORY_URL = 'https://services.google.com/fh/files/misc/category-icons.zip'
-const KUBERNETES_COMMIT = '70a4bb2d8cc35bb0672f221bad9bc60c27a6f94b'
-const KUBERNETES_ICONS_URL = `https://raw.githubusercontent.com/kubernetes/community/${KUBERNETES_COMMIT}/icons/svg/`
-const SALESFORCE_ICONS_URL = 'https://registry.npmjs.org/@salesforce-ux/icons/-/icons-10.18.1.tgz'
 const SALESFORCE_ICONS_FOLDER = 'package/dist/salesforce-lightning-design-system-icons/'
 const SALESFORCE_UTILITY_GLYPH = 0.64
 const TAR_BLOCK = 512

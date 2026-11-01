@@ -31,6 +31,29 @@ gh attestation verify Diagrams-0.2.0-win-x64.exe --repo math280h/diagrams \
 The command fails if the file changed after the build, or if a different workflow, branch or tag built it. Builds of
 `main` (`preview-<run>` pre-releases) come from `.github/workflows/preview-app.yml` and `refs/heads/main`.
 
+### Software bill of materials
+
+Each release newer than v0.1.4 has `Diagrams-<version>-sbom.cdx.json`, a CycloneDX 1.6 SBOM. It lists:
+
+- the npm packages that the app uses at run time, with their licences and SHA-512 hashes;
+- the compiled programs inside packages (Graphviz in `@hpcc-js/wasm-graphviz`, llhttp in undici);
+- Electron, with the versions of Chromium, V8, Node.js and the projects inside Node.js;
+- the projects that `LICENSES.chromium.html` names for Chromium, without versions;
+- the fonts and the icon sets as data, with the SHA-256 of each icon data file, and each logo that has its own licence;
+- the code that the installers add: NSIS with its plugins and Elevate (Windows), and the AppImage runtime and
+  libraries (Linux).
+
+The release fails when the app bundles hold a package that the SBOM does not list. Builds of `main` have
+`Diagrams-preview-sbom.cdx.json`. Each
+installer also has an SBOM attestation, so you can check that the SBOM belongs to it:
+
+```sh
+gh attestation verify Diagrams-0.2.0-win-x64.exe --repo math280h/diagrams --predicate-type https://cyclonedx.org/bom \
+  --signer-workflow math280h/diagrams/.github/workflows/release.yml --source-ref refs/tags/v0.2.0
+```
+
+Add `--format json` to see the SBOM in the attestation.
+
 ## Scope
 
 These parts handle data from outside the app:

@@ -262,7 +262,8 @@ Icon names are Lucide names (`database`) or prefixed set icons: `aws:`, `azure:`
   keywords.
 - `pnpm icons` downloads the packages to `node_modules/.cache` and optimizes them with SVGO. It writes one JSON file per
   set to `src/canvas/icons/data`.
-- For a new AWS or Azure release, change its URL in `scripts/icons/build.mjs` and run `pnpm icons`.
+- `scripts/icons/sources.ts` holds the download URL, version, website and terms of each set. `pnpm icons` and the
+  SBOM read it. For a new AWS or Azure release, change its URL and version there and run `pnpm icons`.
 - Google Cloud products without a unique icon use their category icon.
 - Set files are separate assets (`?url` imports), fetched on first use, outside the main bundle.
 - Cloud icons are `<img>` data URLs with their own colours and gradient ids. The terms forbid changed artwork, so an
@@ -983,6 +984,31 @@ The React app in Electron, plus file storage, agent control, the website handoff
   Sigstore) after the test and before the upload. The attestation names the workflow file and the tag, so
   `gh attestation verify --signer-workflow --source-ref` rejects a file from another workflow or branch. A tag needs
   an admin, but any branch can change a workflow file. electron-updater does not check attestations.
+- SBOM: the "Write the SBOM" job builds the bundles and runs `pnpm sbom --prod` (CycloneDX 1.6) once per release.
+  `scripts/sbom.ts` completes that SBOM. Each platform job attests the same SBOM for its installers.
+  - The production packages of pnpm include some that the bundles leave out, such as `@types` packages.
+  - Some bundled packages are not in the list of pnpm, for example dev dependencies whose CSS ships (tailwindcss,
+    shadcn). The script adds each one from its `package.json` and the lockfile hash, without its dependencies. As a
+    result, shadcn stays a dev dependency, and its CLI dependencies stay out of the SBOM.
+  - The script fails when a bundled package gets no component. CI runs the same check on each pull request.
+  - The script adds each program in `EMBEDDED_SOFTWARE` inside the package version that holds it, with a purl and a
+    CPE. `EMBEDDED_VERSIONS` finds the program versions: Graphviz from the loaded module, llhttp from
+    `deps/llhttp/include/llhttp.h` at the undici release tag on GitHub.
+  - Electron is a dev dependency, so the script adds it. The script starts the Electron binary with
+    `ELECTRON_RUN_AS_NODE` and reads `process.versions`. Chromium, V8 and Node.js go inside Electron. The projects of
+    Node.js, such as c-ares, nghttp2, SQLite and libuv, go inside Node.js.
+  - The projects of Chromium come from `LICENSES.chromium.html` next to the binary. That file does not give versions.
+  - Each Fontsource package gets its font as a `data` component, from the `metadata.json` of the package.
+  - Each icon set in `src/canvas/icons/data` becomes a `data` component, from `scripts/icons/sources.ts`, with the
+    SHA-256 of its data file. Simple Icons holds a component for each bundled logo that has its own licence.
+  - app-builder-lib (electron-builder) holds the code that the installers add next to the app:
+    - NSIS 3.04 with the plugins of nsis-resources 3.4.1, for the Windows installer and uninstaller.
+    - Elevate, which the Windows installer puts in `resources\elevate.exe`.
+    - The AppImage runtime (AppImageKit `effcebc`), with squashfuse and liblzma.
+    - Six libraries in `usr/lib` of the AppImage.
+  - `INSTALLER_BUNDLES` names the toolset bundles with their SHA-256. A test fails when app-builder-lib downloads
+    other bundles, or when `electron-builder.ts` sets `toolsets`.
+  - The app gets a `pkg:github` purl, because the npm purl of the private package names another package.
 - Preview tags (`v0.2.0-beta.1`) build in the `preview` environment without approval and publish as GitHub
   pre-releases.
 - Channels: a normal version reads `/releases/latest` (never a pre-release); a beta or alpha takes the newest release
@@ -1175,7 +1201,18 @@ those texts.
 `scripts/third-party-licenses.ts`, a Vite plugin, collects the package of each module in the web and worker builds and
 writes `third-party-licenses.txt` with each licence text. The desktop main build writes
 `third-party-licenses.main.txt`. The fonts (OFL), elkjs (EPL) and mediabunny (MPL) need a licence text or source
-statement in each copy. A hand-kept list drifts from the lockfile.
+statement in each copy. A list that people keep by hand can become different from the lockfile. Tailwind resolves the `@import` and
+`@plugin` rules of the style sheets itself, so the module graph does not hold the packages that these rules name.
+The plugin reads the rules of each style sheet in the bundle and adds those packages: tailwindcss, tw-animate-css
+and shadcn.
+
+Some packages hold another program in compiled form, with its own licence: Graphviz in `@hpcc-js/wasm-graphviz`
+(web worker and main), llhttp in undici (main). `EMBEDDED_SOFTWARE` names each one with its licence text. The build
+fails when a bundled module loads WebAssembly or holds a base64 WebAssembly module, and its package has no entry.
+
+The standalone player build writes `dist/standalone/licenses.txt`, which each web page export holds. The preload
+build writes no licence file, so `withoutPackages` fails the preload build when that build bundles a package. The SBOM check reads the
+licence files of the web, player and main builds.
 
 `THIRD-PARTY-NOTICES.md` covers icons and logos (data, not packages). A test checks that it lists every bundled Simple
 Icons logo that has its own licence.
