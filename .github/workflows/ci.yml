@@ -134,14 +134,55 @@ jobs:
           mode: compare
           publish: 'false'
           app: node_modules/.bin/electron .
-      - name: Package the app without installers
-        run: pnpm exec electron-builder --dir --publish never
-      - name: Test the packaged app
-        if: runner.os != 'Linux'
-        run: node scripts/smoke-package.mjs
-      - name: Test the packaged app
+      - name: Build the installers of this system
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            Windows) targets=(--win nsis --x64) ;;
+            macOS) targets=(--mac dmg --arm64) ;;
+            Linux) targets=(--linux AppImage deb --x64) ;;
+          esac
+          pnpm exec electron-builder "${targets[@]}" --publish never
+      - name: Install, test and remove the Windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem release -Filter '*-win-x64.exe' | Where-Object Name -NotMatch '__uninstaller'
+          $install = Start-Process -FilePath $installer.FullName -ArgumentList '/S' -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "The installer ended with exit code $($install.ExitCode)." }
+          $app = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter 'Diagrams.exe' | Select-Object -First 1
+          if (-not $app) { throw 'The installer did not install Diagrams.exe.' }
+          node scripts/smoke-package.mjs $app.FullName
+          if ($LASTEXITCODE -ne 0) { throw 'The installed app failed the smoke test.' }
+          $uninstaller = Get-ChildItem $app.DirectoryName -Filter 'Uninstall*.exe' | Select-Object -First 1
+          $uninstall = Start-Process -FilePath $uninstaller.FullName -ArgumentList '/S', "_?=$($app.DirectoryName)" -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw "The uninstaller ended with exit code $($uninstall.ExitCode)." }
+          if (Test-Path $app.FullName) { throw 'The uninstaller did not remove Diagrams.exe.' }
+      - name: Mount and test the macOS disk image
+        if: runner.os == 'macOS'
+        run: |
+          mount=$(mktemp -d)
+          hdiutil attach release/*-mac-arm64.dmg -nobrowse -readonly -mountpoint "$mount"
+          trap 'hdiutil detach "$mount" -force' EXIT
+          node scripts/smoke-package.mjs "$mount/Diagrams.app/Contents/MacOS/Diagrams"
+      - name: Install FUSE 2 for the AppImage runtime
         if: runner.os == 'Linux'
-        run: xvfb-run --auto-servernum node scripts/smoke-package.mjs
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y libfuse2t64
+      - name: Test the AppImage
+        if: runner.os == 'Linux'
+        run: |
+          appimage=$(ls release/*.AppImage)
+          chmod +x "$appimage"
+          xvfb-run --auto-servernum node scripts/smoke-package.mjs "$appimage"
+      - name: Install, test and remove the deb package
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y "$PWD/$(ls release/*.deb)"
+          executable=$(dpkg -L diagrams | grep -E '^/opt/.+/diagrams$')
+          xvfb-run --auto-servernum node scripts/smoke-package.mjs "$executable"
+          sudo apt-get remove -y diagrams
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
