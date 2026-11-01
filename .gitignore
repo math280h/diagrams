@@ -41,3 +41,5 @@ test-results
 playwright-report
 .impeccable
 .app-screens
+
+coverage

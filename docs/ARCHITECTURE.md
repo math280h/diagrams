@@ -55,6 +55,10 @@ moves along connections; a flow walks a user through the system while the camera
     document, so Dependabot alerts and the dependency review see no packages. CI installs the `packageManager`
     version with `pnpm/action-setup`, and a CI step fails when the lockfile has more than one document.
 - **Tests**: Vitest 5 (node and Chromium browser mode), Playwright. Real browser for Mermaid and export.
+  - `pnpm test:coverage` measures the coverage of the unit and browser tests (V8) for `src`, `electron`, `scripts`
+    and `actions`. The end-to-end tests do not count. Each threshold in `vitest.config.ts` is the value of 2026-11-01,
+    rounded down to a whole number, minus 1. Vitest fails the run when a value is below its threshold. CI shows the
+    values in the job summary.
   - Fuzz tests (`*.fuzz.test.ts`, `*.fuzz.browser.test.ts`) use fast-check. They give random and changed input to
     each reader of untrusted data.
   - The readers are for diagram files and migrations, copied nodes, share links, trace files, images with a
