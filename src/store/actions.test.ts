@@ -950,7 +950,8 @@ describe('after a drag', () => {
     const child = { ...card(700, 0), parentId: box.id }
     useDoc.setState({ nodes: [box, child] })
     reparentAfterDrag([child.id])
-    expect(nodeById(child.id)).toMatchObject({ parentId: undefined, position: { x: 750, y: 50 } })
+    expect(nodeById(child.id)?.parentId).toBeUndefined()
+    expect(nodeById(child.id)?.position).toEqual({ x: 750, y: 50 })
   })
 
   it('does not put a dragged group into another group', () => {

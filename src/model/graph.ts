@@ -132,7 +132,9 @@ export function relativePosition(
   absolute: { x: number; y: number },
   parentAbsolute: { x: number; y: number } | undefined,
 ): { x: number; y: number } {
-  return parentAbsolute ? { x: absolute.x - parentAbsolute.x, y: absolute.y - parentAbsolute.y } : absolute
+  return parentAbsolute
+    ? { x: absolute.x - parentAbsolute.x, y: absolute.y - parentAbsolute.y }
+    : { x: absolute.x, y: absolute.y }
 }
 
 export function absoluteRect(node: DiagramNode, byId: ReadonlyMap<string, DiagramNode>): Rect {
