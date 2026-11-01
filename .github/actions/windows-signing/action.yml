@@ -50,7 +50,7 @@ runs:
         $msi = Join-Path $env:RUNNER_TEMP 'kmscng\kmscng.msi'
         $install = Start-Process msiexec.exe -ArgumentList '/i', "`"$msi`"", '/qn', '/norestart' -Wait -PassThru
         if ($install.ExitCode -ne 0) { throw "The installer of the CNG provider ended with exit code $($install.ExitCode)." }
-        # certutil -csplist lists the providers and then ends with exit code 0x80004001.
+        # certutil -csplist lists the providers and then ends with an exit code that is not 0.
         $providers = certutil -csplist 2>&1
         $listExitCode = $LASTEXITCODE
         $global:LASTEXITCODE = 0
