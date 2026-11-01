@@ -112,12 +112,13 @@ function appImageProblems(appImage: string, temp: string): string[] {
 
 function main() {
   const [kind, ...files] = process.argv.slice(2)
-  if ((kind !== 'nsis' && kind !== 'appimage') || files.length === 0) {
+  const [first] = files
+  if ((kind !== 'nsis' && kind !== 'appimage') || first === undefined) {
     throw new Error('Usage: node scripts/installer-contents.ts nsis <installer> <uninstaller> | appimage <AppImage>')
   }
   const temp = mkdtempSync(path.join(tmpdir(), 'installer-contents-'))
   try {
-    const problems = kind === 'nsis' ? nsisProblems(files, temp) : appImageProblems(files[0], temp)
+    const problems = kind === 'nsis' ? nsisProblems(files, temp) : appImageProblems(first, temp)
     for (const problem of problems) console.error(problem)
     if (problems.length > 0) process.exitCode = 1
     else console.log(`The SBOM lists the code that electron-builder adds to ${files.join(' and ')}.`)

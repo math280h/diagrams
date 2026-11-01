@@ -34,7 +34,7 @@ const NO_AREA = 'Build and docs'
 export function changeKind(pullRequest: Pick<MergedPullRequest, 'title' | 'labels'>): ChangeKind {
   if (pullRequest.labels.includes('bug')) return 'Fixes'
   if (pullRequest.labels.includes('enhancement')) return 'New'
-  const verb = pullRequest.title.trim().split(/\s+/, 1)[0].toLowerCase()
+  const [verb = ''] = pullRequest.title.trim().toLowerCase().split(/\s+/, 1)
   if (FIX_VERBS.has(verb)) return 'Fixes'
   if (NEW_VERBS.has(verb)) return 'New'
   return 'Improvements'
@@ -57,14 +57,14 @@ export function changeArea(files: readonly string[]): string {
 export function toolNames(source: string): string[] {
   const start = source.indexOf('export const TOOL_DEFINITIONS')
   if (start < 0) return []
-  return [...source.slice(start).matchAll(/^ {2}([a-z_]+): \{$/gm)].map((match) => match[1])
+  return [...source.slice(start).matchAll(/^ {2}([a-z_]+): \{$/gm)].map((match) => match[1]!)
 }
 
 /** Returns the shortcut labels of the shortcut sheet in `src/lib/shortcut-keys.ts`. */
 export function shortcutLabels(source: string): string[] {
   const start = source.indexOf('export const SHORTCUT_GROUPS')
   if (start < 0) return []
-  return [...source.slice(start).matchAll(/label: '([^']+)'/g)].map((match) => match[1])
+  return [...source.slice(start).matchAll(/label: '([^']+)'/g)].map((match) => match[1]!)
 }
 
 function added(before: readonly string[], after: readonly string[]) {
