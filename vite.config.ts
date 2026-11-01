@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { contentSecurityPolicy } from './scripts/content-security-policy.ts'
+import { reactCompilerCheck, reactCompilerLogger } from './scripts/react-compiler.ts'
 import { releaseNotes } from './scripts/release-notes.ts'
 import { serviceWorker } from './scripts/service-worker.ts'
 import { standalonePlayer } from './scripts/standalone-player.ts'
@@ -14,7 +15,8 @@ const licenses = thirdPartyLicenses()
 export default defineConfig({
   plugins: [
     react(),
-    babel({ presets: [reactCompilerPreset()] }),
+    babel({ presets: [reactCompilerPreset({ logger: reactCompilerLogger })] }),
+    reactCompilerCheck(),
     tailwindcss(),
     licenses.main,
     standalonePlayer(),
