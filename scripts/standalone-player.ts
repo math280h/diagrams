@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import { build, type Plugin, type Rolldown } from 'vite'
 import { PLAYER_FILES, type PlayerFiles } from '../src/standalone/files.ts'
+import { reactCompilerLogger } from './react-compiler.ts'
 import { thirdPartyLicenses } from './third-party-licenses.ts'
 
 const ENTRY = fileURLToPath(new URL('../src/standalone/main.tsx', import.meta.url))
@@ -53,7 +54,7 @@ async function buildPlayer(): Promise<PlayerFiles> {
       plugins: [
         withoutIconSetFiles(),
         react(),
-        babel({ presets: [reactCompilerPreset()] }),
+        babel({ presets: [reactCompilerPreset({ logger: reactCompilerLogger })] }),
         tailwindcss(),
         licenses.main,
       ],

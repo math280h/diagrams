@@ -9,6 +9,9 @@ moves along connections; a flow walks a user through the system while the camera
 
 - **Build**: Vite 8 (Rolldown, Oxc), `@vitejs/plugin-react` 6, React Compiler 1.0. HMR; the compiler removes manual
   memoization.
+  - React Compiler does not compile a function that it cannot handle, and at the default `panicThreshold` the build
+    shows no warning. `scripts/react-compiler.ts` collects these functions from the app build and the player build.
+    The build fails when they differ from `KNOWN_SKIPS`, or when the compiler fails.
 - **Language**: TypeScript 7. Native compiler for `tsc -b`.
 - **Canvas**: `@xyflow/react` 12 (MIT). Plain React and HTML nodes, full CSS control. Not tldraw (paid licence or
   watermark) or Excalidraw (hand-drawn).
