@@ -38,8 +38,10 @@ moves along connections; a flow walks a user through the system while the camera
     example no provenance after releases with provenance.
   - `blockExoticSubdeps`: no git or tarball sources in sub-dependencies.
   - `strictDepBuilds`: pnpm stops at an install script that `allowBuilds` does not list.
-  - `overrides`: minimatch 7.0 to 11.0.0 becomes 11 (GHSA-g3hv-75wg-m249). semver 5 and 6 become 7, because their
-    last releases have no provenance and fail the trust check. Their callers use only functions that semver 7 keeps.
+  - `overrides`: minimatch 7.0 to 11.0.0 becomes 11 (GHSA-g3hv-75wg-m249). glob 9 to 14.0.1 becomes 14
+    (GHSA-3g3m-2fjr-6pw4). Only `@electron/asar` uses glob, and it calls only the `glob()` function, which glob
+    14 keeps. semver 5 and 6 become 7, because their last releases have no provenance and fail the trust check. Their
+    callers use only functions that semver 7 keeps.
   - `overrides` for electron-builder 26: `@electron/asar` becomes 4 and `@electron/universal` becomes 3, the versions
     that the electron-builder 27 alpha uses. app-builder-lib loads them with `import()` and calls
     `createPackageFromStreams` and `makeUniversalApp`, which have the same signatures as in the earlier versions.
