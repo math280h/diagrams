@@ -60,11 +60,21 @@ export function toolNames(source: string): string[] {
   return [...source.slice(start).matchAll(/^ {2}([a-z_]+): \{$/gm)].map((match) => match[1]!)
 }
 
-/** Returns the shortcut labels of the shortcut sheet in `src/lib/shortcut-keys.ts`. */
+const SHORTCUT_SOURCES = [
+  { path: 'src/lib/shortcut-keys.ts', list: 'export const SHORTCUT_GROUPS' },
+  { path: 'src/editor/shortcuts.ts', list: 'export const SHORTCUTS' },
+]
+
+/**
+ * Returns the shortcut labels of a shortcut sheet: the `SHORTCUT_GROUPS` list of `src/lib/shortcut-keys.ts` or the
+ * `SHORTCUTS` list of `src/editor/shortcuts.ts`.
+ */
 export function shortcutLabels(source: string): string[] {
-  const start = source.indexOf('export const SHORTCUT_GROUPS')
-  if (start < 0) return []
-  return [...source.slice(start).matchAll(/label: '([^']+)'/g)].map((match) => match[1]!)
+  for (const { list } of SHORTCUT_SOURCES) {
+    const start = source.indexOf(list)
+    if (start >= 0) return [...source.slice(start).matchAll(/label: '([^']+)'/g)].map((match) => match[1]!)
+  }
+  return []
 }
 
 function added(before: readonly string[], after: readonly string[]) {
@@ -129,6 +139,14 @@ function run(command: string, args: string[]): string {
   return execFileSync(command, args, { encoding: 'utf8' }).trim()
 }
 
+function shortcutSheetAt(ref: string): string {
+  for (const { path } of SHORTCUT_SOURCES) {
+    const source = fileAt(ref, path)
+    if (source) return source
+  }
+  return ''
+}
+
 function fileAt(ref: string, path: string): string {
   try {
     return execFileSync('git', ['show', `${ref}:${path}`], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
@@ -185,8 +203,8 @@ function main() {
         after: toolNames(fileAt(tag, 'src/agent/tool-definitions.ts')),
       },
       shortcuts: {
-        before: shortcutLabels(fileAt(base, 'src/lib/shortcut-keys.ts')),
-        after: shortcutLabels(fileAt(tag, 'src/lib/shortcut-keys.ts')),
+        before: shortcutLabels(shortcutSheetAt(base)),
+        after: shortcutLabels(shortcutSheetAt(tag)),
       },
     }),
   )
