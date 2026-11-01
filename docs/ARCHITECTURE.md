@@ -9,6 +9,9 @@ moves along connections; a flow walks a user through the system while the camera
 
 - **Build**: Vite 8 (Rolldown, Oxc), `@vitejs/plugin-react` 6, React Compiler 1.0. HMR; the compiler removes manual
   memoization.
+  - React Compiler does not compile a function that it cannot handle, and at the default `panicThreshold` the build
+    shows no warning. `scripts/react-compiler.ts` collects these functions from the app build and the player build.
+    The build fails when they differ from `KNOWN_SKIPS`, or when the compiler fails.
 - **Language**: TypeScript 7. Native compiler for `tsc -b`.
 - **Canvas**: `@xyflow/react` 12 (MIT). Plain React and HTML nodes, full CSS control. Not tldraw (paid licence or
   watermark) or Excalidraw (hand-drawn).
@@ -20,8 +23,9 @@ moves along connections; a flow walks a user through the system while the camera
   needs exact frames. Motion limits each step to 40 ms.
 - **Layout**: elkjs 0.12 and an own grid and edge router, in a web worker. ELK layers flows. The grid places groups
   that ELK stacks badly. The router keeps edges out of groups that hold neither end.
-- **Image export**: `@zumer/snapdom` 3.3. DOM capture that embeds fonts.
-- **Video export**: mediabunny 1.61 (MP4 H.264, WebM VP9), a WebCodecs muxer.
+- **Image export**: `@zumer/snapdom` 3.7. DOM capture that embeds fonts.
+- **Video export**: mediabunny 1.65 (MP4 H.264, WebM VP9), a WebCodecs muxer. `creationTime: null` keeps the export
+  time out of the file, because mediabunny writes the current time by default.
 - **GIF export**: modern-gif 2.1, a maintained encoder with a worker.
 - **Mermaid import**: `mermaid` 12, which the app loads on demand. `getDiagramFromText` + `db.getData()` parse
   flowcharts without a render.
@@ -47,6 +51,10 @@ moves along connections; a flow walks a user through the system while the camera
   - `osv-scanner.toml` tells OSV-Scanner to ignore the deepmerge advisory (GHSA-gcqx-w48m-w2h4), with a reason and
     an `ignoreUntil` date. The advisory has no fix, and deepmerge is only in the shadcn CLI. OpenSSF Scorecard reads
     this file for its Vulnerabilities check. Dependabot does not read it.
+  - `ajv`, `ajv-formats` and `jose` are dependencies of the app. `@vitemcp/server` loads them as optional peers, and
+    the main bundle holds them. Without these entries in `package.json`, pnpm takes the peers from the packages of the
+    dev dependencies. When no package has a version in the peer range, the bundler takes a hoisted copy that the SBOM
+    does not list.
   - A Dependabot security update to a version that is less than one day old can fail. Wait one day, or add the
     package to `minimumReleaseAgeExclude`. A version that fails the trust check for a known reason goes in
     `trustPolicyExclude`.

@@ -1,6 +1,7 @@
 # Diagrams
 
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/math280h/diagrams/badge)](https://scorecard.dev/viewer/?uri=github.com/math280h/diagrams)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16147/badge)](https://www.bestpractices.dev/projects/16147)
 
 Architecture diagrams and user flows that look finished and move. Free, with no account. Your diagrams are stored
 only on your computer, never on a server ([privacy](#privacy)).
