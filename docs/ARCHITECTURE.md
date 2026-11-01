@@ -34,8 +34,19 @@ moves along connections; a flow walks a user through the system while the camera
     example no provenance after releases with provenance.
   - `blockExoticSubdeps`: no git or tarball sources in sub-dependencies.
   - `strictDepBuilds`: pnpm stops at an install script that `allowBuilds` does not list.
-  - `overrides`: minimatch 9 and 10 become 11 (GHSA-g3hv-75wg-m249). semver 5 and 6 become 7, because their last
-    releases have no provenance and fail the trust check. Their callers use only functions that semver 7 keeps.
+  - `overrides`: minimatch 7.0 to 11.0.0 becomes 11 (GHSA-g3hv-75wg-m249). semver 5 and 6 become 7, because their
+    last releases have no provenance and fail the trust check. Their callers use only functions that semver 7 keeps.
+  - `overrides` for electron-builder 26: `@electron/asar` becomes 4 and `@electron/universal` becomes 3, the versions
+    that the electron-builder 27 alpha uses. app-builder-lib loads them with `import()` and calls
+    `createPackageFromStreams` and `makeUniversalApp`, which have the same signatures as in the earlier versions.
+    `filelist` becomes 2 for jake, which only the ejs command line uses.
+  - `electron-builder-squirrel-windows: '-'` removes that package and the packages that only it needs. That package
+    is a peer dependency of app-builder-lib, and pnpm installs it. app-builder-lib loads that package only for the
+    `squirrel` target, which `electron-builder.ts` does not use. Together, these overrides remove minimatch 3 and 5,
+    glob 7, dir-compare, rimraf 2 and temp.
+  - `osv-scanner.toml` tells OSV-Scanner to ignore the deepmerge advisory (GHSA-gcqx-w48m-w2h4), with a reason and
+    an `ignoreUntil` date. The advisory has no fix, and deepmerge is only in the shadcn CLI. OpenSSF Scorecard reads
+    this file for its Vulnerabilities check. Dependabot does not read it.
   - A Dependabot security update to a version that is less than one day old can fail. Wait one day, or add the
     package to `minimumReleaseAgeExclude`. A version that fails the trust check for a known reason goes in
     `trustPolicyExclude`.
