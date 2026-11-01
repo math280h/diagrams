@@ -452,6 +452,7 @@ describe('node and edge data', () => {
     useDoc.setState({ nodes: [label] })
     expect(() => updateNodeData(label.id, { title: 'Nope' })).toThrow('A text node has no "title" field.')
     expect(nodeById(label.id).data).toEqual(defaultTextData())
+    expect(canUndo()).toBe(false)
   })
 
   it('makes separate undo steps for edits with the same key that are far apart in time', () => {
@@ -876,6 +877,7 @@ describe('patch, pin and colour nodes', () => {
     expect(canUndo()).toBe(false)
     expect(() => patchNodesData(new Map([[box.id, { title: 'VPC' }]]))).toThrow('A group node has no "title" field.')
     expect(nodeById(box.id).data).toEqual(box.data)
+    expect(canUndo()).toBe(false)
   })
 
   it('pins nodes and tells when the whole selection is pinned', () => {
