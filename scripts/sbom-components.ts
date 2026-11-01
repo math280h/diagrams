@@ -269,44 +269,110 @@ export function iconSetComponent(
 
 const BUILDER_BINARIES = 'https://github.com/electron-userland/electron-builder-binaries/releases/download'
 
+const NSIS_DOWNLOADS = 'https://sourceforge.net/projects/nsis/files/NSIS%203/3.12'
+const TYPE2_RUNTIME = 'https://github.com/AppImage/type2-runtime'
+
 /**
- * The bundles of the default toolsets of electron-builder, from which the installers take code. A test compares the
- * names and SHA-256 checksums with app-builder-lib.
+ * The toolsets that `electron-builder.ts` selects, with the bundle that app-builder-lib downloads for each one. The
+ * installers take code from these bundles. A test compares them with the configuration and with app-builder-lib.
  */
-export const INSTALLER_BUNDLES = {
-  nsis: { name: 'nsis-3.0.4.1', sha256: '9877df902530f96357d13a7a31ae2b9df67f48b11ffc9a1700a7c961574ec5fa' },
-  nsisResources: {
-    name: 'nsis-resources-3.4.1',
-    sha256: '593a9a92ef958321293ac6a2ee61e64bf1bd543142a5bd6b3d310709cc924103',
+export const INSTALLER_TOOLSETS = {
+  nsis: {
+    version: '1.2.1',
+    file: 'nsis-bundle-3.12.tar.gz',
+    sha256: '56997fdefe25e7928a1a68b4583d08b240b66cf660234053b20131a74cc082f4',
   },
-  appImage: { name: 'appimage-12.0.1', sha256: 'd12ff7eb8f1d1ec4652ca5237a7fbdca33acc0c758045636feca62dc6ecb8ec4' },
+  appimage: {
+    version: '1.0.3',
+    file: 'appimage-tools-runtime-20251108.tar.gz',
+    sha256: '84021a78ee214ae6fd33a2d62a92ba25542dd10bc86bf117a9b2d0bba44e7665',
+  },
 } as const
 
-const NSIS_PLUGINS = [
-  'EmbedHTML',
-  'INetC',
-  'nsis7z',
-  'nsisunz',
-  'nsProcess',
-  'SpiderBanner',
-  'StdUtils',
-  'UAC',
-  'WinShell',
-]
-const APPIMAGE_LIBRARIES = [
-  'libappindicator.so.1',
-  'libgconf-2.so.4',
-  'libindicator.so.7',
-  'libnotify.so.4',
-  'libXss.so.1',
-  'libXtst.so.6',
+/** A file that electron-builder copies from a toolset bundle into an installer. */
+export interface InstallerFile {
+  name: string
+  sha256: string
+}
+
+interface NsisPlugin extends InstallerFile {
+  version?: string
+  license?: License
+  source: string
+}
+
+/**
+ * The plugins from outside NSIS that the Windows installer or uninstaller holds in `$PLUGINSDIR`. `sha256` is the hash
+ * of the DLL in `windows/Plugins/x86-unicode` of the NSIS bundle. CI compares this list with the built installers.
+ */
+export const NSIS_PLUGINS: readonly NsisPlugin[] = [
+  {
+    name: 'nsis7z',
+    version: '19.00',
+    sha256: 'b393f05e8ff919ef071181050e1873c9a776e1a0ae8329aefff7007d0cadf592',
+    license: { license: { name: 'Public domain (LZMA SDK)' } },
+    source: 'https://nsis.sourceforge.io/mediawiki/images/6/69/Nsis7z_19.00.7z',
+  },
+  {
+    name: 'SpiderBanner',
+    sha256: '996a259e53ca18b89ec36d038c40148957c978c0fd600a268497d4c92f882a93',
+    source: 'https://nsis.sourceforge.io/mediawiki/images/4/4c/SpiderBanner_plugin.zip',
+  },
+  {
+    name: 'StdUtils',
+    version: '1.14',
+    sha256: 'b72e9013a6204e9f01076dc38dabbf30870d44dfc66962adbf73619d4331601e',
+    license: { license: { id: 'LGPL-2.1-or-later' } },
+    source: 'https://github.com/lordmulder/stdutils/releases/download/1.14/StdUtils.2018-10-27.zip',
+  },
+  {
+    name: 'WinShell',
+    sha256: '9be85b986ea66a6997dde658abe82b3147ed2a1a3dcb784bb5176f41d22815a6',
+    source: 'https://nsis.sourceforge.io/mediawiki/images/5/54/WinShell.zip',
+  },
 ]
 
-function bundleReference(bundle: { name: string; sha256: string }) {
+/** The plugins of NSIS that the Windows installer or uninstaller holds. The NSIS component includes them. */
+export const NSIS_OWN_PLUGINS: readonly string[] = ['nsExec', 'System']
+
+/** The SHA-256 of `runtimes/runtime-x64` of the AppImage bundle, which starts the AppImage. */
+export const APPIMAGE_RUNTIME_SHA256 = '2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d'
+
+/** The libraries that electron-builder copies from `lib/x64` of the AppImage bundle to `usr/lib` of the AppImage. */
+export const APPIMAGE_LIBRARIES: readonly InstallerFile[] = [
+  { name: 'libappindicator3.so.1.0.0', sha256: 'e986459b76c7592b6ee5a27a3ed1bae6aded0c677e9d6efc52d34499006e7fde' },
+  { name: 'libgconf-2.so.4.1.5', sha256: 'ad8ca9b6042cb2790ea143451e1f166fb4806aef2dd96fba00b20e37a32abf35' },
+  { name: 'libindicator3.so.7.0.0', sha256: '9ef1b4287cbf444af16f3e3da4fa97b6305a0329f457fb25b1ae6a6fd271baea' },
+  { name: 'libnotify.so.4.0.0', sha256: '980f4f40c18f122a5e560fb41147ccc1bcd13992a2bbf26b11c4ecb8081c0fd3' },
+  { name: 'libXss.so.1.0.0', sha256: '270fe6e4d430118793d01cac5c6081d0ea9e244cfcf510475bc779bef21b754a' },
+  { name: 'libXtst.so.6.1.0', sha256: 'a3343e51790f219fbb3cb48bc1ba267b4727d9e9277e43cdfc081deb14d910b2' },
+]
+
+function sha256Hash(content: string) {
+  return { alg: 'SHA-256', content }
+}
+
+function download(url: string, sha256?: string): ExternalReference {
+  return { type: 'distribution', url, ...(sha256 && { hashes: [sha256Hash(sha256)] }) }
+}
+
+function toolsetReference(toolset: keyof typeof INSTALLER_TOOLSETS): ExternalReference {
+  const { version, file, sha256 } = INSTALLER_TOOLSETS[toolset]
+  return download(`${BUILDER_BINARIES}/${toolset}@${version}/${file}`, sha256)
+}
+
+function runtimeLibrary(
+  name: string,
+  version: string | undefined,
+  license: License,
+  details: Partial<Component> = {},
+): Component {
   return {
-    type: 'distribution',
-    url: `${BUILDER_BINARIES}/${bundle.name}/${bundle.name}.7z`,
-    hashes: [{ alg: 'SHA-256', content: bundle.sha256 }],
+    type: 'library',
+    name,
+    ...(version && { version, purl: `pkg:generic/${name.toLowerCase()}@${version}` }),
+    licenses: [license],
+    ...details,
   }
 }
 
@@ -318,7 +384,6 @@ function bundleReference(bundle: { name: string; sha256: string }) {
  */
 export function installerComponent(version: string): Component {
   const purl = `pkg:npm/app-builder-lib@${version}`
-  const { nsis, nsisResources, appImage } = INSTALLER_BUNDLES
   return {
     type: 'application',
     name: 'app-builder-lib',
@@ -334,54 +399,122 @@ export function installerComponent(version: string): Component {
       {
         type: 'application',
         name: 'NSIS',
-        version: '3.04',
-        purl: 'pkg:generic/nsis@3.04',
-        cpe: cpe('nullsoft:nullsoft_scriptable_install_system', '3.04'),
-        description: 'The code of the Windows installer, and of the uninstaller that it installs.',
+        version: '3.12',
+        purl: 'pkg:generic/nsis@3.12',
+        cpe: cpe('nullsoft:nullsoft_scriptable_install_system', '3.12'),
+        description:
+          'The code of the Windows installer, and of the uninstaller that it installs, from the strlen_8192 build ' +
+          'of NSIS. The installer and the uninstaller hold the plugins that their scripts call: ' +
+          `${NSIS_OWN_PLUGINS.join(', ')} of NSIS, and the plugins below.`,
         licenses: [{ license: { id: 'Zlib' } }],
-        externalReferences: [{ type: 'website', url: 'https://nsis.sourceforge.io' }, bundleReference(nsis)],
-        components: [
-          {
-            type: 'library',
-            name: 'NSIS plugins of electron-builder',
-            version: '3.4.1',
-            description: 'The Windows installer holds the plugins that its script calls.',
-            externalReferences: [bundleReference(nsisResources)],
-            components: NSIS_PLUGINS.map((name) => ({ type: 'library', name })),
-          },
+        externalReferences: [
+          { type: 'website', url: 'https://nsis.sourceforge.io' },
+          download(
+            `${NSIS_DOWNLOADS}/nsis-3.12.zip/download`,
+            '56581f90db321581c5381193d796fffcf2d24b2f8fed2160a6c6a3baa67f2c4f',
+          ),
+          download(
+            `${NSIS_DOWNLOADS}/nsis-3.12-strlen_8192.zip/download`,
+            '44ebb4bfd5b763e295855718dbcf374fc396d03870ea038a0844abcbe1ff0c3a',
+          ),
+          toolsetReference('nsis'),
         ],
+        components: NSIS_PLUGINS.map((plugin) => ({
+          type: 'library',
+          name: plugin.name,
+          ...(plugin.version && { version: plugin.version }),
+          ...(plugin.license && { licenses: [plugin.license] }),
+          hashes: [sha256Hash(plugin.sha256)],
+          externalReferences: [download(plugin.source)],
+        })),
       },
       {
         type: 'application',
         name: 'Elevate',
-        version: '1.0.0.2894',
-        authors: [{ name: 'Johannes Passing' }],
+        version: '1.3.0',
+        authors: [{ name: 'Kai Liu' }],
         description:
           'Installed with the app on Windows as resources\\elevate.exe. It starts the installer with administrator ' +
-          'rights when needed.',
-        externalReferences: [bundleReference(nsis)],
+          'rights when needed. electron-builder compiles it from the source archive, which states no licence.',
+        externalReferences: [
+          { type: 'website', url: 'https://code.kliu.org/misc/elevate/' },
+          download(
+            'https://code.kliu.org/misc/elevate/elevate-1.3.0-redist.7z',
+            'b1b3f070353a0eadee2cea3a575049d10df9763ff24e39313da4cec9455382e1',
+          ),
+          toolsetReference('nsis'),
+        ],
       },
       {
         type: 'application',
         name: 'AppImage runtime',
-        version: 'effcebc',
-        purl: 'pkg:github/AppImage/AppImageKit@effcebc',
-        description: 'The start code of the AppImage. It loads libfuse2 and zlib from the system.',
+        version: '20251108',
+        purl: 'pkg:github/AppImage/type2-runtime@20251108',
+        description:
+          'The start code of the AppImage, from commit dd6cebe. It is linked statically and needs no libraries ' +
+          'from the system. It mounts the AppImage with fusermount3 or fusermount of the system.',
         licenses: [{ license: { id: 'MIT' } }],
+        hashes: [sha256Hash(APPIMAGE_RUNTIME_SHA256)],
         externalReferences: [
-          { type: 'vcs', url: 'https://github.com/AppImage/AppImageKit' },
-          bundleReference(appImage),
+          { type: 'vcs', url: TYPE2_RUNTIME },
+          download(`${TYPE2_RUNTIME}/releases/download/20251108/runtime-x86_64`, APPIMAGE_RUNTIME_SHA256),
+          toolsetReference('appimage'),
         ],
         components: [
-          { type: 'library', name: 'squashfuse', licenses: [{ license: { id: 'BSD-2-Clause' } }] },
-          { type: 'library', name: 'liblzma' },
+          runtimeLibrary(
+            'libfuse',
+            '3.15.0',
+            { license: { id: 'LGPL-2.1-only' } },
+            {
+              cpe: cpe('libfuse_project:libfuse', '3.15.0'),
+              description: 'With the patch of type2-runtime for lib/mount.c.',
+              externalReferences: [
+                download(
+                  'https://github.com/libfuse/libfuse/releases/download/fuse-3.15.0/fuse-3.15.0.tar.xz',
+                  '70589cfd5e1cff7ccd6ac91c86c01be340b227285c5e200baa284e401eea2ca0',
+                ),
+              ],
+            },
+          ),
+          runtimeLibrary(
+            'squashfuse',
+            '0.5.2',
+            { license: { id: 'BSD-2-Clause' } },
+            {
+              externalReferences: [
+                download(
+                  'https://github.com/vasi/squashfuse/archive/0.5.2.tar.gz',
+                  'db0238c5981dabbd80ee09ae15387f390091668ca060a7bc38047912491443d3',
+                ),
+              ],
+            },
+          ),
+          runtimeLibrary(
+            'Zstandard',
+            '1.5.6',
+            { expression: 'BSD-3-Clause OR GPL-2.0-only' },
+            {
+              cpe: cpe('facebook:zstandard', '1.5.6'),
+            },
+          ),
+          runtimeLibrary('zlib', '1.3.1', { license: { id: 'Zlib' } }, { cpe: cpe('zlib:zlib', '1.3.1') }),
+          runtimeLibrary('mimalloc', undefined, { license: { id: 'MIT' } }),
+          runtimeLibrary(
+            'musl',
+            undefined,
+            { license: { id: 'MIT' } },
+            {
+              description: 'The C library of Alpine Linux 3.21.',
+            },
+          ),
         ],
       },
-      ...APPIMAGE_LIBRARIES.map((file) => ({
+      ...APPIMAGE_LIBRARIES.map((library) => ({
         type: 'library',
-        name: file.replace(/\.so\.\d+$/, ''),
-        description: `In usr/lib of the AppImage, as ${file}.`,
-        externalReferences: [bundleReference(appImage)],
+        name: library.name.replace(/\.so(\.\d+)*$/, ''),
+        description: `In usr/lib of the AppImage, as ${library.name}.`,
+        hashes: [sha256Hash(library.sha256)],
+        externalReferences: [toolsetReference('appimage')],
       })),
     ],
   }

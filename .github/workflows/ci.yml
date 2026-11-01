@@ -155,6 +155,8 @@ jobs:
           node scripts/smoke-package.mjs $app.FullName
           if ($LASTEXITCODE -ne 0) { throw 'The installed app failed the smoke test.' }
           $uninstaller = Get-ChildItem $app.DirectoryName -Filter 'Uninstall*.exe' | Select-Object -First 1
+          node scripts/installer-contents.ts nsis $installer.FullName $uninstaller.FullName
+          if ($LASTEXITCODE -ne 0) { throw 'The SBOM does not list the plugins of the installers.' }
           $uninstall = Start-Process -FilePath $uninstaller.FullName -ArgumentList '/S', "_?=$($app.DirectoryName)" -Wait -PassThru
           if ($uninstall.ExitCode -ne 0) { throw "The uninstaller ended with exit code $($uninstall.ExitCode)." }
           if (Test-Path $app.FullName) { throw 'The uninstaller did not remove Diagrams.exe.' }
@@ -165,16 +167,12 @@ jobs:
           hdiutil attach release/*-mac-arm64.dmg -nobrowse -readonly -mountpoint "$mount"
           trap 'hdiutil detach "$mount" -force' EXIT
           node scripts/smoke-package.mjs "$mount/Diagrams.app/Contents/MacOS/Diagrams"
-      - name: Install FUSE 2 for the AppImage runtime
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update -q
-          sudo apt-get install -y libfuse2t64
       - name: Test the AppImage
         if: runner.os == 'Linux'
         run: |
           appimage=$(ls release/*.AppImage)
           chmod +x "$appimage"
+          node scripts/installer-contents.ts appimage "$appimage"
           xvfb-run --auto-servernum node scripts/smoke-package.mjs "$appimage"
       - name: Install, test and remove the deb package
         if: runner.os == 'Linux'

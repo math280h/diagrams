@@ -978,6 +978,10 @@ The React app in Electron, plus file storage, agent control, the website handoff
 
 - electron-builder (`electron-builder.ts`): Windows NSIS; Mac dmg and zip per architecture; Linux AppImage and deb.
   Vite bundles all main-process dependencies, so the package holds only `dist/` and three `dist-electron/` files.
+  - Toolsets: `nsis` 1.2.1 (NSIS 3.12) and `appimage` 1.0.3 (the static runtime of type2-runtime). electron-builder
+    marks them as beta.
+  - The default toolsets have NSIS 3.04, which has CVE-2023-37378. Their AppImage runtime needs libfuse2, which
+    Ubuntu 22.04 and later do not install.
 - Fuses turn off `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS`, inspect flags and extra `file://` rights, and allow only the
   checked asar archive.
 - Release (`docs/RELEASING.md`): a `v*` tag starts `.github/workflows/release.yml` and sets the version
@@ -1008,12 +1012,16 @@ The React app in Electron, plus file storage, agent control, the website handoff
   - Each icon set in `src/canvas/icons/data` becomes a `data` component, from `scripts/icons/sources.ts`, with the
     SHA-256 of its data file. Simple Icons holds a component for each bundled logo that has its own licence.
   - app-builder-lib (electron-builder) holds the code that the installers add next to the app:
-    - NSIS 3.04 with the plugins of nsis-resources 3.4.1, for the Windows installer and uninstaller.
-    - Elevate, which the Windows installer puts in `resources\elevate.exe`.
-    - The AppImage runtime (AppImageKit `effcebc`), with squashfuse and liblzma.
+    - NSIS 3.12 for the Windows installer and uninstaller, with the plugins that their scripts call.
+    - Elevate 1.3.0, which the Windows installer puts in `resources\elevate.exe`.
+    - The AppImage runtime (type2-runtime 20251108). It is a static program with libfuse 3, squashfuse, Zstandard,
+      zlib, mimalloc and musl.
     - Six libraries in `usr/lib` of the AppImage.
-  - `INSTALLER_BUNDLES` names the toolset bundles with their SHA-256. A test fails when app-builder-lib downloads
-    other bundles, or when `electron-builder.ts` sets `toolsets`.
+  - `INSTALLER_TOOLSETS` names the toolsets and their bundles with the SHA-256. A test fails when
+    `electron-builder.ts` selects other toolsets, or when app-builder-lib downloads other bundles for them.
+  - `NSIS_PLUGINS`, `APPIMAGE_RUNTIME_SHA256` and `APPIMAGE_LIBRARIES` give the SHA-256 of each file from the
+    bundles. CI runs `scripts/installer-contents.ts` on the built installers. The script fails when an installer
+    holds a file that the SBOM does not list, or when the SBOM lists a file that no installer holds.
   - The app gets a `pkg:github` purl, because the npm purl of the private package names another package.
 - Preview tags (`v0.2.0-beta.1`) build in the `preview` environment without approval and publish as GitHub
   pre-releases.
@@ -1147,7 +1155,9 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
     and deb on Linux.
   - The job installs or mounts each installer and runs `scripts/smoke-package.mjs` on the installed app. On Windows,
     the job then runs the uninstaller and checks that the uninstaller removed `Diagrams.exe`.
-  - The AppImage of the default toolset needs FUSE 2, so the Linux job installs `libfuse2t64`.
+  - The Windows and Linux jobs run `scripts/installer-contents.ts`. It compares the NSIS plugins, the AppImage
+    runtime and the libraries in `usr/lib` of the AppImage with the SBOM. It unpacks the Windows installer and
+    uninstaller with 7-Zip.
   - Each job uploads its installers as the workflow artifact `installers-<runner>`. GitHub keeps them for 7 days. A
     reviewer can install the app from the installers of a pull request before the merge.
 - `.github/actions/playwright-chromium` caches Chromium by Playwright version. Linux still installs the system

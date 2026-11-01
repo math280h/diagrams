@@ -27,6 +27,7 @@ const config: Configuration = {
   ],
   extraMetadata: { macSigned: hasMacCertificate },
   npmRebuild: false,
+  toolsets: { nsis: '1.2.1', appimage: '1.0.3' },
   protocols: [{ name: 'Diagrams link', schemes: ['diagrams'] }],
   electronFuses: {
     runAsNode: false,

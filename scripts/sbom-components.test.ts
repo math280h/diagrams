@@ -1,15 +1,16 @@
-import { readdirSync, readFileSync } from 'node:fs'
+import { readdirSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import builderConfig from '../electron-builder.ts'
 import { ICON_SOURCES } from './icons/sources.ts'
 import {
+  APPIMAGE_LIBRARIES,
+  APPIMAGE_RUNTIME_SHA256,
   chromiumProjects,
   electronComponent,
   fontComponent,
   iconSetComponent,
-  INSTALLER_BUNDLES,
+  INSTALLER_TOOLSETS,
   installerComponent,
   packageComponent,
 } from './sbom-components.ts'
@@ -154,21 +155,22 @@ describe('SBOM components', () => {
 
   it('names the toolset bundles that app-builder-lib downloads for the installers', () => {
     const builder = createRequire(createRequire(import.meta.url).resolve('electron-builder/package.json'))
-    const toolsets = path.join(path.dirname(builder.resolve('app-builder-lib/package.json')), 'out', 'toolsets')
-    const windows = readFileSync(path.join(toolsets, 'windows.js'), 'utf8')
-    const linux = readFileSync(path.join(toolsets, 'linux.js'), 'utf8')
-    const { nsis, nsisResources, appImage } = INSTALLER_BUNDLES
-    for (const bundle of [nsis, nsisResources]) {
-      expect(windows, bundle.name).toContain(`("${bundle.name}", "${bundle.name}.7z", "${bundle.sha256}")`)
+    const { nsisChecksums } = builder('app-builder-lib/out/toolsets/windows') as {
+      nsisChecksums: Record<string, Record<string, string>>
     }
-    expect(linux).toContain(`"${appImage.name}.7z": "${appImage.sha256}"`)
+    const { appimageChecksums } = builder('app-builder-lib/out/toolsets/linux') as {
+      appimageChecksums: Record<string, Record<string, string>>
+    }
+    const { nsis, appimage } = INSTALLER_TOOLSETS
+    expect(nsisChecksums[nsis.version]).toEqual({ [nsis.file]: nsis.sha256 })
+    expect(appimageChecksums[appimage.version]).toEqual({ [appimage.file]: appimage.sha256 })
   })
 
-  it('uses the default toolsets of electron-builder, which INSTALLER_BUNDLES describes', () => {
-    expect(
-      builderConfig.toolsets,
-      'Describe the new toolsets in INSTALLER_BUNDLES and installerComponent',
-    ).toBeUndefined()
+  it('describes the toolsets that electron-builder.ts selects', () => {
+    expect(builderConfig.toolsets, 'Describe the new toolsets in INSTALLER_TOOLSETS and installerComponent').toEqual({
+      nsis: INSTALLER_TOOLSETS.nsis.version,
+      appimage: INSTALLER_TOOLSETS.appimage.version,
+    })
   })
 
   it('describes the code that electron-builder puts in the installers', () => {
@@ -180,24 +182,36 @@ describe('SBOM components', () => {
     })
     const parts = Object.fromEntries(installer.components!.map((part) => [part.name, part]))
     expect(parts['NSIS']).toMatchObject({
-      version: '3.04',
-      cpe: 'cpe:2.3:a:nullsoft:nullsoft_scriptable_install_system:3.04:*:*:*:*:*:*:*',
+      version: '3.12',
+      cpe: 'cpe:2.3:a:nullsoft:nullsoft_scriptable_install_system:3.12:*:*:*:*:*:*:*',
     })
-    expect(parts['NSIS']!.components![0]!.components).toHaveLength(9)
+    expect(parts['NSIS']!.description).toContain('nsExec, System of NSIS')
+    expect(parts['NSIS']!.components!.map((plugin) => [plugin.name, plugin.version])).toEqual([
+      ['nsis7z', '19.00'],
+      ['SpiderBanner', undefined],
+      ['StdUtils', '1.14'],
+      ['WinShell', undefined],
+    ])
+    expect(parts['Elevate']).toMatchObject({ version: '1.3.0', authors: [{ name: 'Kai Liu' }] })
     expect(parts['AppImage runtime']).toMatchObject({
-      version: 'effcebc',
-      purl: 'pkg:github/AppImage/AppImageKit@effcebc',
+      version: '20251108',
+      purl: 'pkg:github/AppImage/type2-runtime@20251108',
+      hashes: [{ alg: 'SHA-256', content: APPIMAGE_RUNTIME_SHA256 }],
+    })
+    expect(parts['AppImage runtime']!.components!.map((library) => library.purl ?? library.name)).toEqual([
+      'pkg:generic/libfuse@3.15.0',
+      'pkg:generic/squashfuse@0.5.2',
+      'pkg:generic/zstandard@1.5.6',
+      'pkg:generic/zlib@1.3.1',
+      'mimalloc',
+      'musl',
+    ])
+    expect(parts['libXss']).toMatchObject({
+      description: 'In usr/lib of the AppImage, as libXss.so.1.0.0.',
+      hashes: [{ alg: 'SHA-256', content: APPIMAGE_LIBRARIES.find((file) => file.name.startsWith('libXss'))!.sha256 }],
     })
     expect(Object.keys(parts)).toEqual(
-      expect.arrayContaining([
-        'Elevate',
-        'libnotify',
-        'libgconf-2',
-        'libXss',
-        'libXtst',
-        'libappindicator',
-        'libindicator',
-      ]),
+      expect.arrayContaining(['libappindicator3', 'libgconf-2', 'libindicator3', 'libnotify', 'libXss', 'libXtst']),
     )
   })
 
