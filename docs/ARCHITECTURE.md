@@ -994,6 +994,10 @@ The React app in Electron, plus file storage, agent control, the website handoff
   Sigstore) after the test and before the upload. The attestation names the workflow file and the tag, so
   `gh attestation verify --signer-workflow --source-ref` rejects a file from another workflow or branch. Only an
   admin can create a tag, but any branch can change a workflow file. electron-updater does not check attestations.
+  - Each platform job also uploads its two attestation bundles (`bundle-path` of `actions/attest`) to the release, as
+    `<prefix>-<platform>-provenance.sigstore.json` and `<prefix>-<platform>-sbom.sigstore.json`.
+  - OpenSSF Scorecard looks for signatures only in the files of a release. `gh attestation verify --bundle` reads
+    the attestation from the file, without the attestation API of GitHub.
 - SBOM: the "Write the SBOM" job builds the bundles and runs `pnpm sbom --prod` (CycloneDX 1.6) once per release.
   `scripts/sbom.ts` completes that SBOM. Each platform job attests the same SBOM for its installers.
   - The production packages of pnpm include some that the bundles leave out, such as `@types` packages.

@@ -106,10 +106,13 @@ jobs:
         include:
           - os: windows-latest
             target: --win
+            platform: win
           - os: macos-latest
             target: --mac
+            platform: mac
           - os: ubuntu-latest
             target: --linux
+            platform: linux
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -154,6 +157,7 @@ jobs:
         if: runner.os == 'Linux'
         run: xvfb-run --auto-servernum node scripts/smoke-package.mjs
       - name: Attest the build provenance of the installers
+        id: provenance
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: |
@@ -167,6 +171,7 @@ jobs:
           name: sbom
           path: ${{ runner.temp }}/sbom
       - name: Attest the SBOM of the installers
+        id: sbom-attestation
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: |
@@ -176,13 +181,23 @@ jobs:
             release/*.AppImage
             release/*.deb
           sbom-path: ${{ runner.temp }}/sbom/Diagrams-${{ needs.draft.outputs.version }}-sbom.cdx.json
+      - name: Add the attestation bundles to the installers
+        shell: bash
+        env:
+          PROVENANCE: ${{ steps.provenance.outputs.bundle-path }}
+          SBOM: ${{ steps.sbom-attestation.outputs.bundle-path }}
+          PREFIX: release/Diagrams-${{ needs.draft.outputs.version }}-${{ matrix.platform }}
+        run: |
+          cp "$PROVENANCE" "$PREFIX-provenance.sigstore.json"
+          cp "$SBOM" "$PREFIX-sbom.sigstore.json"
       - name: Upload to the draft release
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           find release -maxdepth 1 -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.zip' -o -name '*.AppImage' \
-            -o -name '*.deb' -o -name '*.blockmap' -o -name '*.yml' \) ! -name 'builder-debug.yml' -print0 |
+            -o -name '*.deb' -o -name '*.blockmap' -o -name '*.yml' -o -name '*.sigstore.json' \) \
+            ! -name 'builder-debug.yml' -print0 |
             xargs -0 gh release upload "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --clobber
 
   publish-preview:
