@@ -50,9 +50,16 @@ runs:
         $msi = Join-Path $env:RUNNER_TEMP 'kmscng\kmscng.msi'
         $install = Start-Process msiexec.exe -ArgumentList '/i', "`"$msi`"", '/qn', '/norestart' -Wait -PassThru
         if ($install.ExitCode -ne 0) { throw "The installer of the CNG provider ended with exit code $($install.ExitCode)." }
-        if (-not (certutil -csplist | Select-String -SimpleMatch 'Google Cloud KMS Provider')) {
-          throw 'Windows does not list the Google Cloud KMS Provider after the installation.'
+        # certutil -csplist lists the providers and then ends with exit code 0x80004001.
+        $providers = certutil -csplist 2>&1
+        $listExitCode = $LASTEXITCODE
+        $global:LASTEXITCODE = 0
+        $provider = $providers | Select-String -SimpleMatch 'Google Cloud KMS Provider' | Select-Object -First 1
+        if (-not $provider) {
+          $providers | Write-Output
+          throw "Windows does not list the Google Cloud KMS Provider after the installation (certutil exit code $listExitCode)."
         }
+        Write-Output "Installed: $($provider.Line.Trim()) (certutil exit code $listExitCode)"
     - name: Write the signing certificate
       shell: bash
       env:
