@@ -3,6 +3,7 @@ import { createSerialQueue } from '@/lib/serial-queue'
 import { newId } from '@/model/defaults'
 import { describeChange, describeContent } from '@/model/diagram-diff'
 import type { Diagram } from '@/model/schema'
+import { fromDiagram, toStoredEdge, toStoredNode } from '@/persistence/serialize'
 import { versionStore, type VersionMeta } from '@/persistence/version-store'
 
 /** User edits within this time after the first edit of a version join that version. */
@@ -54,8 +55,12 @@ const enqueue = createSerialQueue()
 let last: Promise<unknown> = Promise.resolve()
 
 function contentKey(diagram: Diagram) {
-  const nodes = diagram.nodes.map(({ measured: _measured, ...node }) => node)
-  return JSON.stringify([diagram.name, diagram.theme, nodes, diagram.edges, diagram.flows])
+  const { nodes, edges } = fromDiagram(diagram)
+  const stored = nodes.map((node) => {
+    const { measured: _measured, ...rest } = toStoredNode(node)
+    return rest
+  })
+  return JSON.stringify([diagram.name, diagram.theme, stored, edges.map(toStoredEdge), diagram.flows])
 }
 
 function run(task: () => Promise<void>) {
