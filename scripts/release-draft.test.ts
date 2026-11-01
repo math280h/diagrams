@@ -29,6 +29,11 @@ describe('release draft', () => {
     ])
   })
 
+  it('reads the shortcut labels of the older SHORTCUTS list', () => {
+    const source = "const KEYS = { label: 'not this' }\nexport const SHORTCUTS = [{ label: 'Undo' }, { label: 'Redo' }]"
+    expect(shortcutLabels(source)).toEqual(['Undo', 'Redo'])
+  })
+
   it('takes the previous release, or for a preview the previous tag of any kind', () => {
     const tags = ['v0.1.9', 'v0.1.10-beta.1', 'v0.1.10', 'v0.2.0-beta.1', 'preview']
     expect(previousTagOf('v0.2.0', [...tags, 'v0.2.0'])).toBe('v0.1.10')
