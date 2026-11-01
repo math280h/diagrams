@@ -58,7 +58,7 @@ jobs:
         run: |
           node scripts/template-files.mjs .diagram-previews
           node base/scripts/template-files.mjs base/.diagram-previews
-      - uses: ./.github/actions/playwright-chromium
+      - uses: $/.github/actions/playwright-chromium
       - name: Install Chromium for the app screens of the base commit
         working-directory: base
         run: pnpm exec playwright install chromium
@@ -69,7 +69,7 @@ jobs:
             cd base && node scripts/app-screens.mjs dist .app-screens 4181
           fi
       - name: Compare the images of both apps
-        uses: ./actions/render
+        uses: $/actions/render
         with:
           files: .diagram-previews/*.diagram.json
           mode: compare

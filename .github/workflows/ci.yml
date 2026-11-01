@@ -32,7 +32,7 @@ jobs:
             echo "::error::pnpm-lock.yaml has more than one YAML document. GitHub's dependency graph reads only the first one."
             exit 1
           fi
-      - uses: ./.github/actions/playwright-chromium
+      - uses: $/.github/actions/playwright-chromium
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check
@@ -66,7 +66,7 @@ jobs:
           node-version-file: package.json
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - uses: ./.github/actions/playwright-chromium
+      - uses: $/.github/actions/playwright-chromium
       - run: pnpm e2e --shard=${{ matrix.shard }}/${{ strategy.job-total }}
         env:
           E2E_COVERAGE: '1'
@@ -153,9 +153,27 @@ jobs:
           GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraheader GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $credentials" \
             git push -q --force "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" HEAD:refs/heads/coverage-badge
 
+  actions-lockfile:
+    name: Actions lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check the actions lockfile
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTIONS_LOCK_VERSION: v0.4.0
+          ACTIONS_LOCK_SHA256: f9da98f2a6e9e0ae77deadf9a2319a8a86bb002b541cc3203b247cc59fb04842
+        run: |
+          gh release download "$ACTIONS_LOCK_VERSION" --repo github/gh-actions-lock --pattern linux-amd64 --dir "$RUNNER_TEMP"
+          echo "$ACTIONS_LOCK_SHA256  $RUNNER_TEMP/linux-amd64" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/linux-amd64"
+          "$RUNNER_TEMP/linux-amd64" --verify --no-interactive
+
   checks:
     name: Checks and web tests
-    needs: [static, web, coverage]
+    needs: [static, web, coverage, actions-lockfile]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -187,7 +205,7 @@ jobs:
           node-version-file: package.json
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - uses: ./.github/actions/playwright-chromium
+      - uses: $/.github/actions/playwright-chromium
       - run: pnpm test
       - run: pnpm desktop:build
       - name: Check the SBOM against the bundles
@@ -207,7 +225,7 @@ jobs:
         run: xvfb-run --auto-servernum pnpm e2e:desktop
       - name: Test the render action
         if: runner.os == 'Linux'
-        uses: ./actions/render
+        uses: $/actions/render
         with:
           files: actions/render/fixtures/*.diagram.json
           mode: write
@@ -217,7 +235,7 @@ jobs:
         run: test -s actions/render/fixtures/orders.png
       - name: Test the render action on the pull request
         if: runner.os == 'Linux' && github.event_name == 'pull_request'
-        uses: ./actions/render
+        uses: $/actions/render
         with:
           files: actions/render/fixtures/*.diagram.json
           mode: compare

@@ -126,7 +126,7 @@ jobs:
       - run: pnpm desktop:build
       - name: Prepare the Windows signing
         if: runner.os == 'Windows' && vars.WINDOWS_SIGNING_CERTIFICATE != ''
-        uses: ./.github/actions/windows-signing
+        uses: $/.github/actions/windows-signing
         with:
           workload-identity-provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service-account: ${{ vars.GCP_SERVICE_ACCOUNT }}
