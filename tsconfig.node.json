@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
-    "target": "es2023",
-    "lib": ["ES2023"],
+    "target": "es2024",
+    "lib": ["ES2024"],
     "types": ["node"],
     "skipLibCheck": true,
     "module": "nodenext",
@@ -22,25 +22,7 @@
     "vitest.config.ts",
     "playwright.config.ts",
     "vite.electron.config.ts",
-    "scripts/third-party-licenses.ts",
-    "scripts/third-party-licenses.test.ts",
-    "scripts/content-security-policy.ts",
-    "scripts/content-security-policy.test.ts",
-    "scripts/sbom.ts",
-    "scripts/sbom-components.ts",
-    "scripts/sbom-components.test.ts",
-    "scripts/icons/sources.ts",
-    "scripts/sbom.test.ts",
-    "scripts/standalone-player.ts",
-    "scripts/release-notes.ts",
-    "scripts/release-notes.test.ts",
-    "scripts/readme-features.ts",
-    "scripts/readme-features.test.ts",
-    "scripts/service-worker.ts",
-    "scripts/service-worker.test.ts",
-    "scripts/coverage-files.ts",
-    "scripts/coverage.ts",
-    "scripts/coverage.test.ts",
+    "scripts/**/*.ts",
     "electron-builder.ts"
   ]
 }
