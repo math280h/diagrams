@@ -1090,8 +1090,8 @@ The React app in Electron, plus file storage, agent control, the website handoff
   change the binary.
 - Windows signing uses a key in Google Cloud KMS. `signtool.exe` signs through the Cloud KMS CNG provider
   (`scripts/windows-signing.ts`), and the job logs in to Google Cloud with its OIDC token
-  (`.github/actions/windows-signing`). The Release workflow signs only when the repository has the signing variables
-  (`docs/RELEASING.md`). The "Test the Windows signing" workflow also signs a build of `main`, but it publishes
+  (`.github/actions/windows-signing`). The Release workflow signs only when the environment of the job has the signing
+  variables (`docs/RELEASING.md`). The "Test the Windows signing" workflow also signs a build of `main`, but it publishes
   nothing. After a signed release, the updater accepts updates only from the publisher in `app-update.yml`.
 
 ### Handoff from the website

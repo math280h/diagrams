@@ -132,7 +132,7 @@ The Windows key is in Google Cloud KMS, with the HSM protection level, so it can
 (`.github/actions/windows-signing`, `scripts/windows-signing.ts`). The workflow logs in to Google Cloud with the
 OIDC token of the job (Workload Identity Federation), so the repository keeps no secret for Windows.
 
-| Repository variable              | Value                                                                             |
+| Environment variable             | Value                                                                             |
 | -------------------------------- | --------------------------------------------------------------------------------- |
 | `GCP_WORKLOAD_IDENTITY_PROVIDER` | The full name of the workload identity provider                                   |
 | `GCP_SERVICE_ACCOUNT`            | The email address of the service account that signs                               |
@@ -143,7 +143,8 @@ OIDC token of the job (Workload Identity Federation), so the repository keeps no
 The full names have the form `projects/NUMBER/locations/global/workloadIdentityPools/POOL/providers/PROVIDER` and
 `projects/PROJECT/locations/LOCATION/keyRings/RING/cryptoKeys/KEY/cryptoKeyVersions/1`.
 
-The Release workflow signs the Windows build only when `WINDOWS_SIGNING_CERTIFICATE` has a value.
+Put these variables in the `release` and `preview` environments, not in the repository. The Release workflow signs
+the Windows build only when `WINDOWS_SIGNING_CERTIFICATE` has a value in the environment of the job.
 
 After the first signed release, the installed app accepts only updates from the same publisher: the common name of
 the certificate (`publisherName` in `app-update.yml`). A new certificate must have the same common name.
@@ -192,9 +193,8 @@ The "Test the Windows signing" workflow signs a Windows build of `main` and chec
 the certificate. It publishes nothing.
 
 1. Make a self-signed certificate of the key, as in the same Google Cloud guide.
-2. Add a `signing-test` environment that allows `main`, with you as a required reviewer. Give it a
-   `WINDOWS_SIGNING_CERTIFICATE` variable with the self-signed certificate. A variable of an environment replaces the
-   repository variable of the same name.
+2. Add a `signing-test` environment that allows `main`, with you as a required reviewer. Give it the same variables,
+   with the self-signed certificate in `WINDOWS_SIGNING_CERTIFICATE`.
 3. Run the workflow on `main`.
 
 A self-signed certificate never goes into a release, because only the `signing-test` environment has it.
