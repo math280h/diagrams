@@ -10,6 +10,10 @@ interface EditableTextProps {
   placeholder?: string
 }
 
+/**
+ * Shows a text that a double click edits when `editable` is true. An empty text shows the placeholder. When `editable` is
+ * false, the placeholder is invisible but keeps its space.
+ */
 export function EditableText({
   value,
   editable,
@@ -24,7 +28,9 @@ export function EditableText({
   if (draft === null) {
     return (
       <span className={className} style={style} onDoubleClick={editable ? () => setDraft(value) : undefined}>
-        {value || (editable ? <span style={{ color: 'var(--dg-faint)' }}>{placeholder}</span> : null)}
+        {value || (
+          <span style={{ color: 'var(--dg-faint)', visibility: editable ? undefined : 'hidden' }}>{placeholder}</span>
+        )}
       </span>
     )
   }
