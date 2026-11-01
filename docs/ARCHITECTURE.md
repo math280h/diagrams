@@ -36,8 +36,8 @@ moves along connections; a flow walks a user through the system while the camera
   - `strictDepBuilds`: pnpm stops at an install script that `allowBuilds` does not list.
   - `overrides`: minimatch 9 and 10 become 11 (GHSA-g3hv-75wg-m249). semver 5 and 6 become 7, because their last
     releases have no provenance and fail the trust check. Their callers use only functions that semver 7 keeps.
-  - A Dependabot security update to a version younger than one day can fail. Wait one day, or add the package to
-    `minimumReleaseAgeExclude`. A version that fails the trust check for a known reason goes in
+  - A Dependabot security update to a version that is less than one day old can fail. Wait one day, or add the
+    package to `minimumReleaseAgeExclude`. A version that fails the trust check for a known reason goes in
     `trustPolicyExclude`.
   - `pmOnFail: ignore`: pnpm does not switch to the `packageManager` version. With any other value, pnpm writes
     that version as a first YAML document in `pnpm-lock.yaml`. The GitHub dependency graph reads only the first
@@ -984,12 +984,12 @@ The React app in Electron, plus file storage, agent control, the website handoff
   (`-c.extraMetadata.version`); a release needs no commit. `pnpm release:tag` calculates the tag. One job creates
   the draft, because parallel electron-builder jobs could each create one. Platform jobs package, drive the app
   through the agent server (`scripts/smoke-package.mjs`) and upload. The maintainer publishes the draft.
-- Release and `main` builds do not restore the Actions cache. Other workflow runs can write that cache, and a
-  changed package in it goes into the installers.
+- Release and `main` builds do not restore the Actions cache. Other workflow runs can write that cache. If a
+  build restores that cache, a changed package in it goes into the installers.
 - Each platform job attests the build provenance of its installers (`actions/attest`, SLSA provenance signed with
   Sigstore) after the test and before the upload. The attestation names the workflow file and the tag, so
-  `gh attestation verify --signer-workflow --source-ref` rejects a file from another workflow or branch. A tag needs
-  an admin, but any branch can change a workflow file. electron-updater does not check attestations.
+  `gh attestation verify --signer-workflow --source-ref` rejects a file from another workflow or branch. Only an
+  admin can create a tag, but any branch can change a workflow file. electron-updater does not check attestations.
 - SBOM: the "Write the SBOM" job builds the bundles and runs `pnpm sbom --prod` (CycloneDX 1.6) once per release.
   `scripts/sbom.ts` completes that SBOM. Each platform job attests the same SBOM for its installers.
   - The production packages of pnpm include some that the bundles leave out, such as `@types` packages.
@@ -1194,11 +1194,13 @@ those texts.
 - `src/content-security-policy.ts` holds the renderer policy. `electron/app-protocol.ts` sends it as a header. The
   website build puts it in a meta element at the start of the page (`scripts/content-security-policy.ts`), with
   `connect-src` for `api.github.com` and `127.0.0.1:27419` from the table. A meta element cannot set
-  `frame-ancestors`, so only a header from the host stops other sites from framing the website.
+  `frame-ancestors`, so other sites can show the website in a frame, unless the host sets `frame-ancestors` in a
+  header.
 - zod tests for eval when it creates an object schema, and the policy reports that test as a violation. App code
-  imports `z` from `@/lib/zod`, which turns the test off (`jitless`); a lint rule blocks direct `zod` imports.
+  imports `z` from `@/lib/zod`, which turns the test off (`jitless`). A lint rule blocks direct `zod` imports.
 - `e2e/content-security-policy.spec.ts` builds the website and fails on each violation while it uses the main
-  features: release lookups, Tidy up, image and GIF export, Present, Mermaid import, share links and the handoff.
+  features. These features are release lookups, Tidy up, image and GIF export, Present, Mermaid import, share links
+  and the handoff.
 - Fonts, icons and Mermaid ship in the bundle.
 - A connected agent sends what it reads to its model. The "Connect an agent" dialog says so.
 
