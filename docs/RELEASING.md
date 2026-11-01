@@ -22,6 +22,8 @@ version in `package.json` only names builds on your own computer, so a release n
    it through the agent server before it uploads its files.
 3. When all three jobs pass, open the draft on GitHub, edit the notes, and publish it. Installed apps find the update
    only after you publish. See "Release notes" below for what the draft holds and what to add.
+4. Publishing starts the Deploy the website workflow. Approve its job in the `release` environment, and it deploys the
+   tag to the live site.
 
 ## Release notes
 
@@ -31,15 +33,18 @@ since the previous release (for a preview: since the previous tag of any kind):
 - **New**, **Improvements** and **Fixes**, each grouped by area, such as Editor, Flows and Present, Export, or MCP
   server and skills. The `bug` label makes a pull request a fix and the `enhancement` label makes it new; without a
   label, the first word of the title decides (Add, Let, Copy, Export … for new; Fix, Restore, Stop … for fixes). The
-  area is the one with the most changed files, without tests and docs.
+  area is the one with the most changed files, without the files of the repository. With the same count, an area of
+  the app goes before the GitHub Action.
+- No pull request that changes only files of the repository: tests, CI, docs, `scripts/`, configuration and
+  dependency updates. The full changelog link at the end shows all commits.
 - **MCP server** when tools were added or removed, and **Keyboard shortcuts** when the shortcut sheet has new entries.
 - A comment at the top, which GitHub does not show, lists the new items. Before you publish, add a still and a short
   clip of each one: export them from the app (Export, then Image or Animation) and drag them into the notes. A clip
   of a few seconds as MP4 shows a feature better than a list item.
 
-To see the notes before you tag, run `GITHUB_REPOSITORY=<owner>/<repository> node scripts/release-draft.ts <tag>`
-with a local tag, for example one that you create with `git tag v0.0.0-check origin/main` and delete afterwards. 4. Publishing starts the Deploy the website workflow. Approve its job in the `release` environment, and it deploys the
-tag to the live site.
+To see the notes before you tag, make a local branch with the name of the tag, for example
+`git branch v0.0.0-check origin/main`. Then run `GITHUB_REPOSITORY=<owner>/<repository> node scripts/release-draft.ts <tag>`.
+Delete the branch after this.
 
 ## Make a preview
 

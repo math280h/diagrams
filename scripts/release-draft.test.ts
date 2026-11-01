@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { changeArea, changeKind, draftNotes, previousTagOf, shortcutLabels, toolNames } from './release-draft.ts'
+import {
+  changeArea,
+  changeKind,
+  draftNotes,
+  previousTagOf,
+  repositoryOnly,
+  shortcutLabels,
+  toolNames,
+} from './release-draft.ts'
 
 describe('release draft', () => {
   it('sorts a change into New, Improvements or Fixes by its labels, else by its first word', () => {
@@ -18,6 +26,31 @@ describe('release draft', () => {
       'MCP server and skills',
     )
     expect(changeArea(['.github/workflows/ci.yml', 'src/persistence/formats/v15.json'])).toBe('Build and docs')
+    expect(changeArea(['actions/render/main.mjs', 'actions/render/action.yml'])).toBe('GitHub Action')
+    expect(changeArea(['electron-builder.ts', 'scripts/sbom-components.ts'])).toBe('Desktop app')
+    expect(changeArea(['actions/render/main.mjs', 'electron-builder.ts'])).toBe('Desktop app')
+    expect(
+      changeArea([
+        'actions/render/main.mjs',
+        'actions/render/lib.test.mjs',
+        'actions/render/png.test.mjs',
+        'src/library/Library.tsx',
+        'src/library/Hero.tsx',
+      ]),
+    ).toBe('Library and templates')
+  })
+
+  it('finds the pull requests that change only files of the repository', () => {
+    expect(repositoryOnly(['e2e/insert-search.spec.ts'])).toBe(true)
+    expect(repositoryOnly(['package.json', 'pnpm-lock.yaml'])).toBe(true)
+    expect(repositoryOnly(['.github/workflows/ci.yml', 'scripts/coverage.ts', 'vitest.config.ts', 'CLAUDE.md'])).toBe(
+      true,
+    )
+    expect(repositoryOnly(['src/store/actions.test.ts', 'docs/ARCHITECTURE.md'])).toBe(true)
+    expect(repositoryOnly(['package.json', 'src/export/video.ts'])).toBe(false)
+    expect(repositoryOnly(['electron-builder.ts'])).toBe(false)
+    expect(repositoryOnly(['actions/render/main.mjs'])).toBe(false)
+    expect(repositoryOnly([])).toBe(false)
   })
 
   it('finds the tools and the shortcut labels in their source files', () => {
@@ -41,7 +74,7 @@ describe('release draft', () => {
     expect(previousTagOf('v0.1.9', tags)).toBeNull()
   })
 
-  it('writes the sections by kind and area, the tools and shortcuts that changed, and a hidden media list', () => {
+  it('writes the sections by kind and area without the repository changes, the tools and shortcuts that changed, and a hidden media list', () => {
     const notes = draftNotes({
       repository: 'owner/diagrams',
       previousTag: 'v0.1.4',
@@ -69,12 +102,6 @@ describe('release draft', () => {
 ### Editor
 
 - Resize the editor panels (#64)
-
-## Fixes
-
-### Build and docs
-
-- Fix a flaky test (#61)
 
 ## MCP server
 
