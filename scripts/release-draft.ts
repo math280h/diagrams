@@ -66,8 +66,8 @@ const SHORTCUT_SOURCES = [
 ]
 
 /**
- * Returns the shortcut labels of a shortcut sheet: the `SHORTCUT_GROUPS` list of `src/lib/shortcut-keys.ts` or the
- * `SHORTCUTS` list of `src/editor/shortcuts.ts`.
+ * Returns the shortcut labels in the source text of a shortcut file. The labels come from `SHORTCUT_GROUPS`, or from
+ * `SHORTCUTS` when the text has no `SHORTCUT_GROUPS`.
  */
 export function shortcutLabels(source: string): string[] {
   for (const { list } of SHORTCUT_SOURCES) {
