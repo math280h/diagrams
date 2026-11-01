@@ -15,6 +15,7 @@ reasons behind it.
 | Format               | `pnpm format` (oxfmt; `pnpm format:check` only checks)                                         |
 | Unit + browser tests | `pnpm test` (Vitest 5; `*.browser.test.ts` runs in Chromium)                                   |
 | Test coverage        | `pnpm test:coverage` (writes `coverage/`)                                                      |
+| Actions lockfile     | `gh actions-lock --no-narrow` (after a `uses:` change)                                         |
 | All coverage         | `pnpm coverage:all` (with web e2e; writes `coverage-all/`)                                     |
 | End-to-end tests     | `pnpm e2e` (Playwright; reuses a running dev server)                                           |
 | Production build     | `pnpm build`                                                                                   |
@@ -78,5 +79,8 @@ the JSDoc tag rules.
 - Every change to `diagramSchema` needs a new `DIAGRAM_VERSION`, a migration step and new format
   samples, so that diagrams from every earlier format keep opening. Follow "Change the diagram
   format" in `docs/ARCHITECTURE.md`; `src/persistence/formats.test.ts` checks it.
+- Workflows pin each remote action by commit SHA. Call a composite action of this repository with `uses: $/…`,
+  not `./…`. After a change to a `uses:` line, run `gh actions-lock --no-narrow` (extension
+  `github/gh-actions-lock`) and commit `.github/workflows/actions.lock`. `--no-narrow` keeps the SHA pins.
 - Agent tools change a diagram through `src/store/actions.ts` inside `oneStep`, so each call is one
   undo step. Skills live in `claude-plugin/skills`; a test fails when they name a missing tool.

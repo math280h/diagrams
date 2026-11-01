@@ -1029,6 +1029,14 @@ The React app in Electron, plus file storage, agent control, the website handoff
   through the agent server (`scripts/smoke-package.mjs`) and upload. The maintainer publishes the draft.
 - Release and `main` builds do not restore the Actions cache. Other workflow runs can write that cache. If a
   build restores that cache, a changed package in it goes into the installers.
+- Each `uses:` line of a remote action in a workflow pins a commit SHA, with the version in a comment. `.github/workflows/actions.lock`
+  records the commit, the tag, the owner ID and the repository ID of each action. It also records the actions that
+  the composite actions use. GitHub runs an action only at a commit in the lockfile.
+  - A workflow calls a composite action of this repository with `uses: $/…`. GitHub runs that action at the commit
+    of the workflow.
+  - After a change to a `uses:` line, run `gh actions-lock --no-narrow`. Without `--no-narrow`, the tool changes the
+    SHA pins to tags, and OpenSSF Scorecard counts a tag as not pinned.
+  - The "Actions lockfile" job of CI checks the lockfile with `gh actions-lock --verify`.
 - Each platform job attests the build provenance of its installers (`actions/attest`, SLSA provenance signed with
   Sigstore) after the test and before the upload. The attestation names the workflow file and the tag, so
   `gh attestation verify --signer-workflow --source-ref` rejects a file from another workflow or branch. Only an
