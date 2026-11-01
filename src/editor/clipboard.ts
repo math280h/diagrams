@@ -24,6 +24,7 @@ interface ClipboardPayload {
 }
 
 let memory: ClipboardPayload | null = null
+let systemClipboardHasMemory = false
 let pasteCount = 0
 
 function payloadFromSelection(): ClipboardPayload | null {
@@ -46,8 +47,15 @@ export function copySelection(event?: ClipboardEvent): boolean {
   if (event?.clipboardData) {
     event.clipboardData.setData('text/plain', text)
     event.preventDefault()
+    systemClipboardHasMemory = true
   } else {
-    void navigator.clipboard?.writeText(text).catch(() => undefined)
+    systemClipboardHasMemory = false
+    void navigator.clipboard?.writeText(text).then(
+      () => {
+        if (memory === payload) systemClipboardHasMemory = true
+      },
+      () => undefined,
+    )
   }
   return true
 }
@@ -70,6 +78,10 @@ function parse(text: string | undefined): ClipboardPayload | null {
   return { marker: MARKER, version: DIAGRAM_VERSION, nodes, edges }
 }
 
+function holdsOtherData(event: ClipboardEvent | undefined): boolean {
+  return (event?.clipboardData?.types.length ?? 0) > 0
+}
+
 /**
  * Pastes the copied nodes.
  *
@@ -79,7 +91,9 @@ function parse(text: string | undefined): ClipboardPayload | null {
 export function paste(event?: ClipboardEvent, at?: { x: number; y: number }): boolean {
   let payload: ClipboardPayload | null
   try {
-    payload = parse(event?.clipboardData?.getData('text/plain')) ?? memory
+    payload =
+      parse(event?.clipboardData?.getData('text/plain')) ??
+      (systemClipboardHasMemory && holdsOtherData(event) ? null : memory)
   } catch (error) {
     if (!(error instanceof DiagramFormatError)) throw error
     event?.preventDefault()

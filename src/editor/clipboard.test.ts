@@ -27,12 +27,15 @@ function group(x: number, y: number): DiagramNode {
   }
 }
 
-function clipboardEvent(text = '') {
+function clipboardEvent(text = '', otherTypes: string[] = []) {
   const data = new Map<string, string>([['text/plain', text]])
   const event = {
     clipboardData: {
       setData: (type: string, value: string) => data.set(type, value),
       getData: (type: string) => data.get(type) ?? '',
+      get types() {
+        return [...[...data].filter(([, value]) => value !== '').map(([type]) => type), ...otherTypes]
+      },
     },
     preventDefault: vi.fn(),
   }
@@ -191,6 +194,34 @@ describe('paste', () => {
     selectOnly([a.id])
     copied()
     expect(paste()).toBe(true)
+    expect(titles()).toEqual(['A', 'A'])
+  })
+
+  it('pastes nothing when the clipboard holds other data since the last copy', () => {
+    const a = card(0, 0, 'A')
+    useDoc.setState({ nodes: [a] })
+    selectOnly([a.id])
+    copied()
+    for (const clipboard of [clipboardEvent('https://example.com'), clipboardEvent('', ['Files', 'image/png'])]) {
+      expect(paste(clipboard.event)).toBe(false)
+      expect(clipboard.preventDefault).not.toHaveBeenCalled()
+    }
+    expect(titles()).toEqual(['A'])
+    expect(paste(clipboardEvent().event)).toBe(true)
+    expect(titles()).toEqual(['A', 'A'])
+  })
+
+  it('pastes the last copy over other text when the copy could not reach the system clipboard', async () => {
+    const writeText = vi.fn(async (_text: string) => {
+      throw new Error('Not allowed')
+    })
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+    const a = card(0, 0, 'A')
+    useDoc.setState({ nodes: [a] })
+    selectOnly([a.id])
+    expect(copySelection()).toBe(true)
+    await Promise.resolve()
+    expect(paste(clipboardEvent('https://example.com').event)).toBe(true)
     expect(titles()).toEqual(['A', 'A'])
   })
 
