@@ -89,7 +89,7 @@ moves along connections; a flow walks a user through the system while the camera
     diagram, `diagrams://` links and release notes HTML.
   - Each test checks the contract of the reader: a valid result, or the error class of that reader. Any other error
     or unsafe output fails the test.
-- **Desktop**: Electron 45. Vite builds main and preload. It uses the same Chromium as the tests, so export and capture
+- **Desktop**: Electron 46. Vite builds main and preload. It uses the same Chromium as the tests, so export and capture
   match the browser. Node runs the agent server.
 - **Agent server**: `@vitemcp/server` (MCP over HTTP), hono. Tools come from the zod schemas; the same loopback server
   also takes diagrams from the website.
