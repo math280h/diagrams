@@ -79,6 +79,10 @@ moves along connections; a flow walks a user through the system while the camera
     the web end-to-end tests with coverage and writes `coverage-all/`. In CI, the "Coverage of all tests" job merges
     the coverage of the four web shards with the unit coverage. Its thresholds follow the same rule. The desktop
     end-to-end tests do not count.
+  - The "Coverage of all tests" job writes the line coverage to a shields.io badge file on each run. The badge shows
+    the percentage, rounded down to a whole number. On a push to `main`, the "Coverage badge" job pushes the file to
+    the `coverage-badge` branch, and the README badge shows it. In `ci.yml`, only this job has write permission for the
+    contents of the repository. It does not install packages or run code from the repository.
   - Fuzz tests (`*.fuzz.test.ts`, `*.fuzz.browser.test.ts`) use fast-check. They give random and changed input to
     each reader of untrusted data.
   - The readers are for diagram files and migrations, copied nodes, share links, trace files, images with a
