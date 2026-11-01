@@ -1018,10 +1018,11 @@ The React app in Electron, plus file storage, agent control, the website handoff
       zlib, mimalloc and musl.
     - Six libraries in `usr/lib` of the AppImage.
   - `INSTALLER_TOOLSETS` names the toolsets and their bundles with the SHA-256. A test fails when
-    `electron-builder.ts` selects other toolsets, or when app-builder-lib downloads other bundles for them.
+    `electron-builder.ts` selects other toolsets, or when app-builder-lib downloads other bundles for the selected
+    toolsets.
   - `NSIS_PLUGINS`, `APPIMAGE_RUNTIME_SHA256` and `APPIMAGE_LIBRARIES` give the SHA-256 of each file from the
     bundles. CI runs `scripts/installer-contents.ts` on the built installers. The script fails when an installer
-    holds a file that the SBOM does not list, or when the SBOM lists a file that no installer holds.
+    holds a file that the SBOM does not list. It also fails when the SBOM lists a file that no installer holds.
   - The app gets a `pkg:github` purl, because the npm purl of the private package names another package.
 - Preview tags (`v0.2.0-beta.1`) build in the `preview` environment without approval and publish as GitHub
   pre-releases.
@@ -1082,9 +1083,9 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
 `actions/render` is a composite GitHub Action that keeps diagram images current with the command-line render.
 `main.mjs` runs in Node; `lib.mjs` holds the tested parts (file patterns, image paths, the comment).
 
-- App: the action downloads the Linux AppImage of a release with `gh` and the job token, and unpacks it (runners have
-  no FUSE). It runs under `xvfb-run` without a display, and with `--no-sandbox` without unprivileged user
-  namespaces. The `app` input replaces the download (this CI: the build from source).
+- App: the action downloads the Linux AppImage of a release with `gh` and the job token. Runners have no libfuse2,
+  which the AppImageKit runtime of older releases needs, so the action unpacks the AppImage. The app runs under
+  `xvfb-run` without a display, and with `--no-sandbox` without unprivileged user namespaces. The `app` input replaces the download (this CI: the build from source).
 - Files: only tracked files (`git ls-files` with glob pathspecs), so no `node_modules` or build output.
 - Write mode renders each file next to it and outputs the image paths. The workflow commits them with its own branch
   and message.
@@ -1155,9 +1156,9 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
     and deb on Linux.
   - The job installs or mounts each installer and runs `scripts/smoke-package.mjs` on the installed app. On Windows,
     the job then runs the uninstaller and checks that the uninstaller removed `Diagrams.exe`.
-  - The Windows and Linux jobs run `scripts/installer-contents.ts`. It compares the NSIS plugins, the AppImage
-    runtime and the libraries in `usr/lib` of the AppImage with the SBOM. It unpacks the Windows installer and
-    uninstaller with 7-Zip.
+  - The Windows and Linux jobs run `scripts/installer-contents.ts`. The script compares the NSIS plugins, the
+    AppImage runtime and the libraries in `usr/lib` of the AppImage with the SBOM. The script unpacks the Windows
+    installer and uninstaller with 7-Zip.
   - Each job uploads its installers as the workflow artifact `installers-<runner>`. GitHub keeps them for 7 days. A
     reviewer can install the app from the installers of a pull request before the merge.
 - `.github/actions/playwright-chromium` caches Chromium by Playwright version. Linux still installs the system

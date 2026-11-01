@@ -102,7 +102,7 @@ function installApp() {
   const image = readdirSync(folder).find((name) => name.endsWith('.AppImage'))
   if (!image) throw new ActionError(`The release ${inputs.version} has no Linux AppImage.`)
   chmodSync(path.join(folder, image), 0o755)
-  // An extracted AppImage runs without FUSE, which GitHub runners do not have.
+  // An extracted AppImage starts without FUSE. GitHub runners have no libfuse2, which the AppImageKit runtime needs.
   run(path.join(folder, image), ['--appimage-extract'], { cwd: folder })
   console.log(`Installed ${image}.`)
   return [path.join(folder, 'squashfs-root', 'diagrams')]
