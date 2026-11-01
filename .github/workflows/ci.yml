@@ -107,7 +107,7 @@ jobs:
           path: coverage-e2e
           merge-multiple: true
       - name: Merge the coverage of all tests
-        run: node scripts/coverage.ts merge coverage/coverage-final.json coverage-all coverage-e2e --thresholds 73,71,53,77
+        run: node scripts/coverage.ts merge coverage/coverage-final.json coverage-all coverage-e2e --thresholds 77,74,58,79
       - name: Show the coverage
         if: ${{ !cancelled() && hashFiles('coverage-all/coverage-summary.json') != '' }}
         run: node scripts/coverage.ts summary coverage-all/coverage-summary.json "Coverage of all tests" >> "$GITHUB_STEP_SUMMARY"
