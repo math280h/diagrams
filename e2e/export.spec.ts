@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { decode } from 'modern-gif'
 import { DIAGRAM_VERSION } from '@/model/schema'
 import { copyTemplate } from './helpers'

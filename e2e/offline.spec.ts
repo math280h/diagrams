@@ -2,7 +2,7 @@ import { appendFile, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/p
 import { createServer } from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
-import { expect, test, type BrowserContext, type Page } from '@playwright/test'
+import { expect, test, type BrowserContext, type Page } from './fixtures'
 import { build, preview, type PreviewServer } from 'vite'
 import type { AssetList } from '@/sw/asset-list'
 import { copyTemplate } from './helpers'

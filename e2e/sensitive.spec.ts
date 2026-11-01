@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { copyTemplate } from './helpers'
 
 test('shows the connections that carry sensitive data, and marks a field as a secret', async ({ page }) => {

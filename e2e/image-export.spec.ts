@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { copyTemplate } from './helpers'
 
-async function openImageExport(page: import('@playwright/test').Page) {
+async function openImageExport(page: import('./fixtures').Page) {
   await page.getByRole('button', { name: 'Export' }).click()
   await page.getByRole('menuitem', { name: /^Image/ }).click()
   await expect(page.getByAltText('Export preview')).toBeVisible({ timeout: 15_000 })

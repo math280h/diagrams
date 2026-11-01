@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { HEADLINE_FEATURES, MORE_FEATURES } from '@/library/feature-list'
 
 test('pauses and plays the template on the first-run stage', async ({ page }) => {

@@ -1,5 +1,5 @@
 import { pathToFileURL } from 'node:url'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './fixtures'
 import { copyTemplate } from './helpers'
 
 async function exportPage(page: Page, path: string) {

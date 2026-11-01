@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test('shows an older version on the canvas and restores it as one undo step', async ({ page }) => {
   await page.goto('/')

@@ -2,7 +2,7 @@ import { readFile, mkdtemp, rm } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './fixtures'
 import { build, preview, type PreviewServer } from 'vite'
 import {
   AGENT_HOST,

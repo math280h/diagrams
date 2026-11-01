@@ -1,4 +1,4 @@
-import { expect, test, type Request } from '@playwright/test'
+import { expect, test, type Request } from './fixtures'
 import { copyTemplate } from './helpers'
 
 const MARKER = 'Quokka ledger 7731'
