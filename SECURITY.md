@@ -33,7 +33,7 @@ The command fails if the file changed after the build, or if a different workflo
 
 The release also has each attestation as a file: `Diagrams-<version>-<platform>-provenance.sigstore.json` and
 `Diagrams-<version>-<platform>-sbom.sigstore.json`, where `<platform>` is `win`, `mac` or `linux`. With `--bundle`,
-the command reads the attestation from that file and does not get it from GitHub:
+the command reads the attestation from the bundle file and does not get it from GitHub:
 
 ```sh
 gh attestation verify Diagrams-0.2.0-win-x64.exe --bundle Diagrams-0.2.0-win-provenance.sigstore.json \
