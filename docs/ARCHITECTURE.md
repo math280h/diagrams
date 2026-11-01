@@ -1145,8 +1145,8 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
 - "Desktop app on …": unit tests, desktop end-to-end tests and the render action on Windows, macOS and Linux.
   - Each job builds the installers of its system for its own architecture: NSIS on Windows, dmg on macOS, AppImage
     and deb on Linux.
-  - It installs or mounts each one and runs `scripts/smoke-package.mjs` on the installed app. On Windows, it then
-    removes the app with the uninstaller and checks that `Diagrams.exe` is gone.
+  - The job installs or mounts each installer and runs `scripts/smoke-package.mjs` on the installed app. On Windows,
+    the job then runs the uninstaller and checks that the uninstaller removed `Diagrams.exe`.
   - The AppImage of the default toolset needs FUSE 2, so the Linux job installs `libfuse2t64`.
 - `.github/actions/playwright-chromium` caches Chromium by Playwright version. Linux still installs the system
   libraries, which a cache cannot hold.
