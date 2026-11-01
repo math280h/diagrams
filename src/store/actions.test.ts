@@ -452,6 +452,7 @@ describe('node and edge data', () => {
     useDoc.setState({ nodes: [label] })
     expect(() => updateNodeData(label.id, { title: 'Nope' })).toThrow('A text node has no "title" field.')
     expect(nodeById(label.id).data).toEqual(defaultTextData())
+    expect(canUndo()).toBe(false)
   })
 
   it('makes separate undo steps for edits with the same key that are far apart in time', () => {
@@ -876,6 +877,7 @@ describe('patch, pin and colour nodes', () => {
     expect(canUndo()).toBe(false)
     expect(() => patchNodesData(new Map([[box.id, { title: 'VPC' }]]))).toThrow('A group node has no "title" field.')
     expect(nodeById(box.id).data).toEqual(box.data)
+    expect(canUndo()).toBe(false)
   })
 
   it('pins nodes and tells when the whole selection is pinned', () => {
@@ -948,7 +950,8 @@ describe('after a drag', () => {
     const child = { ...card(700, 0), parentId: box.id }
     useDoc.setState({ nodes: [box, child] })
     reparentAfterDrag([child.id])
-    expect(nodeById(child.id)).toMatchObject({ parentId: undefined, position: { x: 750, y: 50 } })
+    expect(nodeById(child.id)?.parentId).toBeUndefined()
+    expect(nodeById(child.id)?.position).toEqual({ x: 750, y: 50 })
   })
 
   it('does not put a dragged group into another group', () => {
