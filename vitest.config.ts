@@ -14,6 +14,7 @@ export default mergeConfig(
         include: ['src/**/*.{ts,tsx}', 'electron/**/*.ts', 'scripts/**/*.ts', 'actions/**/*.mjs'],
         exclude: ['**/*.test.{ts,mjs}', '**/*.d.ts'],
         reporter: ['text-summary', 'json-summary', 'html'],
+        reportOnFailure: true,
         thresholds: { statements: 50, branches: 42, functions: 39, lines: 51 },
       },
       projects: [

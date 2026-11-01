@@ -4,6 +4,8 @@ import DICTIONARY from './link-dictionary.txt?raw'
 import { compress, decompress } from './link-model'
 import { linkJson } from './share-link'
 
+// V8 coverage makes these round trips about five times slower.
+const ROUND_TRIP = { timeout: 300_000 }
 const encoder = new TextEncoder()
 const dictionary = encoder.encode(DICTIONARY)
 
@@ -22,14 +24,14 @@ function pseudoRandomBytes(length: number, seed: number): Uint8Array {
 }
 
 describe('link model', () => {
-  it('gives back every template diagram exactly', { timeout: 60_000 }, () => {
+  it('gives back every template diagram exactly', ROUND_TRIP, () => {
     for (const diagram of TEMPLATES.flatMap((template) => templateDiagrams(template))) {
       const data = encoder.encode(linkJson(diagram))
       expect(roundTrip(data)).toEqual(data)
     }
   })
 
-  it('gives back empty, tiny, repeated and random data exactly', { timeout: 60_000 }, () => {
+  it('gives back empty, tiny, repeated and random data exactly', ROUND_TRIP, () => {
     for (const data of [
       new Uint8Array(0),
       Uint8Array.of(0),
