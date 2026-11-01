@@ -65,7 +65,7 @@ this app.
 
 ## Simple Icons
 
-Source: https://simpleicons.org (simple-icons 16.35.0). The app bundles 220 of its logos as single-colour paths.
+Source: https://simpleicons.org (simple-icons 16.36.0). The app bundles 220 of its logos as single-colour paths.
 
 The Simple Icons data is licensed under CC0-1.0. The licence of the project does not mean that every logo is CC0, and
 the trademark and brand guidelines of each brand still apply. These bundled logos have their own licence:
