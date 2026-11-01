@@ -26,6 +26,7 @@ Open http://127.0.0.1:5173. For the desktop app, run `pnpm desktop:dev`.
 | Format               | `pnpm format` (check only: `pnpm format:check`)               |
 | Unit + browser tests | `pnpm test` (`*.browser.test.ts` runs in Chromium)            |
 | Test coverage        | `pnpm test:coverage` (writes `coverage/`)                     |
+| Actions lockfile     | `gh actions-lock --no-narrow` (after a `uses:` change)        |
 | All coverage         | `pnpm coverage:all` (with web e2e; writes `coverage-all/`)    |
 | End-to-end tests     | `pnpm e2e` (Playwright; reuses a running dev server)          |
 | Production build     | `pnpm build`                                                  |
