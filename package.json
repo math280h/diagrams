@@ -93,7 +93,7 @@
     "@vitest/browser-playwright": "^5.0.5",
     "@vitest/coverage-v8": "^5.0.5",
     "@vitest/istanbul-lib-coverage": "^1.0.2",
-    "@vitest/istanbul-lib-report": "^1.0.2",
+    "@vitest/istanbul-lib-report": "^2.0.0",
     "ast-v8-to-istanbul": "^1.0.7",
     "babel-plugin-react-compiler": "^1.0.0",
     "electron": "^45.2.1",
