@@ -76,7 +76,7 @@ the macOS build is signed, the macOS app tells you about a new version and links
 
 ### Build from source
 
-You need Node.js 24 or later and pnpm 12.16:
+You need Node.js 26.13 or later and pnpm 12.16:
 
 ```sh
 pnpm install
