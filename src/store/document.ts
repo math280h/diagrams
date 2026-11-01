@@ -55,12 +55,13 @@ interface Session {
  * Saves the changes of the open diagram until the session stops.
  *
  * A save runs {@link SAVE_DELAY_MS} after the last change, when the page hides, and on {@link Session.flush}. It
- * writes nothing when the content is as the last save left it, for example after a change of the selection only.
+ * writes nothing when the content is the same as at the open, after a reload or at the last save. It compares the
+ * content in the form that a save writes. For example, a change of only the selection writes nothing.
  */
 function startSession(diagram: Diagram): Session {
   const id = diagram.id
   let timer: ReturnType<typeof setTimeout> | undefined
-  let lastSaved = savedContent(diagram)
+  let lastSaved = savedContent(currentDiagram())
 
   const save = () => {
     clearTimeout(timer)
@@ -82,7 +83,7 @@ function startSession(diagram: Diagram): Session {
     timer = undefined
     openDiagram(loaded)
     beginVersions(loaded)
-    lastSaved = savedContent(loaded)
+    lastSaved = savedContent(currentDiagram())
   }
 
   const stopDoc = useDoc.subscribe((state, previous) => {
