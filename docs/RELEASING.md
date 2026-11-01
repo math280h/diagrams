@@ -102,14 +102,17 @@ verify a downloaded file.
 
 ## Signing
 
-The workflow signs only when the `release` environment of the repository has the secrets below. Without them the
-builds are unsigned: Windows SmartScreen and macOS Gatekeeper warn before the first start, and macOS cannot install
-updates.
+Signing is optional. Without the settings below, the builds are unsigned: Windows SmartScreen and macOS Gatekeeper
+warn before the first start, and macOS cannot install updates. A fork can sign its own builds with its own
+certificates in the same way, or leave the settings empty.
 
-Add required reviewers to the `release` environment in the repository settings, so that no workflow run uses the
-secrets without your approval.
+The Release workflow signs the Windows builds of previews and releases, and the macOS builds of releases.
+`ci.yml` and `preview-app.yml`, the workflows of pull requests and of `main`, do not sign.
 
 ### macOS: Developer ID and notarization
+
+The macOS secrets are in the `release` environment. Add required reviewers to it in the repository settings, so that
+no workflow run uses the secrets without your approval.
 
 | Secret                        | Value                                                       |
 | ----------------------------- | ----------------------------------------------------------- |
@@ -122,19 +125,83 @@ secrets without your approval.
 With the certificate, the build uses the hardened runtime and notarizes itself, and signed apps install updates. Users
 of an unsigned macOS build must install the first signed version by hand.
 
-### Windows: Azure Artifact Signing
+### Windows: Google Cloud KMS
 
-| Name                      | Kind     | Value                                   |
-| ------------------------- | -------- | --------------------------------------- |
-| `AZURE_TENANT_ID`         | Secret   | The tenant of the app registration      |
-| `AZURE_CLIENT_ID`         | Secret   | The client ID of the app registration   |
-| `AZURE_CLIENT_SECRET`     | Secret   | A client secret of the app registration |
-| `AZURE_SIGNING_ENDPOINT`  | Variable | The endpoint of the signing account     |
-| `AZURE_SIGNING_ACCOUNT`   | Variable | The name of the signing account         |
-| `AZURE_SIGNING_PROFILE`   | Variable | The name of the certificate profile     |
-| `AZURE_SIGNING_PUBLISHER` | Variable | The publisher name of the certificate   |
+The Windows key is in Google Cloud KMS, with the HSM protection level, so it cannot leave Google Cloud.
+`signtool.exe` signs the app, `elevate.exe`, the uninstaller and the installer through the Cloud KMS CNG provider
+(`.github/actions/windows-signing`, `scripts/windows-signing.ts`). The workflow logs in to Google Cloud with the
+OIDC token of the job (Workload Identity Federation), so the repository keeps no secret for Windows.
 
-After the first signed release, the installed app accepts only updates from the same publisher.
+| Repository variable              | Value                                                                             |
+| -------------------------------- | --------------------------------------------------------------------------------- |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | The full name of the workload identity provider                                   |
+| `GCP_SERVICE_ACCOUNT`            | The email address of the service account that signs                               |
+| `WINDOWS_SIGNING_KEY`            | The full name of the key version                                                  |
+| `WINDOWS_SIGNING_CERTIFICATE`    | The PEM certificate of the key, then the PEM certificates of the intermediate CAs |
+| `WINDOWS_SIGNING_TIMESTAMP_URL`  | Optional: an RFC 3161 timestamp server (default `http://timestamp.digicert.com`)  |
+
+The full names have the form `projects/NUMBER/locations/global/workloadIdentityPools/POOL/providers/PROVIDER` and
+`projects/PROJECT/locations/LOCATION/keyRings/RING/cryptoKeys/KEY/cryptoKeyVersions/1`.
+
+The Release workflow signs the Windows build only when `WINDOWS_SIGNING_CERTIFICATE` has a value.
+
+After the first signed release, the installed app accepts only updates from the same publisher: the common name of
+the certificate (`publisherName` in `app-update.yml`). A new certificate must have the same common name.
+
+#### Set up the key
+
+Run these commands in Cloud Shell, or with the gcloud CLI in the Google Cloud project. Replace the words in capitals.
+
+```sh
+gcloud services enable cloudkms.googleapis.com iamcredentials.googleapis.com sts.googleapis.com
+gcloud kms keyrings create RING --location LOCATION
+gcloud kms keys create KEY --keyring RING --location LOCATION \
+  --purpose asymmetric-signing --default-algorithm ec-sign-p256-sha256 --protection-level hsm
+gcloud iam service-accounts create SERVICE_ACCOUNT
+gcloud kms keys add-iam-policy-binding KEY --keyring RING --location LOCATION \
+  --member serviceAccount:SERVICE_ACCOUNT@PROJECT.iam.gserviceaccount.com --role roles/cloudkms.signerVerifier
+gcloud iam workload-identity-pools create POOL --location global
+gcloud iam workload-identity-pools providers create-oidc PROVIDER --location global --workload-identity-pool POOL \
+  --issuer-uri https://token.actions.githubusercontent.com \
+  --attribute-mapping google.subject=assertion.sub,attribute.repository=assertion.repository \
+  --attribute-condition "assertion.repository == 'OWNER/REPO' && (
+    (assertion.environment in ['release', 'preview'] && assertion.ref.startsWith('refs/tags/v')) ||
+    (assertion.environment == 'signing-test' && assertion.ref == 'refs/heads/main'))"
+gcloud iam service-accounts add-iam-policy-binding SERVICE_ACCOUNT@PROJECT.iam.gserviceaccount.com \
+  --role roles/iam.workloadIdentityUser \
+  --member principalSet://iam.googleapis.com/projects/NUMBER/locations/global/workloadIdentityPools/POOL/attribute.repository/OWNER/REPO
+```
+
+The condition of the provider gives a token only to jobs of this repository. A job in the `release` or `preview`
+environment gets a token only for a `v` tag. A job in the `signing-test` environment gets a token only for `main`.
+Use the names of the environments of your repository.
+
+#### Get the certificate
+
+1. In the Google Cloud console, open the key version, select **Verify attestation** and download the attestation
+   bundle. It shows that the key is in an HSM.
+2. Make a certificate signing request (CSR) of the key with OpenSSL and the Cloud KMS PKCS #11 library, as in
+   [Use CNG Provider and SignTool to sign Windows artifacts](https://docs.cloud.google.com/kms/docs/reference/cng-signtool).
+3. Buy a code signing certificate from a CA that accepts a Cloud KMS key with an attestation. Send the CSR and the
+   attestation bundle.
+4. Put the certificate, then the certificates of the CA, in `WINDOWS_SIGNING_CERTIFICATE`.
+
+#### Test the signing
+
+The "Test the Windows signing" workflow signs a Windows build of `main` and checks that each file has a signature of
+the certificate. It publishes nothing.
+
+1. Make a self-signed certificate of the key, as in the same Google Cloud guide.
+2. Add a `signing-test` environment that allows `main`, with you as a required reviewer. Give it a
+   `WINDOWS_SIGNING_CERTIFICATE` variable with the self-signed certificate. A variable of an environment replaces the
+   repository variable of the same name.
+3. Run the workflow on `main`.
+
+A self-signed certificate never goes into a release, because only the `signing-test` environment has it.
+
+The action pins the release of the CNG provider, the SHA-256 of its zip file and the release signing key of Google.
+It checks the signature of the `.msi` file with that key. Dependabot does not update the CNG provider. For a new
+release, update the URL and the SHA-256 in `.github/actions/windows-signing/action.yml`.
 
 ## Keep stable
 
