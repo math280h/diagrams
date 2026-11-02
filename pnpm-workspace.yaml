@@ -16,3 +16,5 @@ overrides:
   'glob@>=9.0.0 <14.0.2': ^14.0.2
   'minimatch@>=7.0.0 <11.0.1': ^11.0.3
   'semver@<7': ^7.8.5
+patchedDependencies:
+  '@zumer/snapdom@3.7.0': patches/@zumer__snapdom@3.7.0.patch
