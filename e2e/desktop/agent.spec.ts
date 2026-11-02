@@ -1,4 +1,4 @@
-import { AGENT_ENDPOINT } from '@/desktop/constants'
+import { AGENT_ENDPOINT, CAPTURE_HASH } from '@/desktop/constants'
 import { agentUrl, callTool, expect, test } from './fixtures'
 
 const PNG_SIGNATURE = 'iVBORw0KGgo'
@@ -111,7 +111,13 @@ test.describe('with a native window', () => {
     expect(image?.data?.startsWith(PNG_SIGNATURE)).toBe(true)
     expect(first.json.width).toBe(800)
 
-    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.minimize())
+    await app.evaluate(
+      ({ BrowserWindow }, hash) =>
+        BrowserWindow.getAllWindows()
+          .find((other) => !other.webContents.getURL().endsWith(hash))
+          ?.minimize(),
+      CAPTURE_HASH,
+    )
     const second = await callTool(mcp, 'render_image', { flow: 'Place an order', step: 2, maxSizePx: 640 })
     expect(second.content.find((block) => block.type === 'image')?.data?.startsWith(PNG_SIGNATURE)).toBe(true)
   })

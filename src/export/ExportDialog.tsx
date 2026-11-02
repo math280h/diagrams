@@ -1,5 +1,5 @@
 import { Copy, Download, Loader2, X } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useCanvasTheme } from '@/canvas/canvas-theme'
 import { useReducedMotion } from '@/lib/motion'
@@ -26,8 +26,6 @@ import { Choice, Field, Segmented, SliderField, SwitchField } from '@/editor/ins
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { errorMessage } from '@/lib/error-message'
 import { diagramBounds } from './bounds'
-import { captureBlob, canvasBackground, prepareAssets, waitForPaint } from './capture'
-import { ExportStage, type StageHandle } from './ExportStage'
 import { HtmlExport } from './HtmlExport'
 import { LinkExport } from './LinkExport'
 import { MermaidExport } from './MermaidExport'
@@ -35,6 +33,7 @@ import { describeDiagram, svgWithDescription } from './describe'
 import { pngWithDiagram, svgWithDiagram } from './embed'
 import { diagramToEmbed, writeImageToClipboard } from './image-copy'
 import { ReadmeExport } from './ReadmeExport'
+import { openStageSession, type StageSession, type StageSpec } from './stage-session'
 import { TextExport } from './TextExport'
 import { usePainted } from './use-painted'
 import { ExportAbortedError, recordStage, type VideoFormat } from './video'
@@ -85,6 +84,35 @@ function useStageContent(themeChoice: ThemeChoice, grid: boolean, selectionOnly 
   }
 }
 
+function previewFailed(error: unknown) {
+  toast.error('The export preview could not render.', { description: errorMessage(error) })
+}
+
+/** Opens a stage session for the spec, and disposes it when the spec changes or the component unmounts. */
+function useStageSession(spec: StageSpec | null): StageSession | null {
+  const [open, setOpen] = useState<{ spec: StageSpec; session: StageSession } | null>(null)
+  useEffect(() => {
+    if (!spec) return
+    let cancelled = false
+    let session: StageSession | null = null
+    openStageSession(spec).then(
+      (opened) => {
+        if (cancelled) return opened.dispose()
+        session = opened
+        setOpen({ spec, session: opened })
+      },
+      (error: unknown) => {
+        if (!cancelled) previewFailed(error)
+      },
+    )
+    return () => {
+      cancelled = true
+      session?.dispose()
+    }
+  }, [spec])
+  return open?.spec === spec ? open.session : null
+}
+
 function ImageExport({ onClose }: { onClose: () => void }) {
   const painted = usePainted()
   const engine = useEngine()
@@ -95,7 +123,6 @@ function ImageExport({ onClose }: { onClose: () => void }) {
   const [themeChoice, setThemeChoice] = useState<ThemeChoice>('canvas')
   const [padding, setPadding] = useState(64)
   const [grid, setGrid] = useState(false)
-  const [ready, setReady] = useState<{ key: string; stage: StageHandle } | null>(null)
   const [preview, setPreview] = useState<{ url: string; bytes: number; scale: number } | null>(null)
   const [svgBytes, setSvgBytes] = useState<{ key: string; bytes: number } | null>(null)
   const [busy, setBusy] = useState(false)
@@ -108,65 +135,75 @@ function ImageExport({ onClose }: { onClose: () => void }) {
   const bounds = useMemo(() => diagramBounds(content.nodes), [content.nodes])
   const transparent = background === 'transparent'
   const stageKey = `${themeChoice}|${padding}|${transparent}|${grid}|${selectionOnly}`
-  const stage = ready?.key === stageKey ? ready.stage : null
   const width = Math.ceil(bounds.width + padding * 2)
   const height = Math.ceil(bounds.height + padding * 2)
   const previewScale = Math.min(
     MAX_PREVIEW_SCALE,
     Math.min(PREVIEW_BOX_PX.width / width, PREVIEW_BOX_PX.height / height) * window.devicePixelRatio,
   )
+  const { nodes, edges, theme, resolvedTheme } = content
+  const spec = useMemo<StageSpec | null>(
+    () =>
+      painted
+        ? {
+            width,
+            height,
+            nodes,
+            edges,
+            theme,
+            resolvedTheme,
+            transparent,
+            viewport: { x: padding - bounds.x, y: padding - bounds.y, zoom: 1 },
+            flows: [],
+          }
+        : null,
+    [painted, width, height, nodes, edges, theme, resolvedTheme, transparent, padding, bounds.x, bounds.y],
+  )
+  const session = useStageSession(spec)
 
   useEffect(() => {
-    if (!stage) return
+    if (!session) return
     let cancelled = false
     let url: string | null = null
     void (async () => {
-      stage.engine.render(engine.ambient.time.get(), 0)
-      await waitForPaint()
-      const blob = await captureBlob(stage.root, 'png', {
-        scale: previewScale,
-        backgroundColor: transparent ? null : canvasBackground(stage.root),
-      })
+      const blob = await session.image(
+        { ambientMs: engine.ambient.time.get(), timeMs: 0 },
+        { format: 'png', scale: previewScale, transparent },
+      )
       if (cancelled) return
       url = URL.createObjectURL(blob)
       setPreview({ url, bytes: blob.size, scale: previewScale })
-    })()
+    })().catch((error: unknown) => {
+      if (!cancelled) previewFailed(error)
+    })
     return () => {
       cancelled = true
       if (url) URL.revokeObjectURL(url)
     }
-  }, [stage, engine, transparent, previewScale])
+  }, [session, engine, transparent, previewScale])
 
   useEffect(() => {
-    if (!stage || format !== 'svg') return
+    if (!session || format !== 'svg') return
     let cancelled = false
     void (async () => {
-      const blob = await captureBlob(stage.root, 'svg', {
-        scale: 1,
-        backgroundColor: transparent ? null : canvasBackground(stage.root),
-      })
+      const blob = await session.image(
+        { ambientMs: engine.ambient.time.get(), timeMs: 0 },
+        { format: 'svg', scale: 1, transparent },
+      )
       if (!cancelled) setSvgBytes({ key: stageKey, bytes: blob.size })
-    })()
+    })().catch((error: unknown) => {
+      if (!cancelled) previewFailed(error)
+    })
     return () => {
       cancelled = true
     }
-  }, [stage, format, transparent, stageKey])
+  }, [session, engine, format, transparent, stageKey])
 
-  const onReady = useCallback(
-    async (handle: StageHandle) => {
-      await prepareAssets(useDoc.getState().nodes, [])
-      setReady({ key: stageKey, stage: handle })
-    },
-    [stageKey],
-  )
-
-  const render = async (handle: StageHandle) => {
-    handle.engine.render(engine.ambient.time.get(), 0)
-    await waitForPaint()
-    const image = await captureBlob(handle.root, format, {
-      scale: format === 'png' ? scale : 1,
-      backgroundColor: transparent ? null : canvasBackground(handle.root),
-    })
+  const render = async (open: StageSession) => {
+    const image = await open.image(
+      { ambientMs: engine.ambient.time.get(), timeMs: 0 },
+      { format, scale: format === 'png' ? scale : 1, transparent },
+    )
     const described =
       format === 'svg'
         ? await svgWithDescription(
@@ -180,10 +217,10 @@ function ImageExport({ onClose }: { onClose: () => void }) {
   }
 
   const copy = async () => {
-    if (!stage) return
+    if (!session) return
     setBusy(true)
     try {
-      await writeImageToClipboard(format, render(stage))
+      await writeImageToClipboard(format, render(session))
       toast.success(`Copied the ${FORMAT_NAMES[format]}`)
     } catch (error) {
       toast.error('The image could not be copied.', { description: errorMessage(error) })
@@ -193,10 +230,10 @@ function ImageExport({ onClose }: { onClose: () => void }) {
   }
 
   const save = async () => {
-    if (!stage) return
+    if (!session) return
     setBusy(true)
     try {
-      const blob = await render(stage)
+      const blob = await render(session)
       downloadBlob(blob, `${safeFileName(name)}.${format}`)
       toast.success(`Exported ${FORMAT_NAMES[format]}`)
       onClose()
@@ -220,7 +257,7 @@ function ImageExport({ onClose }: { onClose: () => void }) {
     <>
       <div className="grid gap-5 sm:grid-cols-[1fr_240px]">
         <div className="dg-thumb-grid grid h-64 place-items-center overflow-hidden rounded-xl border p-3 sm:h-96">
-          {preview && stage ? (
+          {preview && session ? (
             <img src={preview.url} alt="Export preview" className="max-h-full max-w-full rounded-sm object-contain" />
           ) : (
             <Loader2 className="size-5 animate-spin text-muted-foreground" />
@@ -310,24 +347,13 @@ function ImageExport({ onClose }: { onClose: () => void }) {
         <Button variant="ghost" onClick={onClose}>
           Cancel
         </Button>
-        <Button variant="outline" onClick={copy} disabled={!stage || busy}>
+        <Button variant="outline" onClick={copy} disabled={!session || busy}>
           <Copy /> Copy {FORMAT_NAMES[format]}
         </Button>
-        <Button onClick={save} disabled={!stage || busy}>
+        <Button onClick={save} disabled={!session || busy}>
           {busy ? <Loader2 className="animate-spin" /> : <Download />} Export {FORMAT_NAMES[format]}
         </Button>
       </DialogFooter>
-      {painted && (
-        <ExportStage
-          key={stageKey}
-          width={width}
-          height={height}
-          {...content}
-          transparent={transparent}
-          viewport={{ x: padding - bounds.x, y: padding - bounds.y, zoom: 1 }}
-          onReady={onReady}
-        />
-      )}
     </>
   )
 }
@@ -349,7 +375,6 @@ function VideoExport({ onClose }: { onClose: () => void }) {
   const [ambientSeconds, setAmbientSeconds] = useState(6)
   const [themeChoice, setThemeChoice] = useState<ThemeChoice>('canvas')
   const [grid, setGrid] = useState(false)
-  const [ready, setReady] = useState<{ key: string; stage: StageHandle } | null>(null)
   const [progress, setProgress] = useState<number | null>(null)
   const [captured, setCaptured] = useState<{ key: string; frames: { timeMs: number; url: string }[] } | null>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -368,7 +393,26 @@ function VideoExport({ onClose }: { onClose: () => void }) {
   const paths = flow?.paths?.filter((path) => path.steps.length > 0) ?? []
   const durationMs = timeline ? timeline.durationMs + FLOW_END_HOLD_MS : ambientSeconds * 1000
   const stageKey = `${frame}|${themeChoice}|${grid}`
-  const stage = ready?.key === stageKey ? ready.stage : null
+  const { nodes, edges, theme, resolvedTheme } = content
+  const spec = useMemo<StageSpec | null>(
+    () =>
+      painted
+        ? {
+            ...size,
+            nodes,
+            edges,
+            theme,
+            resolvedTheme,
+            transparent: false,
+            viewport: { x: 0, y: 0, zoom: 1 },
+            flows,
+            fitPadding: STAGE_FIT_PADDING,
+            ...(flow ? { flow: { flow, pathId } } : {}),
+          }
+        : null,
+    [painted, size, nodes, edges, theme, resolvedTheme, flows, flow, pathId],
+  )
+  const session = useStageSession(spec)
 
   useEffect(() => () => abortRef.current?.abort(), [])
 
@@ -378,65 +422,42 @@ function VideoExport({ onClose }: { onClose: () => void }) {
   const frames = captured?.key === previewKey ? captured.frames : null
 
   useEffect(() => {
-    if (!stage || recording) return
+    if (!session || recording) return
     let cancelled = false
     const urls: string[] = []
     void (async () => {
-      if (flow && timeline) {
-        stage.engine.playback.load(flow.id, timeline)
-        stage.engine.playback.setFollow(true)
-      } else {
-        stage.engine.playback.load(null, null)
-        await stage.fitView(STAGE_FIT_PADDING)
-      }
       const list: { timeMs: number; url: string }[] = []
       for (const share of PREVIEW_SHARES) {
         if (cancelled) return
         const timeMs = share * durationMs
-        stage.engine.render(engine.ambient.time.get() + timeMs, timeMs)
-        await waitForPaint()
-        const blob = await captureBlob(stage.root, 'png', {
-          scale: PREVIEW_SCALE,
-          backgroundColor: canvasBackground(stage.root),
-        })
+        const blob = await session.image(
+          { ambientMs: engine.ambient.time.get() + timeMs, timeMs },
+          { format: 'png', scale: PREVIEW_SCALE, transparent: false },
+        )
         const url = URL.createObjectURL(blob)
         urls.push(url)
         list.push({ timeMs, url })
       }
       if (!cancelled) setCaptured({ key: previewKey, frames: list })
-    })()
+    })().catch((error: unknown) => {
+      if (!cancelled) previewFailed(error)
+    })
     return () => {
       cancelled = true
       for (const url of urls) URL.revokeObjectURL(url)
     }
-  }, [stage, recording, flow, timeline, durationMs, engine, previewKey])
-
-  const onReady = useCallback(
-    async (handle: StageHandle) => {
-      await prepareAssets(useDoc.getState().nodes, useDoc.getState().flows)
-      await handle.fitView(STAGE_FIT_PADDING)
-      setReady({ key: stageKey, stage: handle })
-    },
-    [stageKey],
-  )
+  }, [session, recording, durationMs, engine, previewKey])
 
   const start = async () => {
-    if (!stage) return
+    if (!session) return
     const controller = new AbortController()
     abortRef.current = controller
     const startedAt = performance.now()
     setTimeLeftMs(null)
     setProgress(0)
     try {
-      if (flow && timeline) {
-        stage.engine.playback.load(flow.id, timeline)
-        stage.engine.playback.setFollow(true)
-      } else {
-        stage.engine.playback.load(null, null)
-        await stage.fitView(STAGE_FIT_PADDING)
-      }
       if (document.hidden) toast.warning('Keep this tab visible. The browser pauses rendering in hidden tabs.')
-      const blob = await recordStage(stage, {
+      const blob = await recordStage(session, {
         format,
         fps: frameRate,
         durationMs,
@@ -598,22 +619,11 @@ function VideoExport({ onClose }: { onClose: () => void }) {
             Cancel
           </Button>
         )}
-        <Button onClick={start} disabled={!stage || progress !== null}>
+        <Button onClick={start} disabled={!session || progress !== null}>
           {progress !== null ? <Loader2 className="animate-spin" /> : <Download />}
           {progress !== null ? `${Math.round(progress * 100)}%` : `Export ${FORMAT_NAMES[format]}`}
         </Button>
       </DialogFooter>
-      {painted && (
-        <ExportStage
-          key={stageKey}
-          width={size.width}
-          height={size.height}
-          {...content}
-          transparent={false}
-          viewport={{ x: 0, y: 0, zoom: 1 }}
-          onReady={onReady}
-        />
-      )}
     </>
   )
 }

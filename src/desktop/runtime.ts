@@ -10,6 +10,8 @@ import { recordAgentCall, watchAgentInfo } from './agent-store'
 import { serveMainRequests } from './serve'
 import { watchUpdates } from './updates'
 
+const ONLY_IN_CAPTURE_WINDOW = 'Only the capture window renders export stages.'
+
 /**
  * Answers the requests of the desktop main process: agent tools, browser handoffs and the save before close.
  *
@@ -51,5 +53,8 @@ export function startDesktopRuntime(storageError: string | null = null) {
       await repository().settled()
       return null
     },
+
+    'capture.mount': () => Promise.reject(new Error(ONLY_IN_CAPTURE_WINDOW)),
+    'capture.render': () => Promise.reject(new Error(ONLY_IN_CAPTURE_WINDOW)),
   })
 }

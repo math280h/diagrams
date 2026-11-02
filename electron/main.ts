@@ -22,6 +22,7 @@ import { buildInstructions, bundledPluginConfig, bundledSkillFiles, loadSkills, 
 import { createToken, loadToken } from './agent/token'
 import { registerAppScheme, serveRenderer } from './app-protocol'
 import { findDeepLink, parseReceiveLink } from './deep-link'
+import { createCaptureService } from './capture'
 import { registerIpc } from './ipc'
 import { configurePaths, diagramsFolder, iconPath, rendererFolder } from './paths'
 import { parseRenderArgs, RENDER_USAGE, RenderUsageError, type RenderArgs } from './render-args'
@@ -175,8 +176,10 @@ async function start() {
       }),
   })
 
+  const capture = createCaptureService()
   registerIpc(
     {
+      ...capture.handlers,
       'files.list': async () => {
         const [inFolder, outside] = await Promise.all([files.readAll(), linked.readAll()])
         linkedWatcher.sync()
@@ -264,6 +267,7 @@ async function start() {
   })
 
   app.on('will-quit', () => {
+    capture.dispose()
     updates.stop()
     watcher.stop()
     linkedWatcher.stop()

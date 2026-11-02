@@ -2,6 +2,7 @@ import { ipcMain, type IpcMainInvokeEvent } from 'electron'
 import { z } from 'zod'
 import { HEX_COLOR_PATTERN } from '@/desktop/constants'
 import { IPC_CHANNELS, type MainRequests } from '@/desktop/contract'
+import { MAX_PAGE_ZOOM } from '@/export/capture-plan'
 import { GRAPHVIZ_ENGINES } from '@/layout/types'
 import { originOf } from './app-protocol'
 
@@ -12,6 +13,15 @@ export type MainHandlers = {
 const HEX_COLOR = z.string().regex(HEX_COLOR_PATTERN)
 /** The longest DOT text that the main process lays out. */
 const MAX_DOT_CHARS = 2_000_000
+/** The largest side of an export stage in CSS pixels. */
+const MAX_STAGE_SIDE_PX = 1_000_000
+
+const CAPTURE = z.object({
+  sessionId: z.uuid(),
+  moment: z.object({ ambientMs: z.number().finite(), timeMs: z.number().finite() }),
+  scale: z.number().positive().max(MAX_PAGE_ZOOM),
+  transparent: z.boolean(),
+})
 
 const INPUTS = {
   'files.list': z.null(),
@@ -29,6 +39,15 @@ const INPUTS = {
   'update.check': z.null(),
   'update.install': z.null(),
   'layout.graphviz': z.object({ dot: z.string().max(MAX_DOT_CHARS), engine: z.enum(GRAPHVIZ_ENGINES) }),
+  'capture.open': z.object({
+    stage: z.unknown(),
+    width: z.number().positive().max(MAX_STAGE_SIDE_PX),
+    height: z.number().positive().max(MAX_STAGE_SIDE_PX),
+    fixedViewport: z.boolean(),
+  }),
+  'capture.image': CAPTURE,
+  'capture.frame': CAPTURE,
+  'capture.close': z.object({ sessionId: z.uuid() }),
 } satisfies { [M in keyof MainRequests]: z.ZodType<MainRequests[M]['input']> }
 
 function isRequest(method: unknown): method is keyof MainRequests {
