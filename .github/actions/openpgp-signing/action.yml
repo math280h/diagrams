@@ -1,0 +1,87 @@
+name: Prepare the OpenPGP signing
+description: >-
+  Logs in to Google Cloud with the OIDC token of the job and sets up gpg to sign with the OpenPGP key in a Cloud KMS
+  key ring, through the Cloud KMS PKCS #11 library and gnupg-pkcs11-scd. Installs debsigs and debsig-verify, and sets
+  GNUPGHOME.
+
+inputs:
+  workload-identity-provider:
+    description: The full name of the workload identity provider in Google Cloud.
+    required: true
+  service-account:
+    description: The email address of the service account that can sign with the key.
+    required: true
+  key-ring:
+    description: The full name of the Cloud KMS key ring that holds the OpenPGP key.
+    required: true
+  fingerprint:
+    description: The fingerprint of the OpenPGP key. public/release-signing-key.asc must hold this key.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+      with:
+        workload_identity_provider: ${{ inputs.workload-identity-provider }}
+        service_account: ${{ inputs.service-account }}
+    - name: Install gnupg-pkcs11-scd, debsigs and debsig-verify
+      shell: bash
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq --no-install-recommends gnupg-pkcs11-scd debsigs debsig-verify
+    - name: Download and check the Cloud KMS PKCS #11 library
+      shell: bash
+      env:
+        KMSP11_URL: https://github.com/GoogleCloudPlatform/kms-integrations/releases/download/pkcs11-v1.9/libkmsp11-1.9-linux-amd64.tar.gz
+        KMSP11_SHA256: 5397f965073cd5d1e2c43e5148f102f31a7c835902f97eb41c7c9c0f1b876a40
+        # The release signing key of the PKCS #11 library, from kmsp11/docs/user_guide.md of GoogleCloudPlatform/kms-integrations.
+        KMSP11_SIGNING_KEY: |
+          -----BEGIN PUBLIC KEY-----
+          MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEtfLbXkHUVc9oUPTNyaEK3hIwmuGRoTtd
+          6zDhwqjJuYaMwNd1aaFQLMawTwZgR0Xn27ymVWtqJHBe0FU9BPIQ+SFmKw+9jSwu
+          /FuqbJnLmTnWMJ1jRCtyHNZawvv2wbiB
+          -----END PUBLIC KEY-----
+      run: |
+        set -euo pipefail
+        folder="$RUNNER_TEMP/kmsp11"
+        mkdir -p "$folder"
+        cd "$folder"
+        curl -sSfL -o kmsp11.tar.gz "$KMSP11_URL"
+        echo "$KMSP11_SHA256  kmsp11.tar.gz" | sha256sum -c -
+        tar -xzf kmsp11.tar.gz --strip-components=1
+        printf '%s' "$KMSP11_SIGNING_KEY" > signing-key.pem
+        openssl dgst -sha384 -verify signing-key.pem -signature libkmsp11.so.sig libkmsp11.so
+    - name: Set up gpg with the Cloud KMS key
+      shell: bash
+      env:
+        KEY_RING: ${{ inputs.key-ring }}
+        FINGERPRINT: ${{ inputs.fingerprint }}
+      run: |
+        set -euo pipefail
+        kmsp11="$RUNNER_TEMP/kmsp11"
+        home="$RUNNER_TEMP/gnupg"
+        mkdir -m 700 "$home"
+        # gnupg-pkcs11-scd finds a key only through a certificate, which generate_certs makes from the Cloud KMS key.
+        printf -- '---\ntokens:\n  - key_ring: "%s"\n    label: "openpgp"\ngenerate_certs: true\n' "$KEY_RING" \
+          > "$kmsp11/kmsp11.yaml"
+        printf '#!/bin/sh\nexport KMS_PKCS11_CONFIG="%s"\nexport GOOGLE_APPLICATION_CREDENTIALS="%s"\nexec %s "$@"\n' \
+          "$kmsp11/kmsp11.yaml" "$GOOGLE_APPLICATION_CREDENTIALS" /usr/bin/gnupg-pkcs11-scd > "$kmsp11/scdaemon"
+        chmod 755 "$kmsp11/scdaemon"
+        printf 'providers kms\nprovider-kms-library %s\n' "$kmsp11/libkmsp11.so" > "$home/gnupg-pkcs11-scd.conf"
+        printf 'scdaemon-program %s\n' "$kmsp11/scdaemon" > "$home/gpg-agent.conf"
+        # A Cloud KMS key of the type RSA_SIGN_PKCS1_4096_SHA512 signs only SHA-512 digests.
+        printf 'personal-digest-preferences SHA512\ncert-digest-algo SHA512\ndigest-algo SHA512\n' > "$home/gpg.conf"
+        export GNUPGHOME="$home"
+        gpg --batch --import public/release-signing-key.asc
+        if ! gpg --batch --with-colons --list-keys "$FINGERPRINT" | grep -q "^fpr:::::::::$FINGERPRINT:"; then
+          echo "::error::public/release-signing-key.asc does not hold the key $FINGERPRINT."
+          exit 1
+        fi
+        gpg-connect-agent 'learn --force' /bye > /dev/null
+        check="$RUNNER_TEMP/openpgp-signing-check"
+        printf 'Diagrams signing check\n' > "$check"
+        gpg --batch --local-user "$FINGERPRINT!" --detach-sign --output "$check.sig" "$check"
+        gpg --batch --status-fd 1 --verify "$check.sig" "$check" | grep -q "VALIDSIG $FINGERPRINT"
+        echo "GNUPGHOME=$home" >> "$GITHUB_ENV"
+        echo "gpg signs with the Cloud KMS key $FINGERPRINT."

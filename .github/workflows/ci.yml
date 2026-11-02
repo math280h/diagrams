@@ -250,6 +250,20 @@ jobs:
             Linux) targets=(--linux AppImage deb --x64) ;;
           esac
           pnpm exec electron-builder "${targets[@]}" --publish never
+      - name: Sign and check the Linux packages with a test key
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends debsigs debsig-verify
+          export GNUPGHOME="$RUNNER_TEMP/gnupg"
+          mkdir -m 700 "$GNUPGHOME"
+          gpg --batch --passphrase '' --quick-generate-key 'Diagrams test <test@example.invalid>' rsa4096 sign never
+          fingerprint=$(gpg --batch --with-colons --list-keys | awk -F: '/^fpr:/ {print $10; exit}')
+          cp release/*.AppImage "$RUNNER_TEMP/unsigned.AppImage"
+          node scripts/openpgp-signing.ts sign release --fingerprint "$fingerprint"
+          node scripts/openpgp-signing.ts check release --fingerprint "$fingerprint" --unsigned "$RUNNER_TEMP/unsigned.AppImage"
+          node scripts/openpgp-signing.ts checksums release --fingerprint "$fingerprint"
+          (cd release && sha256sum --check --quiet SHA256SUMS)
       - name: Install, test and remove the Windows installer
         if: runner.os == 'Windows'
         shell: pwsh

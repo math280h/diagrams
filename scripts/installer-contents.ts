@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { runtimeSha256 } from './appimage.ts'
 import {
   APPIMAGE_LIBRARIES,
   APPIMAGE_RUNTIME_SHA256,
@@ -11,41 +12,8 @@ import {
   NSIS_PLUGINS,
 } from './sbom-components.ts'
 
-const ELF_MAGIC = 0x7f454c46
-const ELF_64_BIT = 2
-const ELF_LITTLE_ENDIAN = 1
-const ELF_HEADER_SIZE = 64
-const SECTION_WITHOUT_DATA = 8
-
 function sha256(data: Uint8Array): string {
   return createHash('sha256').update(data).digest('hex')
-}
-
-/**
- * Returns the size of the 64-bit ELF program at the start of a file, such as the runtime of an AppImage. The program
- * ends after its last section or after its section header table.
- *
- * @throws Error If the file does not start with a 64-bit ELF header.
- */
-export function elfSize(file: Uint8Array): number {
-  const view = new DataView(file.buffer, file.byteOffset, file.byteLength)
-  if (file.byteLength < ELF_HEADER_SIZE || view.getUint32(0) !== ELF_MAGIC || view.getUint8(4) !== ELF_64_BIT) {
-    throw new Error('The file does not start with a 64-bit ELF program.')
-  }
-  const littleEndian = view.getUint8(5) === ELF_LITTLE_ENDIAN
-  const tableOffset = Number(view.getBigUint64(0x28, littleEndian))
-  const entrySize = view.getUint16(0x3a, littleEndian)
-  const count = view.getUint16(0x3c, littleEndian)
-  let end = tableOffset + entrySize * count
-  for (let index = 0; index < count; index++) {
-    const entry = tableOffset + index * entrySize
-    if (view.getUint32(entry + 4, littleEndian) === SECTION_WITHOUT_DATA) continue
-    const sectionEnd = Number(
-      view.getBigUint64(entry + 0x18, littleEndian) + view.getBigUint64(entry + 0x20, littleEndian),
-    )
-    end = Math.max(end, sectionEnd)
-  }
-  return end
 }
 
 /**
@@ -100,7 +68,7 @@ function nsisProblems(executables: string[], temp: string): string[] {
 
 function appImageProblems(appImage: string, temp: string): string[] {
   const image = readFileSync(appImage)
-  const runtime = sha256(image.subarray(0, elfSize(image)))
+  const runtime = runtimeSha256(image)
   execFileSync(path.resolve(appImage), ['--appimage-extract'], { cwd: temp, stdio: 'ignore' })
   return [
     ...(runtime === APPIMAGE_RUNTIME_SHA256

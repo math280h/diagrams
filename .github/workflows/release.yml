@@ -148,6 +148,22 @@ jobs:
             [ -n "${!name}" ] || unset "$name"
           done
           pnpm exec electron-builder ${{ matrix.target }} --publish never -c.extraMetadata.version="$VERSION"
+      - name: Prepare the OpenPGP signing
+        if: runner.os == 'Linux' && vars.OPENPGP_SIGNING_FINGERPRINT != ''
+        uses: $/.github/actions/openpgp-signing
+        with:
+          workload-identity-provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service-account: ${{ secrets.GCP_OPENPGP_SERVICE_ACCOUNT }}
+          key-ring: ${{ secrets.OPENPGP_SIGNING_KEY_RING }}
+          fingerprint: ${{ vars.OPENPGP_SIGNING_FINGERPRINT }}
+      - name: Sign and check the Linux packages
+        if: runner.os == 'Linux' && vars.OPENPGP_SIGNING_FINGERPRINT != ''
+        env:
+          FINGERPRINT: ${{ vars.OPENPGP_SIGNING_FINGERPRINT }}
+        run: |
+          cp release/*.AppImage "$RUNNER_TEMP/unsigned.AppImage"
+          node scripts/openpgp-signing.ts sign release --fingerprint "$FINGERPRINT"
+          node scripts/openpgp-signing.ts check release --fingerprint "$FINGERPRINT" --unsigned "$RUNNER_TEMP/unsigned.AppImage"
       - name: Allow the Electron sandbox
         if: runner.os == 'Linux'
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
@@ -207,13 +223,54 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           find release -maxdepth 1 -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.zip' -o -name '*.AppImage' \
-            -o -name '*.deb' -o -name '*.blockmap' -o -name '*.yml' -o -name '*.sigstore.json' \) \
+            -o -name '*.deb' -o -name '*.blockmap' -o -name '*.yml' -o -name '*.sigstore.json' -o -name '*.asc' \) \
             ! -name 'builder-debug.yml' -print0 |
+            xargs -0 gh release upload "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --clobber
+
+  checksums:
+    name: Sign the checksums
+    needs: [draft, package]
+    environment: ${{ needs.draft.outputs.preview == 'true' && 'preview' || 'release' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: package.json
+      - name: Prepare the OpenPGP signing
+        if: vars.OPENPGP_SIGNING_FINGERPRINT != ''
+        uses: $/.github/actions/openpgp-signing
+        with:
+          workload-identity-provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service-account: ${{ secrets.GCP_OPENPGP_SERVICE_ACCOUNT }}
+          key-ring: ${{ secrets.OPENPGP_SIGNING_KEY_RING }}
+          fingerprint: ${{ vars.OPENPGP_SIGNING_FINGERPRINT }}
+      - name: Download the files of the draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --dir "$RUNNER_TEMP/release"
+      - name: Write and sign SHA256SUMS
+        env:
+          FINGERPRINT: ${{ vars.OPENPGP_SIGNING_FINGERPRINT }}
+        run: |
+          node scripts/openpgp-signing.ts checksums "$RUNNER_TEMP/release" ${FINGERPRINT:+--fingerprint "$FINGERPRINT"}
+          cd "$RUNNER_TEMP/release"
+          sha256sum --check --quiet SHA256SUMS
+      - name: Upload to the draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          find "$RUNNER_TEMP/release" -maxdepth 1 -name 'SHA256SUMS*' -print0 |
             xargs -0 gh release upload "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --clobber
 
   publish-preview:
     name: Publish the preview
-    needs: [draft, package]
+    needs: [draft, package, checksums]
     if: needs.draft.outputs.preview == 'true'
     runs-on: ubuntu-latest
     permissions:
