@@ -258,7 +258,7 @@ describe('step frames', () => {
   const walk = row.flatMap((id, index) =>
     index === 0 ? [step('node', id)] : [step('edge', `${row[index - 1]}${id}`), step('node', id)],
   )
-  const timeline = compileFlow(flowWith(walk), new Set(row), rowEdges)
+  const timeline = compileFlow(flowWith(walk, { cameraStyle: 'frame' }), new Set(row), rowEdges)
   const middle = (index: number) => (timeline.segments[index]!.startMs + timeline.segments[index]!.endMs) / 2
   const medium = { width: 800, height: 400 }
 
@@ -310,14 +310,14 @@ describe('step frames', () => {
     const at = timeline.segments[5]!.startMs + 300
     const target = stepFrames(timeline, shape, medium)[5]!
     const quick = evaluateFlow(
-      compileFlow(flowWith(walk, { cameraMotion: 'quick' }), new Set(row), rowEdges),
+      compileFlow(flowWith(walk, { cameraStyle: 'frame', cameraMotion: 'quick' }), new Set(row), rowEdges),
       at,
       shape,
       medium,
       { camera: true },
     ).camera!
     const slow = evaluateFlow(
-      compileFlow(flowWith(walk, { cameraMotion: 'slow' }), new Set(row), rowEdges),
+      compileFlow(flowWith(walk, { cameraStyle: 'frame', cameraMotion: 'slow' }), new Set(row), rowEdges),
       at,
       shape,
       medium,

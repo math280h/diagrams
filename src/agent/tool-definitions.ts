@@ -289,7 +289,7 @@ const flowOptions = {
     .enum(CAMERA_STYLES)
     .optional()
     .describe(
-      'frame (the default) gives each step a frame and moves only when it must, follow tracks the token, still shows the whole diagram and does not move.',
+      'follow (the default) tracks the token, frame gives each step a frame and moves only when it must, still shows the whole diagram and does not move.',
     ),
   cameraMotion: z
     .enum(CAMERA_MOTIONS)

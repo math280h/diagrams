@@ -137,7 +137,7 @@ The visual system is in `DESIGN.md` at the repository root.
   - 9: `details` (description, owner, links) on cards, shapes, groups.
   - 10 to 13, optional: `pinned` on node data (10); `opens` (another diagram id) on cards and groups (11); `parallel`
     targets on flow steps and `paths` on flows (12); `sensitive` (`personal` or `secret`) on body fields (13).
-  - 14: `cameraStyle` (`frame`, `follow`, `still`) and `cameraMotion` (`gentle`, `quick`, `slow`) on flows (`frame`,
+  - 14: `cameraStyle` (`frame`, `follow`, `still`) and `cameraMotion` (`gentle`, `quick`, `slow`) on flows (`follow`,
     `gentle`).
   - 15: overview steps (`target` of kind `flow`, empty id); `stepNumbers` on flows (off).
   - 16: theme `routeAround`, default off (off); optional hand-drawn edge `bends`.
@@ -528,9 +528,9 @@ and statuses.
   identity.
 - `evaluateFlow(timeline, t, geometry, view)` is pure: token position, node and edge state, caption and camera depend
   only on `t`. Seek and export use it.
-- A flow chooses its camera (`cameraStyle`): `frame` (default, a calm explainer), `follow` (rides along with the
-  request) or `still` (a fixed overview for a slide).
-- `follow` (`src/engine/flow/follow-camera.ts`, the camera of format 13 and earlier) takes a weighted mean of step targets. The
+- A flow chooses its camera (`cameraStyle`): `follow` (default, rides along with the request), `frame` (a calm
+  explainer) or `still` (a fixed overview for a slide).
+- `follow` (`src/engine/flow/follow-camera.ts`, also the camera of format 13 and earlier) takes a weighted mean of step targets. The
   window around `t` is 1 s for position and 1.6 s for zoom. The camera moves before a step, without jumps. A step
   zooms in at most 1.35× over the step before.
 - The frame camera does not follow the token. `stepFrames` (`src/engine/flow/framing.ts`) gives each step one frame,

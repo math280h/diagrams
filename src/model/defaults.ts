@@ -148,7 +148,7 @@ export function createFlow(name = 'User flow'): Flow {
     spotlight: true,
     loop: false,
     bodies: true,
-    cameraStyle: 'frame',
+    cameraStyle: 'follow',
     stepNumbers: false,
     cameraMotion: 'gentle',
   }
