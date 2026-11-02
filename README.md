@@ -71,9 +71,12 @@ from [GitHub Releases](https://github.com/math280h/diagrams/releases/latest):
 The installed app checks for updates, downloads them in the background and installs them when you quit or choose
 Restart. "Check for updates" in the command menu checks at once.
 
-The builds are not signed yet. Windows SmartScreen asks before the first start: choose "More info", then "Run
-anyway". macOS blocks the first start: open System Settings, then Privacy & Security, and choose "Open anyway". Until
-the macOS build is signed, the macOS app tells you about a new version and links to it, and you install it by hand.
+The Windows and macOS builds are not signed yet. Windows SmartScreen asks before the first start: choose "More info",
+then "Run anyway". macOS blocks the first start: open System Settings, then Privacy & Security, and choose "Open
+anyway". Until the macOS build is signed, the macOS app tells you about a new version and links to it, and you install
+it by hand.
+
+The Linux packages and `SHA256SUMS` have OpenPGP signatures ([check them](SECURITY.md#openpgp-signatures)).
 
 ### Build from source
 

@@ -365,7 +365,7 @@ src/
   lib/          small shared helpers: errors, queues, idle mount, reduced motion
   styles/       canvas CSS and its theme variables
 e2e/            Playwright tests for the website, and for the desktop app in e2e/desktop
-scripts/        icon catalog and build (icons/), app icon, README image, desktop dev runner, third-party licence and release notes plugins
+scripts/        icon catalog and build (icons/), app icon, README image, desktop dev runner, third-party licence and release notes plugins, release signing
 build/          app icon sources and renders
 ```
 
@@ -843,6 +843,21 @@ HTML media type, so GitHub renders mentions and pull request links. Drafts stay 
   targets as attributes. Scripts, frames and non-HTML-namespace elements go, with their content. The page inserts the
   rebuilt nodes, never an HTML string.
 - Only the website links to the page. The desktop window connects only to the app and has the updater.
+
+### Release signing
+
+In the Release workflow, an OpenPGP key signs the Linux packages and `SHA256SUMS`
+(`scripts/openpgp-signing.ts`, `docs/RELEASING.md`).
+
+- The AppImage signature has the format of `appimagetool --sign`. The key signs the SHA-256 of the whole file, with
+  zero bytes in `.sha256_sig` and `.sig_key`.
+- The block map for differential updates is part of the signed file. The block map has a checksum of the chunk with
+  the signature. Thus a change to one makes the other incorrect.
+- `signAppImage` writes random bytes into the signature sections, makes the block map again, then writes the
+  signature. electron-updater uses chunk checksums only to find chunks to copy.
+- The checksums of the random bytes are different from all old chunks. Thus electron-updater downloads these chunks,
+  then checks the SHA-512 of the file. `check` fails if the download is more than 1 MiB.
+- The SBOM gives the SHA-256 of the AppImage runtime with empty signature sections.
 
 ### Share links
 

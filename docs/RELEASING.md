@@ -20,9 +20,10 @@ version in `package.json` only names builds on your own computer, so a release n
 2. The Release workflow creates a draft release. The packaging jobs use the `release` environment, so GitHub asks you
    to approve them. Then they package the app on Windows, macOS and Linux. Each job starts the packaged app and drives
    it through the agent server before it uploads its files.
-3. When all three jobs pass, open the draft on GitHub, edit the notes, and publish it. Installed apps find the update
-   only after you publish. See "Release notes" below for what the draft holds and what to add.
-4. Publishing starts the Deploy the website workflow. Approve its job in the `release` environment, and it deploys the
+3. When the three package jobs pass, approve the "Sign the checksums" job. It writes and signs `SHA256SUMS`.
+4. Open the draft on GitHub, edit the notes, and publish it. Installed apps find the update only after you publish.
+   See "Release notes" below for what the draft holds and what to add.
+5. Publishing starts the Deploy the website workflow. Approve its job in the `release` environment, and it deploys the
    tag to the live site.
 
 ## Release notes
@@ -105,14 +106,17 @@ and each package job attests that SBOM for its installers. The attestations are 
 repository, and each package job adds them to the release as `.sigstore.json` files. `SECURITY.md` shows how to
 verify a downloaded file.
 
+The AppImage, the deb and `SHA256SUMS` also have a detached `.asc` signature each.
+
 ## Signing
 
 Signing is optional. Without the settings below, the builds are unsigned: Windows SmartScreen and macOS Gatekeeper
 warn before the first start, and macOS cannot install updates. A fork can sign its own builds with its own
 certificates in the same way, or leave the settings empty.
 
-The Release workflow signs the Windows builds of previews and releases, and the macOS builds of releases.
-`ci.yml` and `preview-app.yml`, the workflows of pull requests and of `main`, do not sign.
+The Release workflow signs the Windows builds, the Linux packages and the checksums of previews and releases, and the
+macOS builds of releases. `preview-app.yml`, the workflow of `main`, does not sign. `ci.yml` signs and checks the
+Linux packages with a key that it makes for each run.
 
 ### macOS: Developer ID and notarization
 
@@ -131,6 +135,22 @@ of an unsigned macOS build must install the first signed version by hand.
 
 `scripts/windows-signing.ts` and `.github/actions/windows-signing` sign the Windows build when the environment of
 the job has `WINDOWS_SIGNING_CERTIFICATE`. The inputs of the action name the other settings.
+
+### Linux and checksums: OpenPGP
+
+`.github/actions/openpgp-signing` and `scripts/openpgp-signing.ts` sign the AppImage, the deb and `SHA256SUMS`.
+Without `OPENPGP_SIGNING_FINGERPRINT`, the Linux packages and `SHA256SUMS` stay unsigned.
+
+| Environment variable             | Value                                                               |
+| -------------------------------- | ------------------------------------------------------------------- |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | The same provider as for Windows                                    |
+| `GCP_OPENPGP_SERVICE_ACCOUNT`    | The service account that signs                                      |
+| `OPENPGP_SIGNING_KEY_RING`       | The full name of the key ring of the key                            |
+| `OPENPGP_SIGNING_FINGERPRINT`    | The fingerprint of `public/release-signing-key.asc`, without spaces |
+
+Put them in the `release`, `preview` and `signing-test` environments. The "Test the OpenPGP signing" workflow signs a
+Linux build of `main` and checks it. For a new release of the PKCS #11 library, update its URL and SHA-256 in the
+action.
 
 ## Keep stable
 

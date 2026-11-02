@@ -40,6 +40,31 @@ gh attestation verify Diagrams-0.2.0-win-x64.exe --bundle Diagrams-0.2.0-win-pro
   --repo math280h/diagrams --signer-workflow math280h/diagrams/.github/workflows/release.yml --source-ref refs/tags/v0.2.0
 ```
 
+### OpenPGP signatures
+
+Releases and alpha or beta previews newer than v0.1.4 also have OpenPGP signatures of this key; builds of `main` do
+not:
+
+```
+pub   rsa4096 2026-11-02 [SC]
+      1BCF6C6949C1C337F1BF25A87221CC15B1E0F344
+uid                      Diagrams releases <1547127+math280h@users.noreply.github.com>
+```
+
+Download [the public key](https://draw.thias.dev/release-signing-key.asc) (also in
+[`public/`](public/release-signing-key.asc)). Check that it has this fingerprint, then import it and check your
+downloads:
+
+```sh
+gpg --show-keys release-signing-key.asc
+gpg --import release-signing-key.asc
+gpg --verify SHA256SUMS.asc SHA256SUMS
+sha256sum --check --ignore-missing SHA256SUMS
+```
+
+The AppImage and the deb also have a detached `.asc` signature each, and embedded signatures for `validate` of
+AppImageUpdate and `debsig-verify`.
+
 ### Software bill of materials
 
 Each release newer than v0.1.4 has `Diagrams-<version>-sbom.cdx.json`, a CycloneDX 1.6 SBOM. It lists:
@@ -76,8 +101,9 @@ These parts handle data from outside the app:
 - **Diagram files**: JSON import, Mermaid import, and the files in `Documents/Diagrams` that other programs can change.
 - **The renderer of the desktop app**, which runs with context isolation and the Chromium sandbox.
 - **Updates of the desktop app.** The app downloads updates over HTTPS from the published GitHub Releases of this
-  repository and checks the SHA-512 of each download. The builds are not signed yet, so an attacker who controls the
-  releases of this repository can ship an update.
+  repository and checks the SHA-512 of each download. The Windows and macOS builds are not signed yet, and the app
+  does not check the OpenPGP signatures of the Linux packages. An attacker who controls the releases of this
+  repository can ship an update.
 
 Not in scope:
 
