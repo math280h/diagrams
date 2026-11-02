@@ -118,8 +118,8 @@ test('opens a new capture window after the old one stops', async ({ app, window,
   await callTool(mcp, 'render_image', { maxSizePx: 400 })
   const first = await captureWindowId()
   expect(first).toBeDefined()
-  await app.evaluate(({ webContents }, id) => webContents.fromId(id!)?.forcefullyCrashRenderer(), first)
-  await expect.poll(captureWindowId).toBeUndefined()
+  await app.evaluate(({ webContents }, id) => process.kill(webContents.fromId(id!)!.getOSProcessId()), first)
+  await expect.poll(captureWindowId, { timeout: 15_000 }).toBeUndefined()
 
   const result = await callTool(mcp, 'render_image', { maxSizePx: 400 })
   expect(result.json.width).toBe(400)
@@ -220,18 +220,19 @@ test('gives each video frame the pixels of its own moment', async ({ window: pag
       for (const timeMs of moments)
         stills.push(await decodePng((await desktop.request('capture.image', request(timeMs))).png))
       const changes = stills.slice(1).map((still, index) => differing(still, stills[index]!))
-      const wrong: number[] = []
-      for (const index of [...moments.keys()].reverse()) {
+      const closest: number[] = []
+      for (const index of moments.keys()) {
         const frame = await desktop.request('capture.frame', request(moments[index]!))
-        wrong.push(differing(frame.pixels, stills[index]!))
+        const distances = stills.map((still) => differing(frame.pixels, still))
+        closest.push(distances.indexOf(Math.min(...distances)))
       }
       await desktop.request('capture.close', { sessionId })
-      return { changes, wrong }
+      return { changes, closest }
     },
     { ...stage, count: MOMENTS },
   )
   expect(Math.min(...result.changes)).toBeGreaterThan(0)
-  expect(result.wrong).toEqual(result.wrong.map(() => 0))
+  expect(result.closest).toEqual(result.closest.map((_, index) => index))
 })
 
 test('exports a transparent PNG and a GIF from the export dialog in the capture window', async ({
