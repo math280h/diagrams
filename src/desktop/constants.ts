@@ -3,6 +3,8 @@ export const AGENT_PORT = 27419
 export const AGENT_ENDPOINT = '/mcp'
 
 export const DEEP_LINK_SCHEME = 'diagrams'
+/** The route of the hidden window that renders export stages for the native capture. */
+export const CAPTURE_HASH = '#/capture'
 export const WEBSITE_ORIGIN = 'https://draw.thias.dev'
 export const DEV_ORIGINS = ['http://127.0.0.1:5173', 'http://localhost:5173']
 export const REPOSITORY_URL = 'https://github.com/math280h/diagrams'

@@ -2,7 +2,7 @@ import { ReactFlowProvider, useNodesInitialized, useReactFlow, type Viewport } f
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { CAPTION_HEIGHT_PX } from '@/canvas/FlowOverlay'
-import { DiagramCanvas } from '@/canvas/DiagramCanvas'
+import { CANVAS_MIN_ZOOM, DiagramCanvas } from '@/canvas/DiagramCanvas'
 import { useLocalNodes } from '@/canvas/use-local-nodes'
 import { EngineProvider } from '@/engine/context'
 import { useEngine } from '@/engine/hooks'
@@ -68,6 +68,7 @@ function StageInner({
       editable={false}
       exportMode
       defaultViewport={viewport}
+      minZoom={Math.min(CANVAS_MIN_ZOOM, viewport.zoom)}
       nodesFocusable={false}
       edgesFocusable={false}
       panOnDrag={false}

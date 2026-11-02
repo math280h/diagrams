@@ -1,5 +1,4 @@
-import { captureCanvas, canvasBackground, waitForCommit } from './capture'
-import type { StageHandle } from './ExportStage'
+import type { StageSession } from './stage-session'
 
 export type VideoFormat = 'mp4' | 'webm' | 'gif'
 
@@ -22,32 +21,36 @@ function even(value: number) {
 }
 
 async function renderFrames(
-  stage: StageHandle,
+  session: StageSession,
   options: RecordOptions,
-  onFrame: (canvas: HTMLCanvasElement, index: number, total: number) => Promise<void>,
+  onFrame: (frame: CanvasImageSource, index: number, total: number) => Promise<void>,
 ) {
   const total = Math.max(1, Math.round((options.durationMs / 1000) * options.fps))
-  const background = canvasBackground(stage.root)
   for (let index = 0; index < total; index++) {
     if (options.signal.aborted) throw new ExportAbortedError('The export stopped.')
     const timeMs = (index / options.fps) * 1000
-    stage.engine.render(options.ambientStartMs + timeMs, timeMs)
-    await waitForCommit()
-    const frame = await captureCanvas(stage.root, { scale: options.scale, backgroundColor: background, fast: true })
-    await onFrame(frame, index, total)
+    const frame = await session.frame(
+      { ambientMs: options.ambientStartMs + timeMs, timeMs },
+      { scale: options.scale, transparent: false },
+    )
+    try {
+      await onFrame(frame, index, total)
+    } finally {
+      if (frame instanceof ImageBitmap) frame.close()
+    }
     options.onProgress((index + 1) / total)
   }
 }
 
 /**
- * Records the stage frame by frame and encodes the frames.
+ * Records the stage of a session frame by frame and encodes the frames.
  *
  * @throws ExportAbortedError If the signal aborts.
  * @throws Error If the browser has no encoder for the format.
  */
-export async function recordStage(stage: StageHandle, options: RecordOptions): Promise<Blob> {
-  const width = even(stage.root.clientWidth * options.scale)
-  const height = even(stage.root.clientHeight * options.scale)
+export async function recordStage(session: StageSession, options: RecordOptions): Promise<Blob> {
+  const width = even(session.width * options.scale)
+  const height = even(session.height * options.scale)
   const target = document.createElement('canvas')
   target.width = width
   target.height = height
@@ -59,7 +62,7 @@ export async function recordStage(stage: StageHandle, options: RecordOptions): P
       import('modern-gif/worker?url'),
     ])
     const encoder = new Encoder({ width, height, workerUrl, maxColors: 255 })
-    await renderFrames(stage, options, async (frame) => {
+    await renderFrames(session, options, async (frame) => {
       context.drawImage(frame, 0, 0, width, height)
       await encoder.encode({ data: context.getImageData(0, 0, width, height).data, delay: 1000 / options.fps })
     })
@@ -79,7 +82,7 @@ export async function recordStage(stage: StageHandle, options: RecordOptions): P
   output.addVideoTrack(source, { frameRate: options.fps })
   await output.start()
   try {
-    await renderFrames(stage, options, async (frame, index) => {
+    await renderFrames(session, options, async (frame, index) => {
       context.drawImage(frame, 0, 0, width, height)
       await source.add(index / options.fps, 1 / options.fps)
     })

@@ -5,6 +5,7 @@ import path from 'node:path'
 import { app, BrowserWindow } from 'electron'
 import type { AgentInfo, UpdateInfo } from '@/desktop/contract'
 import { APP_ORIGIN, serveRenderer } from './app-protocol'
+import { createCaptureService } from './capture'
 import { registerIpc, type MainHandlers } from './ipc'
 import { devServerUrl, preloadPath, rendererFolder } from './paths'
 import type { RenderArgs } from './render-args'
@@ -77,7 +78,9 @@ export async function runRender(args: RenderArgs): Promise<number> {
   try {
     const text = await readFile(args.input, 'utf8')
     const rpc = createRendererRpc()
+    const capture = createCaptureService()
     const handlers: MainHandlers = {
+      ...capture.handlers,
       'files.list': async () => ({ folder: path.dirname(args.input), files: [] }),
       'files.write': refuse,
       'files.remove': refuse,
@@ -129,6 +132,7 @@ export async function runRender(args: RenderArgs): Promise<number> {
     )
     await writeFile(args.output, Buffer.from(data, 'base64'))
     process.stdout.write(`Wrote ${args.output}\n`)
+    capture.dispose()
     window.destroy()
     return 0
   } catch (error) {

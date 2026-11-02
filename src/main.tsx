@@ -13,28 +13,33 @@ import { RouterProvider } from '@tanstack/react-router'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { errorMessage } from '@/lib/error-message'
-import { isDesktop } from './desktop/bridge'
+import { isCaptureWindow, isDesktop } from './desktop/bridge'
 import { watchInstallPrompt } from './install/install-prompt'
 import { registerServiceWorker } from './install/register-service-worker'
 import { bootstrapStorage } from './persistence/bootstrap'
 import { router } from './router'
 import { StartupError } from './StartupError'
 
-if (!isDesktop()) {
-  watchInstallPrompt()
-  if (import.meta.env.PROD) registerServiceWorker()
+async function startApp() {
+  if (!isDesktop()) {
+    watchInstallPrompt()
+    if (import.meta.env.PROD) registerServiceWorker()
+  }
+
+  let storageError: string | null = null
+  try {
+    await bootstrapStorage()
+  } catch (error) {
+    storageError = errorMessage(error)
+  }
+  if (isDesktop()) (await import('./desktop/runtime')).startDesktopRuntime(storageError)
+
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      {storageError === null ? <RouterProvider router={router} /> : <StartupError message={storageError} />}
+    </StrictMode>,
+  )
 }
 
-let storageError: string | null = null
-try {
-  await bootstrapStorage()
-} catch (error) {
-  storageError = errorMessage(error)
-}
-if (isDesktop()) (await import('./desktop/runtime')).startDesktopRuntime(storageError)
-
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    {storageError === null ? <RouterProvider router={router} /> : <StartupError message={storageError} />}
-  </StrictMode>,
-)
+if (isCaptureWindow()) (await import('./export/capture-window')).startCaptureWindow()
+else await startApp()

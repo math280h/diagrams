@@ -23,7 +23,9 @@ moves along connections; a flow walks a user through the system while the camera
   needs exact frames. Motion limits each step to 40 ms.
 - **Layout**: elkjs 0.12 and an own grid and edge router, in a web worker. ELK layers flows. The grid places groups
   that ELK stacks badly. The router keeps edges out of groups that hold neither end.
-- **Image export**: `@zumer/snapdom` 3.7. DOM capture that embeds fonts.
+- **Image export**: `@zumer/snapdom` 3.7. DOM capture that embeds fonts. The website uses it for all images and video
+  frames. The desktop app uses it for SVG, and for images and video frames that the capture window cannot make (see
+  "Capture window").
 - **Video export**: mediabunny 1.65 (MP4 H.264, WebM VP9), a WebCodecs muxer. `creationTime: null` keeps the export
   time out of the file, because mediabunny writes the current time by default.
 - **GIF export**: modern-gif 2.1, a maintained encoder with a worker.
@@ -109,6 +111,8 @@ Ruled out:
   it.
 - **Theatre.js**: no release since 2024; AGPL studio.
 - **html-to-image**: no release in more than a year; React Flow pins an old version.
+- **modern-screenshot, html2canvas-pro**: for one PNG capture of a stage with 1,694 nodes, modern-screenshot stops with
+  "Invalid string length" and html2canvas-pro takes 145 s. snapdom takes 8.5 s to 10 s for the same capture.
 - **libavoid-js, MSAGL (edge routers)**: libavoid-js has no cluster API in JavaScript, so routes cross groups that hold
   neither end. MSAGL routes cross cards inside groups.
 - **TALA (D2)**: 11.5 MB browser bundle; needs D2 text.
@@ -703,11 +707,12 @@ Versions keep saved states of each diagram across sessions; undo ends with the t
 ### Export
 
 Export renders a second, read-only React Flow instance at a fixed size (the export stage), with its own engine in
-manual mode. Per video frame, the exporter:
+manual mode. A stage session (`src/export/stage-session.ts`) opens the stage and gives images and video frames of a
+moment. Per video frame, the exporter:
 
 1. Sets the time.
 2. Waits for the React commit.
-3. Captures the stage with snapdom.
+3. Captures the stage: Chromium in the desktop app (see "Capture window"), snapdom on the website.
 4. Passes the capture to mediabunny or modern-gif.
 
 The browser frame rate has no effect.
@@ -916,6 +921,7 @@ The React app in Electron, plus file storage, agent control, the website handoff
 - Renderer: sandboxed, context isolation, never imports `electron`. Loads `app://diagrams` with a CSP in production,
   the Vite dev server in development (hot reload).
 - Main-to-renderer requests: one correlated RPC with timeouts and cancellation (`electron/renderer-rpc.ts`).
+- Capture window: a second, hidden renderer for image and video captures (see "Capture window").
 - `new URL('app://diagrams/').origin` is "null" in Node. Origin checks compare scheme and host (`originOf`).
 
 ### Window
@@ -932,6 +938,52 @@ The React app in Electron, plus file storage, agent control, the website handoff
 - `DIAGRAMS_HIDE_WINDOW` (desktop e2e tests, package smoke test): no visible window, taskbar button or focus.
   `offscreen` renders at full frame rate without a native window. Chromium throttles hidden native windows, so only the
   minimized-window test uses `native`.
+
+### Capture window
+
+The desktop app captures PNG images and video frames with Chromium, not with snapdom. This applies to each stage
+session: the export dialog, Alt+Shift+C, the README tab, `render_image` and the command-line render. SVG images stay
+with snapdom, because Chromium gives only pixels.
+
+- snapdom copies the stage into an SVG, and the browser draws that copy again. Chromium captures the pixels that it
+  drew. With 3,094 nodes, `render_image` takes 3.1 s to 3.9 s, not 25 s to 28.5 s. The MP4 of a flow in a diagram with
+  58 nodes takes 25 s, not 116 s.
+- `electron/capture.ts` keeps one hidden offscreen window on `#/capture` (`src/export/capture-window.ts`). It has the
+  security settings of the main window. It opens on the first capture. It closes after 30 s without a capture, when
+  its renderer stops, or when the last other window closes.
+- The renderer sends the stage as data (`capture.open`). The main process keeps up to 16 stages and removes the oldest
+  first. The capture window mounts one stage at a time.
+- The offscreen device scale factor of the window is 1 on each display. A frame pixel is then one device-independent
+  pixel, and the device pixel ratio is the page zoom.
+- Captures run one at a time. For each capture, the main process sets the page zoom and the window size from
+  `planCapture` (`src/export/capture-plan.ts`):
+  - The page zoom gives the image scale, so Chromium draws text and lines at the image size.
+  - Chromium zooms from 0.25 to 5. Below 0.25, a stage with a fixed viewport gets a smaller size and viewport.
+  - React Flow limits the viewport zoom to its `minZoom`. For this reason, the `minZoom` of an export stage is 0.08, or
+    its viewport zoom when that is lower.
+  - Below 0.25, a stage that fits its view or follows a flow shows at zoom 0.25. The main process then makes the bitmap
+    smaller.
+  - The window has `zoomMode: 'isolated'`. Without it, Chromium keeps one zoom for each origin, and a capture zoom also
+    zooms the main window.
+  - The window has `enableLargerThanScreen`, because macOS otherwise keeps a window within the screen size.
+  - Above 8192 px on a side or above scale 5, the stage session uses snapdom for images and video frames. A BGRA frame
+    of 8192 × 8192 px takes 256 MiB, and a capture copies it more than once.
+- A paint event can show a frame from before the last render. To find the correct frame, each render request gets a
+  marker: two 4 px squares at the bottom left, in a row below the stage.
+  - The left square has one of 8 colours. The right square has the inverse colour, so a background of one colour is
+    never a marker.
+  - The main process takes the first frame with the marker of its request and removes the marker row.
+  - The capture window waits until the page zoom is in effect. It sets the marker after the React commits of the
+    render.
+  - A frame can be larger than the planned window, for example for a very small window.
+- Chromium can draw text on an opaque area, such as a node card, with subpixel anti-aliasing, also in a transparent
+  export. Images and video frames then get colour fringes. The capture window gives the stage `will-change: transform`,
+  so Chromium draws grayscale text, as in snapdom images.
+- An image waits for two equal frames, so late changes such as image decodes are in it. After 10 frames, it uses the
+  last frame. A video frame uses the first frame with its marker.
+- `NativeImage` bitmaps are BGRA with premultiplied alpha. Video frames go to the renderer as RGBA with straight alpha,
+  as `ImageData` expects.
+- When a native image capture fails, the stage session uses snapdom. When a video frame fails, the export stops.
 
 ### Storage
 
@@ -1137,7 +1189,7 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
 - `electron/render-args.ts` reads the options before the single-instance lock, so a render runs next to an open app.
   Exit codes: 2 (usage) for bad arguments, 1 (message) for a failed render.
 - `electron/render-cli.ts` opens a hidden window on the empty page `#/render`, with background throttling off, and
-  calls `render.file` (`src/export/render-file.ts`).
+  calls `render.file` (`src/export/render-file.ts`). PNG images and video frames come from the capture window.
 - The window gets no diagram files, agent server, updates or file writes. The macOS dock icon hides.
 - A new temporary user data folder keeps the app settings, diagrams folder and agent token unchanged. Chromium on
   Windows locks the folder until exit, so each render deletes folders older than one hour.
