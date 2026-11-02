@@ -48,6 +48,7 @@ function step(target: Target, caption: string, parallel?: Target[]): Step {
 
 const flow = {
   ...createFlow('Order'),
+  cameraStyle: 'frame' as const,
   steps: [
     step({ kind: 'node', id: 'a' }, 'Start at A'),
     step({ kind: 'edge', id: 'ab' }, 'A calls B', [{ kind: 'edge', id: 'ac' }]),

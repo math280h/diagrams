@@ -148,14 +148,14 @@ describe('migrate', () => {
     expect(migrated.edges[0]!.data.request).toBeUndefined()
   })
 
-  it('gives the flows of version 13 diagrams the framing camera with the gentle motion, and keeps set values', () => {
+  it('gives the flows of version 13 diagrams the following camera with the gentle motion, and keeps set values', () => {
     const { cameraStyle: _style, cameraMotion: _motion, ...flow } = createFlow('Checkout')
-    const set = { ...flow, id: 'set', cameraStyle: 'follow', cameraMotion: 'quick' }
+    const set = { ...flow, id: 'set', cameraStyle: 'frame', cameraMotion: 'quick' }
     const v13 = { ...createDiagram(), version: 13, flows: [flow, set] }
     const migrated = migrate(JSON.parse(JSON.stringify(v13)))
     expect(migrated.flows.map(({ cameraStyle, cameraMotion }) => [cameraStyle, cameraMotion])).toEqual([
-      ['frame', 'gentle'],
-      ['follow', 'quick'],
+      ['follow', 'gentle'],
+      ['frame', 'quick'],
     ])
   })
 
