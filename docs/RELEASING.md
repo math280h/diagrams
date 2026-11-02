@@ -130,7 +130,17 @@ of an unsigned macOS build must install the first signed version by hand.
 ### Windows
 
 `scripts/windows-signing.ts` and `.github/actions/windows-signing` sign the Windows build when the environment of
-the job has `WINDOWS_SIGNING_CERTIFICATE`. The inputs of the action name the other settings.
+the job has `WINDOWS_SIGNING_CERTIFICATE`.
+
+| Name                             | Kind     | Value                                                                  |
+| -------------------------------- | -------- | ---------------------------------------------------------------------- |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | secret   | The workload identity provider                                         |
+| `GCP_SERVICE_ACCOUNT`            | secret   | The service account that signs                                         |
+| `WINDOWS_SIGNING_KEY`            | secret   | The full name of the key version                                       |
+| `WINDOWS_SIGNING_CERTIFICATE`    | variable | The PEM certificate, then the PEM certificates of the intermediate CAs |
+| `WINDOWS_SIGNING_TIMESTAMP_URL`  | variable | Optional: an RFC 3161 timestamp server                                 |
+
+Put them in the `release` and `preview` environments.
 
 ## Keep stable
 

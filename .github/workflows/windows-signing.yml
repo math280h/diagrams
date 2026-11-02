@@ -26,13 +26,13 @@ jobs:
       - run: pnpm desktop:build
       - uses: $/.github/actions/windows-signing
         with:
-          workload-identity-provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service-account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          workload-identity-provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
           certificate: ${{ vars.WINDOWS_SIGNING_CERTIFICATE }}
       - name: Package and sign the app
         shell: bash
         env:
-          WINDOWS_SIGNING_KEY: ${{ vars.WINDOWS_SIGNING_KEY }}
+          WINDOWS_SIGNING_KEY: ${{ secrets.WINDOWS_SIGNING_KEY }}
           WINDOWS_SIGNING_TIMESTAMP_URL: ${{ vars.WINDOWS_SIGNING_TIMESTAMP_URL }}
         run: |
           [ -n "$WINDOWS_SIGNING_TIMESTAMP_URL" ] || unset WINDOWS_SIGNING_TIMESTAMP_URL
