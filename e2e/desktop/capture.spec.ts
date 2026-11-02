@@ -13,6 +13,8 @@ import { callTool, expect, test } from './fixtures'
 
 const PADDING_PX = 48
 const MOMENTS = 12
+/** The largest number of neighbour pixel pairs with opposite red and blue shifts in a capture. */
+const MAX_COLOUR_PAIRS = 50
 
 /** Saves the next download of the app to a file, without the save dialog. */
 function saveNextDownload(app: ElectronApplication, file: string) {
@@ -180,6 +182,34 @@ test('gives the pixels of the image in a video frame, within 2 in each channel, 
     expect(capture.maxDelta).toBeLessThanOrEqual(2)
     expect(capture.colors).toBeGreaterThan(capture.image[0]! < 100 ? 5 : 20)
   }
+})
+
+test('draws text without subpixel colour fringes', async ({ window: page }) => {
+  const stage = sampleStage()
+  const fringes = await page.evaluate(async (spec) => {
+    const { desktop } = window as unknown as { desktop: DesktopApi }
+    const { sessionId } = await desktop.request('capture.open', {
+      stage: spec,
+      width: spec.width,
+      height: spec.height,
+      fixedViewport: true,
+    })
+    const request = { sessionId, moment: { ambientMs: 0, timeMs: 0 }, scale: 2, transparent: false }
+    const { png } = await desktop.request('capture.image', request)
+    await desktop.request('capture.close', { sessionId })
+    const bitmap = await createImageBitmap(new Blob([new Uint8Array(png)], { type: 'image/png' }))
+    const context = new OffscreenCanvas(bitmap.width, bitmap.height).getContext('2d')!
+    context.drawImage(bitmap, 0, 0)
+    const pixels = context.getImageData(0, 0, bitmap.width, bitmap.height).data
+    let pairs = 0
+    for (let i = 0; i + 4 < pixels.length; i += 4) {
+      const left = pixels[i]! - pixels[i + 2]!
+      const right = pixels[i + 4]! - pixels[i + 6]!
+      if ((left > 40 && right < -40) || (left < -40 && right > 40)) pairs++
+    }
+    return pairs
+  }, stage)
+  expect(fringes).toBeLessThanOrEqual(MAX_COLOUR_PAIRS)
 })
 
 test('gives each video frame the pixels of its own moment', async ({ window: page }) => {

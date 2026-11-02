@@ -976,6 +976,9 @@ with snapdom, because Chromium gives only pixels.
   - The capture window waits until the page zoom is in effect. It sets the marker after the React commits of the
     render.
   - A frame can be larger than the planned window, for example for a very small window.
+- Chromium can draw text on an opaque area, such as a node card, with subpixel anti-aliasing, also in a transparent
+  export. Images and video frames then get colour fringes. The capture window gives the stage `will-change: transform`,
+  so Chromium draws grayscale text, as in snapdom images.
 - An image waits for two equal frames, so late changes such as image decodes are in it. After 10 frames, it uses the
   last frame. A video frame uses the first frame with its marker.
 - `NativeImage` bitmaps are BGRA with premultiplied alpha. Video frames go to the renderer as RGBA with straight alpha,

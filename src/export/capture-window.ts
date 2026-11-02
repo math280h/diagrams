@@ -56,6 +56,8 @@ export function startCaptureWindow(): () => void {
       mounted = null
       const spec = stage as StageSpec
       const next = await mountSpecStage(spec, viewportScale)
+      // Chromium draws the text of a layer with `will-change: transform` without subpixel anti-aliasing.
+      next.stage.root.closest<HTMLElement>('.dg-export-stage')?.style.setProperty('will-change', 'transform')
       await edgesDrawn(next.stage, spec)
       mounted = next
       return null
