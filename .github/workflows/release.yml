@@ -152,9 +152,9 @@ jobs:
         if: runner.os == 'Linux' && vars.OPENPGP_SIGNING_FINGERPRINT != ''
         uses: $/.github/actions/openpgp-signing
         with:
-          workload-identity-provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service-account: ${{ vars.GCP_OPENPGP_SERVICE_ACCOUNT }}
-          key-ring: ${{ vars.OPENPGP_SIGNING_KEY_RING }}
+          workload-identity-provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service-account: ${{ secrets.GCP_OPENPGP_SERVICE_ACCOUNT }}
+          key-ring: ${{ secrets.OPENPGP_SIGNING_KEY_RING }}
           fingerprint: ${{ vars.OPENPGP_SIGNING_FINGERPRINT }}
       - name: Sign and check the Linux packages
         if: runner.os == 'Linux' && vars.OPENPGP_SIGNING_FINGERPRINT != ''
@@ -246,9 +246,9 @@ jobs:
         if: vars.OPENPGP_SIGNING_FINGERPRINT != ''
         uses: $/.github/actions/openpgp-signing
         with:
-          workload-identity-provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service-account: ${{ vars.GCP_OPENPGP_SERVICE_ACCOUNT }}
-          key-ring: ${{ vars.OPENPGP_SIGNING_KEY_RING }}
+          workload-identity-provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service-account: ${{ secrets.GCP_OPENPGP_SERVICE_ACCOUNT }}
+          key-ring: ${{ secrets.OPENPGP_SIGNING_KEY_RING }}
           fingerprint: ${{ vars.OPENPGP_SIGNING_FINGERPRINT }}
       - name: Download the files of the draft release
         env:

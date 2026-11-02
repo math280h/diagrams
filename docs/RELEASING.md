@@ -141,12 +141,12 @@ the job has `WINDOWS_SIGNING_CERTIFICATE`. The inputs of the action name the oth
 `.github/actions/openpgp-signing` and `scripts/openpgp-signing.ts` sign the AppImage, the deb and `SHA256SUMS`.
 Without `OPENPGP_SIGNING_FINGERPRINT`, the Linux packages and `SHA256SUMS` stay unsigned.
 
-| Environment variable             | Value                                                               |
-| -------------------------------- | ------------------------------------------------------------------- |
-| `GCP_WORKLOAD_IDENTITY_PROVIDER` | The same provider as for Windows                                    |
-| `GCP_OPENPGP_SERVICE_ACCOUNT`    | The service account that signs                                      |
-| `OPENPGP_SIGNING_KEY_RING`       | The full name of the key ring of the key                            |
-| `OPENPGP_SIGNING_FINGERPRINT`    | The fingerprint of `public/release-signing-key.asc`, without spaces |
+| Name                             | Kind     | Value                                                               |
+| -------------------------------- | -------- | ------------------------------------------------------------------- |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | secret   | The same provider as for Windows                                    |
+| `GCP_OPENPGP_SERVICE_ACCOUNT`    | secret   | The service account that signs                                      |
+| `OPENPGP_SIGNING_KEY_RING`       | secret   | The full name of the key ring of the key                            |
+| `OPENPGP_SIGNING_FINGERPRINT`    | variable | The fingerprint of `public/release-signing-key.asc`, without spaces |
 
 Put them in the `release`, `preview` and `signing-test` environments. The "Test the OpenPGP signing" workflow signs a
 Linux build of `main` and checks it. For a new release of the PKCS #11 library, update its URL and SHA-256 in the

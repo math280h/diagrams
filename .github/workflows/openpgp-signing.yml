@@ -26,9 +26,9 @@ jobs:
       - run: pnpm desktop:build
       - uses: $/.github/actions/openpgp-signing
         with:
-          workload-identity-provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service-account: ${{ vars.GCP_OPENPGP_SERVICE_ACCOUNT }}
-          key-ring: ${{ vars.OPENPGP_SIGNING_KEY_RING }}
+          workload-identity-provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service-account: ${{ secrets.GCP_OPENPGP_SERVICE_ACCOUNT }}
+          key-ring: ${{ secrets.OPENPGP_SIGNING_KEY_RING }}
           fingerprint: ${{ vars.OPENPGP_SIGNING_FINGERPRINT }}
       - run: pnpm exec electron-builder --linux AppImage deb --x64 --publish never
       - name: Sign and check the Linux packages and the checksums
