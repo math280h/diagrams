@@ -12,6 +12,9 @@ overrides:
   minimatch@>=7.0.0 <11.0.1: ^11.0.3
   semver@<7: ^7.8.5
 
+patchedDependencies:
+  '@zumer/snapdom@3.7.0': 7d6a06c499612f12defa6aa17cdcec3620019d1a0dba0142fb23dae05de5e960
+
 importers:
 
   .:
@@ -57,7 +60,7 @@ importers:
         version: 12.12.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(immer@11.2.9)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@zumer/snapdom':
         specifier: 3.7.0
-        version: 3.7.0
+        version: 3.7.0(patch_hash=7d6a06c499612f12defa6aa17cdcec3620019d1a0dba0142fb23dae05de5e960)
       ajv:
         specifier: ^8.20.0
         version: 8.20.0
@@ -5578,7 +5581,7 @@ snapshots:
       d3-selection: 3.0.0
       d3-zoom: 3.0.0
 
-  '@zumer/snapdom@3.7.0': {}
+  '@zumer/snapdom@3.7.0(patch_hash=7d6a06c499612f12defa6aa17cdcec3620019d1a0dba0142fb23dae05de5e960)': {}
 
   abbrev@4.0.0: {}
 

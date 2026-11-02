@@ -51,6 +51,13 @@ moves along connections; a flow walks a user through the system while the camera
   - `osv-scanner.toml` tells OSV-Scanner to ignore the deepmerge advisory (GHSA-gcqx-w48m-w2h4), with a reason and
     an `ignoreUntil` date. The advisory has no fix, and deepmerge is only in the shadcn CLI. OpenSSF Scorecard reads
     this file for its Vulnerabilities check. Dependabot does not read it.
+  - `patchedDependencies`: `patches/@zumer__snapdom@3.7.0.patch` changes how snapdom removes pseudo-elements from a
+    selector before `matches()`. Without the patch, snapdom 3.7.0 removes an escaped `\:after` inside a class name by
+    mistake, for example in `group-data-horizontal/tabs:after:h-0.5` of the tabs component. Then the selector list that
+    snapdom tests on each SVG element is not valid. Each test throws an error, and snapdom treats each element as a
+    match. With 3,094 nodes and without the patch, `render_image` took 20 % to 25 % longer than with snapdom 3.3.6. In
+    the packaged app, it took 45 % to 50 % longer. pnpm stops when no installed version matches the patch, so a snapdom
+    update must update or remove the patch. `src/export/capture.browser.test.ts` fails without it.
   - `ajv`, `ajv-formats` and `jose` are dependencies of the app. `@vitemcp/server` loads them as optional peers, and
     the main bundle holds them. Without these entries in `package.json`, pnpm takes the peers from the packages of the
     dev dependencies. When no package has a version in the peer range, the bundler takes a hoisted copy that the SBOM
