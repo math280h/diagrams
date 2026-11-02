@@ -61,6 +61,21 @@ export interface RenderRequest {
   maxSizePx?: number
 }
 
+/** A moment of an export stage: the time of the ambient animation and the time in the flow, in milliseconds. */
+export interface CaptureMoment {
+  ambientMs: number
+  timeMs: number
+}
+
+/** A request for an image or a video frame of an open stage. */
+export interface CaptureRequest {
+  sessionId: string
+  moment: CaptureMoment
+  /** Image pixels for each stage pixel. */
+  scale: number
+  transparent: boolean
+}
+
 /** Requests from the renderer to the main process. */
 export interface MainRequests {
   'files.list': { input: null; output: { folder: string; files: StoredFile[] } }
@@ -85,6 +100,21 @@ export interface MainRequests {
   'update.install': { input: null; output: null }
   /** Lays out a DOT text with a Graphviz engine and returns the `plain` output. */
   'layout.graphviz': { input: { dot: string; engine: GraphvizEngine }; output: { plain: string } }
+  /**
+   * Keeps an export stage for captures in the capture window. The main process keeps up to 16 stages and removes the
+   * oldest first. `stage` is the stage description of the renderer, and the main process only passes it on. `width`
+   * and `height` are its size in CSS pixels. `fixedViewport` is true for a stage without fit padding and without a
+   * flow.
+   */
+  'capture.open': {
+    input: { stage: unknown; width: number; height: number; fixedViewport: boolean }
+    output: { sessionId: string }
+  }
+  /** Returns the stage at a moment as a PNG. */
+  'capture.image': { input: CaptureRequest; output: { png: Uint8Array } }
+  /** Returns the stage at a moment as RGBA pixels with straight alpha. */
+  'capture.frame': { input: CaptureRequest; output: { pixels: Uint8Array; width: number; height: number } }
+  'capture.close': { input: { sessionId: string }; output: null }
 }
 
 /** Requests from the main process to the renderer. */
@@ -94,6 +124,16 @@ export interface RendererRequests {
   'app.flush': { input: null; output: null }
   /** Renders a diagram file and returns the image or the video as base64. */
   'render.file': { input: RenderRequest; output: { data: string } }
+  /** Mounts an export stage in the capture window. Below 1, `viewportScale` scales its size and viewport. */
+  'capture.mount': { input: { stage: unknown; viewportScale: number }; output: null }
+  /**
+   * Shows the mounted stage at a moment, with `marker` in the bottom left corner. Waits first until the page zoom of
+   * the capture window is `pageZoom`, and resolves after the next paint.
+   */
+  'capture.render': {
+    input: { moment: CaptureMoment; transparent: boolean; marker: number; pageZoom: number }
+    output: null
+  }
 }
 
 /** Events from the main process to the renderer. */

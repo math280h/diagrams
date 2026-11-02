@@ -38,6 +38,8 @@ function nodeHasDetails(node: DiagramNode): boolean {
   return node.type !== 'text' && hasDetails(node.data.details)
 }
 
+export const CANVAS_MIN_ZOOM = 0.08
+
 const nodeTypes = { card: CardNode, shape: ShapeNode, text: TextNode, group: GroupNode }
 const edgeTypes = { flow: FlowEdge }
 
@@ -139,7 +141,7 @@ export function DiagramCanvas({
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             connectionMode={ConnectionMode.Loose}
-            minZoom={0.08}
+            minZoom={CANVAS_MIN_ZOOM}
             maxZoom={4}
             nodesDraggable={editable}
             nodesConnectable={editable}

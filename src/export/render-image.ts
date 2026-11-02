@@ -3,8 +3,7 @@ import type { DiagramContent } from '@/agent/compact'
 import type { RenderedImage, RenderOptions } from '@/agent/context'
 import { compileFlow } from '@/engine/flow/compile'
 import { diagramBounds } from './bounds'
-import { canvasBackground, captureBlob, prepareAssets, waitForCommit } from './capture'
-import { mountExportStage } from './mount-stage'
+import { openStageSession } from './stage-session'
 import { recordStage, type VideoFormat } from './video'
 import { pathSteps } from '@/model/flow'
 import { describeDiagram, svgWithDescription } from './describe'
@@ -52,42 +51,39 @@ export async function renderDiagramImage(
     ? FLOW_FRAME
     : { width: Math.ceil(bounds.width + PADDING_PX * 2), height: Math.ceil(bounds.height + PADDING_PX * 2) }
   const scale = Math.min(MAX_SCALE, options.maxSizePx / Math.max(size.width, size.height))
+  const pathId = options.pathId ?? null
+  let timeMs = 0
+  if (flow) {
+    const timeline = compileFlow(flow, new Set(nodes.map((node) => node.id)), edges, pathId)
+    const stepId = options.step !== undefined ? pathSteps(flow, pathId)[options.step]?.id : undefined
+    const segment = timeline.segments.find((candidate) => candidate.step.id === stepId)
+    timeMs = segment ? segment.startMs + (segment.endMs - segment.startMs) * STEP_MOMENT : 0
+  }
 
-  const { stage, dispose } = await mountExportStage({
-    ...size,
-    nodes,
-    edges,
-    theme: { ...content.theme, background: 'none' },
-    resolvedTheme,
-    viewport: { x: PADDING_PX - bounds.x, y: PADDING_PX - bounds.y, zoom: 1 },
-    transparent: false,
-  })
+  const session = await openStageSession(
+    {
+      ...size,
+      nodes,
+      edges,
+      theme: { ...content.theme, background: 'none' },
+      resolvedTheme,
+      viewport: { x: PADDING_PX - bounds.x, y: PADDING_PX - bounds.y, zoom: 1 },
+      transparent: false,
+      flows: content.flows,
+      ...(flow ? { fitPadding: FLOW_FIT_PADDING, flow: { flow, pathId } } : {}),
+    },
+    { native: options.format === 'png' },
+  )
   try {
-    await prepareAssets(nodes, content.flows)
-    let timeMs = 0
-    if (flow) {
-      const pathId = options.pathId ?? null
-      const timeline = compileFlow(flow, new Set(nodes.map((node) => node.id)), edges, pathId)
-      await stage.fitView(FLOW_FIT_PADDING)
-      stage.engine.playback.load(flow.id, timeline)
-      stage.engine.playback.setFollow(true)
-      const stepId = options.step !== undefined ? pathSteps(flow, pathId)[options.step]?.id : undefined
-      const segment = timeline.segments.find((candidate) => candidate.step.id === stepId)
-      timeMs = segment ? segment.startMs + (segment.endMs - segment.startMs) * STEP_MOMENT : 0
-      await waitForCommit()
-    }
-    stage.engine.render(timeMs, timeMs)
-    await waitForCommit()
-    await waitForCommit()
-    const image = await captureBlob(stage.root, options.format, {
-      scale,
-      backgroundColor: canvasBackground(stage.root),
-    })
+    const image = await session.image(
+      { ambientMs: timeMs, timeMs },
+      { format: options.format, scale, transparent: false },
+    )
     const blob =
       options.format === 'svg' && !options.focusIds ? await svgWithDescription(image, describeDiagram(content)) : image
     return { blob, width: Math.round(size.width * scale), height: Math.round(size.height * scale), scale }
   } finally {
-    dispose()
+    session.dispose()
   }
 }
 
@@ -110,7 +106,11 @@ export async function renderDiagramVideo(
   const edges = content.edges.map((edge) => ({ ...edge, selected: false }))
   const flow = options.flowId ? content.flows.find((candidate) => candidate.id === options.flowId) : undefined
   const frame = options.format === 'gif' ? GIF_FRAME : FLOW_FRAME
-  const { stage, dispose } = await mountExportStage({
+  const pathId = options.pathId ?? null
+  const durationMs = flow
+    ? compileFlow(flow, new Set(nodes.map((node) => node.id)), edges, pathId).durationMs + LAST_FRAME_HOLD_MS
+    : NO_FLOW_RECORDING_MS
+  const session = await openStageSession({
     ...frame,
     nodes,
     edges,
@@ -118,18 +118,12 @@ export async function renderDiagramVideo(
     resolvedTheme: options.theme ?? currentCanvasTheme(content.theme.mode),
     viewport: { x: 0, y: 0, zoom: 1 },
     transparent: false,
+    flows: content.flows,
+    fitPadding: FLOW_FIT_PADDING,
+    ...(flow ? { flow: { flow, pathId } } : {}),
   })
   try {
-    await prepareAssets(nodes, content.flows)
-    await stage.fitView(FLOW_FIT_PADDING)
-    let durationMs = NO_FLOW_RECORDING_MS
-    if (flow) {
-      const timeline = compileFlow(flow, new Set(nodes.map((node) => node.id)), edges, options.pathId ?? null)
-      stage.engine.playback.load(flow.id, timeline)
-      stage.engine.playback.setFollow(true)
-      durationMs = timeline.durationMs + LAST_FRAME_HOLD_MS
-    }
-    return await recordStage(stage, {
+    return await recordStage(session, {
       format: options.format,
       fps: options.format === 'gif' ? GIF_FPS : VIDEO_FPS,
       durationMs,
@@ -142,6 +136,6 @@ export async function renderDiagramVideo(
       onProgress: () => undefined,
     })
   } finally {
-    dispose()
+    session.dispose()
   }
 }
