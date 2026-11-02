@@ -128,8 +128,8 @@ jobs:
         if: runner.os == 'Windows' && vars.WINDOWS_SIGNING_CERTIFICATE != ''
         uses: $/.github/actions/windows-signing
         with:
-          workload-identity-provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service-account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          workload-identity-provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
           certificate: ${{ vars.WINDOWS_SIGNING_CERTIFICATE }}
       - name: Package the app
         shell: bash
@@ -139,7 +139,7 @@ jobs:
           APPLE_ID: ${{ runner.os == 'macOS' && secrets.APPLE_ID || '' }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ runner.os == 'macOS' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
           APPLE_TEAM_ID: ${{ runner.os == 'macOS' && secrets.APPLE_TEAM_ID || '' }}
-          WINDOWS_SIGNING_KEY: ${{ runner.os == 'Windows' && vars.WINDOWS_SIGNING_CERTIFICATE != '' && vars.WINDOWS_SIGNING_KEY || '' }}
+          WINDOWS_SIGNING_KEY: ${{ runner.os == 'Windows' && vars.WINDOWS_SIGNING_CERTIFICATE != '' && secrets.WINDOWS_SIGNING_KEY || '' }}
           WINDOWS_SIGNING_TIMESTAMP_URL: ${{ runner.os == 'Windows' && vars.WINDOWS_SIGNING_TIMESTAMP_URL || '' }}
           VERSION: ${{ needs.draft.outputs.version }}
         run: |
