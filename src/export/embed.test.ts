@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDiagram } from '@/model/defaults'
+import { DIAGRAM_VERSION } from '@/model/schema'
+import { migrate } from '@/persistence/migrations'
 import { embeddedDiagramText, pngWithDiagram, svgWithDiagram } from './embed'
 
 const ONE_PIXEL_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
@@ -60,5 +62,33 @@ describe('diagram data in exported images', () => {
   it('finds no diagram in an image without one', async () => {
     expect(await embeddedDiagramText(pngBlob())).toBeNull()
     expect(await embeddedDiagramText(new Blob(['<svg xmlns="http://www.w3.org/2000/svg"/>']))).toBeNull()
+  })
+})
+
+const PNG_SAMPLES = import.meta.glob<string>('./samples/v*.png', { eager: true, query: '?inline', import: 'default' })
+const SVG_SAMPLES = import.meta.glob<string>('./samples/v*.svg', { eager: true, query: '?raw', import: 'default' })
+const FIELD_SAMPLES = import.meta.glob<{ diagrams: unknown[] }>('../persistence/formats/v*.fields.json', {
+  eager: true,
+  import: 'default',
+})
+
+function sampleBlob(file: string): Blob {
+  const png = PNG_SAMPLES[file]
+  if (png)
+    return new Blob([Uint8Array.from(atob(png.slice(png.indexOf(',') + 1)), (character) => character.charCodeAt(0))])
+  return new Blob([SVG_SAMPLES[file]!])
+}
+
+describe('images that a release exported', () => {
+  it('has a PNG and an SVG sample', () => {
+    expect(Object.keys(PNG_SAMPLES).length).toBeGreaterThan(0)
+    expect(Object.keys(SVG_SAMPLES).length).toBeGreaterThan(0)
+  })
+
+  it.each([...Object.keys(PNG_SAMPLES), ...Object.keys(SVG_SAMPLES)])('gives back the diagram of %s', async (file) => {
+    const version = Number(/\/v(\d+)\./.exec(file)![1])
+    const text = await embeddedDiagramText(sampleBlob(file))
+    expect(JSON.parse(text!)).toEqual(FIELD_SAMPLES[`../persistence/formats/v${version}.fields.json`]!.diagrams[0])
+    expect(migrate(JSON.parse(text!)).version).toBe(DIAGRAM_VERSION)
   })
 })

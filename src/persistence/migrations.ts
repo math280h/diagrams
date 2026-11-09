@@ -196,6 +196,15 @@ const MIGRATIONS: Migration[] = [
   toVersion16,
 ]
 
+/**
+ * The stored values that a migration step removes or changes, by the version that the step makes. A path names
+ * array items with `[]`, for example `nodes[].data.accent`. `src/persistence/formats.test.ts` fails when a step
+ * removes or changes a value at a path that is not in this list.
+ */
+export const REWRITTEN_FIELDS: Readonly<Record<number, readonly string[]>> = {
+  8: ['nodes[].data.accent', 'edges[].data.accent', 'flows[].token.accent', 'nodes[].data.tone'],
+}
+
 export class DiagramFormatError extends Error {}
 
 function upgrade(raw: Record<string, unknown>, subject: string): Record<string, unknown> {

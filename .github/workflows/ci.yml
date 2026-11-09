@@ -171,9 +171,25 @@ jobs:
           chmod +x "$RUNNER_TEMP/linux-amd64"
           "$RUNNER_TEMP/linux-amd64" --verify --no-interactive
 
+  release-formats:
+    name: Release formats
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: package.json
+      - name: Check the formats of the releases and the sample files
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: node scripts/release-formats.ts --base "$BASE"
+
   checks:
     name: Checks and web tests
-    needs: [static, web, coverage, actions-lockfile]
+    needs: [static, web, coverage, actions-lockfile, release-formats]
     if: always()
     runs-on: ubuntu-latest
     steps:

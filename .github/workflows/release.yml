@@ -40,6 +40,8 @@ jobs:
             exit 1
           fi
           echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - name: Check that the release opens the diagrams of the earlier releases
+        run: node scripts/release-formats.ts --tag "$GITHUB_REF_NAME"
       - name: Write the notes of the draft
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -92,9 +94,26 @@ jobs:
           gh release upload "$GITHUB_REF_NAME" "$RUNNER_TEMP/Diagrams-$VERSION-sbom.cdx.json" \
             --repo "$GITHUB_REPOSITORY" --clobber
 
+  formats:
+    name: Open the samples of the release formats
+    needs: draft
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: package.json
+      - run: pnpm install --frozen-lockfile
+      - run: >-
+          pnpm exec vitest run --project unit src/persistence/formats.test.ts scripts/format-fields.test.ts
+          src/export/embed.test.ts src/editor/clipboard.test.ts src/share/share-link.test.ts
+
   package:
     name: Package for ${{ matrix.os }}
-    needs: [draft, sbom]
+    needs: [draft, sbom, formats]
     environment: ${{ needs.draft.outputs.preview == 'true' && 'preview' || 'release' }}
     permissions:
       contents: write
