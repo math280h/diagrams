@@ -78,7 +78,9 @@ the JSDoc tag rules.
   without the DOM library.
 - Every change to `diagramSchema` needs a new `DIAGRAM_VERSION`, a migration step and new format
   samples, so that diagrams from every earlier format keep opening. Follow "Change the diagram
-  format" in `docs/ARCHITECTURE.md`; `src/persistence/formats.test.ts` checks it.
+  format" in `docs/ARCHITECTURE.md`; `src/persistence/formats.test.ts` checks it. A migration keeps every
+  stored value unless `REWRITTEN_FIELDS` names it. Samples on `main` never change, and a release opens
+  every format that an earlier release of its major version wrote (`scripts/release-formats.ts`).
 - Workflows pin each remote action by commit SHA. Call a composite action of this repository with `uses: $/…`,
   not `./…`. After a change to a `uses:` line, run `gh actions-lock --no-narrow` (extension
   `github/gh-actions-lock`) and commit `.github/workflows/actions.lock`. `--no-narrow` keeps the SHA pins.

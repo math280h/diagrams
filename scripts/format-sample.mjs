@@ -8,21 +8,40 @@ const vitest = path.join(root, 'node_modules', 'vitest', 'vitest.mjs')
 const ref = process.argv[2]
 const SAMPLE_TEMPLATES = ['order-system', 'checkout-flow', 'event-pipeline']
 
-const sampleTest = `import { writeFileSync } from 'node:fs'
+const sampleTest = `import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { it } from 'vitest'
 import { z } from 'zod'
 import { DIAGRAM_VERSION, diagramSchema } from '@/model/schema'
 import { TEMPLATES } from '@/templates'
+import { fieldSamples } from ${JSON.stringify(path.join(root, 'scripts', 'format-fields.ts').replaceAll('\\', '/'))}
 
-it('writes a sample of the diagram format', () => {
+it('writes the samples of the diagram format', () => {
   const out = process.env.FORMAT_SAMPLE_DIR!
+  const source = process.env.FORMAT_SAMPLE_SOURCE
+  const file = (kind: string) => path.join(out, \`v\${DIAGRAM_VERSION}\${kind}.json\`)
+  const read = (kind: string, build: () => unknown) => {
+    if (existsSync(file(kind))) return JSON.parse(readFileSync(file(kind), 'utf8'))
+    const value = build()
+    writeFileSync(file(kind), JSON.stringify(value, null, 2))
+    return value
+  }
   const ids: string[] = ${JSON.stringify(SAMPLE_TEMPLATES)}
-  const diagrams = TEMPLATES.filter((template) => ids.includes(template.id)).map((template) => template.build())
-  const sample = { version: DIAGRAM_VERSION, source: process.env.FORMAT_SAMPLE_SOURCE, diagrams }
-  writeFileSync(path.join(out, \`v\${DIAGRAM_VERSION}.json\`), JSON.stringify(sample, null, 2))
-  const schema = z.toJSONSchema(diagramSchema)
-  writeFileSync(path.join(out, \`v\${DIAGRAM_VERSION}.schema.json\`), JSON.stringify(schema, null, 2))
+  const sample = read('', () => ({
+    version: DIAGRAM_VERSION,
+    source,
+    diagrams: TEMPLATES.filter((template) => ids.includes(template.id)).map((template) => template.build()),
+  }))
+  const schema = read('.schema', () => z.toJSONSchema(diagramSchema))
+  read('.fields', () => {
+    const accepts = (diagram: unknown) => {
+      const parsed = diagramSchema.safeParse(diagram)
+      return parsed.success ? JSON.parse(JSON.stringify(parsed.data)) : null
+    }
+    const fields = fieldSamples(schema, sample.diagrams, accepts)
+    if (fields.missing.length > 0) throw new Error(\`No sample fills: \${fields.missing.join(', ')}\`)
+    return { version: DIAGRAM_VERSION, source, diagrams: fields.diagrams }
+  })
 })
 `
 

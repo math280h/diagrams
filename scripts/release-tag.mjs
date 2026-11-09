@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process'
+import path from 'node:path'
 
 const BUMPS = ['patch', 'minor', 'major']
 const CHANNELS = ['beta', 'alpha']
@@ -7,6 +8,15 @@ const CHANNEL_RANK = { alpha: 0, beta: 1, stable: 2 }
 const USAGE = `Usage: pnpm release:tag <${[...BUMPS, ...CHANNELS].join('|')}|x.y.z|x.y.z-beta.n> [--dry-run]`
 
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim()
+
+function checkFormats(tag) {
+  const script = path.join(import.meta.dirname, 'release-formats.ts')
+  try {
+    return execFileSync(process.execPath, [script, '--tag', tag], { encoding: 'utf8', stdio: 'pipe' }).trim()
+  } catch (error) {
+    throw new Error(String(error.stderr).replaceAll('::error::', '').trim(), { cause: error })
+  }
+}
 
 function parse(tag) {
   const match = TAG.exec(tag)
@@ -62,7 +72,8 @@ function release(request, dryRun) {
   if (versions.some((version) => version.tag === tag)) throw new Error(`The tag ${tag} exists already.`)
   if (latest && compare(parse(tag), latest) <= 0)
     throw new Error(`${tag} is not higher than the latest tag ${latest.tag}.`)
-  if (dryRun) return `The next tag is ${tag}.`
+  const formats = checkFormats(tag)
+  if (dryRun) return `The next tag is ${tag}.\n${formats}`
 
   if (git('branch', '--show-current') !== 'main') throw new Error('Switch to main first.')
   if (git('status', '--porcelain')) throw new Error('Commit or stash your changes first.')

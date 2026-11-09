@@ -15,7 +15,8 @@ version in `package.json` only names builds on your own computer, so a release n
 
    Use `minor` or `major` for a bigger step, or an exact version such as `0.3.0`. The script works out the next
    version from the newest tag, then creates and pushes the tag (signed, if git signs your tags). Add `--dry-run` to
-   only see the next version.
+   only see the next version. The script refuses a version that cannot open the diagrams of an earlier release of the
+   same major version. See "Change the diagram format" in `docs/ARCHITECTURE.md`.
 
 2. The Release workflow creates a draft release. The packaging jobs use the `release` environment, so GitHub asks you
    to approve them. Then they package the app on Windows, macOS and Linux. Each job starts the packaged app and drives
@@ -167,6 +168,9 @@ action.
 - Do not change `appId` in `electron-builder.ts`. The installer and macOS use it to know that a new version replaces
   the old one.
 - Do not name an npm script `release`. electron-builder publishes by itself under that script name.
+- Do not edit or delete the samples in `src/persistence/formats`, `src/share/samples` and `src/export/samples`. Every
+  release of the same major version opens them. A major release that drops old formats first raises `RELEASE_MAJOR`
+  in `src/persistence/release-formats.ts`; then `pnpm release:tag major` works.
 
 ## Set up the live website
 

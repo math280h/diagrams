@@ -3,8 +3,11 @@ import { toast } from 'sonner'
 import { createEdge, defaultCardData, defaultGroupData, newId } from '@/model/defaults'
 import { absolutePosition } from '@/model/graph'
 import { PRESET_BY_ID } from '@/model/presets'
-import { DIAGRAM_VERSION } from '@/model/schema'
+import { nodeName } from '@/model/labels'
+import { DIAGRAM_VERSION, type Diagram } from '@/model/schema'
 import type { DiagramNode } from '@/model/types'
+import { migrate } from '@/persistence/migrations'
+import { OLDEST_FORMAT, PREVIEW_FORMATS } from '@/persistence/release-formats'
 import { selectOnly } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
 import { resetHistory, undo } from '@/store/history'
@@ -281,5 +284,27 @@ describe('paste', () => {
     }
     expect(fresh.paste()).toBe(false)
     expect(freshDoc.getState().nodes).toEqual([])
+  })
+})
+
+const FIELD_SAMPLES = import.meta.glob<{ diagrams: Diagram[] }>('../persistence/formats/v*.fields.json', {
+  eager: true,
+  import: 'default',
+})
+const RELEASE_FORMATS = Array.from(
+  { length: DIAGRAM_VERSION - OLDEST_FORMAT + 1 },
+  (_, index) => OLDEST_FORMAT + index,
+).filter((version) => !PREVIEW_FORMATS.includes(version))
+
+describe('nodes that a release copied', () => {
+  it.each(RELEASE_FORMATS)('pastes every node and edge of format %i', (version) => {
+    for (const diagram of FIELD_SAMPLES[`../persistence/formats/v${version}.fields.json`]!.diagrams) {
+      useDoc.setState({ nodes: [], edges: [], flows: [] })
+      const payload = { marker: 'diagrams/clipboard@1', version, nodes: diagram.nodes, edges: diagram.edges }
+      expect(paste(clipboardEvent(JSON.stringify(payload)).event)).toBe(true)
+      const names = (nodes: { type: string }[]) => nodes.map((node) => nodeName(node as DiagramNode)).toSorted()
+      expect(names(useDoc.getState().nodes)).toEqual(names(migrate(structuredClone(diagram)).nodes))
+      expect(useDoc.getState().edges).toHaveLength(diagram.edges.length)
+    }
   })
 })

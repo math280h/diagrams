@@ -417,7 +417,7 @@ One flow shows fan-out and failure branches; there is no second kind of flow.
 
 ### Change the diagram format
 
-Every earlier format must still open.
+Every format that a release wrote must open with no loss, until a new major version.
 
 - Each diagram stores its format in `version`; this build writes `DIAGRAM_VERSION`.
 - `src/persistence/migrations.ts` migrates older data (one step per version) before the schema parses it. All inputs use
@@ -431,18 +431,46 @@ new version, also for an optional field or enum value:
 
 1. Raise `DIAGRAM_VERSION` and add `toVersion<N>` to `MIGRATIONS`. The step fills new fields with defaults, maps
    changed values and removes old fields. It must not fail on data that already has the change.
-2. Test the step in `src/persistence/serialize.test.ts`. Add the version to "Visual language" above.
-3. Run `node scripts/format-sample.mjs`. It writes `src/persistence/formats/v<N>.schema.json` (JSON Schema) and
-   `v<N>.json` (Order system and Checkout flow templates; from format 12 also Event pipeline: parallel step, path).
+2. Keep each stored value. If the step must remove or change a value, add its path to `REWRITTEN_FIELDS`.
+3. Test the step in `src/persistence/serialize.test.ts`. Add the version to "Visual language" above.
+4. Run `node scripts/format-sample.mjs`. It writes only the files that do not exist, in `src/persistence/formats`:
+   - `v<N>.schema.json`: the JSON Schema.
+   - `v<N>.json`: the Order system and Checkout flow templates; from format 12 also Event pipeline.
+   - `v<N>.fields.json`: copies of these templates that hold each property, enum value, boolean value and union
+     branch of the schema. `scripts/format-fields.ts` makes them, and the schema of the format accepts each copy.
 
-- `src/persistence/formats.test.ts` fails when:
-  - the schema differs from the current version file.
-  - the migrations change the nodes, edges or flows of a format 6+ sample.
-- Files of a format that reached `main` never change; a diff in one means a missing version.
-- `node scripts/format-sample.mjs <git ref>` writes an earlier release's files, in a repository worktree with the same
-  `node_modules`.
-- Format 6 and 7 samples come from v0.1.2 and v0.1.3. Formats 1 to 5 are older than the first release; only
-  `serialize.test.ts` tests them.
+`src/persistence/release-formats.ts` holds the rules of the releases:
+
+- `RELEASE_MAJOR`: the major version of the next release.
+- `OLDEST_FORMAT`: the oldest format that the app opens. Each release of `RELEASE_MAJOR` wrote it or a newer one.
+- `PREVIEW_FORMATS`: the formats that only builds of `main` wrote (9 to 15). They need no field sample. Alpha and beta
+  tags are not releases.
+
+The tests and checks fail when:
+
+- the schema differs from the current version file (`src/persistence/formats.test.ts`).
+- a sample of a format from `OLDEST_FORMAT` does not open, or loses or changes a value outside `REWRITTEN_FIELDS`.
+  The test opens, imports and saves each sample, and pastes its nodes. Pasted nodes also have a test in
+  `src/editor/clipboard.test.ts`.
+- the samples of a format that a release can write do not fill its schema (`scripts/format-fields.test.ts`).
+- a change edits or deletes a sample on `main` (`scripts/release-formats.ts --base`, in the CI job "Release formats").
+  Add a new file for a new format or container.
+- a release of `RELEASE_MAJOR` wrote a format older than `OLDEST_FORMAT` (`scripts/release-formats.ts`). CI,
+  `pnpm release:tag` and the Release workflow do this check. The Release workflow also runs the sample tests.
+
+A container of a diagram has its own samples:
+
+- Share links: `src/share/samples`, one sample for each prefix.
+- Images that hold a diagram: `src/export/samples/v<N>.png` and `v<N>.svg`. Each holds the first diagram of
+  `v<N>.fields.json`.
+
+To drop old formats, start a new major version. Raise `RELEASE_MAJOR` and `OLDEST_FORMAT`, and remove the migration
+steps and samples of the old formats. The next release is then `v<RELEASE_MAJOR>.0.0`.
+
+- `node scripts/format-sample.mjs <git ref>` writes the files of an earlier release, in a repository worktree with the
+  same `node_modules`.
+- Format 6 and 7 samples come from v0.1.2 and v0.1.3. The field samples of formats 6, 7 and 8 come from v0.1.2,
+  v0.1.3 and v0.1.4. Formats 1 to 5 are older than the first release; only `serialize.test.ts` tests them.
 
 An older app refuses a newer format and asks the user to update, because its next save would drop unknown fields.
 
