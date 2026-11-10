@@ -47,7 +47,7 @@ const PICKED_FOLDER_COPY: StorageCopy = {
   ...FOLDER_COPY,
   missingTitle: 'This diagram is not in the open folder',
   stillSaved: 'Your saved diagrams are still in the open folder.',
-  deleteDetail: 'This deletes the diagram file from the folder. You cannot undo it.',
+  deleteDetail: 'This moves the diagram file to .diagrams/deleted in the folder, where you can get it back.',
   removeFailed: 'Could not delete the diagram file.',
 }
 

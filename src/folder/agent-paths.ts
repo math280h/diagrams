@@ -4,6 +4,8 @@ export const CALLS_FOLDER = 'calls'
 export const RESULTS_FOLDER = 'results'
 export const STATUS_FOLDER = 'status'
 export const SKILLS_FOLDER = 'skills'
+/** The folder in {@link AGENT_FOLDER} that keeps a copy of each deleted diagram file. */
+export const DELETED_FOLDER = 'deleted'
 export const CALL_SUFFIX = '.json'
 export const GUIDE_FILE = 'README.md'
 export const TOOLS_FILE = 'tools.json'

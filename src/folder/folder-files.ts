@@ -1,5 +1,6 @@
 import type { FileChange, StoredFile } from '@/desktop/contract'
 import { fileOfId, idOfFile } from '@/persistence/diagram-file-name'
+import { AGENT_FOLDER, DELETED_FOLDER } from './agent-paths'
 
 export type FolderFiles = ReturnType<typeof createFolderFiles>
 
@@ -12,6 +13,12 @@ export async function writeText(folder: FileSystemDirectoryHandle, name: string,
   const writable = await (await folder.getFileHandle(name, { create: true })).createWritable()
   await writable.write(data)
   await writable.close()
+}
+
+/** Returns the name of the copy of a deleted diagram file: the id and the time, so that each delete keeps its copy. */
+export function deletedFileName(id: string, at = new Date()) {
+  const time = at.toISOString().slice(0, 19).replaceAll(':', '-')
+  return fileOfId(`${id} ${time}`)
 }
 
 export async function removeIfThere(folder: FileSystemDirectoryHandle, name: string) {
@@ -113,7 +120,14 @@ export function createFolderFiles(
 
     remove(id: string): Promise<void> {
       return inOrder(id, async () => {
-        await removeIfThere(folder, fileOfId(id))
+        const name = fileOfId(id)
+        const text = await read(name)
+        if (text !== null) {
+          const agentFolder = await folder.getDirectoryHandle(AGENT_FOLDER, { create: true })
+          const deleted = await agentFolder.getDirectoryHandle(DELETED_FOLDER, { create: true })
+          await writeText(deleted, deletedFileName(id), text)
+        }
+        await removeIfThere(folder, name)
         known.delete(id)
       })
     },

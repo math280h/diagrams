@@ -964,7 +964,8 @@ Claude Code then works on the diagrams through files in that folder. The user in
 - Opening or closing a folder reloads the page. `bootstrapStorage` opens the folder before the app renders, with the
   cached repository of the desktop app. The diagrams in the browser stay, and show again after "Close folder".
 - Files: `<id>.diagram.json` in the folder, as on the desktop (`src/persistence/diagram-file-name.ts`). Chrome has no
-  trash, so a delete removes the file.
+  trash, so a delete moves a copy to `.diagrams/deleted/<id> <time>.diagram.json` (out of git) and removes the file.
+  A delete through an agent call is then not final either.
 - A worker scans the folder every 750 ms: file names, sizes and change times. Chrome slows the timers of a hidden page
   to one call a minute, but not the timers of a worker. The page reads a changed file and compares it with the last
   text that the app read or wrote.
@@ -979,8 +980,8 @@ Claude Code then works on the diagrams through files in that folder. The user in
 The agent folder `.diagrams` (`src/folder/agent-channel.ts`), when "Let agents use this folder" is on:
 
 - At each open, the website writes the tool list with JSON Schema inputs, the diagram format as JSON Schema, the icon
-  list, the skills and a guide (`README.md`, written last). A `.gitignore` keeps `calls`, `results` and `status` out of
-  git.
+  list, the skills and a guide (`README.md`, written last). A `.gitignore` keeps `calls`, `results`, `status` and
+  `deleted` out of git.
 - Tool calls: the agent writes `calls/<name>.json` with a tool and its arguments. The worker reports the file. The
   page removes it, runs the tool with `runAgentTool` as the MCP server does, and writes `results/<name>.json` and the
   images of the result as PNG files. Calls run one at a time in file name order. A file that is not JSON gets three

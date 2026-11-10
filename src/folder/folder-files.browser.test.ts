@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { createFolderFiles, writeText, writeWholeFile } from './folder-files'
+import { createFolderFiles, deletedFileName, writeText, writeWholeFile } from './folder-files'
 
 let root: FileSystemDirectoryHandle
 let folder: FileSystemDirectoryHandle
@@ -33,14 +33,27 @@ describe('folder files', () => {
     expect(files).toEqual([{ id: 'd_shop', text: '{"name":"Shop"}' }])
   })
 
-  it('writes and removes a diagram file under its id', async () => {
+  it('writes a diagram file under its id, and moves a deleted one to .diagrams/deleted', async () => {
     const files = createFolderFiles(folder)
     await files.write({ id: 'd_new', text: 'first' })
     await files.write({ id: 'd_new', text: 'second' })
     expect(await readText('d_new.diagram.json')).toBe('second')
     await files.remove('d_new')
     await files.remove('d_new')
-    expect(await names()).toEqual([])
+    expect(await names()).toEqual(['.diagrams'])
+
+    const deleted = await (await folder.getDirectoryHandle('.diagrams')).getDirectoryHandle('deleted')
+    const kept: string[] = []
+    for await (const name of deleted.keys()) kept.push(name)
+    expect(kept).toHaveLength(1)
+    expect(kept[0]).toMatch(/^d_new \d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.diagram\.json$/)
+    expect(await (await (await deleted.getFileHandle(kept[0]!)).getFile()).text()).toBe('second')
+  })
+
+  it('names each copy of a deleted file by its id and the time', () => {
+    expect(deletedFileName('d_shop', new Date('2026-11-10T22:50:01.123Z'))).toBe(
+      'd_shop 2026-11-10T22-50-01.diagram.json',
+    )
   })
 
   it('keeps a change from outside that came after the last read, and reports it instead of the write', async () => {

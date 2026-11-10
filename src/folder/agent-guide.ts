@@ -10,6 +10,7 @@ import { TEMPLATES } from '@/templates'
 import {
   AGENT_FOLDER,
   CALLS_FOLDER,
+  DELETED_FOLDER,
   FILE_GUIDE_FILE,
   GUIDE_FILE,
   ICONS_FILE,
@@ -22,7 +23,7 @@ import {
 import { writeText } from './folder-files'
 
 const JSON_SCHEMA_OPTIONS = { io: 'input', unrepresentable: 'any' } as const
-const IGNORED_FOLDERS = [CALLS_FOLDER, RESULTS_FOLDER, STATUS_FOLDER]
+const IGNORED_FOLDERS = [CALLS_FOLDER, RESULTS_FOLDER, STATUS_FOLDER, DELETED_FOLDER]
 
 function jsonText(value: unknown) {
   return `${JSON.stringify(value, null, 2)}\n`
