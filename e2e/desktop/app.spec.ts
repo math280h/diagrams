@@ -109,6 +109,40 @@ function iconFile() {
   return path.resolve('build', process.platform === 'win32' ? 'icon.ico' : 'icon.png')
 }
 
+test('colours the window buttons like the header in the light and the dark theme', async ({ app, window }) => {
+  test.skip(process.platform === 'darwin', 'macOS draws its own window buttons.')
+  await expect(window.getByRole('button', { name: 'New diagram' })).toBeVisible()
+  await app.evaluate(({ BrowserWindow }) => {
+    const calls: unknown[] = []
+    Object.assign(globalThis, { titleBarCalls: calls })
+    const main = BrowserWindow.getAllWindows()[0]!
+    const setOverlay = main.setTitleBarOverlay.bind(main)
+    main.setTitleBarOverlay = (options) => {
+      calls.push(options)
+      setOverlay(options)
+    }
+  })
+  const lastColors = () =>
+    app.evaluate(() =>
+      (globalThis as unknown as { titleBarCalls: { color: string; symbolColor: string }[] }).titleBarCalls.at(-1),
+    )
+  const startWithTheme = async (theme: 'dark' | 'light') => {
+    await window.evaluate((value) => {
+      const saved = JSON.parse(localStorage.getItem('dg:settings') ?? '{"state":{},"version":0}') as {
+        state: Record<string, unknown>
+      }
+      localStorage.setItem('dg:settings', JSON.stringify({ ...saved, state: { ...saved.state, theme: value } }))
+    }, theme)
+    await window.reload()
+    await expect(window.getByRole('button', { name: 'New diagram' })).toBeVisible()
+  }
+
+  await startWithTheme('dark')
+  await expect.poll(lastColors).toMatchObject({ color: '#0a0a0a', symbolColor: '#fafafa' })
+  await startWithTheme('light')
+  await expect.poll(lastColors).toMatchObject({ color: '#ffffff', symbolColor: '#0a0a0a' })
+})
+
 test('serves the player files that the web page export puts in a page', async ({ window }) => {
   const files = await window.evaluate(() =>
     Promise.all(

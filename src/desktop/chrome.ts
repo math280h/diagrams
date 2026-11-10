@@ -8,8 +8,17 @@ const MOUSE_FORWARD = 4
 
 export const useDesktopNavigation = create(() => ({ canGoBack: false, canGoForward: false }))
 
+const SHORT_HEX_COLOR = /^#([\da-f])([\da-f])([\da-f])$/i
+
+/** Returns a CSS colour in the `#rrggbb` form when it is a short hex colour such as `#fff`, and else as it is. */
+export function longHexColor(color: string): string {
+  const short = SHORT_HEX_COLOR.exec(color)
+  return short ? `#${short[1]}${short[1]}${short[2]}${short[2]}${short[3]}${short[3]}` : color
+}
+
 function cssColor(name: string) {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  // The CSS minifier of the build writes #ffffff as #fff.
+  return longHexColor(getComputedStyle(document.documentElement).getPropertyValue(name).trim())
 }
 
 function isHistoryShortcut(event: KeyboardEvent, platform: string): 'back' | 'forward' | null {
