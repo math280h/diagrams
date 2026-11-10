@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button'
+import { canFollowFolder, canOpenFolder } from '@/folder/support'
 import { IntroStrip } from '@/library/IntroStrip'
 import {
   hideAgentIntro,
@@ -35,7 +36,26 @@ function DesktopAction() {
   )
 }
 
-/** Introduces agent control on the library: the agent setup in the desktop app, the desktop app on the website. */
+function WebsiteText() {
+  if (!canOpenFolder() && !canFollowFolder()) {
+    return `Claude Code and other MCP clients connect to the desktop app. Ask your agent to ${EXAMPLE_REQUEST} and watch the diagram appear.`
+  }
+  return (
+    <>
+      Ask Claude Code to {EXAMPLE_REQUEST} and watch the diagram appear. It connects to the desktop app, or works
+      through{' '}
+      <Button variant="link" className="h-auto p-0 text-[13px] text-foreground" onClick={openConnectAgent}>
+        a folder of your project
+      </Button>{' '}
+      with nothing to install.
+    </>
+  )
+}
+
+/**
+ * Introduces agent control on the library: the agent setup in the desktop app, and on the website the desktop app or a
+ * folder of diagram files.
+ */
 export function AgentIntro({ className }: { className?: string }) {
   const visible = useAgentIntroVisible()
   const desktop = isDesktop()
@@ -49,9 +69,11 @@ export function AgentIntro({ className }: { className?: string }) {
       onClose={hideAgentIntro}
       className={className}
     >
-      {desktop
-        ? `Connect Claude Code or another MCP client, then ask it to ${EXAMPLE_REQUEST}. The diagram appears here as the agent draws. You can undo each change.`
-        : `Claude Code and other MCP clients connect to the desktop app. Ask your agent to ${EXAMPLE_REQUEST} and watch the diagram appear.`}
+      {desktop ? (
+        `Connect Claude Code or another MCP client, then ask it to ${EXAMPLE_REQUEST}. The diagram appears here as the agent draws. You can undo each change.`
+      ) : (
+        <WebsiteText />
+      )}
     </IntroStrip>
   )
 }

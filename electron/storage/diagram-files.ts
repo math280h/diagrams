@@ -2,28 +2,13 @@ import { mkdir, readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { DIAGRAM_FILE_SUFFIX } from '@/desktop/constants'
 import type { FileChange, StoredFile } from '@/desktop/contract'
+import { idOfFile, isSafeId } from '@/persistence/diagram-file-name'
 import { createFileQueue } from './file-queue'
 
-const MAX_ID_LENGTH = 200
-const SAFE_ID = /^[\p{L}\p{N}_()-][\p{L}\p{N}_ .()-]*$/u
-
-export function isSafeId(id: string) {
-  return id.length <= MAX_ID_LENGTH && SAFE_ID.test(id) && !id.endsWith('.') && !id.endsWith(' ')
-}
+export { idOfFile, isSafeId } from '@/persistence/diagram-file-name'
 
 export function isTempFile(name: string) {
   return name.includes(`${DIAGRAM_FILE_SUFFIX}.tmp-`)
-}
-
-/**
- * Returns the diagram id of a file name.
- *
- * @returns The id, or `null` if the name is not a diagram file.
- */
-export function idOfFile(name: string): string | null {
-  if (!name.endsWith(DIAGRAM_FILE_SUFFIX)) return null
-  const id = name.slice(0, -DIAGRAM_FILE_SUFFIX.length)
-  return isSafeId(id) ? id : null
 }
 
 export type DiagramFiles = ReturnType<typeof createDiagramFiles>
