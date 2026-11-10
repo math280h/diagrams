@@ -51,6 +51,7 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm desktop:build
+      - uses: $/.github/actions/electron
       - name: Build the app of the base commit
         working-directory: base
         run: |

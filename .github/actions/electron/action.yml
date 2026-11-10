@@ -1,0 +1,24 @@
+name: Install the Electron binary
+description: Installs the Electron binary of the lockfile version, from the cache when it holds that version.
+
+runs:
+  using: composite
+  steps:
+    - name: Read the Electron version
+      id: version
+      shell: bash
+      run: echo "version=$(node -p "require('electron/package.json').version")" >> "$GITHUB_OUTPUT"
+    - name: Restore the Electron downloads
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.os == 'Windows' && '~/AppData/Local/electron/Cache' || runner.os == 'macOS' && '~/Library/Caches/electron' || '~/.cache/electron' }}
+        key: electron-${{ runner.os }}-${{ runner.arch }}-${{ steps.version.outputs.version }}
+    - name: Install the Electron binary
+      shell: bash
+      run: |
+        for attempt in 1 2 3; do
+          node node_modules/electron/install.js && exit 0
+          echo "::warning::The Electron download failed (attempt $attempt of 3)."
+          sleep $((attempt * 15))
+        done
+        exit 1
