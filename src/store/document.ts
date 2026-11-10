@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { create } from 'zustand'
 import { toast } from 'sonner'
 import { errorMessage } from '@/lib/error-message'
+import { reportError } from './problem-store'
 import type { Diagram } from '@/model/schema'
 import { repository } from '@/persistence/active-repository'
 import { fromDiagram, toDiagram } from '@/persistence/serialize'
@@ -99,7 +100,7 @@ function startSession(diagram: Diagram): Session {
       const loaded = repository().load(id)
       if (loaded) reload(loaded)
     } catch (error) {
-      toast.error('The newer version cannot be read.', { description: errorMessage(error) })
+      reportError('The newer version cannot be read.', error)
     }
   }
   const stopRepository = repository().subscribe((event) => {

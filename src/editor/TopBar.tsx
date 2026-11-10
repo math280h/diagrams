@@ -55,8 +55,7 @@ import { useVersions } from '@/store/versions'
 import { SettingsPanel } from './inspector/DiagramInspector'
 import { openInsertAtCenter } from './insert'
 import { IS_MAC, KEYS } from '@/lib/shortcut-keys'
-import { toast } from 'sonner'
-import { errorMessage } from '@/lib/error-message'
+import { reportError } from '@/store/problem-store'
 import { isDesktop } from '@/desktop/bridge'
 import { saveDiagramAsFile, showDiagramFile } from '@/desktop/linked-files'
 import { useLibrary } from '@/store/library-store'
@@ -149,7 +148,7 @@ async function saveAsFile(navigateTo: (id: string) => void) {
     const id = await saveDiagramAsFile(currentDiagram())
     if (id) navigateTo(id)
   } catch (error) {
-    toast.error('The file could not be saved.', { description: errorMessage(error) })
+    reportError('The file could not be saved.', error)
   }
 }
 

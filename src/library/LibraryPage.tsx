@@ -74,8 +74,7 @@ import { Features } from './Features'
 import { PrivacySection } from './PrivacySection'
 import { LivePreview } from './LivePreview'
 import { SiteFooter } from './SiteFooter'
-import { toast } from 'sonner'
-import { errorMessage } from '@/lib/error-message'
+import { reportError } from '@/store/problem-store'
 import { openDiagramFiles, showDiagramFile } from '@/desktop/linked-files'
 
 const FEATURED_ID = 'order-system'
@@ -322,7 +321,7 @@ export function LibraryPage() {
       (ids) => {
         if (ids.length === 1) void navigate({ to: '/d/$diagramId', params: { diagramId: ids[0]! } })
       },
-      (error: unknown) => toast.error('The file could not be opened.', { description: errorMessage(error) }),
+      (error: unknown) => reportError('The file could not be opened.', error),
     )
   const templates = useMemo(
     () => TEMPLATES.map((template) => ({ ...template, preview: template.cover?.() ?? template.build() })),

@@ -9,9 +9,8 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
-import { toast } from 'sonner'
 import { committedDiagram } from '@/desktop/linked-files'
-import { errorMessage } from '@/lib/error-message'
+import { reportError } from '@/store/problem-store'
 import { useLibrary } from '@/store/library-store'
 import { memo, useEffect, useMemo, type KeyboardEvent } from 'react'
 import { Button } from '@/components/ui/button'
@@ -100,7 +99,7 @@ export function HistoryPanel() {
     flushPendingSave()
     committedDiagram(diagramId).then(
       (diagram) => previewDiagram(COMMIT_PREVIEW_ID, diagram),
-      (error: unknown) => toast.error('The last commit could not be read.', { description: errorMessage(error) }),
+      (error: unknown) => reportError('The last commit could not be read.', error),
     )
   }
 

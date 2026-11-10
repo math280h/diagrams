@@ -1,31 +1,25 @@
+import { MoreDetails } from '@/components/MoreDetails'
 import { Button } from '@/components/ui/button'
 import { IntroStrip } from '@/library/IntroStrip'
-import {
-  hideAgentIntro,
-  openAgentProblem,
-  openConnectAgent,
-  useAgentIntroVisible,
-  useAgentProblem,
-} from './agent-store'
+import { showProblem } from '@/store/problem-store'
+import { AGENT_PROBLEM_KEY, agentProblem, isAgentProblem } from './agent-problem'
+import { hideAgentIntro, openConnectAgent, useAgentIntroVisible, useAgentStore } from './agent-store'
 import { isDesktop } from './bridge'
 import { DesktopDownloadLink } from './DesktopDownloadLink'
 
 const EXAMPLE_REQUEST = '“draw our checkout with Stripe”'
 
 function DesktopAction() {
-  const problem = useAgentProblem()
+  const info = useAgentStore((state) => state.info)
   return (
     <>
-      {problem && (
+      {isAgentProblem(info) && (
         <span className="flex flex-col text-[13px] leading-5">
           <span className="text-destructive">Agents cannot connect</span>
-          <button
-            type="button"
-            onClick={openAgentProblem}
-            className="self-start text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            More details…
-          </button>
+          <MoreDetails
+            className="self-start"
+            onClick={() => showProblem(agentProblem(info), { key: AGENT_PROBLEM_KEY })}
+          />
         </span>
       )}
       <Button variant="secondary" onClick={openConnectAgent}>

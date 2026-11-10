@@ -1,19 +1,18 @@
 import { toast } from 'sonner'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { updateProblem } from '@/store/problem-store'
+import { AGENT_PROBLEM_KEY, agentProblem, isAgentProblem } from './agent-problem'
 import { desktopApi, isDesktop } from './bridge'
-import { isAgentProblem } from './agent-problem'
 import type { AgentInfo } from './contract'
 import { canOpenInApp } from './open-in-app'
 
 interface AgentStore {
   info: AgentInfo | null
   dialogOpen: boolean
-  /** True while the problem dialog of the agent server shows. */
-  problemOpen: boolean
 }
 
-export const useAgentStore = create<AgentStore>(() => ({ info: null, dialogOpen: false, problemOpen: false }))
+export const useAgentStore = create<AgentStore>(() => ({ info: null, dialogOpen: false }))
 
 /** Returns the notice that agents connect on a new port, because another program used the kept one. */
 export function movedPortNotice(info: AgentInfo): string | null {
@@ -26,7 +25,8 @@ function setAgentInfo(info: AgentInfo) {
   const notice = movedPortNotice(info)
   const agentsUsedBefore = useAgentHistory.getState().lastCallAt !== null
   if (notice && previous && !movedPortNotice(previous) && agentsUsedBefore) toast.info(notice, { duration: Infinity })
-  useAgentStore.setState(isAgentProblem(info) ? { info } : { info, problemOpen: false })
+  useAgentStore.setState({ info })
+  updateProblem(AGENT_PROBLEM_KEY, isAgentProblem(info) ? agentProblem(info) : null)
 }
 
 interface AgentHistory {
@@ -68,11 +68,6 @@ export function useAgentProblem() {
 
 export function openConnectAgent() {
   useAgentStore.setState({ dialogOpen: true })
-}
-
-/** Shows the problem dialog of the agent server. It closes when the problem ends. */
-export function openAgentProblem() {
-  useAgentStore.setState({ problemOpen: true })
 }
 
 /** Loads the agent server status from the main process and follows its changes. */

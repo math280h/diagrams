@@ -24,7 +24,7 @@ import { useSettings } from '@/store/settings-store'
 import { setUi, useUi, type ExportKind } from '@/store/ui-store'
 import { Choice, Field, Segmented, SliderField, SwitchField } from '@/editor/inspector/controls'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { errorMessage } from '@/lib/error-message'
+import { reportError } from '@/store/problem-store'
 import { diagramBounds } from './bounds'
 import { HtmlExport } from './HtmlExport'
 import { LinkExport } from './LinkExport'
@@ -85,7 +85,7 @@ function useStageContent(themeChoice: ThemeChoice, grid: boolean, selectionOnly 
 }
 
 function previewFailed(error: unknown) {
-  toast.error('The export preview could not render.', { description: errorMessage(error) })
+  reportError('The export preview could not render.', error)
 }
 
 /** Opens a stage session for the spec, and disposes it when the spec changes or the component unmounts. */
@@ -223,7 +223,7 @@ function ImageExport({ onClose }: { onClose: () => void }) {
       await writeImageToClipboard(format, render(session))
       toast.success(`Copied the ${FORMAT_NAMES[format]}`)
     } catch (error) {
-      toast.error('The image could not be copied.', { description: errorMessage(error) })
+      reportError('The image could not be copied.', error, { facts: [`Format: ${format}`] })
     } finally {
       setBusy(false)
     }
@@ -238,7 +238,7 @@ function ImageExport({ onClose }: { onClose: () => void }) {
       toast.success(`Exported ${FORMAT_NAMES[format]}`)
       onClose()
     } catch (error) {
-      toast.error('The image export failed.', { description: errorMessage(error) })
+      reportError('The image export failed.', error, { facts: [`Format: ${format}`] })
     } finally {
       setBusy(false)
     }
@@ -474,9 +474,7 @@ function VideoExport({ onClose }: { onClose: () => void }) {
       onClose()
     } catch (error) {
       if (!(error instanceof ExportAbortedError)) {
-        toast.error('The animation export failed.', {
-          description: errorMessage(error),
-        })
+        reportError('The animation export failed.', error, { facts: [`Format: ${format}`] })
       }
     } finally {
       setProgress(null)

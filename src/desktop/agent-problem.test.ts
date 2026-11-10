@@ -21,12 +21,13 @@ describe('agent problems', () => {
     expect(isAgentProblem(null)).toBe(false)
   })
 
-  it('gives the bug report the app, the server state, the port and the message', () => {
+  it('gives the bug report the app, the message, the server state and the port', () => {
     expect(problemReport('Diagrams 0.3.0, Windows 10.0.26200 (x64)', agentProblem(TAKEN))).toBe(
       [
         'Diagrams 0.3.0, Windows 10.0.26200 (x64)',
-        'Agent server: port-in-use on port 27419',
+        'Agents cannot connect',
         'Another program uses port 27419, for example a second Diagrams app.',
+        'Agent server: port-in-use on port 27419',
       ].join('\n'),
     )
   })

@@ -1,4 +1,4 @@
-import { toast } from 'sonner'
+import { reportError } from '@/store/problem-store'
 import { repository } from './active-repository'
 import { createSaveReporter } from './save-reporter'
 
@@ -57,10 +57,11 @@ export function watchSaveOutcomes(): () => void {
   return repository().subscribe(
     createSaveReporter({
       saveFailed: (event) =>
-        toast.error(
+        reportError(
           event.reason === 'quota'
             ? 'Browser storage is full, so changes stay in this tab only.'
             : storageCopy().saveFailed,
+          event.message,
           {
             id: SAVE_FAILED_TOAST,
             description:
@@ -68,9 +69,13 @@ export function watchSaveOutcomes(): () => void {
                 ? 'Choose Export, then Diagram file (JSON), before you close the tab. Delete other diagrams to free space.'
                 : 'Choose Export, then Diagram file (JSON), to keep your changes.',
             duration: 12_000,
+            facts: [`Storage: ${repository().location.kind}`, `Save failure: ${event.reason}`, `Diagram: ${event.id}`],
           },
         ),
-      removeFailed: (event) => toast.error(storageCopy().removeFailed, { description: event.message }),
+      removeFailed: (event) =>
+        reportError(storageCopy().removeFailed, event.message, {
+          facts: [`Storage: ${repository().location.kind}`, `Diagram: ${event.id}`],
+        }),
     }),
   )
 }

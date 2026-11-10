@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Choice, Field, Segmented } from '@/editor/inspector/controls'
 import { downloadBlob } from '@/lib/download'
-import { errorMessage } from '@/lib/error-message'
+import { reportError } from '@/store/problem-store'
 import { safeFileName } from '@/lib/format'
 import { useDoc } from '@/store/doc-store'
 import { useUi } from '@/store/ui-store'
@@ -57,7 +57,7 @@ export function ReadmeExport() {
       }
       toast.success('Exported the dark and the light image')
     } catch (error) {
-      toast.error('The export failed.', { description: errorMessage(error) })
+      reportError('The export failed.', error, { facts: ['Export: README'] })
     } finally {
       setStatus(null)
     }

@@ -696,6 +696,12 @@ Edge labels, ports and the flow token render through `EdgeLabelPortal` and `View
 `EdgeLabelRenderer` and `ViewportPortal` run `querySelector` in a store selector per labelled edge on each pan and zoom
 frame.
 
+### Problems
+
+Failures go through `src/store/problem-store.ts`: `reportError` shows a toast with "More details", and `showProblem`
+opens the one problem dialog with the details to copy into a bug report. A problem shown with a key, such as the agent
+server state, changes or closes when its source calls `updateProblem`.
+
 ### Undo
 
 History stores immutable document snapshots (immer shares unchanged parts).
