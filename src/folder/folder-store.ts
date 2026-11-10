@@ -3,6 +3,11 @@ import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { useAgentStore } from '@/desktop/agent-store'
 import { errorMessage } from '@/lib/error-message'
+import { loadDiagramOrNull } from '@/persistence/active-repository'
+import { serializeDiagram } from '@/persistence/cached-repository'
+import { fileOfId } from '@/persistence/diagram-file-name'
+import { flushPendingSave } from '@/store/document'
+import { writeText } from './folder-files'
 import { openFolderSession, type FolderSession } from './folder-session'
 import { forgetFolder, rememberedFolder, rememberFolder } from './handle-store'
 
@@ -99,8 +104,11 @@ function reload() {
 /**
  * Asks the user for a folder and opens it after a reload. The diagrams in this browser stay, and show again after
  * {@link closeFolder}.
+ *
+ * @param options.copy - The ids of diagrams in this browser to write to the folder first, for example the open one.
+ *   The reload keeps the address, so the editor then shows the copy in the folder.
  */
-export async function pickFolder(options: { agents?: boolean } = {}) {
+export async function pickFolder(options: { agents?: boolean; copy?: readonly string[] } = {}) {
   let handle: FileSystemDirectoryHandle
   try {
     handle = await window.showDirectoryPicker({ id: 'diagrams', mode: 'readwrite' })
@@ -108,6 +116,18 @@ export async function pickFolder(options: { agents?: boolean } = {}) {
     if (error instanceof DOMException && error.name === 'AbortError') return
     toast.error('Could not open the folder.', { description: errorMessage(error) })
     return
+  }
+  if (options.copy?.length) {
+    flushPendingSave()
+    try {
+      for (const id of options.copy) {
+        const diagram = loadDiagramOrNull(id)
+        if (diagram) await writeText(handle, fileOfId(id), serializeDiagram(diagram))
+      }
+    } catch (error) {
+      toast.error('Could not copy the diagram to the folder.', { description: errorMessage(error) })
+      return
+    }
   }
   await rememberFolder(handle)
   if (options.agents !== undefined) useFolderSettings.setState({ agents: options.agents })

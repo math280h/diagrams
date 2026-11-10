@@ -69,6 +69,21 @@ test('keeps the diagrams as files in an opened folder and shows the changes from
   await expect(page.getByText('Changed in an editor')).toHaveCount(0)
 })
 
+test('copies the open diagram into a folder from the agent button of the editor', async ({ page }) => {
+  await page.goto('/')
+  await copyTemplate(page, 'Order system')
+  const id = openDiagramId(page)
+  await page.getByRole('button', { name: 'Connect an agent' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByText('This browser supports folders')).toBeVisible()
+  await dialog.getByRole('button', { name: 'Open a folder and copy “Order system”' }).click()
+
+  await expect(page.getByRole('dialog')).toContainText('.diagrams/README.md in the "project" folder')
+  expect(openDiagramId(page)).toBe(id)
+  await expect(page.getByLabel('Diagram name')).toHaveValue('Order system')
+  expect(await readFile(page, `${id}.diagram.json`)).toContain('"name": "Order system"')
+})
+
 test('lets an agent call the tools and read the checks through the agent folder', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'a folder of your project' }).click()

@@ -266,7 +266,7 @@ export function TopBar() {
       </div>
 
       <div className="ml-auto flex items-center gap-1">
-        <AgentButton />
+        <AgentButton shortLabel />
         <div inert={previewing} className="hidden items-center gap-1 sm:flex inert:opacity-50">
           <IconButton label="Command menu" shortcut={KEYS.commandMenu} onClick={() => setUi({ commandOpen: true })}>
             {IS_MAC ? <Command /> : <Search />}

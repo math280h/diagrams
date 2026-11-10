@@ -1,11 +1,18 @@
+import { useRouterState } from '@tanstack/react-router'
+import { ArrowUpRight, CircleCheck, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAgentHistory, useAgentStore } from '@/desktop/agent-store'
 import { CommandBlock } from '@/desktop/ConnectAgentDialog'
 import { DesktopDownloadLink } from '@/desktop/DesktopDownloadLink'
 import { relativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { repository } from '@/persistence/active-repository'
+import { exportDiagramJson } from '@/persistence/library-actions'
+import { useDoc } from '@/store/doc-store'
+import { currentDiagram, flushPendingSave } from '@/store/document'
 import { AGENT_FOLDER, claudeInstruction, fileGuideInstruction } from './agent-paths'
 import { pickFolder, useFolderSettings, useFolderStore } from './folder-store'
 import { canFollowFolder, followFolder } from './followed-folder'
@@ -44,15 +51,33 @@ function Status({ name, agents }: { name: string; agents: boolean }) {
   )
 }
 
+const EDITOR_PATH = /^\/d\/([^/]+)$/
+
+/** Returns the diagram that the editor shows from the storage of this browser, or `null`. */
+function useOpenBrowserDiagram(): { id: string; name: string } | null {
+  const pathname = useRouterState({ select: (state) => state.location.pathname })
+  const name = useDoc((state) => state.name)
+  const match = EDITOR_PATH.exec(pathname)
+  if (!match?.[1] || repository().location.kind !== 'browser') return null
+  return { id: decodeURIComponent(match[1]), name }
+}
+
+function downloadOpenDiagram() {
+  flushPendingSave()
+  exportDiagramJson(currentDiagram())
+}
+
 function OpenFolderSteps() {
+  const open = useOpenBrowserDiagram()
   return (
     <div className="space-y-3 text-[13px] leading-5 text-muted-foreground">
       <p>
         1. Open a folder in your project, for example <span className="font-mono">docs/diagrams</span>. The website
-        keeps the diagrams there as files, and the diagrams in this browser stay here for later.
+        keeps the diagrams there as files{open ? `, and copies “${open.name}” into it for Claude Code` : ''}. The
+        diagrams in this browser stay here for later.
       </p>
-      <Button variant="secondary" onClick={() => void pickFolder({ agents: true })}>
-        Open a folder
+      <Button variant="secondary" onClick={() => void pickFolder({ agents: true, copy: open ? [open.id] : [] })}>
+        {open ? `Open a folder and copy “${open.name}”` : 'Open a folder'}
       </Button>
       <p>2. Then add one line to the CLAUDE.md of your project. This window shows it when the folder is open.</p>
     </div>
@@ -88,26 +113,90 @@ function AgentSteps({ name }: { name: string }) {
   )
 }
 
-function ReadOnlyNotice() {
+const MOZILLA_POSITION_URL = 'https://github.com/mozilla/standards-positions/issues/154'
+
+function Browsers({ or = false }: { or?: boolean }) {
   return (
-    <div className="rounded-lg border border-dashed px-3 py-2.5 text-[13px] leading-5 text-muted-foreground">
-      <p className="font-medium text-foreground">This browser can only read a folder</p>
-      <p className="mt-1">
-        Claude Code changes the diagram files directly, and this tab shows each change. The website cannot save your
-        changes to the folder, cannot run the agent tools, and shows new files only after you choose the folder again.
-        Support for this can change. For the full set, use Chrome, Edge or the desktop app.
+    <>
+      <strong className="font-semibold text-foreground">Chrome</strong> {or ? 'or' : 'and'}{' '}
+      <strong className="font-semibold text-foreground">Microsoft Edge</strong>
+    </>
+  )
+}
+
+/** Says how well this browser supports a folder: fully in Chrome and Microsoft Edge, only to read elsewhere. */
+function BrowserSupportNote() {
+  const full = canOpenFolder()
+  const Icon = full ? CircleCheck : TriangleAlert
+  return (
+    <div
+      className={cn(
+        'flex gap-3 rounded-lg border px-3.5 py-3 text-[13px] leading-5',
+        full ? 'border-ok/30 bg-ok/10' : 'border-warn/40 bg-warn/10',
+      )}
+    >
+      <Icon aria-hidden className={cn('mt-0.5 size-4 shrink-0', full ? 'text-ok' : 'text-warn')} />
+      <div className="space-y-1">
+        <p className="font-medium text-foreground">
+          {full ? 'This browser supports folders' : 'Full folder support needs Chrome or Microsoft Edge'}
+        </p>
+        {full ? (
+          <p className="text-muted-foreground">
+            <Browsers /> let the website read and write a folder, so Claude Code gets all the tools.
+          </p>
+        ) : (
+          <p className="text-muted-foreground">
+            Here the website can only read a folder: it does not save your changes, and the agent tools do not run. Use{' '}
+            <Browsers or />, or the desktop app, for the full set.{' '}
+            <a
+              href={MOZILLA_POSITION_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-0.5 font-medium text-foreground hover:underline"
+            >
+              Why not in Firefox <ArrowUpRight aria-hidden className="size-3.5" />
+            </a>
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function DesktopSteps() {
+  return (
+    <div className="space-y-3 text-[13px] leading-5 text-muted-foreground">
+      <p>
+        The desktop app keeps the diagrams as files on your computer and runs an MCP server. Claude Code, Claude Desktop
+        and other MCP clients connect to it with all the tools and skills, and no browser tab has to stay open.
+      </p>
+      <p>1. Install the desktop app. This needs an install: where you cannot install anything, use a folder here.</p>
+      <div className="flex flex-wrap items-center gap-3">
+        <DesktopDownloadLink variant="secondary" allDownloads />
+      </div>
+      <p>
+        2. In the app, choose Connect an agent. It gives the commands for the Claude Code plugin, or for any MCP client.
       </p>
     </div>
   )
 }
 
 function ReadOnlySteps() {
+  const open = useOpenBrowserDiagram()
   const status = useFolderStore((state) => state.status)
   const name = useFolderStore((state) => state.name)
   if (status !== 'following' || !name) {
     return (
       <div className="space-y-3">
-        <ReadOnlyNotice />
+        {open && (
+          <div className="space-y-2 text-[13px] leading-5 text-muted-foreground">
+            <p>1. Save “{open.name}” in a folder of your project, so that Claude Code can change it.</p>
+            <Button variant="ghost" onClick={downloadOpenDiagram}>
+              Download the diagram file
+            </Button>
+            <p>2. Then show that folder here.</p>
+          </div>
+        )}
         <Button variant="secondary" onClick={() => void followFolder()}>
           Show a folder
         </Button>
@@ -116,7 +205,6 @@ function ReadOnlySteps() {
   }
   return (
     <div className="space-y-4">
-      <ReadOnlyNotice />
       <div className="space-y-2 text-[13px] leading-5 text-muted-foreground">
         <p>
           1. Save the guide in <span className="font-mono">{name}</span>. It tells Claude Code the file format. The icon
@@ -139,33 +227,49 @@ function ReadOnlySteps() {
   )
 }
 
-/** Explains on the website how Claude Code works on the diagrams through a folder, without a desktop app. */
-export function FolderAgentDialog() {
-  const dialogOpen = useAgentStore((state) => state.dialogOpen)
+function FolderSteps() {
   const status = useFolderStore((state) => state.status)
   const name = useFolderStore((state) => state.name)
+  if (canFollowFolder()) return <ReadOnlySteps />
+  if (!canOpenFolder()) {
+    return (
+      <p className="text-[13px] leading-5 text-muted-foreground">
+        This needs Chrome or Edge, which let a website use a folder. In this browser, use the desktop app.
+      </p>
+    )
+  }
+  return status === 'open' && name ? <AgentSteps name={name} /> : <OpenFolderSteps />
+}
+
+/**
+ * Explains on the website the two ways to connect an agent: a folder of the project in this browser, and the desktop
+ * app with its MCP server.
+ */
+export function FolderAgentDialog() {
+  const dialogOpen = useAgentStore((state) => state.dialogOpen)
   return (
     <Dialog open={dialogOpen} onOpenChange={(open) => useAgentStore.setState({ dialogOpen: open })}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Work with Claude Code in a folder</DialogTitle>
+          <DialogTitle>Connect an agent</DialogTitle>
           <DialogDescription>
-            Claude Code changes the diagrams through files in a folder of your project, and this tab shows each change.
-            You install nothing.
+            Agents such as Claude Code can read, change and render your diagrams while you watch. An agent sends the
+            diagrams that it reads to its model provider, like the rest of your chat with it.
           </DialogDescription>
         </DialogHeader>
-        {canFollowFolder() ? (
-          <ReadOnlySteps />
-        ) : !canOpenFolder() ? (
-          <div className="space-y-3 text-[13px] leading-5 text-muted-foreground">
-            <p>This needs Chrome or Edge, which let a website use a folder. In other browsers, use the desktop app.</p>
-            <DesktopDownloadLink variant="secondary" />
-          </div>
-        ) : status === 'open' && name ? (
-          <AgentSteps name={name} />
-        ) : (
-          <OpenFolderSteps />
-        )}
+        <Tabs defaultValue="folder">
+          <TabsList>
+            <TabsTrigger value="folder">In this browser</TabsTrigger>
+            <TabsTrigger value="desktop">Desktop app</TabsTrigger>
+          </TabsList>
+          <TabsContent value="folder" className="space-y-4 pt-3">
+            <BrowserSupportNote />
+            <FolderSteps />
+          </TabsContent>
+          <TabsContent value="desktop" className="pt-3">
+            <DesktopSteps />
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   )

@@ -38,6 +38,7 @@ import {
 } from 'lucide-react'
 import { Icon } from '@/canvas/icon'
 import { openConnectAgent } from '@/desktop/agent-store'
+import { canFollowFolder, canOpenFolder } from '@/folder/support'
 import { isDesktop } from '@/desktop/bridge'
 import { checkForUpdates } from '@/desktop/updates'
 import {
@@ -274,15 +275,15 @@ export function CommandMenu() {
           </CommandGroup>
         ))}
         <CommandGroup heading="App">
+          {(isDesktop() || canOpenFolder() || canFollowFolder()) && (
+            <CommandItem onSelect={run(openConnectAgent)}>
+              <Bot /> Connect an agent
+            </CommandItem>
+          )}
           {isDesktop() && (
-            <>
-              <CommandItem onSelect={run(openConnectAgent)}>
-                <Bot /> Connect an agent
-              </CommandItem>
-              <CommandItem onSelect={run(() => void checkForUpdates())}>
-                <RefreshCw /> Check for updates
-              </CommandItem>
-            </>
+            <CommandItem onSelect={run(() => void checkForUpdates())}>
+              <RefreshCw /> Check for updates
+            </CommandItem>
           )}
           <CommandItem onSelect={run(() => setTheme('dark'))}>
             <Moon /> Dark theme
