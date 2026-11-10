@@ -28,6 +28,7 @@ const AGENT_OFF: AgentInfo = {
   token: '',
   message: UNAVAILABLE,
   marketplacePath: null,
+  movedFrom: null,
 }
 
 const UPDATES_OFF: UpdateInfo = {
@@ -93,7 +94,6 @@ export async function runRender(args: RenderArgs): Promise<number> {
       'app.about': async () => appAbout(),
       'agent.info': async () => AGENT_OFF,
       'agent.resetToken': refuse,
-      'agent.changePort': refuse,
       'window.setTitleBarColors': async () => null,
       'update.info': async () => UPDATES_OFF,
       'update.check': async () => UPDATES_OFF,

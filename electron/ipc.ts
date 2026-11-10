@@ -35,7 +35,6 @@ const INPUTS = {
   'app.about': z.null(),
   'agent.info': z.null(),
   'agent.resetToken': z.null(),
-  'agent.changePort': z.null(),
   'window.setTitleBarColors': z.object({ color: HEX_COLOR, symbolColor: HEX_COLOR }),
   'update.info': z.null(),
   'update.check': z.null(),

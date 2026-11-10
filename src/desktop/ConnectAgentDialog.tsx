@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { relativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { isAgentProblem } from './agent-problem'
-import { openAgentProblem, resetAgentToken, useAgentHistory, useAgentStore } from './agent-store'
+import { movedPortNotice, openAgentProblem, resetAgentToken, useAgentHistory, useAgentStore } from './agent-store'
 import { CLAUDE_MARKETPLACE_NAME, CLAUDE_PLUGIN_NAME, CLAUDE_PLUGIN_TOKEN_KEY } from './constants'
 import type { AgentInfo } from './contract'
 
@@ -110,6 +110,7 @@ function TokenReset() {
 /** Shows how to connect Claude Code or another MCP client to this app. */
 export function ConnectAgentDialog() {
   const { info, dialogOpen } = useAgentStore()
+  const movedNotice = info && movedPortNotice(info)
   return (
     <Dialog open={dialogOpen} onOpenChange={(open) => useAgentStore.setState({ dialogOpen: open })}>
       <DialogContent className="sm:max-w-xl">
@@ -131,6 +132,7 @@ export function ConnectAgentDialog() {
             More details…
           </button>
         )}
+        {movedNotice && <p className="-mt-2 pl-3.5 text-[13px] leading-5 text-muted-foreground">{movedNotice}</p>}
         {info && (
           <Tabs defaultValue="plugin">
             <TabsList>

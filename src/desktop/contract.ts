@@ -26,6 +26,8 @@ export interface AgentInfo {
   message: string | null
   /** The folder of the local Claude Code plugin marketplace, or `null` before main writes it. */
   marketplacePath: string | null
+  /** The kept port that another program used at this start, before the app moved to `port`, or `null`. */
+  movedFrom: number | null
 }
 
 /**
@@ -100,8 +102,6 @@ export interface MainRequests {
   'app.about': { input: null; output: AppAbout }
   'agent.info': { input: null; output: AgentInfo }
   'agent.resetToken': { input: null; output: AgentInfo }
-  /** Moves the agent server to the next free agent port and keeps it. Connected agents need a new setup. */
-  'agent.changePort': { input: null; output: AgentInfo }
   'window.setTitleBarColors': { input: { color: string; symbolColor: string }; output: null }
   'update.info': { input: null; output: UpdateInfo }
   /** Checks for an update and resolves when the check ends. A build that installs updates starts the download. */

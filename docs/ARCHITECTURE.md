@@ -1073,8 +1073,9 @@ with snapdom, because Chromium gives only pixels.
 - The MCP server runs in main on `127.0.0.1`. Calls go to the renderer for the ELK worker, Mermaid import, icon
   catalogue and rendering.
 - Each app keeps one port of 27419 to 27428 (`agent-port` in the user data), so that several apps can run at once:
-  two users, or a development build next to an installed app. The agent setup holds the port, so an app waits for a
-  kept port that another program uses, and moves only on request.
+  two users, or a development build next to an installed app. The agent setup holds the port, so an app waits 10 s for
+  a kept port that another program uses (an app that quits can still hold it). Then it moves to a free port, keeps it
+  and tells the user to run the setup again.
 - Main and the renderer share `src/agent/tool-definitions.ts` (no DOM code). A tool without a handler fails the type
   check.
 - `runAgentTool` runs calls one at a time in the renderer and owns their time limits:

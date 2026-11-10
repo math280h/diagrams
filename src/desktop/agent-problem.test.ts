@@ -10,6 +10,7 @@ const TAKEN: AgentInfo = {
   token: 'secret-token-that-must-not-show',
   message: 'Another program uses port 27419, for example a second Diagrams app.',
   marketplacePath: 'C:\\Users\\someone\\AppData\\Roaming\\Diagrams\\claude-marketplace',
+  movedFrom: null,
 }
 
 describe('agent problems', () => {

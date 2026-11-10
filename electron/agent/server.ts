@@ -100,7 +100,7 @@ export async function startAgentServer(
   if (!(await portIsFree(port))) {
     return {
       state: 'port-in-use',
-      message: `Another program uses port ${port}, for example a second Diagrams app. Agents can connect when it is free, or on another port.`,
+      message: `Another program uses port ${port}, for example a second Diagrams app.`,
     }
   }
   try {

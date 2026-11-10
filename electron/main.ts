@@ -6,6 +6,7 @@ import {
   AGENT_ENDPOINT,
   AGENT_HOST,
   AGENT_PORT,
+  AGENT_PORTS,
   CLAUDE_MARKETPLACE_FOLDER,
   DEEP_LINK_SCHEME,
   DEV_ORIGINS,
@@ -52,7 +53,10 @@ const FLUSH_TIMEOUT_MS = 3000
 /** The time limit of an agent call in the main process. */
 const AGENT_CALL_LIMIT_MS = 10 * 60_000
 const HANDOFF_OPEN_TIMEOUT_MS = 20_000
-const PORT_RETRY_MS = 5000
+const PORT_RETRY_MS = 2000
+/** How long the app waits for its kept agent port, for example while an app that quits still holds it. */
+const PORT_GRACE_MS = 10_000
+const ALL_PORTS_TAKEN = `Other programs use all the agent ports, ${AGENT_PORTS[0]} to ${AGENT_PORTS.at(-1)}. Agents can connect when one is free.`
 const ALLOWED_PERMISSIONS: ReadonlySet<string> = new Set(['clipboard-sanitized-write', 'fullscreen'])
 
 configurePaths()
@@ -156,6 +160,7 @@ async function start() {
     token,
     message: null,
     marketplacePath: null,
+    movedFrom: null,
   }
   const publish = (patch: Partial<AgentInfo>) => {
     agent = { ...agent, ...patch }
@@ -190,11 +195,38 @@ async function start() {
     })
   let server = createServer(port)
   let retry: NodeJS.Timeout | undefined
-  const startServer = async () => {
+  let takenSince: number | null = null
+  const moveToFreePort = async () => {
+    const next = await nextFreeAgentPort(port, portIsFree)
+    if (next === null) return false
+    const from = port
+    await server.stop().catch(() => undefined)
+    port = next
+    saveAgentPort(userData, port)
+    server = createServer(port)
+    publish({ state: 'starting', port, url: agentUrl(port), message: null, movedFrom: from })
+    void writePlugin()
+    return true
+  }
+  const startServer = async (): Promise<void> => {
     clearTimeout(retry)
     const result = await startAgentServer(server, port)
-    publish(result)
-    if (result.state === 'port-in-use') retry = setTimeout(() => void startServer(), PORT_RETRY_MS)
+    if (result.state !== 'port-in-use') {
+      takenSince = null
+      publish(result)
+      return
+    }
+    takenSince ??= Date.now()
+    if (Date.now() - takenSince >= PORT_GRACE_MS) {
+      if (await moveToFreePort()) {
+        takenSince = null
+        return startServer()
+      }
+      publish({ ...result, message: ALL_PORTS_TAKEN })
+    } else {
+      publish({ ...result, message: `${result.message} The app moves to a free port in a few seconds.` })
+    }
+    retry = setTimeout(() => void startServer(), PORT_RETRY_MS)
   }
 
   const marketplaceFolder = path.join(userData, CLAUDE_MARKETPLACE_FOLDER)
@@ -263,19 +295,6 @@ async function start() {
       'agent.resetToken': async () => {
         token = createToken(userData)
         publish({ token })
-        return agent
-      },
-      'agent.changePort': async () => {
-        const next = await nextFreeAgentPort(port, portIsFree)
-        if (next === null) throw new Error('Other programs use all the agent ports.')
-        clearTimeout(retry)
-        await server.stop().catch(() => undefined)
-        port = next
-        saveAgentPort(userData, port)
-        server = createServer(port)
-        publish({ state: 'starting', port, url: agentUrl(port), message: null })
-        void writePlugin()
-        await startServer()
         return agent
       },
       'window.setTitleBarColors': async (colors) => {

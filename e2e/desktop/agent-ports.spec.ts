@@ -7,6 +7,7 @@ import { AGENT_ENDPOINT, AGENT_HOST, AGENT_PORTS, BUG_REPORT_URL } from '@/deskt
 import { agentUrl, expect, test } from './fixtures'
 
 const RETRY_WAIT_MS = 15_000
+const MOVE_WAIT_MS = 30_000
 
 function listen(server: Server, port: number) {
   return new Promise<boolean>((resolve) => {
@@ -15,15 +16,27 @@ function listen(server: Server, port: number) {
   })
 }
 
-/** Takes a free agent port with another program, the way a second app or another user would. */
-async function occupyAgentPort() {
+interface HeldPort {
+  port: number
+  release: () => Promise<void>
+}
+
+/** Takes the free agent ports with another program, the way a second app or another user would. */
+async function holdAgentPorts(count = AGENT_PORTS.length): Promise<HeldPort[]> {
+  const held: HeldPort[] = []
   for (const port of AGENT_PORTS) {
+    if (held.length === count) break
     const server = createServer()
     if (await listen(server, port)) {
-      return { port, release: () => new Promise<void>((resolve) => server.close(() => resolve())) }
+      held.push({ port, release: () => new Promise<void>((resolve) => server.close(() => resolve())) })
     }
   }
-  throw new Error('Other programs use all the agent ports.')
+  if (held.length === 0) throw new Error('Other programs use all the agent ports.')
+  return held
+}
+
+async function releaseAll(held: readonly HeldPort[]) {
+  await Promise.all(held.map((port) => port.release().catch(() => undefined)))
 }
 
 function keptPort(userData: string) {
@@ -88,60 +101,52 @@ test('runs two apps at once, each with its own agent port that it keeps', async 
   }
 })
 
-test('waits for its kept port while another program uses it, and connects when it is free', async ({
+test('keeps its port when another program lets it go within a few seconds', async ({ appEnv, dirs }) => {
+  const [taken] = await holdAgentPorts(1)
+  mkdirSync(dirs.userData, { recursive: true })
+  writeFileSync(path.join(dirs.userData, 'agent-port'), String(taken!.port))
+  const launching = launch(withoutFixedPort(appEnv))
+  await taken!.release()
+  const { app } = await launching
+  try {
+    await expect.poll(() => agentAnswers(dirs.userData), { timeout: RETRY_WAIT_MS }).toBe(true)
+    expect(keptPort(dirs.userData)).toBe(taken!.port)
+  } finally {
+    await app.close()
+  }
+})
+
+test('explains a taken port with details for a bug report, then moves to a free port by itself', async ({
   appEnv,
   dirs,
 }) => {
-  const taken = await occupyAgentPort()
+  const held = await holdAgentPorts()
+  const kept = held[0]!.port
   mkdirSync(dirs.userData, { recursive: true })
-  writeFileSync(path.join(dirs.userData, 'agent-port'), String(taken.port))
+  writeFileSync(path.join(dirs.userData, 'agent-port'), String(kept))
   const { app, window } = await launch(withoutFixedPort(appEnv))
   try {
     await expect(window.getByText('Agents cannot connect', { exact: true })).toBeVisible()
     await window.getByRole('button', { name: 'More details…' }).click()
     const problem = window.getByRole('dialog', { name: 'Agents cannot connect' })
-    await expect(problem).toContainText(`Another program uses port ${taken.port}`)
-    await expect(problem.getByRole('button', { name: 'Use another port' })).toBeVisible()
+    await expect(problem).toContainText(`Another program uses port ${kept}`)
     const details = problem.locator('code')
     await expect(details).toContainText(/^Diagrams \d+\.\d+\.\d+.*, (Windows|macOS|Linux) /)
-    await expect(details).toContainText(`Agent server: port-in-use on port ${taken.port}`)
+    await expect(details).toContainText(`Agent server: port-in-use on port ${kept}`)
     await expect(problem.getByRole('link', { name: 'Report a problem' })).toHaveAttribute('href', BUG_REPORT_URL)
+    await expect(problem).toContainText('Other programs use all the agent ports', { timeout: MOVE_WAIT_MS })
 
-    await taken.release()
+    const free = held.at(-1)!
+    await free.release()
     await expect(problem).toBeHidden({ timeout: RETRY_WAIT_MS })
-    await window.getByRole('banner').getByRole('button', { name: 'Connect an agent' }).click()
-    await expect(window.getByRole('dialog')).toContainText(
-      `Agents can connect at ${agentUrl(taken.port)}${AGENT_ENDPOINT}`,
-    )
-    expect(keptPort(dirs.userData)).toBe(taken.port)
-  } finally {
-    await taken.release().catch(() => undefined)
-    await app.close()
-  }
-})
-
-test('moves to another port on request, and keeps it', async ({ appEnv, dirs }) => {
-  const taken = await occupyAgentPort()
-  mkdirSync(dirs.userData, { recursive: true })
-  writeFileSync(path.join(dirs.userData, 'agent-port'), String(taken.port))
-  const { app, window } = await launch(withoutFixedPort(appEnv))
-  try {
+    expect(keptPort(dirs.userData)).toBe(free.port)
     await window.getByRole('banner').getByRole('button', { name: 'Connect an agent' }).click()
     const setup = window.getByRole('dialog', { name: 'Connect an agent' })
-    await setup.getByRole('button', { name: 'More details…' }).click()
-    const problem = window.getByRole('dialog', { name: 'Agents cannot connect' })
-    await problem.getByRole('button', { name: 'Use another port' }).click()
-    await expect(window.getByText(/Agents now connect on port \d+\. Run the setup again\./)).toBeVisible()
-    await expect(problem).toBeHidden()
-
-    const moved = keptPort(dirs.userData)
-    expect(moved).not.toBe(taken.port)
-    expect(AGENT_PORTS).toContain(moved)
-    await expect(setup).toContainText(`Agents can connect at ${agentUrl(moved)}${AGENT_ENDPOINT}`)
-    await expect(setup.getByRole('button', { name: 'More details…' })).toHaveCount(0)
+    await expect(setup).toContainText(`Agents can connect at ${agentUrl(free.port)}${AGENT_ENDPOINT}`)
+    await expect(setup).toContainText(`Port ${kept} was in use, so agents now connect on port ${free.port}.`)
     expect(await agentAnswers(dirs.userData)).toBe(true)
   } finally {
-    await taken.release()
+    await releaseAll(held)
     await app.close()
   }
 })

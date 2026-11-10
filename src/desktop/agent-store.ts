@@ -1,3 +1,4 @@
+import { toast } from 'sonner'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { desktopApi, isDesktop } from './bridge'
@@ -14,7 +15,17 @@ interface AgentStore {
 
 export const useAgentStore = create<AgentStore>(() => ({ info: null, dialogOpen: false, problemOpen: false }))
 
+/** Returns the notice that agents connect on a new port, because another program used the kept one. */
+export function movedPortNotice(info: AgentInfo): string | null {
+  if (info.movedFrom === null || info.state !== 'running') return null
+  return `Port ${info.movedFrom} was in use, so agents now connect on port ${info.port}. If you set up an agent before, run the setup again.`
+}
+
 function setAgentInfo(info: AgentInfo) {
+  const previous = useAgentStore.getState().info
+  const notice = movedPortNotice(info)
+  const agentsUsedBefore = useAgentHistory.getState().lastCallAt !== null
+  if (notice && previous && !movedPortNotice(previous) && agentsUsedBefore) toast.info(notice, { duration: Infinity })
   useAgentStore.setState(isAgentProblem(info) ? { info } : { info, problemOpen: false })
 }
 
@@ -70,15 +81,6 @@ export function watchAgentInfo(): () => void {
   if (!desktop) return () => undefined
   void desktop.request('agent.info', null).then(setAgentInfo)
   return desktop.on('agent.info', setAgentInfo)
-}
-
-/** Moves the agent server to another port. Agents need a new setup after it. */
-export async function changeAgentPort(): Promise<AgentInfo | null> {
-  const desktop = desktopApi()
-  if (!desktop) return null
-  const info = await desktop.request('agent.changePort', null)
-  setAgentInfo(info)
-  return info
 }
 
 export async function resetAgentToken() {
