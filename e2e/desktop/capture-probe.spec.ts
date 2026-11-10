@@ -71,9 +71,10 @@ test('probe: stills before and after the frames, and the frames', async ({ windo
         const value = await task()
         return { value, ms: Math.round(performance.now() - started) }
       }
-      const first = []
+      type Shot = { value: { width: number; height: number; data: ArrayLike<number> }; ms: number }
+      const first: Shot[] = []
       for (const timeMs of moments) first.push(await timed(async () => toPixels((await desktop.request('capture.image', request(timeMs))).png)))
-      const frames = []
+      const frames: Shot[] = []
       for (const timeMs of moments) {
         frames.push(
           await timed(async () => {
@@ -82,7 +83,7 @@ test('probe: stills before and after the frames, and the frames', async ({ windo
           }),
         )
       }
-      const second = []
+      const second: Shot[] = []
       for (const timeMs of moments) second.push(await timed(async () => toPixels((await desktop.request('capture.image', request(timeMs))).png)))
       await desktop.request('capture.close', { sessionId })
       const rows = moments.map((timeMs, k) => ({
