@@ -1345,8 +1345,12 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
   - Rows pair first, as in a line diff. Each row gets a hash of its colours at 16 levels.
   - Rows that occur once in both images are anchors. Anchors use the longest run in order. Equal rows next to an anchor
     pair too. Content that only moved up or down counts as unchanged.
-  - In a run of unpaired rows, rows on both sides compare pixel by pixel. A row on one side only counts where it
-    differs from its first pixel, the background.
+  - In a run of unpaired rows, each row aligns with two rows of the other image: in order from the paired row above
+    the run, and in order from the paired row below it. Both aligned rows stay between these two paired rows.
+  - A pixel counts as changed only if no pixel of the other image at most 1 px from an aligned place has its colour.
+    Chrome puts text and boxes on whole pixels. When the content above becomes taller by a part of a pixel, some text
+    moves 1 px more or less than the content around it.
+  - Rows on both sides count on both images where one of them changed.
   - Changed pixels group in 16 px squares. Changes less than 32 px apart share a box.
   - Groups of 16 or fewer pixels are noise (the `samePixels` limit). The nearest boxes merge down to 8 on each image.
   - A change on one side gives the other image a box with no height, which moves its cut-out there.

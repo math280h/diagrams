@@ -74,6 +74,7 @@ import { TEMPLATES, type Template } from '@/templates'
 import { Features } from './Features'
 import { PrivacySection } from './PrivacySection'
 import { LivePreview } from './LivePreview'
+import { SiteFooter } from './SiteFooter'
 import { toast } from 'sonner'
 import { errorMessage } from '@/lib/error-message'
 import { openDiagramFiles, showDiagramFile } from '@/desktop/linked-files'
@@ -525,13 +526,7 @@ export function LibraryPage() {
               </section>
             </>
           )}
-          {!isDesktop() && (
-            <footer className="mt-16 border-t pt-6 text-sm text-muted-foreground">
-              <Link to="/releases" className="hover:text-foreground">
-                What’s new in Diagrams
-              </Link>
-            </footer>
-          )}
+          {!isDesktop() && <SiteFooter />}
         </div>
       </main>
 

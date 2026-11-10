@@ -425,6 +425,10 @@ above 500.
 - **Library, returning:** agent introduction; "Your diagrams" with count and 256px search; 1–3 column card grid;
   storage line (on the website also the folder: open, close, or show only to read); live template cards (1–3 columns)
   under "Templates" with the first-run hint.
+- **Footer (website, both library views):** hairline above, 64px under the content. Brand column (mark, name, one 13px
+  muted line), then three link groups with a 13px medium title: App, Open source, Trust. 13px muted links, text
+  colour and underline on hover; external links open a new tab and end in a small up-right arrow. One column on
+  phones, two from 640px, four from 1024px.
 - **Previews:** read-only 16:10 canvases, no grid.
   - Cards fit the whole diagram with 16px padding at any zoom. Low zoom: less detail, larger titles, boundary
     labels: name only.
