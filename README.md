@@ -80,7 +80,7 @@ The Linux packages and `SHA256SUMS` have OpenPGP signatures ([check them](SECURI
 
 ### Build from source
 
-You need Node.js 24 or later and pnpm 12.16:
+You need Node.js 26.13 or later and pnpm 12.16:
 
 ```sh
 pnpm install
