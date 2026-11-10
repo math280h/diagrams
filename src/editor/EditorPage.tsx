@@ -66,7 +66,7 @@ function EditorShell() {
     () => () =>
       setUi({
         recording: false,
-        selectedStepId: null,
+        selectedStepIds: [],
         commandOpen: false,
         exportOpen: null,
         insert: null,

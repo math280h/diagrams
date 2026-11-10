@@ -36,6 +36,30 @@ test('adds an introduction and a conclusion, and records new steps before the co
   await expect(page.locator('.react-flow__node[data-flow="active"]').first()).toBeVisible()
 })
 
+test('selects several steps with Shift and Ctrl, and deletes them in one undo step', async ({ page }) => {
+  await openFlows(page)
+  const count = await rows(page).count()
+  await rows(page).nth(1).click()
+  await rows(page)
+    .nth(3)
+    .click({ modifiers: ['Shift'] })
+  await rows(page)
+    .nth(5)
+    .click({ modifiers: ['ControlOrMeta'] })
+  const properties = page.getByRole('complementary', { name: 'Properties' })
+  await expect(properties.getByRole('heading', { name: '4 steps' })).toBeVisible()
+  await properties.getByRole('button', { name: 'Delete 4 steps' }).click()
+  await expect(rows(page)).toHaveCount(count - 4)
+  await page.keyboard.press('ControlOrMeta+z')
+  await expect(rows(page)).toHaveCount(count)
+
+  await rows(page).first().click()
+  await page.keyboard.press('ControlOrMeta+a')
+  await expect(page.locator('.dg-log-row[data-selected]')).toHaveCount(count)
+  await page.keyboard.press('Delete')
+  await expect(rows(page)).toHaveCount(0)
+})
+
 test('numbers the previous, the current and the next step on the diagram', async ({ page }) => {
   await openFlows(page)
   await page.getByRole('button', { name: 'Flow settings' }).click()

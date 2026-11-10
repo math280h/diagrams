@@ -17,11 +17,12 @@ import { viewportToCamera } from '@/engine/camera'
 import { cn } from '@/lib/utils'
 import { newId } from '@/model/defaults'
 import type { CameraKeyframe, Ease, Flow, Track, ValueKeyframe } from '@/model/schema'
-import { selectOnly, updateFlow } from '@/store/actions'
+import { updateFlow } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
-import { setUi, useUi } from '@/store/ui-store'
+import { useUi } from '@/store/ui-store'
 import { Segmented, SliderField } from '@/editor/inspector/controls'
 import { stepLine, targetName } from './names'
+import { selectClickedStep } from './step-selection'
 import { findStep, overviewName } from '@/model/flow'
 
 const MIN_STEP_MS = 200
@@ -141,7 +142,7 @@ export function Timeline({ flow }: { flow: Flow }) {
   const engine = useEngine()
   const playback = usePlaybackState()
   const { getViewport } = useReactFlow()
-  const selectedStepId = useUi((state) => state.selectedStepId)
+  const selectedStepIds = useUi((state) => state.selectedStepIds)
   const selection = useDoc(
     useShallow((state) => ({
       node: state.nodes.find((node) => node.selected)?.id,
@@ -154,6 +155,7 @@ export function Timeline({ flow }: { flow: Flow }) {
   const [openKeyframe, setOpenKeyframe] = useState<string | null>(null)
   const durationMs = Math.max(playback.durationMs, 1000)
   const segments = playback.timeline?.segments ?? []
+  const order = segments.map((segment) => segment.step.id)
 
   useLayoutEffect(() => {
     if (pxPerSecond !== null || !scrollRef.current) return
@@ -347,19 +349,17 @@ export function Timeline({ flow }: { flow: Flow }) {
                   key={step.id}
                   title={[step.target.kind === 'flow' ? label : line.element, line.event].filter(Boolean).join(': ')}
                   className={cn(
-                    'absolute top-1 bottom-1 flex items-center overflow-hidden rounded-md border px-1.5 text-[11px]',
+                    'absolute top-1 bottom-1 flex items-center overflow-hidden rounded-md border px-1.5 text-[11px] select-none',
                     step.target.kind === 'flow'
                       ? 'bg-flow/15'
                       : step.target.kind === 'node'
                         ? 'bg-accent'
                         : 'bg-muted/50',
-                    selectedStepId === step.id ? 'border-foreground/50' : 'border-transparent',
+                    selectedStepIds.includes(step.id) ? 'border-foreground/50' : 'border-transparent',
                   )}
                   style={{ left: segment.startMs * scale, width: width - 2 }}
-                  onClick={() => {
-                    selectOnly([])
-                    setUi({ selectedStepId: step.id })
-                    engine.playback.seek(segment.startMs + 1)
+                  onClick={(event) => {
+                    if (selectClickedStep(event, step.id, order)) engine.playback.seek(segment.startMs + 1)
                   }}
                 >
                   <span className="truncate">{label}</span>

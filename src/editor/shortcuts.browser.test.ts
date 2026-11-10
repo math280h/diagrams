@@ -3,7 +3,7 @@ import { act, createElement, Fragment, useEffect } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Engine } from '@/engine/engine'
-import { DEFAULT_THEME } from '@/model/defaults'
+import { DEFAULT_THEME, createFlow } from '@/model/defaults'
 import { PRESET_BY_ID } from '@/model/presets'
 import type { DiagramNode } from '@/model/types'
 import { selectOnly, setName } from '@/store/actions'
@@ -11,6 +11,7 @@ import { useDoc } from '@/store/doc-store'
 import { resetHistory } from '@/store/history'
 import { setUi, useUi } from '@/store/ui-store'
 import { useVersions } from '@/store/versions'
+import { createStep } from './flow/record'
 import { bindInsertProjection } from './insert'
 import { useEditorShortcuts } from './shortcuts'
 
@@ -88,7 +89,14 @@ beforeEach(() => {
   b = card(400)
   useDoc.setState({ name: 'Start', theme: DEFAULT_THEME, nodes: [a, b], edges: [], flows: [] })
   resetHistory()
-  setUi({ commandOpen: false, shortcutsOpen: false, flowPanelOpen: false, recording: false, insert: null })
+  setUi({
+    commandOpen: false,
+    shortcutsOpen: false,
+    flowPanelOpen: false,
+    recording: false,
+    insert: null,
+    selectedStepIds: [],
+  })
   useVersions.setState({ previewId: null })
   engine.playback.timeline = null
   toggle.mockClear()
@@ -218,6 +226,27 @@ describe('editor shortcuts', () => {
     press('1', { code: 'Digit1' })
     expect(fits).toHaveLength(2)
     expect(fits[0]).toMatchObject({ padding: '48px', maxZoom: 1.1, duration: 400 })
+  })
+
+  it('selects all steps with Ctrl+A in the step list, and deletes the selected steps with Delete or Backspace', () => {
+    const flow = { ...createFlow(), steps: [a, b, a].map((node) => createStep({ kind: 'node', id: node.id })) }
+    useDoc.setState({ flows: [flow] })
+    setUi({ flowPanelOpen: true, activeFlowId: flow.id, activePathId: null, selectedStepIds: [] })
+    const list = inBody(document.createElement('div'))
+    list.dataset.stepList = ''
+    const row = document.createElement('button')
+    list.append(row)
+
+    press('a', { ctrlKey: true }, row)
+    expect(useUi.getState().selectedStepIds).toEqual(flow.steps.map((step) => step.id))
+    expect(selectedCount()).toBe(0)
+
+    setUi({ selectedStepIds: [flow.steps[0]!.id] })
+    expect(press('Delete', {}, row).defaultPrevented).toBe(true)
+    setUi({ selectedStepIds: [flow.steps[1]!.id] })
+    press('Backspace')
+    expect(useDoc.getState().flows[0]!.steps.map((step) => step.id)).toEqual([flow.steps[2]!.id])
+    expect(press('Delete').defaultPrevented).toBe(false)
   })
 
   it('stops recording with Escape', () => {

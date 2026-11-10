@@ -4,12 +4,12 @@ import { useEngine, usePlaybackState } from '@/engine/hooks'
 import { cn } from '@/lib/utils'
 import { findPath, pathSteps, stepTargets, isOverview, overviewName } from '@/model/flow'
 import type { Flow } from '@/model/schema'
-import { selectOnly } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
-import { setUi, useUi } from '@/store/ui-store'
+import { useUi } from '@/store/ui-store'
 import { useSegmentIndex } from '@/engine/hooks'
 import { markOnCanvas } from './hooks'
 import { stepLine } from './names'
+import { selectClickedStep } from './step-selection'
 
 const COLUMNS =
   'grid grid-cols-[24px_12px_minmax(0,1fr)_56px] sm:grid-cols-[28px_72px_14px_minmax(120px,1.3fr)_minmax(64px,0.7fr)_52px] lg:grid-cols-[28px_72px_14px_minmax(140px,1.2fr)_minmax(80px,0.7fr)_56px_minmax(200px,2fr)]'
@@ -26,12 +26,13 @@ export function LogTable({ flow }: { flow: Flow }) {
   const engine = useEngine()
   const playback = usePlaybackState()
   const recording = useUi((state) => state.recording)
-  const selectedStepId = useUi((state) => state.selectedStepId)
+  const selectedStepIds = useUi((state) => state.selectedStepIds)
   const path = findPath(
     flow,
     useUi((state) => state.activePathId),
   )
   const steps = pathSteps(flow, path?.id ?? null)
+  const order = steps.map((step) => step.id)
   const pathStepIds = new Set(path?.steps.map((step) => step.id))
   const current = useSegmentIndex()
   useDoc((state) => state.nodes)
@@ -73,7 +74,7 @@ export function LogTable({ flow }: { flow: Flow }) {
   }
 
   return (
-    <div ref={listRef} className="relative min-h-0 flex-1 overflow-y-auto">
+    <div ref={listRef} data-step-list className="relative min-h-0 flex-1 overflow-y-auto select-none">
       <div
         aria-hidden
         className={cn(
@@ -102,7 +103,7 @@ export function LogTable({ flow }: { flow: Flow }) {
         const element = isOverview(step) ? overviewName(index, steps.length) : line.element
         const { event } = line
         const body = flow.bodies ? line.body : ''
-        const selected = selectedStepId === step.id
+        const selected = selectedStepIds.includes(step.id)
         return (
           <button
             key={step.id}
@@ -112,11 +113,10 @@ export function LogTable({ flow }: { flow: Flow }) {
             data-kind={step.target.kind}
             data-level={step.level}
             data-path={pathStepIds.has(step.id) || undefined}
+            data-selected={selected || undefined}
             aria-current={state === 'active' ? 'step' : undefined}
-            onClick={() => {
-              selectOnly([])
-              setUi({ selectedStepId: step.id })
-              if (segment) engine.playback.seek(segment.startMs + 1)
+            onClick={(click) => {
+              if (selectClickedStep(click, step.id, order) && segment) engine.playback.seek(segment.startMs + 1)
             }}
             onPointerEnter={() => markOnCanvas(stepTargets(step))}
             onPointerLeave={() => markOnCanvas([])}
@@ -125,7 +125,6 @@ export function LogTable({ flow }: { flow: Flow }) {
             className={cn(
               columns,
               'dg-log-row h-6 w-full items-center gap-x-3 px-3 text-left font-mono text-xs tabular-nums',
-              selected && 'dg-log-row-selected',
             )}
           >
             <span className="text-right text-muted-foreground">{index + 1}</span>
@@ -142,7 +141,9 @@ export function LogTable({ flow }: { flow: Flow }) {
               </span>
             )}
             <span className="dg-log-caption truncate font-sans text-[13px] max-lg:hidden">{step.caption}</span>
-            <span className="sr-only">, {state}</span>
+            <span className="sr-only">
+              {selected && ', selected'}, {state}
+            </span>
           </button>
         )
       })}

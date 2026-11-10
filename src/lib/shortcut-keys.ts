@@ -73,6 +73,10 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: KEYS.playPause, label: 'Play or pause the flow, while the flow panel is open' },
       { keys: IS_MAC ? '⇧ click' : 'Shift+click', label: 'While recording, reach a node in the same step' },
       { keys: KEYS.stopRecording, label: 'Stop recording' },
+      { keys: IS_MAC ? '⇧ click' : 'Shift+click', label: 'Select a range of steps' },
+      { keys: IS_MAC ? '⌘ click' : 'Ctrl+click', label: 'Add a step to the selection, or remove it' },
+      { keys: KEYS.selectAll, label: 'Select all steps, in the step list' },
+      { keys: KEYS.delete, label: 'Delete the selected steps' },
     ],
   },
   {
