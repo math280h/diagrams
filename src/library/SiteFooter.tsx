@@ -59,7 +59,7 @@ export function SiteFooter() {
         <p className="flex items-center gap-2 text-[15px] font-medium tracking-[-0.02em] text-foreground">
           <AppMark className="size-5 shrink-0" /> Diagrams
         </p>
-        <p className="leading-5">Architecture diagrams and user flows that move. Free, no account, nothing uploaded.</p>
+        <p className="leading-5">Architecture diagrams and user flows that move. Free, no account.</p>
       </div>
       {GROUPS.map((group) => (
         <nav key={group.title} aria-label={group.title} className="space-y-2">
