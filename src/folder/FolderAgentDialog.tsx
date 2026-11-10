@@ -146,8 +146,8 @@ function BrowserSupportNote() {
           </p>
         ) : (
           <p className="text-muted-foreground">
-            Here the website can only read a folder: it does not save your changes, and the agent tools do not run. Use{' '}
-            <Browsers or />, or the desktop app, for the full set.{' '}
+            This browser only lets the website read a folder, so your changes stay in this tab and agents cannot use the
+            tools. Open this page in <Browsers or />, or use the desktop app, to do both.{' '}
             <a
               href={MOZILLA_POSITION_URL}
               target="_blank"

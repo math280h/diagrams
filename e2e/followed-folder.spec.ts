@@ -29,7 +29,7 @@ test('shows a folder only to read in a browser without folder access, with the a
   await page.goto('/')
   await page.getByRole('button', { name: 'a folder of your project' }).click()
   const dialog = page.getByRole('dialog')
-  await expect(dialog.getByText('Here the website can only read a folder')).toBeVisible()
+  await expect(dialog.getByText('This browser only lets the website read a folder')).toBeVisible()
   await expect(dialog.getByRole('link', { name: 'Why not in Firefox' })).toHaveAttribute(
     'href',
     'https://github.com/mozilla/standards-positions/issues/154',
