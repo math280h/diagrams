@@ -13,8 +13,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Changed files
+    runs-on: ubuntu-26.04
+    permissions:
+      pull-requests: read
+    outputs:
+      app: ${{ steps.files.outputs.app }}
+    steps:
+      - name: Find out if the pull request changes more than docs
+        id: files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PULL_REQUEST: ${{ github.event.pull_request.number }}
+          DOCS: '^(docs/|\.github/(CODEOWNERS|ISSUE_TEMPLATE/|PULL_REQUEST_TEMPLATE\.md|dependabot\.yml)|(CONTRIBUTING|SECURITY|CLAUDE|PRODUCT|DESIGN)\.md$)'
+        run: |
+          app=true
+          if [ -n "$PULL_REQUEST" ]; then
+            gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PULL_REQUEST/files" --jq '.[].filename' > "$RUNNER_TEMP/files"
+            grep -qvE "$DOCS" "$RUNNER_TEMP/files" || app=false
+          fi
+          echo "app=$app" >> "$GITHUB_OUTPUT"
+
   static:
     name: Typecheck, lint and unit tests
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -51,6 +75,8 @@ jobs:
 
   web:
     name: Web tests ${{ matrix.shard }} of ${{ strategy.job-total }}
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -173,6 +199,8 @@ jobs:
 
   release-formats:
     name: Release formats
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -188,24 +216,29 @@ jobs:
         run: node scripts/release-formats.ts --base "$BASE"
 
   checks:
-    name: Checks and web tests
-    needs: [static, web, coverage, actions-lockfile, release-formats]
+    name: All checks
+    needs: [changes, static, web, coverage, actions-lockfile, release-formats, desktop]
     if: always()
     runs-on: ubuntu-26.04
     steps:
-      - name: Require every check and every web test shard
+      - name: Require every check that ran to pass
         env:
           RESULTS: ${{ join(needs.*.result, ' ') }}
         run: |
           for result in $RESULTS; do
-            if [ "$result" != success ]; then
-              echo "::error::Not every check passed: $RESULTS"
-              exit 1
-            fi
+            case "$result" in
+              success | skipped) ;;
+              *)
+                echo "::error::Not every check passed: $RESULTS"
+                exit 1
+                ;;
+            esac
           done
 
   desktop:
     name: Desktop app on ${{ matrix.platform }}
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     strategy:
       fail-fast: false
       matrix:

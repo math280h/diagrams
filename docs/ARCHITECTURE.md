@@ -1302,11 +1302,16 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
 
 `.github/workflows/ci.yml` runs on each pull request and on `main`.
 
+- "Changed files": when a pull request changes only files that no check reads (`docs/`, `CONTRIBUTING.md`,
+  `CODEOWNERS`, the issue and pull request templates, `dependabot.yml` and some other Markdown files), the jobs of the
+  app do not run. `README.md`, `LICENSE` and the skills are not in the list, because tests read them.
 - "Typecheck, lint and unit tests": static checks and Vitest, with browser tests in Chromium.
 - "Web tests 1 of 4" to "4 of 4": the end-to-end tests, split with Playwright `--shard`. A 4-core runner gets 2
   workers; four shards give the 8 of a developer computer. The matrix sets the number (`strategy.job-total`).
-- "Checks and web tests": the required check of the "Protect main" ruleset. It fails unless each job above passed. It
-  has `if: always()`, because GitHub counts a required job skipped after a failed dependency as passed.
+- "All checks": the required check of the "Protect main" ruleset, also for the desktop jobs. It fails unless each job
+  passed or did not run because of "Changed files". It has `if: always()`, because GitHub counts a required job skipped
+  after a failed dependency as passed. A matrix job that does not run gives no check with its platform name, so the
+  desktop jobs are not required checks themselves.
 - "Desktop app on …": unit tests, desktop end-to-end tests and the render action on Windows, macOS and Linux.
   - Each job builds the installers of its system for its own architecture: NSIS on Windows, dmg on macOS, AppImage
     and deb on Linux.
