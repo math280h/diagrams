@@ -216,9 +216,57 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: node scripts/release-formats.ts --base "$BASE"
 
+  docker:
+    name: Docker image
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the image
+        run: docker build --tag diagrams-website .
+      - name: Serve the website from the image
+        run: |
+          docker run --detach --name website --publish 127.0.0.1:8080:8080 \
+            --read-only --cap-drop ALL --security-opt no-new-privileges diagrams-website
+          curl -fsS --retry 10 --retry-connrefused --retry-delay 1 -o /dev/null http://127.0.0.1:8080/health
+      - name: Check the headers of the website
+        run: |
+          base=http://127.0.0.1:8080
+          expect() {
+            local path=$1 name=$2 pattern=$3
+            shift 3
+            local value
+            value=$(curl -sS -o /dev/null -D - "$@" "$base$path" | tr -d '\r' | sed -n "s/^$name: //Ip" | head -n 1)
+            if ! [[ "$value" =~ $pattern ]]; then
+              echo "::error::$path: $name is '$value', not '$pattern'."
+              exit 1
+            fi
+          }
+          asset=$(curl -fsS "$base/" | grep -o '/assets/index-[^"]*\.js' | head -n 1)
+          expect / content-type '^text/html'
+          expect / cache-control '^no-cache$'
+          expect / x-content-type-options '^nosniff$'
+          expect "$asset" content-type 'javascript'
+          expect "$asset" cache-control '^public, max-age=31536000, immutable$'
+          expect "$asset" content-encoding '^zstd$' -H 'Accept-Encoding: zstd'
+          expect /sw.js content-type 'javascript'
+          expect /sw.js cache-control '^no-cache$'
+          expect /manifest.webmanifest content-type '^application/manifest\+json'
+          status=$(curl -sS -o /dev/null -w '%{http_code}' "$base/missing")
+          if [ "$status" != 404 ]; then
+            echo "::error::/missing gives $status, not 404."
+            exit 1
+          fi
+      - name: Show the server log
+        if: failure()
+        run: docker logs website
+
   checks:
     name: All checks
-    needs: [changes, static, web, coverage, actions-lockfile, release-formats, desktop]
+    needs: [changes, static, web, coverage, actions-lockfile, release-formats, docker, desktop]
     if: always()
     runs-on: ubuntu-26.04
     steps:

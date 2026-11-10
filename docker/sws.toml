@@ -1,0 +1,7 @@
+[[advanced.headers]]
+source = "**"
+headers = { Cache-Control = "no-cache", X-Content-Type-Options = "nosniff" }
+
+[[advanced.headers]]
+source = "/assets/**"
+headers = { Cache-Control = "public, max-age=31536000, immutable" }

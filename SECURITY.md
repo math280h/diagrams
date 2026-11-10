@@ -15,6 +15,7 @@ fix is out, the advisory names you, unless you ask not to be named.
 | ------------------------------------------------------- | ------------------ |
 | The website at [draw.thias.dev](https://draw.thias.dev) | Yes                |
 | The desktop app                                         | The latest version |
+| The Docker image                                        | The latest version |
 | Older desktop versions and forks                        | No                 |
 
 ## Verify a download
@@ -39,6 +40,19 @@ the command reads the attestation from the bundle file and does not get it from 
 gh attestation verify Diagrams-0.2.0-win-x64.exe --bundle Diagrams-0.2.0-win-provenance.sigstore.json \
   --repo math280h/diagrams --signer-workflow math280h/diagrams/.github/workflows/release.yml --source-ref refs/tags/v0.2.0
 ```
+
+### Docker image
+
+The Docker image of a release (`ghcr.io/math280h/diagrams`) has a build provenance attestation in the registry.
+Check an image with its version:
+
+```sh
+gh attestation verify oci://ghcr.io/math280h/diagrams:0.2.0 --repo math280h/diagrams \
+  --signer-workflow math280h/diagrams/.github/workflows/docker-image.yml --source-ref refs/tags/v0.2.0
+```
+
+The image also holds an SPDX SBOM of its files and the BuildKit provenance.
+`docker buildx imagetools inspect ghcr.io/math280h/diagrams:0.2.0 --format '{{ json .SBOM }}'` shows the SBOM.
 
 ### OpenPGP signatures
 

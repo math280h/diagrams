@@ -13,6 +13,21 @@ updates:
       actions:
         patterns: ['*']
 
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: build
+      include: scope
+    ignore:
+      - dependency-name: ghcr.io/pnpm/pnpm
+    groups:
+      images:
+        patterns: ['*']
+
   - package-ecosystem: npm
     directory: /
     schedule:
