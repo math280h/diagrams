@@ -14,7 +14,7 @@ jobs:
   deploy:
     name: Deploy the live website
     if: ${{ !github.event.release.prerelease }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     environment: release
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

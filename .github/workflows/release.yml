@@ -13,7 +13,7 @@ concurrency:
 jobs:
   draft:
     name: Create the draft release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
       pull-requests: read
@@ -59,7 +59,7 @@ jobs:
   sbom:
     name: Write the SBOM
     needs: draft
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
     steps:
@@ -97,7 +97,7 @@ jobs:
   formats:
     name: Open the samples of the release formats
     needs: draft
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -129,7 +129,7 @@ jobs:
           - os: macos-latest
             target: --mac
             platform: mac
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             target: --linux
             platform: linux
     runs-on: ${{ matrix.os }}
@@ -250,7 +250,7 @@ jobs:
     name: Sign the checksums
     needs: [draft, package]
     environment: ${{ needs.draft.outputs.preview == 'true' && 'preview' || 'release' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
       id-token: write
@@ -291,7 +291,7 @@ jobs:
     name: Publish the preview
     needs: [draft, package, checksums]
     if: needs.draft.outputs.preview == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
     steps:

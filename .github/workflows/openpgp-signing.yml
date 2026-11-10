@@ -9,7 +9,7 @@ permissions:
 jobs:
   sign:
     name: Sign the Linux packages
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     environment: signing-test
     permissions:
       contents: read
