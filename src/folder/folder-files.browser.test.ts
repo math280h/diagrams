@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { createFolderFiles, writeText } from './folder-files'
+import { createFolderFiles, writeText, writeWholeFile } from './folder-files'
 
 let root: FileSystemDirectoryHandle
 let folder: FileSystemDirectoryHandle
@@ -74,5 +74,26 @@ describe('folder files', () => {
       { kind: 'changed', id: 'd_c', text: 'c' },
     ])
     expect(await files.changes(['d_a.diagram.json', 'd_b.diagram.json'])).toEqual([])
+  })
+})
+
+describe('writeWholeFile', () => {
+  it('writes a hidden part file and renames it, also over an older file', async () => {
+    await writeWholeFile(folder, 'result.json', '{"ok":false}')
+    await writeWholeFile(folder, 'result.json', '{"ok":true}')
+    expect(await readText('result.json')).toBe('{"ok":true}')
+    expect(await names()).toEqual(['result.json'])
+  })
+
+  it('writes the file directly in a browser that cannot rename it', async () => {
+    const move = Object.getOwnPropertyDescriptor(FileSystemHandle.prototype, 'move')
+    Object.defineProperty(FileSystemHandle.prototype, 'move', { value: undefined, configurable: true })
+    try {
+      await writeWholeFile(folder, 'status.md', '# Status')
+    } finally {
+      if (move) Object.defineProperty(FileSystemHandle.prototype, 'move', move)
+    }
+    expect(await readText('status.md')).toBe('# Status')
+    expect(await names()).toEqual(['status.md'])
   })
 })

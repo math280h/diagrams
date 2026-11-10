@@ -23,6 +23,30 @@ export async function removeIfThere(folder: FileSystemDirectoryHandle, name: str
 }
 
 /**
+ * Writes a file that another program reads while the website writes it, so that the program sees no file or the whole
+ * file. It writes a hidden part file and renames it. A browser that cannot rename the file gets a direct write.
+ */
+export async function writeWholeFile(folder: FileSystemDirectoryHandle, name: string, data: string | Blob) {
+  // getFileHandle with create makes an empty file at once. The data arrives when the writer closes.
+  const part = `.${name}.part`
+  await writeText(folder, part, data)
+  if (await renamed(folder, await folder.getFileHandle(part), name)) return
+  await removeIfThere(folder, part)
+  await writeText(folder, name, data)
+}
+
+async function renamed(folder: FileSystemDirectoryHandle, handle: FileSystemFileHandle, name: string) {
+  if (!handle.move) return false
+  try {
+    await removeIfThere(folder, name)
+    await handle.move(name)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
  * Reads and writes the diagram files of a folder that the user picked. The id of a diagram is its file name.
  *
  * It keeps the last text that the app read or wrote for each file, so {@link FolderFiles.changes} reports only changes
