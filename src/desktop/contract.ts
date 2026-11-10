@@ -11,6 +11,13 @@ export type FileChange = { kind: 'changed'; id: string; text: string; path?: str
 
 export type AgentState = 'starting' | 'running' | 'port-in-use' | 'failed'
 
+/** The app and the system it runs on, for bug reports. */
+export interface AppAbout {
+  version: string
+  /** The operating system, its version and the processor architecture, as in `Windows 10.0.26200 (x64)`. */
+  system: string
+}
+
 export interface AgentInfo {
   state: AgentState
   port: number
@@ -90,6 +97,7 @@ export interface MainRequests {
   'files.show': { input: { id: string }; output: null }
   /** Returns a linked file as the last commit of its git repository holds it. */
   'files.committed': { input: { id: string }; output: { text: string } }
+  'app.about': { input: null; output: AppAbout }
   'agent.info': { input: null; output: AgentInfo }
   'agent.resetToken': { input: null; output: AgentInfo }
   /** Moves the agent server to the next free agent port and keeps it. Connected agents need a new setup. */

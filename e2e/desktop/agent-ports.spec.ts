@@ -3,7 +3,7 @@ import { createServer, type Server } from 'node:net'
 import path from 'node:path'
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client'
 import { _electron as electron, type ElectronApplication } from '@playwright/test'
-import { AGENT_ENDPOINT, AGENT_HOST, AGENT_PORTS } from '@/desktop/constants'
+import { AGENT_ENDPOINT, AGENT_HOST, AGENT_PORTS, BUG_REPORT_URL } from '@/desktop/constants'
 import { agentUrl, expect, test } from './fixtures'
 
 const RETRY_WAIT_MS = 15_000
@@ -97,10 +97,15 @@ test('waits for its kept port while another program uses it, and connects when i
   writeFileSync(path.join(dirs.userData, 'agent-port'), String(taken.port))
   const { app, window } = await launch(withoutFixedPort(appEnv))
   try {
-    await window.getByRole('banner').getByRole('button', { name: 'Connect an agent' }).click()
+    await window.getByRole('button', { name: 'Agents cannot connect: see why' }).click()
     const dialog = window.getByRole('dialog')
     await expect(dialog).toContainText(`Another program uses port ${taken.port}`)
     await expect(dialog.getByRole('button', { name: 'Use another port' })).toBeVisible()
+    await dialog.getByRole('button', { name: 'Show details' }).click()
+    const details = dialog.locator('code', { hasText: 'Agent server:' })
+    await expect(details).toContainText(/^Diagrams \d+\.\d+\.\d+.*, (Windows|macOS|Linux) /)
+    await expect(details).toContainText(`Agent server: port-in-use on port ${taken.port}`)
+    await expect(dialog.getByRole('link', { name: 'Report a problem' })).toHaveAttribute('href', BUG_REPORT_URL)
 
     await taken.release()
     await expect(dialog).toContainText(`Agents can connect at ${agentUrl(taken.port)}${AGENT_ENDPOINT}`, {

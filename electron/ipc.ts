@@ -32,6 +32,7 @@ const INPUTS = {
   'files.saveAs': z.object({ name: z.string().max(200), text: z.string() }),
   'files.show': z.object({ id: z.string() }),
   'files.committed': z.object({ id: z.string() }),
+  'app.about': z.null(),
   'agent.info': z.null(),
   'agent.resetToken': z.null(),
   'agent.changePort': z.null(),

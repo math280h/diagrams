@@ -10,7 +10,15 @@ function DesktopAction() {
   const problem = useAgentProblem()
   return (
     <>
-      {problem && <span className="text-[13px] text-destructive">Agents cannot connect</span>}
+      {problem && (
+        <button
+          type="button"
+          onClick={openConnectAgent}
+          className="text-[13px] text-destructive underline decoration-destructive/40 underline-offset-4 hover:decoration-destructive"
+        >
+          Agents cannot connect: see why
+        </button>
+      )}
       <Button variant="secondary" onClick={openConnectAgent}>
         Connect an agent
       </Button>

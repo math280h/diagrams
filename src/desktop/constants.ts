@@ -14,6 +14,7 @@ export const CAPTURE_HASH = '#/capture'
 export const WEBSITE_ORIGIN = 'https://draw.thias.dev'
 export const DEV_ORIGINS = ['http://127.0.0.1:5173', 'http://localhost:5173']
 export const REPOSITORY_URL = 'https://github.com/math280h/diagrams'
+export const BUG_REPORT_URL = `${REPOSITORY_URL}/issues/new?template=bug_report.yml`
 /** GitHub redirects this address to the newest published release that is not a pre-release. */
 export const DESKTOP_DOWNLOAD_URL = `${REPOSITORY_URL}/releases/latest`
 export const REPOSITORY_API_URL = 'https://api.github.com/repos/math280h/diagrams'

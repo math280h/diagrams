@@ -22,6 +22,7 @@ import { loadAgentPort, nextFreeAgentPort, saveAgentPort } from './agent/port'
 import { createAgentServer, portIsFree, startAgentServer } from './agent/server'
 import { buildInstructions, bundledPluginConfig, bundledSkillFiles, loadSkills, registerSkills } from './agent/skills'
 import { createToken, loadToken } from './agent/token'
+import { appAbout } from './about'
 import { registerAppScheme, serveRenderer } from './app-protocol'
 import { findDeepLink, parseReceiveLink } from './deep-link'
 import { createCaptureService } from './capture'
@@ -257,6 +258,7 @@ async function start() {
         await shell.openPath(files.folder)
         return null
       },
+      'app.about': async () => appAbout(),
       'agent.info': async () => agent,
       'agent.resetToken': async () => {
         token = createToken(userData)

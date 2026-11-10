@@ -1,5 +1,5 @@
-import { Copy } from 'lucide-react'
-import { useState } from 'react'
+import { ArrowUpRight, Copy } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -8,8 +8,10 @@ import { errorMessage } from '@/lib/error-message'
 import { relativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { changeAgentPort, resetAgentToken, useAgentHistory, useAgentStore } from './agent-store'
-import { CLAUDE_MARKETPLACE_NAME, CLAUDE_PLUGIN_NAME, CLAUDE_PLUGIN_TOKEN_KEY } from './constants'
-import type { AgentInfo } from './contract'
+import { desktopApi } from './bridge'
+import { BUG_REPORT_URL, CLAUDE_MARKETPLACE_NAME, CLAUDE_PLUGIN_NAME, CLAUDE_PLUGIN_TOKEN_KEY } from './constants'
+import type { AgentInfo, AppAbout } from './contract'
+import { problemDetails } from './problem-details'
 
 function copy(text: string) {
   void navigator.clipboard.writeText(text).then(
@@ -62,7 +64,26 @@ function Status({ info }: { info: AgentInfo | null }) {
   )
 }
 
-function PortTaken() {
+function useAppAbout() {
+  const [about, setAbout] = useState<AppAbout | null>(null)
+  useEffect(() => {
+    let current = true
+    void desktopApi()
+      ?.request('app.about', null)
+      .then(
+        (next) => {
+          if (current) setAbout(next)
+        },
+        () => undefined,
+      )
+    return () => {
+      current = false
+    }
+  }, [])
+  return about
+}
+
+function MovePort() {
   const [moving, setMoving] = useState(false)
   const move = () => {
     setMoving(true)
@@ -74,11 +95,38 @@ function PortTaken() {
       .finally(() => setMoving(false))
   }
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] text-muted-foreground">
-      <Button variant="secondary" size="sm" disabled={moving} onClick={move}>
-        Use another port
-      </Button>
-      <span>Agents that you set up before then need the setup again.</span>
+    <Button variant="secondary" size="sm" disabled={moving} onClick={move}>
+      Use another port
+    </Button>
+  )
+}
+
+function Problem({ info }: { info: AgentInfo }) {
+  const [detailsShown, setDetailsShown] = useState(false)
+  const about = useAppAbout()
+  const portTaken = info.state === 'port-in-use'
+  return (
+    <div className="space-y-3 text-[13px] text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-2">
+        {portTaken && <MovePort />}
+        <Button variant="ghost" size="sm" aria-expanded={detailsShown} onClick={() => setDetailsShown(!detailsShown)}>
+          {detailsShown ? 'Hide details' : 'Show details'}
+        </Button>
+      </div>
+      {portTaken && <p>With another port, agents that you set up before need the setup again.</p>}
+      {detailsShown && (
+        <div className="space-y-2">
+          <CommandBlock label="Details for a bug report" value={problemDetails(info, about)} />
+          <a
+            href={BUG_REPORT_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 font-medium text-foreground hover:underline"
+          >
+            Report a problem <ArrowUpRight aria-hidden className="size-3.5" />
+          </a>
+        </div>
+      )}
     </div>
   )
 }
@@ -166,7 +214,7 @@ export function ConnectAgentDialog() {
           </DialogDescription>
         </DialogHeader>
         <Status info={info} />
-        {info?.state === 'port-in-use' && <PortTaken />}
+        {(info?.state === 'port-in-use' || info?.state === 'failed') && <Problem info={info} />}
         {info && (
           <Tabs defaultValue="plugin">
             <TabsList>
