@@ -84,5 +84,7 @@ the JSDoc tag rules.
 - Workflows pin each remote action by commit SHA. Call a composite action of this repository with `uses: $/…`,
   not `./…`. After a change to a `uses:` line, run `gh actions-lock --no-narrow` (extension
   `github/gh-actions-lock`) and commit `.github/workflows/actions.lock`. `--no-narrow` keeps the SHA pins.
+- Pull request titles are Conventional Commits headers (`fix(editor): …`, types in `scripts/conventional-commits.ts`).
+  The squash merge makes the title the commit on `main`. Keep commit messages to one short line.
 - Agent tools change a diagram through `src/store/actions.ts` inside `oneStep`, so each call is one
   undo step. Skills live in `claude-plugin/skills`; a test fails when they name a missing tool.

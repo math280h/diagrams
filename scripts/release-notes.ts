@@ -1,6 +1,7 @@
 import type { Plugin } from 'vite'
 import { PREVIEW_APP_TAG_PATTERN, RELEASES_API_URL, REPOSITORY_API_URL } from '../src/desktop/constants.ts'
 import type { UnreleasedChange, UnreleasedChanges } from '../src/releases/unreleased.ts'
+import { headerDescription } from './conventional-commits.ts'
 
 const MODULE_ID = 'virtual:release-notes'
 const RESOLVED_ID = `\0${MODULE_ID}`
@@ -75,7 +76,7 @@ export async function fetchUnreleased(base: string, fetchImpl: typeof fetch = fe
     const pullRequest = PULL_REQUEST_SUFFIX.exec(title)
     return [
       {
-        title: pullRequest ? title.slice(0, pullRequest.index) : title,
+        title: headerDescription(pullRequest ? title.slice(0, pullRequest.index) : title),
         pullRequest: pullRequest ? Number(pullRequest[1]) : null,
         sha: entry.sha,
         committedAt: Date.parse(String(entry.commit?.committer?.date)) || 0,
