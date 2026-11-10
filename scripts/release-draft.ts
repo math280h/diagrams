@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process'
+import { headerDescription, parseHeader } from './conventional-commits.ts'
 
 /** A merged pull request as the draft needs it. */
 export interface MergedPullRequest {
@@ -13,6 +14,10 @@ export type ChangeKind = 'New' | 'Improvements' | 'Fixes'
 const KINDS: ChangeKind[] = ['New', 'Improvements', 'Fixes']
 const NEW_VERBS = new Set(['add', 'allow', 'copy', 'explore', 'export', 'import', 'introduce', 'let', 'support'])
 const FIX_VERBS = new Set(['fix', 'prevent', 'repair', 'restore', 'stop'])
+const TYPE_KINDS = new Map<string, ChangeKind>([
+  ['feat', 'New'],
+  ['fix', 'Fixes'],
+])
 
 const REPOSITORY_FILES = [
   /\.test\.(ts|mjs)$/,
@@ -46,11 +51,14 @@ const NO_AREA = 'Build and docs'
 
 /**
  * Returns the kind of a change: a `bug` label makes it a fix and an `enhancement` label makes it new. Without them, the
- * first word of the title decides, and anything else is an improvement.
+ * `fix` and `feat` types of a Conventional Commits title decide, or for an older title its first word. Anything else
+ * is an improvement.
  */
 export function changeKind(pullRequest: Pick<MergedPullRequest, 'title' | 'labels'>): ChangeKind {
   if (pullRequest.labels.includes('bug')) return 'Fixes'
   if (pullRequest.labels.includes('enhancement')) return 'New'
+  const header = parseHeader(pullRequest.title)
+  if (header) return TYPE_KINDS.get(header.type) ?? 'Improvements'
   const [verb = ''] = pullRequest.title.trim().toLowerCase().split(/\s+/, 1)
   if (FIX_VERBS.has(verb)) return 'Fixes'
   if (NEW_VERBS.has(verb)) return 'New'
@@ -138,7 +146,7 @@ export function draftNotes({
   if (fresh.length > 0) {
     lines.push(
       '<!-- Before you publish, add a still and a short clip (Export, then Animation) of each new item:',
-      ...fresh.map((pullRequest) => `     - ${pullRequest.title}`),
+      ...fresh.map((pullRequest) => `     - ${headerDescription(pullRequest.title)}`),
       '-->',
       '',
     )
@@ -150,7 +158,9 @@ export function draftNotes({
     const byArea = Map.groupBy(ofKind, (pullRequest) => changeArea(pullRequest.files))
     for (const area of [...byArea.keys()].toSorted((a, b) => a.localeCompare(b))) {
       lines.push(`### ${area}`, '')
-      for (const pullRequest of byArea.get(area)!) lines.push(`- ${pullRequest.title} (#${pullRequest.number})`)
+      for (const pullRequest of byArea.get(area)!) {
+        lines.push(`- ${headerDescription(pullRequest.title)} (#${pullRequest.number})`)
+      }
       lines.push('')
     }
   }

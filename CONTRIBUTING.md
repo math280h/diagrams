@@ -41,6 +41,13 @@ Before you open a pull request, run `pnpm typecheck`, `pnpm lint`, `pnpm format:
 For changes to `electron/`, `src/desktop/` or `src/agent/`, also run `pnpm desktop:build` and `pnpm e2e:desktop`. CI
 runs the same checks on Windows, macOS and Linux.
 
+## Pull request titles
+
+Each pull request becomes one commit on `main`, with the pull request title as its message. Write the title as a
+[Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) header, for example
+`fix(editor): keep the flow toolbar in view`. The types are `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`,
+`ci`, `chore`, `style` and `revert`. A check fails on other titles.
+
 ## How the code is written
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) explains the parts of the app and why they work as they do.

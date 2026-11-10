@@ -18,6 +18,14 @@ describe('release draft', () => {
     expect(changeKind({ title: 'Fix up the export', labels: ['enhancement'] })).toBe('New')
   })
 
+  it('sorts a Conventional Commits title by its type', () => {
+    expect(changeKind({ title: 'feat(canvas): add a minimap', labels: [] })).toBe('New')
+    expect(changeKind({ title: 'fix: keep the flow toolbar in view', labels: [] })).toBe('Fixes')
+    expect(changeKind({ title: 'perf: draw large diagrams faster', labels: [] })).toBe('Improvements')
+    expect(changeKind({ title: 'refactor: add a store module', labels: [] })).toBe('Improvements')
+    expect(changeKind({ title: 'feat: add a minimap', labels: ['bug'] })).toBe('Fixes')
+  })
+
   it('takes the area with the most changed files, and leaves tests, docs and format samples out', () => {
     expect(changeArea(['src/player/PlayerStage.tsx', 'src/engine/engine.ts', 'src/editor/TopBar.tsx'])).toBe(
       'Flows and Present',
@@ -80,7 +88,7 @@ describe('release draft', () => {
       previousTag: 'v0.1.4',
       tag: 'v0.1.5',
       pullRequests: [
-        { number: 66, title: 'Add a minimap', labels: [], files: ['src/canvas/Minimap.tsx'] },
+        { number: 66, title: 'feat(canvas): add a minimap', labels: [], files: ['src/canvas/Minimap.tsx'] },
         { number: 64, title: 'Resize the editor panels', labels: [], files: ['src/editor/SidePanel.tsx'] },
         { number: 61, title: 'Fix a flaky test', labels: [], files: ['e2e/insert-search.spec.ts'] },
       ],

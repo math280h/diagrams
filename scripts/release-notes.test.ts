@@ -55,7 +55,7 @@ describe('release notes at build time', () => {
     expect(newestReleaseTag([])).toBeNull()
   })
 
-  it('lists the commits on main after a release, the newest first, without merge commits', async () => {
+  it('lists the commits on main after a release, the newest first, without merge commits or commit types', async () => {
     const commit = (sha: string, message: string, date: string) => ({
       sha,
       commit: { message, committer: { date } },
@@ -66,7 +66,7 @@ describe('release notes at build time', () => {
           commit('a1', 'Play a trace as a flow (#14)\n\nBody text', '2026-10-27T23:37:24Z'),
           commit('b2', "Merge branch 'main' into feature", '2026-10-28T01:00:00Z'),
           commit('c3', 'Fix a typo in the README', '2026-10-28T02:00:00Z'),
-          commit('d4', 'Show a flow as a sequence diagram (#17)', '2026-10-28T02:13:12Z'),
+          commit('d4', 'feat(flows): show a flow as a sequence diagram (#17)', '2026-10-28T02:13:12Z'),
         ],
       }),
     )
