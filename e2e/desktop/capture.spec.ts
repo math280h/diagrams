@@ -338,6 +338,7 @@ test('exports a transparent PNG and a GIF from the export dialog in the capture 
   await saveNextDownload(app, gif)
   await window.getByRole('button', { name: 'Export GIF' }).click()
   await expect.poll(() => downloadState(app), { timeout: 120_000 }).toBe('completed')
-  const frames = decode(readFileSync(gif)).frames
+  // modern-gif ignores the byte offset of a typed array, and readFileSync can give a small file inside a shared buffer.
+  const frames = decode(new Uint8Array(readFileSync(gif))).frames
   expect(frames.length).toBeGreaterThan(5)
 })
