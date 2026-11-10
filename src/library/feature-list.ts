@@ -34,7 +34,7 @@ export const HEADLINE_FEATURES: readonly HeadlineFeature[] = [
     id: 'agents',
     title: 'Ask an AI agent to draw',
     summary:
-      'In the desktop app, Claude Code and other MCP clients draw, animate and check diagrams while you watch. They can start from Terraform, docker-compose or Kubernetes files.',
+      'Claude Code and other agents draw, animate and check diagrams while you watch: in the desktop app, or in Chrome and Edge through a folder of your project. They can start from Terraform, docker-compose or Kubernetes files.',
   },
   {
     id: 'share',

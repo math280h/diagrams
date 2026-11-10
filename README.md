@@ -18,7 +18,7 @@ only on your computer, never on a server ([privacy](#privacy)).
 - **Follow a request step by step.** Record the path of a request and caption each step. Play it and the camera follows. Steps can fan out or branch. A flow also reads as a log or a sequence diagram.
 - **Replay a real trace.** Import an OpenTelemetry, Jaeger or Zipkin trace as a flow. Each step shows the real operation, its latency and its status.
 - **See where sensitive data goes.** Mark fields in request and response bodies as personal data or secrets. The Sensitive data view shows which connections carry them across a trust boundary.
-- **Ask an AI agent to draw.** In the desktop app, Claude Code and other MCP clients draw, animate and check diagrams while you watch. They can start from Terraform, docker-compose or Kubernetes files.
+- **Ask an AI agent to draw.** Claude Code and other agents draw, animate and check diagrams while you watch: in the desktop app, or in Chrome and Edge through a folder of your project. They can start from Terraform, docker-compose or Kubernetes files.
 - **Export and share.** Present in full screen. Export PNG, SVG, MP4, WebM, GIF or a web page that plays the flows. Copy an image, or a link that carries the whole diagram.
 - **Keep diagrams with your code.** A diagram is a JSON file that you can review and diff. A GitHub Action comments on pull requests with before and after images.
 

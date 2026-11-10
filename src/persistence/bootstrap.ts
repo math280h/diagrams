@@ -1,11 +1,15 @@
 import { desktopApi } from '@/desktop/bridge'
+import { followAgentSetting, restoreFolder } from '@/folder/folder-store'
+import { canOpenFolder } from '@/folder/support'
 import { startLibrary } from '@/store/library-store'
 import { setRepository } from './active-repository'
 import type { StoredFile } from '@/desktop/contract'
 import { createCachedRepository, type CachedRepository } from './cached-repository'
+import type { DiagramRepository } from './repository'
 import { watchSaveOutcomes } from './storage-copy'
 
 let desktopRepository: CachedRepository | null = null
+let stopSaveOutcomes: (() => void) | null = null
 
 /** Adds diagram files that the main process linked, such as files that the user opened, to the diagram list. */
 export function takeLinkedFiles(files: readonly StoredFile[]) {
@@ -30,7 +34,21 @@ export async function bootstrapStorage() {
     desktop.on('files.changed', (change) => folderRepository.applyExternal(change))
     desktopRepository = folderRepository
     setRepository(folderRepository)
+  } else if (canOpenFolder()) {
+    const folder = await restoreFolder()
+    if (folder) {
+      setRepository(folder.repository)
+      followAgentSetting(folder)
+    }
   }
-  watchSaveOutcomes()
+  stopSaveOutcomes = watchSaveOutcomes()
+  startLibrary()
+}
+
+/** Replaces the repository while the app runs. Close the open diagram first: its session keeps the old repository. */
+export function switchRepository(next: DiagramRepository) {
+  stopSaveOutcomes?.()
+  setRepository(next)
+  stopSaveOutcomes = watchSaveOutcomes()
   startLibrary()
 }

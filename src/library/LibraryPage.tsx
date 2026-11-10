@@ -48,6 +48,7 @@ import { InstallIntro } from '@/install/InstallIntro'
 import { desktopApi } from '@/desktop/bridge'
 import { canOpenInApp, openInApp, useOpenedInApp } from '@/desktop/open-in-app'
 import { TitleBarNav } from '@/desktop/TitleBarNav'
+import { FolderHeroNote, FolderOffer, FolderStorageNote, FollowedFolderNote } from '@/folder/FolderNote'
 import { ImportDialog } from '@/io/ImportDialog'
 import { formatBytes, plural, relativeTime } from '@/lib/format'
 import { useReducedMotion } from '@/lib/motion'
@@ -197,12 +198,17 @@ function StorageNote({ usageBytes }: { usageBytes: number }) {
   const location = repository().location
   if (location.kind === 'browser') {
     return (
-      <p className="mt-4 text-[13px] text-muted-foreground tabular-nums">
-        {formatBytes(usageBytes)} of {formatBytes(location.budgetBytes)} used in this browser. Clearing the site data of
-        this browser deletes them, so export a diagram file to keep a copy.
-      </p>
+      <div className="mt-4">
+        <p className="text-[13px] text-muted-foreground tabular-nums">
+          {formatBytes(usageBytes)} of {formatBytes(location.budgetBytes)} used in this browser. Clearing the site data
+          of this browser deletes them, so export a diagram file to keep a copy.
+        </p>
+        <FolderOffer />
+      </div>
     )
   }
+  if (location.kind === 'picked-folder') return <FolderStorageNote name={location.name} />
+  if (location.kind === 'followed-folder') return <FollowedFolderNote name={location.name} />
   return (
     <p className="mt-4 flex flex-wrap items-center gap-x-3 text-[13px] text-muted-foreground">
       <span className="min-w-0 break-all">
@@ -420,6 +426,7 @@ export function LibraryPage() {
                     <HardDrive aria-hidden className="mt-1 size-4 shrink-0 text-muted-foreground" />
                     {storageCopy().promise}
                   </p>
+                  <FolderHeroNote />
                 </div>
                 <AgentIntro />
               </div>
