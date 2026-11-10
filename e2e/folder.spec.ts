@@ -46,6 +46,17 @@ function openDiagramId(page: Page) {
   return decodeURIComponent(/#\/d\/([^/?]+)/.exec(page.url())![1]!)
 }
 
+async function readDiagramFile(page: Page, id: string) {
+  let text: string | null = null
+  await expect
+    .poll(async () => {
+      text = await readFile(page, `${id}.diagram.json`)
+      return text
+    })
+    .not.toBeNull()
+  return JSON.parse(text!) as { id: string; name: string }
+}
+
 test('keeps the diagrams as files in an opened folder and shows the changes from outside', async ({ page }) => {
   await page.goto('/')
   await copyTemplate(page, 'Checkout flow')
@@ -58,7 +69,7 @@ test('keeps the diagrams as files in an opened folder and shows the changes from
   const id = openDiagramId(page)
   await expect.poll(() => readFile(page, `${id}.diagram.json`)).toContain('"name": "Order system"')
 
-  const file = JSON.parse((await readFile(page, `${id}.diagram.json`))!) as { name: string }
+  const file = await readDiagramFile(page, id)
   await writeFile(page, `${id}.diagram.json`, JSON.stringify({ ...file, name: 'Changed in an editor' }))
   await expect(page.getByLabel('Diagram name')).toHaveValue('Changed in an editor')
 
@@ -160,7 +171,7 @@ test('lets an agent call the tools and read the checks through the agent folder'
   await expect(page.getByRole('button', { name: 'Connect an agent' })).toBeVisible()
 
   const id = openDiagramId(page)
-  const file = JSON.parse((await readFile(page, `${id}.diagram.json`))!) as { name: string }
+  const file = await readDiagramFile(page, id)
   await writeFile(page, `${id}.diagram.json`, JSON.stringify({ ...file, name: 'Changed by the agent' }))
   await expect
     .poll(() => readFile(page, `.diagrams/status/${id}.md`), { timeout: 30_000 })
