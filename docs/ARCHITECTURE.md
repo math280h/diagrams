@@ -974,7 +974,8 @@ The React app in Electron, plus file storage, agent control, the website handoff
 - A fixed 44 px drag strip tops every page, also without a header. Interactive elements and dialogs do not drag.
 - Back and forward: app buttons, Alt with arrow keys (Command with brackets on macOS), mouse side buttons (no browser
   buttons).
-- `pnpm app-icon` renders `build/icon.svg` to `build/icon.png` (1024 px) and `build/icon.ico` (16 to 256 px).
+- `pnpm app-icon` renders `build/icon.svg` to `build/icon.png` (1024 px), `build/icon.ico` (16 to 256 px) and the
+  macOS menu bar icon `build/trayTemplate.png` (18 px and 36 px: the square in black, with the line and the dot cut out).
   - Unpackaged app: shows the icon on the window and macOS dock (Electron otherwise shows its own).
   - Packaged app: uses the executable or bundle icon.
 - The window restores position, size and maximized state on a connected screen, shrunk to fit if the saved one is gone.
@@ -1074,10 +1075,12 @@ with snapdom, because Chromium gives only pixels.
   continue after the window closes. Agents can then connect without an open window.
 - An agent call without a window opens a new window, because the tools run in the renderer. A second app start or a
   deep link also opens it.
-- Windows and Linux: a tray icon with "Open Diagrams" and "Quit Diagrams" (`electron/background.ts`). The first close
-  shows a notice that the app still runs and how to quit it: a tray balloon on Windows, a system notification on Linux.
-  Some Linux desktops show no tray icon. There, the user turns the setting off and closes the window.
-- macOS: the Dock keeps the app, as for other macOS apps. There is no tray icon and no notice.
+- A tray icon with "Open Diagrams" and "Quit Diagrams" (`electron/background.ts`): in the notification area on
+  Windows, the system tray on Linux and the menu bar on macOS. The first close shows a notice that the app still runs
+  and how to quit it: a tray balloon on Windows, a system notification on Linux and macOS.
+- macOS: the Dock icon goes while no window is open, and comes back with the next window. The menu bar icon is a
+  template image (`build/trayTemplate.png` and `@2x`), which macOS draws in the colour of the menu bar text.
+- Some Linux desktops show no tray icon. There, the user turns the setting off and closes the window.
 - With the setting off, the app quits when the last window closes, on each platform.
 - The main process keeps the setting in `app-settings.json` in the user data folder, because it decides on
   `window-all-closed` without a renderer. The setting is in "Connect an agent"; the command menu has "Quit Diagrams".

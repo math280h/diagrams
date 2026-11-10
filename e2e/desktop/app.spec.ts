@@ -148,6 +148,18 @@ test('gives the window an app icon that Electron can read', async ({ app }) => {
   expect(size.width).toBeGreaterThanOrEqual(256)
 })
 
+test('gives the macOS menu bar a template icon with a high resolution file that Electron can read', async ({ app }) => {
+  const image = await app.evaluate(
+    ({ nativeImage }, file) => {
+      const icon = nativeImage.createFromPath(file)
+      return { size: icon.getSize(), scaleFactors: icon.getScaleFactors() }
+    },
+    path.resolve('build', 'trayTemplate.png'),
+  )
+  expect(image.size).toEqual({ width: 18, height: 18 })
+  expect(image.scaleFactors).toEqual([1, 2])
+})
+
 function iconFile() {
   return path.resolve('build', process.platform === 'win32' ? 'icon.ico' : 'icon.png')
 }

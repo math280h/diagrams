@@ -31,6 +31,12 @@ export function iconPath(): string | null {
   return path.join(import.meta.dirname, '..', 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png')
 }
 
+/** Returns the macOS menu bar icon. Electron also loads its `@2x` file next to it. */
+export function trayTemplatePath() {
+  const folder = app.isPackaged ? process.resourcesPath : path.join(import.meta.dirname, '..', 'build')
+  return path.join(folder, 'trayTemplate.png')
+}
+
 export function preloadPath() {
   return path.join(import.meta.dirname, 'preload.cjs')
 }

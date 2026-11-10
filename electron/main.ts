@@ -127,16 +127,14 @@ async function start() {
   else if (icon && process.platform === 'darwin') app.dock?.setIcon(icon)
   const userData = app.getPath('userData')
   const settings = createAppSettings(path.join(userData, APP_SETTINGS_FILE))
-  const background =
-    process.platform === 'darwin' || windowHidden
-      ? null
-      : createBackground({ open: () => focusWindow(), quit: () => app.quit() })
+  const background = windowHidden ? null : createBackground({ open: () => focusWindow(), quit: () => app.quit() })
   background?.follow(settings.get().keepRunning)
   app.on('window-all-closed', () => {
     if (!settings.get().keepRunning) {
       app.quit()
       return
     }
+    background?.hideDock()
     if (!settings.get().backgroundNoticeShown && background?.notify()) settings.update({ backgroundNoticeShown: true })
   })
   const port = agentPort()

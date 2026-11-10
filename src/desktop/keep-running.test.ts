@@ -3,7 +3,7 @@ import { quitHint, stillRunningNotice } from './keep-running'
 
 describe('quitHint', () => {
   it('names the way to quit on each platform', () => {
-    expect(quitHint('darwin')).toBe('To quit, press Command-Q.')
+    expect(quitHint('darwin')).toBe('To quit, use the Diagrams icon in the menu bar.')
     expect(quitHint('win32')).toContain('notification area')
     expect(quitHint('linux')).toContain('system tray')
     expect(quitHint('linux')).toContain('turn this off and close the window')
@@ -18,6 +18,9 @@ describe('stillRunningNotice', () => {
     })
     expect(stillRunningNotice('linux').body).toBe(
       'Agents can still connect. To quit, use the Diagrams icon in the system tray.',
+    )
+    expect(stillRunningNotice('darwin').body).toBe(
+      'Agents can still connect. To quit, use the Diagrams icon in the menu bar.',
     )
   })
 })
