@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { ElectronApplication } from '@playwright/test'
 import { decode } from 'modern-gif'
@@ -19,8 +19,20 @@ const MAX_COLOUR_PAIRS = 50
 /** Saves the next download of the app to a file, without the save dialog. */
 function saveNextDownload(app: ElectronApplication, file: string) {
   return app.evaluate(({ session }, savePath) => {
-    session.defaultSession.once('will-download', (_event, item) => item.setSavePath(savePath))
+    const state = globalThis as { downloadState?: string }
+    state.downloadState = 'waiting'
+    session.defaultSession.once('will-download', (_event, item) => {
+      item.setSavePath(savePath)
+      item.once('done', (_done, result) => {
+        state.downloadState = result
+      })
+    })
   }, file)
+}
+
+/** Returns `completed`, `cancelled` or `interrupted` after the download ends, and `waiting` before. */
+function downloadState(app: ElectronApplication) {
+  return app.evaluate(() => (globalThis as { downloadState?: string }).downloadState)
 }
 
 function flowStage() {
@@ -212,7 +224,7 @@ test('draws text without subpixel colour fringes', async ({ window: page }) => {
   expect(fringes).toBeLessThanOrEqual(MAX_COLOUR_PAIRS)
 })
 
-test('gives each video frame the pixels of its own moment', async ({ window: page }) => {
+test('gives each video frame the pixels of its own moment', async ({ window: page }, testInfo) => {
   const stage = flowStage()
   const result = await page.evaluate(
     async ({ spec, durationMs, count }) => {
@@ -249,18 +261,34 @@ test('gives each video frame the pixels of its own moment', async ({ window: pag
       const stills: Uint8ClampedArray[] = []
       for (const timeMs of moments)
         stills.push(await decodePng((await desktop.request('capture.image', request(timeMs))).png))
+      const toPng = async (pixels: ArrayLike<number>, width: number, height: number) => {
+        const canvas = new OffscreenCanvas(width, height)
+        canvas.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(pixels), width, height), 0, 0)
+        const bytes = new Uint8Array(await (await canvas.convertToBlob({ type: 'image/png' })).arrayBuffer())
+        return btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(''))
+      }
       const changes = stills.slice(1).map((still, index) => differing(still, stills[index]!))
       const closest: number[] = []
+      const mismatches: { name: string; png: string }[] = []
       for (const index of moments.keys()) {
         const frame = await desktop.request('capture.frame', request(moments[index]!))
         const distances = stills.map((still) => differing(frame.pixels, still))
-        closest.push(distances.indexOf(Math.min(...distances)))
+        const nearest = distances.indexOf(Math.min(...distances))
+        closest.push(nearest)
+        if (nearest === index) continue
+        const png = (pixels: ArrayLike<number>) => toPng(pixels, frame.width, frame.height)
+        mismatches.push(
+          { name: `moment-${index}-frame.png`, png: await png(frame.pixels) },
+          { name: `moment-${index}-still.png`, png: await png(stills[index]!) },
+          { name: `moment-${index}-closest-still-${nearest}.png`, png: await png(stills[nearest]!) },
+        )
       }
       await desktop.request('capture.close', { sessionId })
-      return { changes, closest }
+      return { changes, closest, mismatches }
     },
     { ...stage, count: MOMENTS },
   )
+  for (const { name, png } of result.mismatches) writeFileSync(testInfo.outputPath(name), Buffer.from(png, 'base64'))
   expect(Math.min(...result.changes)).toBeGreaterThan(0)
   expect(result.closest).toEqual(result.closest.map((_, index) => index))
 })
@@ -279,7 +307,7 @@ test('exports a transparent PNG and a GIF from the export dialog in the capture 
   const png = path.join(path.dirname(dirs.data), 'order-system.png')
   await saveNextDownload(app, png)
   await window.getByRole('button', { name: 'Export PNG' }).click()
-  await expect.poll(() => existsSync(png), { timeout: 60_000 }).toBe(true)
+  await expect.poll(() => downloadState(app), { timeout: 60_000 }).toBe('completed')
   const urls = await app.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows().map((w) => w.webContents.getURL()),
   )
@@ -309,8 +337,8 @@ test('exports a transparent PNG and a GIF from the export dialog in the capture 
   const gif = path.join(path.dirname(dirs.data), 'order-system.gif')
   await saveNextDownload(app, gif)
   await window.getByRole('button', { name: 'Export GIF' }).click()
-  await expect.poll(() => existsSync(gif), { timeout: 120_000 }).toBe(true)
-  await expect.poll(() => readFileSync(gif).subarray(0, 6).toString(), { timeout: 30_000 }).toBe('GIF89a')
-  const frames = decode(readFileSync(gif)).frames
+  await expect.poll(() => downloadState(app), { timeout: 120_000 }).toBe('completed')
+  // modern-gif ignores the byte offset of a typed array, and readFileSync can give a small file inside a shared buffer.
+  const frames = decode(new Uint8Array(readFileSync(gif))).frames
   expect(frames.length).toBeGreaterThan(5)
 })
