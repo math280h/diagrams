@@ -848,6 +848,18 @@ the Order system template in Chromium with Playwright, opens the flow panel and 
   pixels transparent.
 - `node:zlib` reads the PNG screenshots; no image package.
 
+### Link preview
+
+Chat apps and social sites show a card for a link to the website. The Open Graph and Twitter `meta` elements in
+`index.html` give the title, the description and the image `public/social-preview.png` (1200 × 630 px).
+
+- The image is a screenshot of the editor at 1600 × 840 px with a device scale factor of 0.75. The Order system flow
+  plays, the camera does not follow the flow, and the flow panel shows four log rows.
+- The image address is absolute, because link preview services do not resolve a relative address. The preview site
+  also gives the address of the live site.
+- `e2e/link-preview.spec.ts` checks that the `og:` title and description are the same as those of the page, and that
+  the image has the size that the `meta` elements give.
+
 ### Release notes
 
 The What’s new page (`#/releases`) lists published releases and notes. They come from the GitHub releases API in the
