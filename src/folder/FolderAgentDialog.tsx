@@ -146,9 +146,9 @@ function BrowserSupportNote() {
           </p>
         ) : (
           <p className="text-muted-foreground">
-            This browser only lets the website read a folder, so your changes stay in this tab and agents cannot use the
-            tools. To do both, open this page in <Browsers or />. Or keep this browser and use the desktop app, which
-            does both on its own.{' '}
+            This browser only lets the website read a folder: it cannot save your changes there, and agents cannot use
+            the diagram tools. <Browsers /> can save and run agent tools. The desktop app can too, so you do not have to
+            change browsers.{' '}
             <a
               href={MOZILLA_POSITION_URL}
               target="_blank"
