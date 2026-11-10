@@ -17,7 +17,7 @@ function copy(text: string) {
   )
 }
 
-function CommandBlock({ label, value }: { label: string; value: string }) {
+export function CommandBlock({ label, value }: { label: string; value: string }) {
   return (
     <div className="space-y-1.5">
       <p className="text-[13px] text-muted-foreground">{label}</p>

@@ -345,6 +345,7 @@ src/
   main.tsx, router.tsx, RootLayout.tsx   start-up, routes, app chrome, route and start-up errors
   agent/        agent tool definitions, handlers, references, placement, compact diagram form
   desktop/      IPC contract and bridge, title bar, agent and handoff dialogs, desktop runtime
+  folder/       folder storage on the website, its file watcher worker and the agent folder
   model/        zod schema (version 6), boundary kinds, protocols, defaults, presets, graph and rect helpers
   store/        doc store, actions, undo history, version history, persistence hook, UI and settings stores
   persistence/  localStorage repository, version store (IndexedDB), serialize, migrations, library actions
@@ -952,6 +953,44 @@ WebWorker library).
   - the installed app without internet, also Tidy up after the full fetch;
   - a new version while online;
   - the clean-up after an update.
+
+### Folder on the website
+
+In Chrome and Edge, the website can keep the diagrams in a folder that the user picks (`src/folder`). An agent such as
+Claude Code then works on the diagrams through files in that folder. The user installs nothing and runs no command.
+
+- `showDirectoryPicker` gives a folder handle. IndexedDB keeps the handle, so the folder opens again after a reload.
+  After a browser restart, the browser can ask for the permission again: the library then offers "Open it again".
+- Opening or closing a folder reloads the page. `bootstrapStorage` opens the folder before the app renders, with the
+  cached repository of the desktop app. The diagrams in the browser stay, and show again after "Close folder".
+- Files: `<id>.diagram.json` in the folder, as on the desktop (`src/persistence/diagram-file-name.ts`). Chrome has no
+  trash, so a delete removes the file.
+- A worker scans the folder every 750 ms: file names, sizes and change times. Chrome slows the timers of a hidden page
+  to one call a minute, but not the timers of a worker. The page reads a changed file and compares it with the last
+  text that the app read or wrote.
+- Before a write, the app reads the file. If it differs from that last text, the app does not write it, and loads the
+  change from outside. So the app never writes over an agent change that came between two scans. The app version
+  stays in the version history.
+- A save that changes only the viewport, the save counter or measured sizes does not write a file of the folder, as
+  for linked files on the desktop.
+- The open diagram loads a change from outside at once, unless a change of the user waits for its save. Then it offers
+  "Load newer", as before.
+
+The agent folder `.diagrams` (`src/folder/agent-channel.ts`), when "Let agents use this folder" is on:
+
+- At each open, the website writes the tool list with JSON Schema inputs, the diagram format as JSON Schema, the icon
+  list, the skills and a guide (`README.md`, written last). A `.gitignore` keeps `calls`, `results` and `status` out of
+  git.
+- Tool calls: the agent writes `calls/<name>.json` with a tool and its arguments. The worker reports the file. The
+  page removes it, runs the tool with `runAgentTool` as the MCP server does, and writes `results/<name>.json` and the
+  images of the result as PNG files. Calls run one at a time in file name order. A file that is not JSON gets three
+  scans to finish its write.
+- After a change from outside, the website writes `status/<id>.md` with the output of `lint_diagram`, and
+  `status/<id>.png` from `render_image`. An agent that changes a file directly sees the result.
+- The user gives Claude Code one line for its `CLAUDE.md` that names the guide. The agent button shows the tool runs on
+  the website too.
+- Only Chromium has the folder picker, so Firefox and Safari keep the diagrams in the browser and offer the desktop
+  app.
 
 ## Desktop app
 

@@ -42,8 +42,18 @@ const FOLDER_COPY: StorageCopy = {
   versionsPlace: 'on this computer',
 }
 
+const PICKED_FOLDER_COPY: StorageCopy = {
+  ...FOLDER_COPY,
+  missingTitle: 'This diagram is not in the open folder',
+  stillSaved: 'Your saved diagrams are still in the open folder.',
+  deleteDetail: 'This deletes the diagram file from the folder. You cannot undo it.',
+  removeFailed: 'Could not delete the diagram file.',
+}
+
 export function storageCopy(): StorageCopy {
-  return repository().location.kind === 'folder' ? FOLDER_COPY : BROWSER_COPY
+  const { kind } = repository().location
+  if (kind === 'folder') return FOLDER_COPY
+  return kind === 'picked-folder' ? PICKED_FOLDER_COPY : BROWSER_COPY
 }
 
 const SAVE_FAILED_TOAST = 'save-failed'

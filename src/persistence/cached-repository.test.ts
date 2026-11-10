@@ -2,15 +2,18 @@ import { describe, expect, it, vi } from 'vitest'
 import { createDiagram } from '@/model/defaults'
 import type { Diagram } from '@/model/schema'
 import { createCachedRepository, serializeDiagram } from './cached-repository'
-import type { RepositoryEvent } from './repository'
+import type { RepositoryEvent, StorageLocation } from './repository'
 
 function diagram(name: string, patch: Partial<Diagram> = {}): Diagram {
   return { ...createDiagram(name), ...patch }
 }
 
-function setup(files: { id: string; text: string; path?: string }[] = []) {
+function setup(
+  files: { id: string; text: string; path?: string }[] = [],
+  location: StorageLocation = { kind: 'folder', path: '/diagrams' },
+) {
   const sink = { write: vi.fn(async () => undefined), remove: vi.fn(async () => undefined) }
-  const repository = createCachedRepository({ location: { kind: 'folder', path: '/diagrams' }, files, sink })
+  const repository = createCachedRepository({ location, files, sink })
   const events: RepositoryEvent[] = []
   repository.subscribe((event) => events.push(event))
   return { repository, sink, events }
@@ -124,6 +127,20 @@ describe('createCachedRepository', () => {
     expect(events).toContainEqual({ kind: 'saved', id: 'link-1' })
     expect(repository.list()[0]).toMatchObject({ path: '/repo/docs/a.diagram.json' })
 
+    repository.save({ ...first, name: 'Renamed' })
+    await repository.settled()
+    expect(sink.write).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not write a file of a picked folder again when only the view, the save counter or the sizes change', async () => {
+    const first = diagram('Project', { id: 'd_project' })
+    const { repository, sink } = setup([{ id: 'd_project', text: serializeDiagram(first) }], {
+      kind: 'picked-folder',
+      name: 'docs',
+    })
+    repository.save({ ...first, viewport: { x: 5, y: 5, zoom: 2 }, rev: first.rev + 1 })
+    await repository.settled()
+    expect(sink.write).not.toHaveBeenCalled()
     repository.save({ ...first, name: 'Renamed' })
     await repository.settled()
     expect(sink.write).toHaveBeenCalledTimes(1)

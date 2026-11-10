@@ -72,6 +72,8 @@ function lastingContent(text: string): string {
  * Creates a repository that keeps every diagram in memory and writes changes through to a sink.
  *
  * Reads are synchronous. The id of a diagram is its file name, so a copied file never saves under the id inside it.
+ * A linked file and a file in a picked folder are project files: a save that changes only the viewport, the save
+ * counter, the time or measured sizes does not write them.
  */
 export function createCachedRepository(options: {
   location: StorageLocation
@@ -118,8 +120,8 @@ export function createCachedRepository(options: {
       const current = entries.get(diagram.id)
       const path = current?.meta.path
       entries.set(diagram.id, { text, meta: { ...diagramMeta(diagram), ...(path ? { path } : {}) } })
-      const unchanged =
-        path !== undefined && current !== undefined && lastingContent(current.text) === lastingContent(text)
+      const projectFile = path !== undefined || options.location.kind === 'picked-folder'
+      const unchanged = projectFile && current !== undefined && lastingContent(current.text) === lastingContent(text)
       track(diagram.id, unchanged ? Promise.resolve() : options.sink.write({ id: diagram.id, text }), 'save')
       return { ok: true }
     },

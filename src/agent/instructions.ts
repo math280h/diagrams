@@ -1,5 +1,5 @@
 /** The first part of the MCP server instructions. The server adds the list of skills after it. */
-export const AGENT_INSTRUCTIONS = `Diagrams draws software architecture diagrams and plays requests through them as animated flows. These tools change the diagrams in the open Diagrams desktop app. The user watches each change, and each call that changes a diagram is one undo step.
+export const AGENT_INSTRUCTIONS = `Diagrams draws software architecture diagrams and plays requests through them as animated flows. These tools change the diagrams in the open Diagrams app. The user watches each change, and each call that changes a diagram is one undo step.
 
 Work like this:
 1. Call get_editor_state to see what the user looks at. Otherwise call list_diagrams, or create_diagram for a new diagram.

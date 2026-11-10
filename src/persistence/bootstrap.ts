@@ -1,4 +1,6 @@
 import { desktopApi } from '@/desktop/bridge'
+import { followAgentSetting, restoreFolder } from '@/folder/folder-store'
+import { canOpenFolder } from '@/folder/support'
 import { startLibrary } from '@/store/library-store'
 import { setRepository } from './active-repository'
 import type { StoredFile } from '@/desktop/contract'
@@ -30,6 +32,12 @@ export async function bootstrapStorage() {
     desktop.on('files.changed', (change) => folderRepository.applyExternal(change))
     desktopRepository = folderRepository
     setRepository(folderRepository)
+  } else if (canOpenFolder()) {
+    const folder = await restoreFolder()
+    if (folder) {
+      setRepository(folder.repository)
+      followAgentSetting(folder)
+    }
   }
   watchSaveOutcomes()
   startLibrary()
