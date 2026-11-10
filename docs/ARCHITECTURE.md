@@ -1325,6 +1325,9 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
     reviewer can install the app from the installers of a pull request before the merge.
 - `.github/actions/playwright-chromium` caches Chromium by Playwright version. Linux still installs the system
   libraries, which a cache cannot hold.
+- `.github/actions/electron` caches the Electron downloads by Electron version and installs the binary, with three
+  tries. The `electron` package has no install script: it downloads the binary when a process first loads it, also in
+  the unit tests.
 - Playwright keeps a trace of each failed CI test (`trace: 'retain-on-failure'`); the failed job uploads it in
   `test-results`. No retries, so a test that fails only sometimes stays visible.
 - `.github/workflows/dependency-review.yml` compares the dependency graph of a pull request with its base. It fails
