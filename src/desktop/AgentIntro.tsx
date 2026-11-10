@@ -1,6 +1,12 @@
 import { Button } from '@/components/ui/button'
 import { IntroStrip } from '@/library/IntroStrip'
-import { hideAgentIntro, openConnectAgent, useAgentIntroVisible, useAgentProblem } from './agent-store'
+import {
+  hideAgentIntro,
+  openAgentProblem,
+  openConnectAgent,
+  useAgentIntroVisible,
+  useAgentProblem,
+} from './agent-store'
 import { isDesktop } from './bridge'
 import { DesktopDownloadLink } from './DesktopDownloadLink'
 
@@ -11,13 +17,16 @@ function DesktopAction() {
   return (
     <>
       {problem && (
-        <button
-          type="button"
-          onClick={openConnectAgent}
-          className="text-[13px] text-destructive underline decoration-destructive/40 underline-offset-4 hover:decoration-destructive"
-        >
-          Agents cannot connect: see why
-        </button>
+        <span className="flex flex-col text-[13px] leading-5">
+          <span className="text-destructive">Agents cannot connect</span>
+          <button
+            type="button"
+            onClick={openAgentProblem}
+            className="self-start text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            More details…
+          </button>
+        </span>
       )}
       <Button variant="secondary" onClick={openConnectAgent}>
         Connect an agent

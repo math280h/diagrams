@@ -1,40 +1,15 @@
-import { ArrowUpRight, Copy } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
+import { CommandBlock } from '@/components/CommandBlock'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { errorMessage } from '@/lib/error-message'
 import { relativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { changeAgentPort, resetAgentToken, useAgentHistory, useAgentStore } from './agent-store'
-import { desktopApi } from './bridge'
-import { BUG_REPORT_URL, CLAUDE_MARKETPLACE_NAME, CLAUDE_PLUGIN_NAME, CLAUDE_PLUGIN_TOKEN_KEY } from './constants'
-import type { AgentInfo, AppAbout } from './contract'
-import { problemDetails } from './problem-details'
-
-function copy(text: string) {
-  void navigator.clipboard.writeText(text).then(
-    () => toast.success('Copied'),
-    () => toast.error('Could not copy. Select the text and copy it.'),
-  )
-}
-
-function CommandBlock({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="space-y-1.5">
-      <p className="text-[13px] text-muted-foreground">{label}</p>
-      <div className="flex items-start gap-2 rounded-lg border bg-muted/40 py-2 pr-1.5 pl-3">
-        <code className="min-w-0 flex-1 font-mono text-xs leading-5 break-all whitespace-pre-wrap select-all [font-variant-ligatures:none]">
-          {value}
-        </code>
-        <Button variant="ghost" size="icon-xs" aria-label={`Copy: ${label}`} onClick={() => copy(value)}>
-          <Copy />
-        </Button>
-      </div>
-    </div>
-  )
-}
+import { isAgentProblem } from './agent-problem'
+import { openAgentProblem, resetAgentToken, useAgentHistory, useAgentStore } from './agent-store'
+import { CLAUDE_MARKETPLACE_NAME, CLAUDE_PLUGIN_NAME, CLAUDE_PLUGIN_TOKEN_KEY } from './constants'
+import type { AgentInfo } from './contract'
 
 function statusText(info: AgentInfo | null, lastCallAt: number | null) {
   if (!info || info.state === 'starting') return { tone: 'muted', text: 'Starting the agent server…' }
@@ -61,73 +36,6 @@ function Status({ info }: { info: AgentInfo | null }) {
         {text}
       </span>
     </p>
-  )
-}
-
-function useAppAbout() {
-  const [about, setAbout] = useState<AppAbout | null>(null)
-  useEffect(() => {
-    let current = true
-    void desktopApi()
-      ?.request('app.about', null)
-      .then(
-        (next) => {
-          if (current) setAbout(next)
-        },
-        () => undefined,
-      )
-    return () => {
-      current = false
-    }
-  }, [])
-  return about
-}
-
-function MovePort() {
-  const [moving, setMoving] = useState(false)
-  const move = () => {
-    setMoving(true)
-    void changeAgentPort()
-      .then((info) => {
-        if (info?.state === 'running') toast.success(`Agents now connect on port ${info.port}. Run the setup again.`)
-      })
-      .catch((error: unknown) => toast.error('Could not change the port', { description: errorMessage(error) }))
-      .finally(() => setMoving(false))
-  }
-  return (
-    <Button variant="secondary" size="sm" disabled={moving} onClick={move}>
-      Use another port
-    </Button>
-  )
-}
-
-function Problem({ info }: { info: AgentInfo }) {
-  const [detailsShown, setDetailsShown] = useState(false)
-  const about = useAppAbout()
-  const portTaken = info.state === 'port-in-use'
-  return (
-    <div className="space-y-3 text-[13px] text-muted-foreground">
-      <div className="flex flex-wrap items-center gap-2">
-        {portTaken && <MovePort />}
-        <Button variant="ghost" size="sm" aria-expanded={detailsShown} onClick={() => setDetailsShown(!detailsShown)}>
-          {detailsShown ? 'Hide details' : 'Show details'}
-        </Button>
-      </div>
-      {portTaken && <p>With another port, agents that you set up before need the setup again.</p>}
-      {detailsShown && (
-        <div className="space-y-2">
-          <CommandBlock label="Details for a bug report" value={problemDetails(info, about)} />
-          <a
-            href={BUG_REPORT_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 font-medium text-foreground hover:underline"
-          >
-            Report a problem <ArrowUpRight aria-hidden className="size-3.5" />
-          </a>
-        </div>
-      )}
-    </div>
   )
 }
 
@@ -214,7 +122,15 @@ export function ConnectAgentDialog() {
           </DialogDescription>
         </DialogHeader>
         <Status info={info} />
-        {(info?.state === 'port-in-use' || info?.state === 'failed') && <Problem info={info} />}
+        {isAgentProblem(info) && (
+          <button
+            type="button"
+            onClick={openAgentProblem}
+            className="-mt-2 self-start pl-3.5 text-[13px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            More details…
+          </button>
+        )}
         {info && (
           <Tabs defaultValue="plugin">
             <TabsList>
@@ -231,7 +147,10 @@ export function ConnectAgentDialog() {
         )}
         <div className="space-y-2 border-t pt-4 text-[13px] text-muted-foreground">
           <p>Set up one of the two, not both. With both, Claude Code connects to the app twice.</p>
-          <p>Anyone with the access token can read and change your diagrams. Keep it private.</p>
+          <p>
+            The app takes connections only from this computer. A program here with the access token can read and change
+            your diagrams, so keep the token private.
+          </p>
           <TokenReset />
         </div>
       </DialogContent>

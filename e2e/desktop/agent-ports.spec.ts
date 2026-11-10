@@ -97,20 +97,22 @@ test('waits for its kept port while another program uses it, and connects when i
   writeFileSync(path.join(dirs.userData, 'agent-port'), String(taken.port))
   const { app, window } = await launch(withoutFixedPort(appEnv))
   try {
-    await window.getByRole('button', { name: 'Agents cannot connect: see why' }).click()
-    const dialog = window.getByRole('dialog')
-    await expect(dialog).toContainText(`Another program uses port ${taken.port}`)
-    await expect(dialog.getByRole('button', { name: 'Use another port' })).toBeVisible()
-    await dialog.getByRole('button', { name: 'Show details' }).click()
-    const details = dialog.locator('code', { hasText: 'Agent server:' })
+    await expect(window.getByText('Agents cannot connect', { exact: true })).toBeVisible()
+    await window.getByRole('button', { name: 'More details…' }).click()
+    const problem = window.getByRole('dialog', { name: 'Agents cannot connect' })
+    await expect(problem).toContainText(`Another program uses port ${taken.port}`)
+    await expect(problem.getByRole('button', { name: 'Use another port' })).toBeVisible()
+    const details = problem.locator('code')
     await expect(details).toContainText(/^Diagrams \d+\.\d+\.\d+.*, (Windows|macOS|Linux) /)
     await expect(details).toContainText(`Agent server: port-in-use on port ${taken.port}`)
-    await expect(dialog.getByRole('link', { name: 'Report a problem' })).toHaveAttribute('href', BUG_REPORT_URL)
+    await expect(problem.getByRole('link', { name: 'Report a problem' })).toHaveAttribute('href', BUG_REPORT_URL)
 
     await taken.release()
-    await expect(dialog).toContainText(`Agents can connect at ${agentUrl(taken.port)}${AGENT_ENDPOINT}`, {
-      timeout: RETRY_WAIT_MS,
-    })
+    await expect(problem).toBeHidden({ timeout: RETRY_WAIT_MS })
+    await window.getByRole('banner').getByRole('button', { name: 'Connect an agent' }).click()
+    await expect(window.getByRole('dialog')).toContainText(
+      `Agents can connect at ${agentUrl(taken.port)}${AGENT_ENDPOINT}`,
+    )
     expect(keptPort(dirs.userData)).toBe(taken.port)
   } finally {
     await taken.release().catch(() => undefined)
@@ -125,15 +127,18 @@ test('moves to another port on request, and keeps it', async ({ appEnv, dirs }) 
   const { app, window } = await launch(withoutFixedPort(appEnv))
   try {
     await window.getByRole('banner').getByRole('button', { name: 'Connect an agent' }).click()
-    const dialog = window.getByRole('dialog')
-    await dialog.getByRole('button', { name: 'Use another port' }).click()
+    const setup = window.getByRole('dialog', { name: 'Connect an agent' })
+    await setup.getByRole('button', { name: 'More details…' }).click()
+    const problem = window.getByRole('dialog', { name: 'Agents cannot connect' })
+    await problem.getByRole('button', { name: 'Use another port' }).click()
     await expect(window.getByText(/Agents now connect on port \d+\. Run the setup again\./)).toBeVisible()
+    await expect(problem).toBeHidden()
 
     const moved = keptPort(dirs.userData)
     expect(moved).not.toBe(taken.port)
     expect(AGENT_PORTS).toContain(moved)
-    await expect(dialog).toContainText(`Agents can connect at ${agentUrl(moved)}${AGENT_ENDPOINT}`)
-    await expect(dialog.getByRole('button', { name: 'Use another port' })).toHaveCount(0)
+    await expect(setup).toContainText(`Agents can connect at ${agentUrl(moved)}${AGENT_ENDPOINT}`)
+    await expect(setup.getByRole('button', { name: 'More details…' })).toHaveCount(0)
     expect(await agentAnswers(dirs.userData)).toBe(true)
   } finally {
     await taken.release()
