@@ -8,6 +8,7 @@ import {
   forgetOpenedInApp,
   openInApp,
   retryOpenInApp,
+  useDesktopAppSeen,
   useHandoff,
   useOpenedInApp,
 } from './open-in-app'
@@ -66,6 +67,7 @@ beforeEach(() => {
   vi.spyOn(window, 'fetch').mockImplementation(fetchMock)
   closeOpenInApp()
   useOpenedInApp.setState({ opened: {} })
+  useDesktopAppSeen.setState({ seenAt: null })
 })
 
 afterEach(() => {
@@ -74,6 +76,7 @@ afterEach(() => {
   vi.restoreAllMocks()
   delete window.desktop
   localStorage.removeItem('dg:opened-in-app')
+  localStorage.removeItem('dg:desktop-app-seen')
 })
 
 describe('canOpenInApp', () => {
@@ -106,6 +109,7 @@ describe('openInApp', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(useHandoff.getState()).toEqual({ status: 'opened', name: 'Shop' })
     expect(useOpenedInApp.getState().opened).toEqual({ [diagram.id]: Date.now() })
+    expect(useDesktopAppSeen.getState().seenAt).toBe(Date.now())
 
     const [url, init] = fetchMock.mock.calls[1]!
     expect(url).toBe(`http://127.0.0.1:27419/handoff/${code}`)
@@ -210,7 +214,7 @@ describe('openInApp', () => {
     expect(useHandoff.getState()).toMatchObject({ status: 'opened', name: 'Second' })
   })
 
-  it('forgets that a diagram opened in the app', async () => {
+  it('forgets that a diagram opened in the app, but not that this browser used the app', async () => {
     answers = [{ status: 200, body: {} }]
     const diagram = shop()
     openInApp(() => diagram)
@@ -218,5 +222,14 @@ describe('openInApp', () => {
     expect(Object.keys(useOpenedInApp.getState().opened)).toEqual([diagram.id])
     forgetOpenedInApp(diagram.id)
     expect(useOpenedInApp.getState().opened).toEqual({})
+    expect(useDesktopAppSeen.getState().seenAt).toBe(Date.now())
+  })
+
+  it('does not count a handoff that the app did not take as a use of the app', async () => {
+    answers = [{ status: 403, body: { message: 'This website may not send diagrams.' } }]
+    openInApp(() => shop())
+    await settle()
+    expect(useHandoff.getState().status).toBe('failed')
+    expect(useDesktopAppSeen.getState().seenAt).toBeNull()
   })
 })

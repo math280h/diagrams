@@ -1,12 +1,14 @@
 import { useRouterState } from '@tanstack/react-router'
-import { ArrowUpRight, CircleCheck, TriangleAlert } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { AppWindow, ArrowUpRight, CircleCheck, TriangleAlert } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAgentHistory, useAgentStore } from '@/desktop/agent-store'
 import { CommandBlock } from '@/desktop/ConnectAgentDialog'
 import { DesktopDownloadLink } from '@/desktop/DesktopDownloadLink'
+import { OPEN_APP_LINK, useKnowsDesktopApp } from '@/desktop/open-in-app'
 import { relativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { repository } from '@/persistence/active-repository'
@@ -124,60 +126,90 @@ function Browsers({ or = false }: { or?: boolean }) {
   )
 }
 
-/** Says how well this browser supports a folder: fully in Chrome and Microsoft Edge, only to read elsewhere. */
-function BrowserSupportNote() {
-  const full = canOpenFolder()
-  const Icon = full ? CircleCheck : TriangleAlert
+function Note({ ok, title, children }: { ok: boolean; title: string; children: ReactNode }) {
+  const Icon = ok ? CircleCheck : TriangleAlert
   return (
     <div
       className={cn(
         'flex gap-3 rounded-lg border px-3.5 py-3 text-[13px] leading-5',
-        full ? 'border-ok/30 bg-ok/10' : 'border-warn/40 bg-warn/10',
+        ok ? 'border-ok/30 bg-ok/10' : 'border-warn/40 bg-warn/10',
       )}
     >
-      <Icon aria-hidden className={cn('mt-0.5 size-4 shrink-0', full ? 'text-ok' : 'text-warn')} />
+      <Icon aria-hidden className={cn('mt-0.5 size-4 shrink-0', ok ? 'text-ok' : 'text-warn')} />
       <div className="space-y-1">
-        <p className="font-medium text-foreground">
-          {full ? 'This browser supports folders' : 'Full folder support needs Chrome or Microsoft Edge'}
-        </p>
-        {full ? (
-          <p className="text-muted-foreground">
-            <Browsers /> let the website read and write a folder, so Claude Code gets all the tools.
-          </p>
-        ) : (
-          <p className="text-muted-foreground">
-            This browser only lets the website read a folder: it cannot save your changes there, and agents cannot use
-            the diagram tools. <Browsers /> can save and run agent tools. The desktop app can too, so you do not have to
-            change browsers.{' '}
-            <a
-              href={MOZILLA_POSITION_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-0.5 font-medium text-foreground hover:underline"
-            >
-              Why not in Firefox <ArrowUpRight aria-hidden className="size-3.5" />
-            </a>
-          </p>
-        )}
+        <p className="font-medium text-foreground">{title}</p>
+        <p className="text-muted-foreground">{children}</p>
       </div>
     </div>
   )
 }
 
+/** Says how well this browser supports a folder: fully in Chrome and Microsoft Edge, only to read elsewhere. */
+function BrowserSupportNote() {
+  if (canOpenFolder()) {
+    return (
+      <Note ok title="This browser supports folders">
+        <Browsers /> let the website read and write a folder, so Claude Code gets all the tools.
+      </Note>
+    )
+  }
+  return (
+    <Note ok={false} title="Full folder support needs Chrome or Microsoft Edge">
+      This browser only lets the website read a folder: it cannot save your changes there, and agents cannot use the
+      diagram tools. <Browsers /> can save and run agent tools. The desktop app can too, so you do not have to change
+      browsers.{' '}
+      <a
+        href={MOZILLA_POSITION_URL}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex items-center gap-0.5 font-medium text-foreground hover:underline"
+      >
+        Why not in Firefox <ArrowUpRight aria-hidden className="size-3.5" />
+      </a>
+    </Note>
+  )
+}
+
+const CONNECT_IN_APP =
+  'In the app, choose Connect an agent. It gives the commands for the Claude Code plugin, or for any MCP client.'
+
 function DesktopSteps() {
+  const knownApp = useKnowsDesktopApp()
   return (
     <div className="space-y-3 text-[13px] leading-5 text-muted-foreground">
       <p>
         The desktop app keeps the diagrams as files on your computer and runs an MCP server. Claude Code, Claude Desktop
         and other MCP clients connect to it with all the tools and skills, and no browser tab has to stay open.
       </p>
-      <p>1. Install the desktop app. This needs an install: where you cannot install anything, use a folder here.</p>
-      <div className="flex flex-wrap items-center gap-3">
-        <DesktopDownloadLink variant="secondary" allDownloads />
-      </div>
-      <p>
-        2. In the app, choose Connect an agent. It gives the commands for the Claude Code plugin, or for any MCP client.
-      </p>
+      {knownApp ? (
+        <>
+          <Note ok title="You have used the desktop app from this browser">
+            {CONNECT_IN_APP}
+          </Note>
+          <div className="flex flex-wrap items-center gap-3">
+            <a href={OPEN_APP_LINK} className={buttonVariants({ variant: 'secondary' })}>
+              <AppWindow /> Open the desktop app
+            </a>
+            <DesktopDownloadLink variant="ghost" />
+          </div>
+        </>
+      ) : (
+        <>
+          <p>
+            1. Install the desktop app. This needs an install: where you cannot install anything, use a folder here.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <DesktopDownloadLink variant="secondary" allDownloads />
+          </div>
+          <p>2. {CONNECT_IN_APP}</p>
+          <p>
+            Already installed?{' '}
+            <a href={OPEN_APP_LINK} className="font-medium text-foreground hover:underline">
+              Open the desktop app
+            </a>
+          </p>
+        </>
+      )}
     </div>
   )
 }

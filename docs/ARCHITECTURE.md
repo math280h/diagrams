@@ -1262,6 +1262,9 @@ with snapdom, because Chromium gives only pixels.
 website then posts the diagram to the loopback server, with retries for 15 seconds. Chrome asks once before a website
 reaches local devices.
 
+A website cannot ask whether an app is installed. After the app takes a diagram, the website records it
+(`dg:desktop-app-seen`) and then offers to open the app before the download.
+
 The agent card and "Open in desktop app" show only on a computer. `deviceKind` (`src/lib/device.ts`) returns
 `computer`, `tablet` or `phone`:
 

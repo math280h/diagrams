@@ -30,6 +30,9 @@ function newHandoffCode(): string {
     .replace(/=+$/, '')
 }
 
+/** The deep link that starts the desktop app, or brings its window to the front, without a diagram. */
+export const OPEN_APP_LINK = `${DEEP_LINK_SCHEME}://open`
+
 /** Opens the deep link that starts the desktop app. Call it inside a click handler. */
 function launchDeepLink(code: string) {
   const link = document.createElement('a')
@@ -90,6 +93,25 @@ export function forgetOpenedInApp(id: string) {
   useOpenedInApp.setState({ opened: rest })
 }
 
+interface DesktopAppSeen {
+  /** The last time that the desktop app took a diagram from this browser, in milliseconds since the epoch, or `null`. */
+  seenAt: number | null
+}
+
+export const useDesktopAppSeen = create<DesktopAppSeen>()(
+  persist((): DesktopAppSeen => ({ seenAt: null }), {
+    name: 'dg:desktop-app-seen',
+    storage: createJSONStorage(() => localStorage),
+  }),
+)
+
+/** Returns true if the desktop app took a diagram from this browser before. The app is then probably on this computer. */
+export function useKnowsDesktopApp() {
+  const seen = useDesktopAppSeen((state) => state.seenAt !== null)
+  const opened = useOpenedInApp((state) => Object.keys(state.opened).length > 0)
+  return seen || opened
+}
+
 type HandoffState =
   | { status: 'idle' }
   | { status: 'opening'; name: string }
@@ -120,6 +142,7 @@ export function openInApp(getDiagram: () => Diagram) {
     if (result.ok) {
       lastRequest = null
       useOpenedInApp.setState((state) => ({ opened: { ...state.opened, [diagram.id]: Date.now() } }))
+      useDesktopAppSeen.setState({ seenAt: Date.now() })
       useHandoff.setState({ status: 'opened', name: diagram.name }, true)
     } else {
       useHandoff.setState(

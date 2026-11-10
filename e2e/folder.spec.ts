@@ -84,6 +84,28 @@ test('copies the open diagram into a folder from the agent button of the editor'
   expect(await readFile(page, `${id}.diagram.json`)).toContain('"name": "Order system"')
 })
 
+test('offers to open the desktop app after this browser used it, and the install steps before', async ({ page }) => {
+  const desktopTab = async () => {
+    await page.getByRole('button', { name: 'a folder of your project' }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByRole('tab', { name: 'Desktop app' }).click()
+    return dialog
+  }
+  await page.goto('/')
+  let dialog = await desktopTab()
+  await expect(dialog.getByText('1. Install the desktop app.')).toBeVisible()
+  await expect(dialog.getByRole('link', { name: 'Open the desktop app' })).toHaveAttribute('href', 'diagrams://open')
+
+  await page.evaluate(() =>
+    localStorage.setItem('dg:desktop-app-seen', JSON.stringify({ state: { seenAt: Date.now() }, version: 0 })),
+  )
+  await page.reload()
+  dialog = await desktopTab()
+  await expect(dialog.getByText('You have used the desktop app from this browser')).toBeVisible()
+  await expect(dialog.getByText('1. Install the desktop app.')).toHaveCount(0)
+  await expect(dialog.getByRole('link', { name: 'Open the desktop app' })).toHaveAttribute('href', 'diagrams://open')
+})
+
 test('lets an agent call the tools and read the checks through the agent folder', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'a folder of your project' }).click()
