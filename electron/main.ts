@@ -21,6 +21,8 @@ import { createAgentServer, startAgentServer } from './agent/server'
 import { buildInstructions, bundledPluginConfig, bundledSkillFiles, loadSkills, registerSkills } from './agent/skills'
 import { createToken, loadToken } from './agent/token'
 import { registerAppScheme, serveRenderer } from './app-protocol'
+import { APP_SETTINGS_FILE, createAppSettings, publicSettings } from './app-settings'
+import { createBackground } from './background'
 import { findDeepLink, parseReceiveLink } from './deep-link'
 import { createCaptureService } from './capture'
 import { registerIpc } from './ipc'
@@ -124,6 +126,19 @@ async function start() {
   if (windowHidden) app.dock?.hide()
   else if (icon && process.platform === 'darwin') app.dock?.setIcon(icon)
   const userData = app.getPath('userData')
+  const settings = createAppSettings(path.join(userData, APP_SETTINGS_FILE))
+  const background =
+    process.platform === 'darwin' || windowHidden
+      ? null
+      : createBackground({ open: () => focusWindow(), quit: () => app.quit() })
+  background?.follow(settings.get().keepRunning)
+  app.on('window-all-closed', () => {
+    if (!settings.get().keepRunning) {
+      app.quit()
+      return
+    }
+    if (!settings.get().backgroundNoticeShown && background?.notify()) settings.update({ backgroundNoticeShown: true })
+  })
   const port = agentPort()
   const files = createDiagramFiles(diagramsFolder(), { trash: (file) => shell.trashItem(file) })
   const rpc = createRendererRpc()
@@ -239,6 +254,15 @@ async function start() {
         setTitleBarColors(colors)
         return null
       },
+      'app.settings': async () => publicSettings(settings.get()),
+      'app.setKeepRunning': async ({ keepRunning }) => {
+        background?.follow(keepRunning)
+        return publicSettings(settings.update({ keepRunning }))
+      },
+      'app.quit': async () => {
+        setImmediate(() => app.quit())
+        return null
+      },
       'layout.graphviz': layoutGraphviz,
       'update.info': async () => updates.info(),
       'update.check': () => updates.check(),
@@ -324,9 +348,6 @@ if (renderArgs === 'invalid') {
   app.on('open-url', (event, url) => {
     event.preventDefault()
     openLink(url)
-  })
-  app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit()
   })
   app.on('activate', () => {
     if (ready && !currentWindow()) createMainWindow()

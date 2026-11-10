@@ -1,14 +1,18 @@
 import { Copy } from 'lucide-react'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { relativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { resetAgentToken, useAgentHistory, useAgentStore } from './agent-store'
+import { setKeepRunning, useAppSettings } from './app-settings'
+import { desktopApi } from './bridge'
 import { CLAUDE_MARKETPLACE_NAME, CLAUDE_PLUGIN_NAME, CLAUDE_PLUGIN_TOKEN_KEY } from './constants'
 import type { AgentInfo } from './contract'
+import { KEEP_RUNNING_LABEL, quitHint } from './keep-running'
 
 function copy(text: string) {
   void navigator.clipboard.writeText(text).then(
@@ -129,6 +133,28 @@ function TokenReset() {
   )
 }
 
+function KeepRunning() {
+  const settings = useAppSettings((state) => state.settings)
+  const hintId = useId()
+  if (!settings) return null
+  return (
+    <div className="flex items-start justify-between gap-4 border-t pt-4 text-[13px]">
+      <div className="space-y-0.5">
+        <p className="font-medium text-foreground">{KEEP_RUNNING_LABEL}</p>
+        <p id={hintId} className="leading-5 text-muted-foreground">
+          Agents can connect while the window is closed. {quitHint(desktopApi()?.platform ?? '')}
+        </p>
+      </div>
+      <Switch
+        aria-label={KEEP_RUNNING_LABEL}
+        aria-describedby={hintId}
+        checked={settings.keepRunning}
+        onCheckedChange={(checked) => void setKeepRunning(checked)}
+      />
+    </div>
+  )
+}
+
 /** Shows how to connect Claude Code or another MCP client to this app. */
 export function ConnectAgentDialog() {
   const { info, dialogOpen } = useAgentStore()
@@ -158,6 +184,7 @@ export function ConnectAgentDialog() {
             </TabsContent>
           </Tabs>
         )}
+        <KeepRunning />
         <div className="space-y-2 border-t pt-4 text-[13px] text-muted-foreground">
           <p>Set up one of the two, not both. With both, Claude Code connects to the app twice.</p>
           <p>Anyone with the access token can read and change your diagrams. Keep it private.</p>

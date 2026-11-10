@@ -28,6 +28,7 @@ import {
   Moon,
   Pin,
   Play,
+  Power,
   Redo2,
   RefreshCw,
   ShieldAlert,
@@ -38,6 +39,7 @@ import {
 } from 'lucide-react'
 import { Icon } from '@/canvas/icon'
 import { openConnectAgent } from '@/desktop/agent-store'
+import { quitApp } from '@/desktop/app-settings'
 import { isDesktop } from '@/desktop/bridge'
 import { checkForUpdates } from '@/desktop/updates'
 import {
@@ -281,6 +283,9 @@ export function CommandMenu() {
               </CommandItem>
               <CommandItem onSelect={run(() => void checkForUpdates())}>
                 <RefreshCw /> Check for updates
+              </CommandItem>
+              <CommandItem onSelect={run(quitApp)}>
+                <Power /> Quit Diagrams
               </CommandItem>
             </>
           )}

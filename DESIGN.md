@@ -537,6 +537,8 @@ App mark: text-colour square, 6px corners; right-angled rounded ground-colour wi
     15px names at 80% text colour, muted plus. Selected: 13px muted one-line summary below, plus becomes cross; only
     that column grows. Three columns from 1024px, two from 768px, else one.
 - **Dialogs:** popover fill, 12px corners, 16px padding, 1px ring at 10% text colour.
+  - Desktop "Connect an agent": after the setup tabs, a hairline and the row "Keep running when the window closes":
+    13px medium title, 13px muted line on agents and how to quit, switch right.
 
 ### Navigation
 

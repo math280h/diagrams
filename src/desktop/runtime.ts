@@ -7,6 +7,7 @@ import { untilStored } from '@/persistence/until-stored'
 import { router } from '@/router'
 import { flushPendingSave } from '@/store/document'
 import { recordAgentCall, watchAgentInfo } from './agent-store'
+import { loadAppSettings } from './app-settings'
 import { serveMainRequests } from './serve'
 import { watchUpdates } from './updates'
 
@@ -21,6 +22,7 @@ const ONLY_IN_CAPTURE_WINDOW = 'Only the capture window renders export stages.'
 export function startDesktopRuntime(storageError: string | null = null) {
   watchAgentInfo()
   watchUpdates()
+  loadAppSettings()
   const unavailable = `The app could not open the diagrams folder: ${storageError}`
   return serveMainRequests({
     'agent.call': async ({ tool, args }, signal) => {

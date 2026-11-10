@@ -1066,7 +1066,22 @@ with snapdom, because Chromium gives only pixels.
 - On close, the window saves the open diagram and waits for queued writes. A crashed renderer delays the close by at
   most 3 seconds (the save limit includes the renderer start).
 - Electron cancels a quit when a window prevents its close, so the window quits again after the save. The agent server
-  and folder watcher stop on `will-quit`; on macOS they continue after a window closes without a quit.
+  and folder watcher stop on `will-quit`.
+
+### Running without a window
+
+- With "Keep running when the window closes" (on by default), the app, the agent server and the folder watchers
+  continue after the window closes. Agents can then connect without an open window.
+- An agent call without a window opens a new window, because the tools run in the renderer. A second app start or a
+  deep link also opens it.
+- Windows and Linux: a tray icon with "Open Diagrams" and "Quit Diagrams" (`electron/background.ts`). The first close
+  shows a notice that the app still runs and how to quit it: a tray balloon on Windows, a system notification on Linux.
+  Some Linux desktops show no tray icon. There, the user turns the setting off and closes the window.
+- macOS: the Dock keeps the app, as for other macOS apps. There is no tray icon and no notice.
+- With the setting off, the app quits when the last window closes, on each platform.
+- The main process keeps the setting in `app-settings.json` in the user data folder, because it decides on
+  `window-all-closed` without a renderer. The setting is in "Connect an agent"; the command menu has "Quit Diagrams".
+- End-to-end tests (`DIAGRAMS_HIDE_WINDOW`) get no tray icon and no notice.
 
 ### Agent tools
 

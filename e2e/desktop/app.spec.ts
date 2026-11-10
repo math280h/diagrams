@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client'
-import { _electron as electron } from '@playwright/test'
+import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { IPC_CHANNELS } from '@/desktop/contract'
 import { AGENT_ENDPOINT } from '@/desktop/constants'
 import { copyTemplate } from '../helpers'
@@ -43,7 +43,19 @@ test('shows a diagram file that another program adds to the folder', async ({ wi
   expect(readdirSync(dirs.data).filter((name) => name.endsWith('.diagram.json'))).toHaveLength(1)
 })
 
-test('quits through the app quit command after it writes the last change', async ({ appEnv, dirs }) => {
+function untilExit(app: ElectronApplication) {
+  const exited = new Promise<void>((resolve) => app.process().once('exit', () => resolve()))
+  return Promise.race([
+    exited,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('The app did not quit.')), 15_000)),
+  ])
+}
+
+async function closeWindow(app: ElectronApplication, window: Page) {
+  await (await app.browserWindow(window)).evaluate((browserWindow) => browserWindow.close())
+}
+
+test('quits from the command menu after it writes the last change', async ({ appEnv, dirs }) => {
   const app = await electron.launch({ args: ['.'], env: appEnv })
   const window = await app.firstWindow()
   await window.getByRole('button', { name: 'New diagram' }).click()
@@ -54,13 +66,44 @@ test('quits through the app quit command after it writes the last change', async
 
   await window.getByLabel('Diagram name').fill('Written before the quit')
   await window.getByLabel('Diagram name').press('Enter')
-  const exited = new Promise<void>((resolve) => app.process().once('exit', () => resolve()))
-  await app.evaluate(({ app: electronApp }) => electronApp.quit())
-  await Promise.race([
-    exited,
-    new Promise((_, reject) => setTimeout(() => reject(new Error('The app did not quit.')), 15_000)),
-  ])
+  const exit = untilExit(app)
+  await window.keyboard.press('Control+k')
+  await window.getByPlaceholder('Search for an action').fill('quit')
+  await window.getByRole('option', { name: 'Quit Diagrams' }).click()
+  await exit
   expect(JSON.parse(readFileSync(file, 'utf8')).name).toBe('Written before the quit')
+})
+
+test('keeps the agent server after the window closes, and opens a window for the next agent call', async ({
+  app,
+  window,
+  mcp,
+}) => {
+  const closed = window.waitForEvent('close')
+  await closeWindow(app, window)
+  await closed
+  expect(app.process().exitCode).toBeNull()
+
+  const reopened = app.waitForEvent('window')
+  const { json } = await callTool(mcp, 'list_diagrams')
+  expect(json).toHaveProperty('diagrams')
+  await reopened
+})
+
+test('quits when the window closes after the user turns off keep running', async ({ appEnv, dirs }) => {
+  const app = await electron.launch({ args: ['.'], env: appEnv })
+  const window = await app.firstWindow()
+  await window.getByRole('banner').getByRole('button', { name: 'Connect an agent' }).click()
+  const keepRunning = window.getByRole('switch', { name: 'Keep running when the window closes' })
+  await expect(keepRunning).toBeChecked()
+  await keepRunning.click()
+  await expect(keepRunning).not.toBeChecked()
+  const settings = path.join(dirs.userData, 'app-settings.json')
+  expect(JSON.parse(readFileSync(settings, 'utf8'))).toMatchObject({ keepRunning: false })
+
+  const exit = untilExit(app)
+  await closeWindow(app, window)
+  await exit
 })
 
 test('explains a diagrams folder that it cannot open, and answers agents at once', async ({
