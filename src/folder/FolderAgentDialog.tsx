@@ -299,6 +299,8 @@ function FolderSteps() {
  */
 export function FolderAgentDialog() {
   const dialogOpen = useAgentStore((state) => state.dialogOpen)
+  const knownApp = useKnowsDesktopApp()
+  const folderInUse = useFolderStore((state) => state.status === 'open' || state.status === 'following')
   return (
     <Dialog open={dialogOpen} onOpenChange={(open) => useAgentStore.setState({ dialogOpen: open })}>
       <DialogContent className="sm:max-w-xl">
@@ -309,7 +311,7 @@ export function FolderAgentDialog() {
             diagrams that it reads to its model provider, like the rest of your chat with it.
           </DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="folder">
+        <Tabs defaultValue={knownApp && !folderInUse ? 'desktop' : 'folder'}>
           <TabsList>
             <TabsTrigger value="folder">In this browser</TabsTrigger>
             <TabsTrigger value="desktop">Desktop app</TabsTrigger>

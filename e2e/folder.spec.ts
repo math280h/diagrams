@@ -86,12 +86,13 @@ test('copies the open diagram into a folder from the agent button of the editor'
   expect(await readFile(page, `${id}.diagram.json`)).toContain('"name": "Order system"')
 })
 
-test('finds a running desktop app, remembers it, and shows the install steps before', async ({ page }) => {
+test('finds a running desktop app, then opens on its tab, with the install steps before', async ({ page }) => {
   const APP = 'http://127.0.0.1:27419/**'
   const appChecks: string[] = []
   const desktopTab = async () => {
     await page.getByRole('button', { name: 'a folder of your project' }).click()
     const dialog = page.getByRole('dialog')
+    await expect(dialog.getByRole('tab', { name: 'In this browser' })).toHaveAttribute('aria-selected', 'true')
     expect(appChecks).toHaveLength(0)
     await dialog.getByRole('tab', { name: 'Desktop app' }).click()
     return dialog
@@ -125,8 +126,9 @@ test('finds a running desktop app, remembers it, and shows the install steps bef
   await page.unroute(APP)
   await page.route(APP, (route) => route.abort())
   await page.reload()
-  appChecks.length = 0
-  dialog = await desktopTab()
+  await page.getByRole('button', { name: 'a folder of your project' }).click()
+  dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('tab', { name: 'Desktop app' })).toHaveAttribute('aria-selected', 'true')
   await expect(dialog.getByText('You have used the desktop app from this browser')).toBeVisible()
 })
 
