@@ -453,7 +453,12 @@ export function FlowPanel() {
                 <Plus /> Add selected
               </Button>
             )}
-            <Segmented value={view} onChange={(flowView) => setUi({ flowView })} options={[...VIEWS]} />
+            <Segmented
+              value={view}
+              onChange={(flowView) => setUi({ flowView })}
+              options={[...VIEWS]}
+              className="w-auto"
+            />
           </>
         )}
         <Button

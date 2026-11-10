@@ -49,6 +49,15 @@ test('moves the view switch and recording into a menu when the flow toolbar is n
   await expect(page.getByText('Click the nodes in the order the flow reaches them', { exact: false })).toBeVisible()
 })
 
+test('keeps the whole flow toolbar in view on a wide screen', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/')
+  await copyTemplate(page, 'Order system')
+  await page.getByRole('button', { name: 'Flows' }).click()
+  await expect(page.getByRole('button', { name: 'Timeline', exact: true })).toBeInViewport({ ratio: 1 })
+  await expect(page.getByRole('button', { name: 'Close flows' })).toBeInViewport({ ratio: 1 })
+})
+
 test('keeps the name, Present and Export in the top bar on a phone, with the rest in a menu', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
