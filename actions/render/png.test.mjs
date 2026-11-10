@@ -166,6 +166,33 @@ describe('changed regions', () => {
     expect(changedRegions(base, canvas(400, 340))).toEqual(both([]))
   })
 
+  const text = (image, x, y, letters) =>
+    [...letters].reduce((drawn, letter, index) => {
+      const stem = paint(drawn, { x: x + index * 7, y, width: 1, height: 7 })
+      return paint(stem, { x: x + index * 7, y: y + (letter.charCodeAt(0) % 7), width: 5, height: 1 })
+    }, image)
+  const page = ({ movedPx, bandMovedPx, added = '' }) =>
+    [
+      [10, 10 + movedPx, 'title of the page'],
+      [10, 40 + bandMovedPx, `left caption${added}`],
+      [170, 40 + movedPx, 'right caption'],
+      [10, 80 + movedPx, 'footer of the page'],
+    ].reduce((image, [x, y, letters]) => text(image, x, y, letters), canvas(320, 120 + movedPx))
+
+  it('leaves out a band of text that moved 1 pixel more or less than the content around it', () => {
+    const before = page({ movedPx: 0, bandMovedPx: 0 })
+    expect(changedRegions(before, page({ movedPx: 19, bandMovedPx: 18 }))).toEqual(both([]))
+    expect(changedRegions(before, page({ movedPx: 19, bandMovedPx: 20 }))).toEqual(both([]))
+  })
+
+  it('marks a change in a band of text that moved 1 pixel less than the content around it', () => {
+    const before = page({ movedPx: 0, bandMovedPx: 0 })
+    expect(changedRegions(before, page({ movedPx: 19, bandMovedPx: 18, added: ' and more' }))).toEqual({
+      before: [{ x: 80, y: 32, width: 80, height: 16 }],
+      after: [{ x: 80, y: 48, width: 80, height: 32 }],
+    })
+  })
+
   it('merges the nearest regions until no more than the limit are left', () => {
     let changed = base
     for (const x of [16, 112, 208, 304]) changed = paint(changed, { x, y: 16, width: 8, height: 8 })

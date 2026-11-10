@@ -137,6 +137,18 @@ function samePixel(a, ax, ay, b, bx, by, tolerance) {
   return true
 }
 
+/** Returns true if a pixel of `other` at most 1 column from `x` and 1 row from one of `rows` has the same colour. */
+function matchesNear(image, x, y, other, rows, tolerance) {
+  for (const aligned of rows) {
+    for (let row = Math.max(0, aligned - 1); row <= Math.min(other.height - 1, aligned + 1); row++) {
+      for (let column = Math.max(0, x - 1); column <= x + 1; column++) {
+        if (samePixel(image, x, y, other, column, row, tolerance)) return true
+      }
+    }
+  }
+  return false
+}
+
 // FNV-1a over the pixels of each row, with each channel cut to 16 levels.
 function rowHashes(image) {
   const hashes = new Uint32Array(image.height)
@@ -273,13 +285,25 @@ function cellGroups(grid, gapPx) {
 }
 
 /**
- * Adds the changed pixels of a run of unpaired rows to the grid of each image. Rows that both images have in the run
- * are compared pixel by pixel. Rows that only one image has count where they differ from their first pixel, the
- * background. A change on one side only gives the other side a rectangle without height where the change would be.
+ * Returns the two rows of the other image that align with a row in a run of unpaired rows. The first is at the same
+ * distance from the paired row above the run, the second from the paired row below it. Both stay between these paired
+ * rows.
+ */
+function alignedRows(y, start, end, otherStart, otherEnd) {
+  return [Math.min(otherStart + y - start, otherEnd), Math.max(otherEnd - (end - y), otherStart - 1)]
+}
+
+/**
+ * Adds the changed pixels of a run of unpaired rows to the grid of each image. A pixel is changed if no pixel of the
+ * other image at most 1 row and 1 column from an aligned place has its colour. Rows that both images have in the run
+ * count on both images where one of them changed. A change on one side only gives the other side a rectangle without
+ * height where the change would be.
  */
 function addRun(a, b, run, grids, markers, tolerance) {
   const paired = Math.min(run.a1 - run.a0, run.b1 - run.b0)
   const width = Math.max(a.width, b.width)
+  const inA = (y) => alignedRows(y, run.b0, run.b1, run.a0, run.a1)
+  const inB = (y) => alignedRows(y, run.a0, run.a1, run.b0, run.b1)
   const counted = { before: 0, after: 0 }
   const columns = { before: [Infinity, -1], after: [Infinity, -1] }
   const add = (side, image, x, y) => {
@@ -289,17 +313,23 @@ function addRun(a, b, run, grids, markers, tolerance) {
     columns[side] = [Math.min(columns[side][0], x), Math.max(columns[side][1], x)]
   }
   for (let row = 0; row < paired; row++) {
+    const ya = run.a0 + row
+    const yb = run.b0 + row
+    const rowsInA = inA(yb)
+    const rowsInB = inB(ya)
     for (let x = 0; x < width; x++) {
-      if (samePixel(a, x, run.a0 + row, b, x, run.b0 + row, tolerance)) continue
-      add('before', a, x, run.a0 + row)
-      add('after', b, x, run.b0 + row)
+      if (matchesNear(a, x, ya, b, rowsInB, tolerance) && matchesNear(b, x, yb, a, rowsInA, tolerance)) continue
+      add('before', a, x, ya)
+      add('after', b, x, yb)
     }
   }
   for (let y = run.a0 + paired; y < run.a1; y++) {
-    for (let x = 1; x < a.width; x++) if (!samePixel(a, x, y, a, 0, y, tolerance)) add('before', a, x, y)
+    const rows = inB(y)
+    for (let x = 0; x < a.width; x++) if (!matchesNear(a, x, y, b, rows, tolerance)) add('before', a, x, y)
   }
   for (let y = run.b0 + paired; y < run.b1; y++) {
-    for (let x = 1; x < b.width; x++) if (!samePixel(b, x, y, b, 0, y, tolerance)) add('after', b, x, y)
+    const rows = inA(y)
+    for (let x = 0; x < b.width; x++) if (!matchesNear(b, x, y, a, rows, tolerance)) add('after', b, x, y)
   }
   const marker = (side, y) => {
     const [left, right] = columns[side]
@@ -366,8 +396,9 @@ function mergeRegions(found, { gapPx, strayPixels, maxRegions }) {
  * Returns the rectangles around the parts of two decoded images that changed, on each image.
  *
  * The rows of the images are paired first, as a line diff pairs the lines of two texts, so that content that only
- * moved up or down does not count as changed. A rectangle without height marks the place of a change that only the
- * other image has.
+ * moved up or down does not count as changed. A pixel counts as changed only if the other image has no pixel of the
+ * same colour at most 1 pixel from its place. Content that moved 1 pixel more or less than the content around it does
+ * not count either. A rectangle without height marks the place of a change that only the other image has.
  *
  * @param tolerance - The largest channel difference, from 0 to 255, that counts as the same.
  * @param cellPx - The side of the squares that the changed pixels are grouped in.
