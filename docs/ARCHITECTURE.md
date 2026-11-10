@@ -1257,8 +1257,9 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
 - `base-root`: the base app renders the files at the same paths in that folder. Files on one side only show as new or
   removed. An app refuses a newer format, so without this input a format change gets no old images.
 - `.github/workflows/display-previews.yml` runs the action for a pull request from this repository that changes drawing
-  code, templates or dependencies. It builds the app of both commits. `scripts/template-files.mjs` of each commit writes
-  each template as a dark and a light diagram file in `.diagram-previews/` and `base/.diagram-previews/`. Template
+  code, templates or dependencies. It builds the app of both commits. The base commit is the first parent of the merge
+  commit, not `pull_request.base.sha`, which stays old when `main` moves. `scripts/template-files.mjs` of each commit
+  writes each template as a dark and a light diagram file in `.diagram-previews/` and `base/.diagram-previews/`. Template
   changes then show. A template gets new random ids at each build, so the script numbers the ids in order. Particle
   times depend on a hash of the edge id, so the script sets the times to 0.
 - App screens show what an export does not draw. `scripts/app-screens.mjs` of each commit serves its web build and
