@@ -131,6 +131,8 @@ export interface RendererRequests {
   'agent.call': { input: { tool: string; args: unknown }; output: ToolOutcome }
   'handoff.open': { input: { text: string }; output: { diagramId: string; name: string } }
   'app.flush': { input: null; output: null }
+  /** Opens the "Connect an agent" dialog. */
+  'app.connectAgent': { input: null; output: null }
   /** Renders a diagram file and returns the image or the video as base64. */
   'render.file': { input: RenderRequest; output: { data: string } }
   /** Mounts an export stage in the capture window. Below 1, `viewportScale` scales its size and viewport. */

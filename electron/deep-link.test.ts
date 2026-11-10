@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findDeepLink, parseReceiveLink } from './deep-link'
+import { findDeepLink, isConnectAgentLink, parseReceiveLink } from './deep-link'
 
 describe('deep links', () => {
   const code = 'c'.repeat(43)
@@ -18,5 +18,14 @@ describe('deep links', () => {
     expect(parseReceiveLink('diagrams://receive?code=short')).toBeNull()
     expect(parseReceiveLink(`https://receive?code=${code}`)).toBeNull()
     expect(parseReceiveLink('not a url')).toBeNull()
+  })
+
+  it('knows the link that opens the agent setup', () => {
+    expect(isConnectAgentLink('diagrams://connect-agent')).toBe(true)
+    expect(isConnectAgentLink('diagrams://connect-agent/')).toBe(true)
+    expect(isConnectAgentLink('diagrams://open')).toBe(false)
+    expect(isConnectAgentLink(`diagrams://receive?code=${code}`)).toBe(false)
+    expect(isConnectAgentLink('https://connect-agent')).toBe(false)
+    expect(isConnectAgentLink('not a url')).toBe(false)
   })
 })

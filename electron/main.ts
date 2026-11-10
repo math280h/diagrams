@@ -23,7 +23,7 @@ import { createToken, loadToken } from './agent/token'
 import { registerAppScheme, serveRenderer } from './app-protocol'
 import { APP_SETTINGS_FILE, createAppSettings, publicSettings } from './app-settings'
 import { createBackground } from './background'
-import { findDeepLink, parseReceiveLink } from './deep-link'
+import { findDeepLink, isConnectAgentLink, parseReceiveLink } from './deep-link'
 import { createCaptureService } from './capture'
 import { registerIpc } from './ipc'
 import { configurePaths, diagramsFolder, iconPath, rendererFolder } from './paths'
@@ -51,6 +51,7 @@ const FLUSH_TIMEOUT_MS = 3000
 /** The time limit of an agent call in the main process. */
 const AGENT_CALL_LIMIT_MS = 10 * 60_000
 const HANDOFF_OPEN_TIMEOUT_MS = 20_000
+const AGENT_SETUP_OPEN_TIMEOUT_MS = 20_000
 const ALLOWED_PERMISSIONS: ReadonlySet<string> = new Set(['clipboard-sanitized-write', 'fullscreen'])
 
 configurePaths()
@@ -59,6 +60,7 @@ registerAppScheme()
 const codes = createHandoffCodes({ ttlMs: HANDOFF_TTL_MS })
 const pendingLinks: string[] = []
 let ready = false
+let openAgentSetup: () => void = () => undefined
 
 function agentPort() {
   const port = Number(process.env.DIAGRAMS_AGENT_PORT ?? AGENT_PORT)
@@ -90,6 +92,7 @@ function openLink(url: string | null) {
   const code = parseReceiveLink(url)
   if (code) codes.add(code)
   focusWindow()
+  if (isConnectAgentLink(url)) openAgentSetup()
 }
 
 function readText(file: string): string | null {
@@ -140,6 +143,9 @@ async function start() {
   const port = agentPort()
   const files = createDiagramFiles(diagramsFolder(), { trash: (file) => shell.trashItem(file) })
   const rpc = createRendererRpc()
+  openAgentSetup = () => {
+    void rpc.call('app.connectAgent', null, { timeoutMs: AGENT_SETUP_OPEN_TIMEOUT_MS }).catch(() => undefined)
+  }
   const watcher = watchDiagramFolder(files, (change) => rpc.emit('files.changed', change))
   const linked = createLinkedFiles(path.join(userData, 'linked-files.json'))
   const linkedWatcher = watchLinkedFiles(linked, (change) => rpc.emit('files.changed', change))

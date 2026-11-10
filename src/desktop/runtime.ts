@@ -6,7 +6,7 @@ import { parseDiagramJson } from '@/persistence/library-actions'
 import { untilStored } from '@/persistence/until-stored'
 import { router } from '@/router'
 import { flushPendingSave } from '@/store/document'
-import { recordAgentCall, watchAgentInfo } from './agent-store'
+import { openConnectAgent, recordAgentCall, watchAgentInfo } from './agent-store'
 import { loadAppSettings } from './app-settings'
 import { serveMainRequests } from './serve'
 import { watchUpdates } from './updates'
@@ -53,6 +53,11 @@ export function startDesktopRuntime(storageError: string | null = null) {
       if (storageError !== null) return null
       flushPendingSave()
       await repository().settled()
+      return null
+    },
+
+    'app.connectAgent': async () => {
+      openConnectAgent()
       return null
     },
 

@@ -3,6 +3,8 @@ export const AGENT_PORT = 27419
 export const AGENT_ENDPOINT = '/mcp'
 
 export const DEEP_LINK_SCHEME = 'diagrams'
+/** The deep link that opens the desktop app at "Connect an agent". An app without it only opens its window. */
+export const CONNECT_AGENT_LINK = `${DEEP_LINK_SCHEME}://connect-agent`
 /** The route of the hidden window that renders export stages for the native capture. */
 export const CAPTURE_HASH = '#/capture'
 export const WEBSITE_ORIGIN = 'https://draw.thias.dev'
