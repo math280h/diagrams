@@ -1262,8 +1262,9 @@ with snapdom, because Chromium gives only pixels.
 website then posts the diagram to the loopback server, with retries for 15 seconds. Chrome asks once before a website
 reaches local devices.
 
-A website cannot ask whether an app is installed. After the app takes a diagram, the website records it
-(`dg:desktop-app-seen`) and then offers to open the app before the download.
+A website cannot ask whether an app is installed. The Desktop app tab asks the loopback server whether the app runs.
+The website records that answer or a handoff (`dg:desktop-app-seen`) and then offers `diagrams://connect-agent`
+before the download. That link opens the app at "Connect an agent", because only the app shows its access token.
 
 The agent card and "Open in desktop app" show only on a computer. `deviceKind` (`src/lib/device.ts`) returns
 `computer`, `tablet` or `phone`:
@@ -1426,6 +1427,7 @@ those texts.
 | `api.github.com`, release notes                   | Build time. At run time only on the dev server, or when the build could not load them    | No diagram                                                                  |
 | `github.com` releases, through `electron-updater` | Desktop app: at start, every 6 hours, "Check for updates"                                | No diagram. A random install id.                                            |
 | `127.0.0.1:27419` handoff                         | "Open in desktop app"                                                                    | The diagram, loopback interface only                                        |
+| `127.0.0.1:27419`, is the app running             | The Desktop app tab of "Connect an agent" opens                                          | No data, loopback interface only                                            |
 | `127.0.0.1:27419/mcp`                             | While the desktop app runs and an agent calls it                                         | Diagrams and images, to the connected agent                                 |
 
 - Share links carry the diagram in the fragment, which a browser never sends. Links and exports use no network.

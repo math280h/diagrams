@@ -1,6 +1,6 @@
 import { useRouterState } from '@tanstack/react-router'
 import { AppWindow, ArrowUpRight, CircleCheck, TriangleAlert } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAgentHistory, useAgentStore } from '@/desktop/agent-store'
 import { CommandBlock } from '@/desktop/ConnectAgentDialog'
 import { DesktopDownloadLink } from '@/desktop/DesktopDownloadLink'
-import { OPEN_APP_LINK, useKnowsDesktopApp } from '@/desktop/open-in-app'
+import { CONNECT_AGENT_LINK } from '@/desktop/constants'
+import { findRunningApp, useKnowsDesktopApp } from '@/desktop/open-in-app'
 import { relativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { repository } from '@/persistence/active-repository'
@@ -170,11 +171,18 @@ function BrowserSupportNote() {
   )
 }
 
-const CONNECT_IN_APP =
-  'In the app, choose Connect an agent. It gives the commands for the Claude Code plugin, or for any MCP client.'
-
 function DesktopSteps() {
   const knownApp = useKnowsDesktopApp()
+  const [running, setRunning] = useState(false)
+  useEffect(() => {
+    let current = true
+    void findRunningApp().then((found) => {
+      if (current) setRunning(found)
+    })
+    return () => {
+      current = false
+    }
+  }, [])
   return (
     <div className="space-y-3 text-[13px] leading-5 text-muted-foreground">
       <p>
@@ -183,12 +191,20 @@ function DesktopSteps() {
       </p>
       {knownApp ? (
         <>
-          <Note ok title="You have used the desktop app from this browser">
-            {CONNECT_IN_APP}
+          <Note
+            ok
+            title={
+              running
+                ? 'The desktop app is running on this computer'
+                : 'You have used the desktop app from this browser'
+            }
+          >
+            The button opens the app at Connect an agent, with the commands for the Claude Code plugin or any MCP
+            client.
           </Note>
           <div className="flex flex-wrap items-center gap-3">
-            <a href={OPEN_APP_LINK} className={buttonVariants({ variant: 'secondary' })}>
-              <AppWindow /> Open the desktop app
+            <a href={CONNECT_AGENT_LINK} className={buttonVariants({ variant: 'secondary' })}>
+              <AppWindow /> Connect an agent in the app
             </a>
             <DesktopDownloadLink variant="ghost" />
           </div>
@@ -201,11 +217,14 @@ function DesktopSteps() {
           <div className="flex flex-wrap items-center gap-3">
             <DesktopDownloadLink variant="secondary" allDownloads />
           </div>
-          <p>2. {CONNECT_IN_APP}</p>
+          <p>
+            2. In the app, choose Connect an agent. It gives the commands for the Claude Code plugin, or for any MCP
+            client.
+          </p>
           <p>
             Already installed?{' '}
-            <a href={OPEN_APP_LINK} className="font-medium text-foreground hover:underline">
-              Open the desktop app
+            <a href={CONNECT_AGENT_LINK} className="font-medium text-foreground hover:underline">
+              Connect an agent in the app
             </a>
           </p>
         </>

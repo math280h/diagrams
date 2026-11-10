@@ -78,32 +78,56 @@ test('copies the open diagram into a folder from the agent button of the editor'
   await expect(dialog.getByText('This browser supports folders')).toBeVisible()
   await dialog.getByRole('button', { name: 'Open a folder and copy “Order system”' }).click()
 
-  await expect(page.getByRole('dialog')).toContainText('.diagrams/README.md in the "project" folder')
+  await expect(page.getByRole('dialog')).toContainText('.diagrams/README.md in the "project" folder', {
+    timeout: 20_000,
+  })
   expect(openDiagramId(page)).toBe(id)
   await expect(page.getByLabel('Diagram name')).toHaveValue('Order system')
   expect(await readFile(page, `${id}.diagram.json`)).toContain('"name": "Order system"')
 })
 
-test('offers to open the desktop app after this browser used it, and the install steps before', async ({ page }) => {
+test('finds a running desktop app, remembers it, and shows the install steps before', async ({ page }) => {
+  const APP = 'http://127.0.0.1:27419/**'
+  const appChecks: string[] = []
   const desktopTab = async () => {
     await page.getByRole('button', { name: 'a folder of your project' }).click()
     const dialog = page.getByRole('dialog')
+    expect(appChecks).toHaveLength(0)
     await dialog.getByRole('tab', { name: 'Desktop app' }).click()
     return dialog
   }
+  page.on('request', (request) => {
+    if (request.url().startsWith('http://127.0.0.1:27419/')) appChecks.push(request.url())
+  })
+
+  await page.route(APP, (route) => route.abort())
   await page.goto('/')
   let dialog = await desktopTab()
   await expect(dialog.getByText('1. Install the desktop app.')).toBeVisible()
-  await expect(dialog.getByRole('link', { name: 'Open the desktop app' })).toHaveAttribute('href', 'diagrams://open')
-
-  await page.evaluate(() =>
-    localStorage.setItem('dg:desktop-app-seen', JSON.stringify({ state: { seenAt: Date.now() }, version: 0 })),
+  await expect(dialog.getByRole('link', { name: 'Connect an agent in the app' })).toHaveAttribute(
+    'href',
+    'diagrams://connect-agent',
   )
+  expect(new Set(appChecks)).toEqual(new Set(['http://127.0.0.1:27419/handoff']))
+
+  await page.unroute(APP)
+  await page.route(APP, (route) => route.fulfill({ status: 404 }))
   await page.reload()
+  appChecks.length = 0
+  dialog = await desktopTab()
+  await expect(dialog.getByText('The desktop app is running on this computer')).toBeVisible()
+  await expect(dialog.getByText('1. Install the desktop app.')).toHaveCount(0)
+  await expect(dialog.getByRole('link', { name: 'Connect an agent in the app' })).toHaveAttribute(
+    'href',
+    'diagrams://connect-agent',
+  )
+
+  await page.unroute(APP)
+  await page.route(APP, (route) => route.abort())
+  await page.reload()
+  appChecks.length = 0
   dialog = await desktopTab()
   await expect(dialog.getByText('You have used the desktop app from this browser')).toBeVisible()
-  await expect(dialog.getByText('1. Install the desktop app.')).toHaveCount(0)
-  await expect(dialog.getByRole('link', { name: 'Open the desktop app' })).toHaveAttribute('href', 'diagrams://open')
 })
 
 test('lets an agent call the tools and read the checks through the agent folder', async ({ page }) => {

@@ -5,6 +5,7 @@ import { RANDOM_KEY_PATTERN } from './constants'
 import {
   canOpenInApp,
   closeOpenInApp,
+  findRunningApp,
   forgetOpenedInApp,
   openInApp,
   retryOpenInApp,
@@ -230,6 +231,24 @@ describe('openInApp', () => {
     openInApp(() => shop())
     await settle()
     expect(useHandoff.getState().status).toBe('failed')
+    expect(useDesktopAppSeen.getState().seenAt).toBeNull()
+  })
+})
+
+describe('findRunningApp', () => {
+  it('records the app when its server answers, without data and without reading the answer', async () => {
+    answers = [{ status: 404 }]
+    await expect(findRunningApp()).resolves.toBe(true)
+    const [url, init] = fetchMock.mock.calls[0]!
+    expect(url).toBe('http://127.0.0.1:27419/handoff')
+    expect(init).toMatchObject({ mode: 'no-cors' })
+    expect(init?.body).toBeUndefined()
+    expect(useDesktopAppSeen.getState().seenAt).toBe(Date.now())
+  })
+
+  it('finds no app when nothing answers', async () => {
+    answers = ['offline']
+    await expect(findRunningApp()).resolves.toBe(false)
     expect(useDesktopAppSeen.getState().seenAt).toBeNull()
   })
 })

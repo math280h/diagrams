@@ -30,8 +30,7 @@ function newHandoffCode(): string {
     .replace(/=+$/, '')
 }
 
-/** The deep link that starts the desktop app, or brings its window to the front, without a diagram. */
-export const OPEN_APP_LINK = `${DEEP_LINK_SCHEME}://open`
+const APP_CHECK_TIMEOUT_MS = 2000
 
 /** Opens the deep link that starts the desktop app. Call it inside a click handler. */
 function launchDeepLink(code: string) {
@@ -94,7 +93,10 @@ export function forgetOpenedInApp(id: string) {
 }
 
 interface DesktopAppSeen {
-  /** The last time that the desktop app took a diagram from this browser, in milliseconds since the epoch, or `null`. */
+  /**
+   * The last time that the desktop app took a diagram from this browser or answered it, in milliseconds since the
+   * epoch, or `null`.
+   */
   seenAt: number | null
 }
 
@@ -105,11 +107,34 @@ export const useDesktopAppSeen = create<DesktopAppSeen>()(
   }),
 )
 
-/** Returns true if the desktop app took a diagram from this browser before. The app is then probably on this computer. */
+/**
+ * Returns true if the desktop app took a diagram from this browser or answered it before. The app is then probably on
+ * this computer.
+ */
 export function useKnowsDesktopApp() {
   const seen = useDesktopAppSeen((state) => state.seenAt !== null)
   const opened = useOpenedInApp((state) => Object.keys(state.opened).length > 0)
   return seen || opened
+}
+
+/**
+ * Asks the loopback server of the desktop app whether the app runs on this computer, and records a positive answer.
+ * The request sends no data.
+ *
+ * @returns True if a server answered on the port of the app.
+ */
+export async function findRunningApp(): Promise<boolean> {
+  try {
+    // A `no-cors` request resolves with any answer of the server, and rejects when nothing listens.
+    await fetch(`http://${AGENT_HOST}:${AGENT_PORT}${HANDOFF_PATH}`, {
+      mode: 'no-cors',
+      signal: AbortSignal.timeout(APP_CHECK_TIMEOUT_MS),
+    })
+  } catch {
+    return false
+  }
+  useDesktopAppSeen.setState({ seenAt: Date.now() })
+  return true
 }
 
 type HandoffState =
