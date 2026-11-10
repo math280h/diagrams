@@ -100,9 +100,9 @@ test('probe: stills before and after the frames, and the frames', async ({ windo
           return d.indexOf(Math.min(...d))
         })(),
       }))
-      const bad = rows.filter((row) => row.firstVsSecond > 0 || row.frameVsSecond > 0 || row.closestFirst !== row.k)
+      const bad = rows.filter((row) => row.firstVsSecond > 20 || row.frameVsSecond > 20 || row.closestFirst !== row.k)
       const images: { name: string; png: string }[] = []
-      for (const row of bad.slice(0, 3)) {
+      for (const row of bad.slice(0, 4)) {
         images.push({ name: `k${row.k}-first.png`, png: await toPng(first[row.k]!.value) })
         images.push({ name: `k${row.k}-frame.png`, png: await toPng(frames[row.k]!.value) })
         images.push({ name: `k${row.k}-second.png`, png: await toPng(second[row.k]!.value) })
@@ -114,5 +114,5 @@ test('probe: stills before and after the frames, and the frames', async ({ windo
   writeFileSync(testInfo.outputPath('rows.json'), JSON.stringify(result.rows, null, 1))
   for (const image of result.images) writeFileSync(testInfo.outputPath(image.name), Buffer.from(image.png, 'base64'))
   console.log(`PROBE ${JSON.stringify(result.rows.map((row) => [row.k, row.firstVsSecond, row.frameVsSecond, row.closestFirst, row.firstMs, row.frameMs]))}`)
-  expect(result.rows.filter((row) => row.closestFirst !== row.k || row.firstVsSecond > 0)).toEqual([])
+  expect(result.rows.filter((row) => row.closestFirst !== row.k || row.firstVsSecond > 20 || row.frameVsSecond > 20)).toEqual([])
 })

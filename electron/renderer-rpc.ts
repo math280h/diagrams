@@ -78,9 +78,6 @@ export function createRendererRpc() {
   }
 
   return {
-    /** Resolves when the renderer of the attached window answers requests. */
-    whenReady: (timeoutMs: number) => whenReady(timeoutMs),
-
     /** Connects the RPC to the renderer of a window. Navigation or a crash rejects the open calls. */
     attach(next: WebContents) {
       contents = next

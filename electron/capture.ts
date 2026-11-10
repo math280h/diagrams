@@ -76,7 +76,7 @@ export function createCaptureService(): { handlers: CaptureHandlers; dispose: ()
   const rpc = createRendererRpc()
   const sessions = new Map<string, Session>()
   let window: BrowserWindow | null = null
-  let mounted: { sessionId: string; viewportScale: number; pageZoom: number } | null = null
+  let mounted: { sessionId: string; viewportScale: number } | null = null
   let renders = 0
   let queue: Promise<unknown> = Promise.resolve()
   let idleTimer: ReturnType<typeof setTimeout> | undefined
@@ -156,24 +156,17 @@ export function createCaptureService(): { handlers: CaptureHandlers; dispose: ()
     const plan = planCapture(session, request.scale, session.fixedViewport)
     if (!plan) throw new Error('The image is too large for the capture window.')
     const target = openWindow()
-    const remount =
-      mounted?.sessionId !== request.sessionId ||
-      mounted.viewportScale !== plan.viewportScale ||
-      mounted.pageZoom !== plan.pageZoom
-    if (remount) {
+    if (mounted?.sessionId !== request.sessionId || mounted.viewportScale !== plan.viewportScale) {
       mounted = null
-      await rpc.whenReady(CALL_TIMEOUT_MS)
+      await rpc.call(
+        'capture.mount',
+        { stage: session.stage, viewportScale: plan.viewportScale },
+        { timeoutMs: CALL_TIMEOUT_MS },
+      )
+      mounted = { sessionId: request.sessionId, viewportScale: plan.viewportScale }
     }
     target.webContents.setZoomFactor(plan.pageZoom)
     target.setContentSize(plan.windowWidth, plan.windowHeight)
-    if (remount) {
-      await rpc.call(
-        'capture.mount',
-        { stage: session.stage, viewportScale: plan.viewportScale, pageZoom: plan.pageZoom },
-        { timeoutMs: CALL_TIMEOUT_MS },
-      )
-      mounted = { sessionId: request.sessionId, viewportScale: plan.viewportScale, pageZoom: plan.pageZoom }
-    }
     renders += 1
     const marker = renders % MARKER_COUNT
     await rpc.call(

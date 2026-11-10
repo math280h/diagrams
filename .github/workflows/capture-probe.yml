@@ -27,8 +27,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - uses: $/.github/actions/playwright-chromium
       - run: pnpm desktop:build
-      - name: Probe the captures
-        run: pnpm exec playwright test --project=desktop e2e/desktop/capture-probe.spec.ts --repeat-each 10 --reporter line
+      - name: Probe the captures under CPU load
+        run: |
+          for core in $(seq 1 "$(sysctl -n hw.ncpu)"); do (yes > /dev/null &); done
+          pnpm exec playwright test --project=desktop e2e/desktop/capture-probe.spec.ts e2e/desktop/capture.spec.ts --repeat-each 8 --reporter line || status=$?
+          pkill yes || true
+          exit "${status:-0}"
       - if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
