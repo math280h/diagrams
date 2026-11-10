@@ -124,8 +124,11 @@ export interface RendererRequests {
   'app.flush': { input: null; output: null }
   /** Renders a diagram file and returns the image or the video as base64. */
   'render.file': { input: RenderRequest; output: { data: string } }
-  /** Mounts an export stage in the capture window. Below 1, `viewportScale` scales its size and viewport. */
-  'capture.mount': { input: { stage: unknown; viewportScale: number }; output: null }
+  /**
+   * Mounts an export stage in the capture window. Below 1, `viewportScale` scales its size and viewport. Waits first
+   * until the page zoom of the capture window is `pageZoom`.
+   */
+  'capture.mount': { input: { stage: unknown; viewportScale: number; pageZoom: number }; output: null }
   /**
    * Shows the mounted stage at a moment, with `marker` in the bottom left corner. Waits first until the page zoom of
    * the capture window is `pageZoom`, and resolves after the next paint.

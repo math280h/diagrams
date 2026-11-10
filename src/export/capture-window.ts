@@ -51,9 +51,10 @@ export function startCaptureWindow(): () => void {
     'handoff.open': refuse,
     'render.file': refuse,
     'app.flush': async () => null,
-    'capture.mount': async ({ stage, viewportScale }) => {
+    'capture.mount': async ({ stage, viewportScale, pageZoom }) => {
       mounted?.dispose()
       mounted = null
+      await zoomApplied(pageZoom)
       const spec = stage as StageSpec
       const next = await mountSpecStage(spec, viewportScale)
       // Chromium draws the text of a layer with `will-change: transform` without subpixel anti-aliasing.
