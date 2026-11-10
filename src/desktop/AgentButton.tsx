@@ -19,7 +19,7 @@ export function AgentButton({ labelled = false, className }: { labelled?: boolea
   const tool = useAgentActivity((state) => state.title)
   const readOnly = useAgentActivity((state) => state.readOnly)
   const serverProblem = useAgentProblem()
-  const folderOpen = useFolderStore((state) => state.status === 'open')
+  const folderOpen = useFolderStore((state) => state.status === 'open' || state.status === 'following')
   const folderProblem = useFolderStore((state) => state.problem !== null)
   const desktop = isDesktop()
   if (!desktop && !folderOpen) return null

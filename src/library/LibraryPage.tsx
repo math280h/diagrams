@@ -48,7 +48,7 @@ import { InstallIntro } from '@/install/InstallIntro'
 import { desktopApi } from '@/desktop/bridge'
 import { canOpenInApp, openInApp, useOpenedInApp } from '@/desktop/open-in-app'
 import { TitleBarNav } from '@/desktop/TitleBarNav'
-import { FolderHeroNote, FolderOffer, FolderStorageNote } from '@/folder/FolderNote'
+import { FolderHeroNote, FolderOffer, FolderStorageNote, FollowedFolderNote } from '@/folder/FolderNote'
 import { ImportDialog } from '@/io/ImportDialog'
 import { formatBytes, plural, relativeTime } from '@/lib/format'
 import { useReducedMotion } from '@/lib/motion'
@@ -207,6 +207,7 @@ function StorageNote({ usageBytes }: { usageBytes: number }) {
     )
   }
   if (location.kind === 'picked-folder') return <FolderStorageNote name={location.name} />
+  if (location.kind === 'followed-folder') return <FollowedFolderNote name={location.name} />
   return (
     <p className="mt-4 flex flex-wrap items-center gap-x-3 text-[13px] text-muted-foreground">
       <span className="min-w-0 break-all">

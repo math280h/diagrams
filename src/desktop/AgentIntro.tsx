@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button'
-import { canOpenFolder } from '@/folder/support'
+import { canFollowFolder, canOpenFolder } from '@/folder/support'
 import { IntroStrip } from '@/library/IntroStrip'
 import { hideAgentIntro, openConnectAgent, useAgentIntroVisible, useAgentProblem } from './agent-store'
 import { isDesktop } from './bridge'
@@ -20,7 +20,7 @@ function DesktopAction() {
 }
 
 function WebsiteText() {
-  if (!canOpenFolder()) {
+  if (!canOpenFolder() && !canFollowFolder()) {
     return `Claude Code and other MCP clients connect to the desktop app. Ask your agent to ${EXAMPLE_REQUEST} and watch the diagram appear.`
   }
   return (

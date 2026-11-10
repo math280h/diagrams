@@ -1,5 +1,6 @@
 import { toast } from 'sonner'
 import { repository } from './active-repository'
+import type { StorageLocation } from './repository'
 import { createSaveReporter } from './save-reporter'
 
 export interface StorageCopy {
@@ -50,10 +51,28 @@ const PICKED_FOLDER_COPY: StorageCopy = {
   removeFailed: 'Could not delete the diagram file.',
 }
 
+const FOLLOWED_FOLDER_COPY: StorageCopy = {
+  promise: 'This browser shows the folder only to read. Your changes here stay in this tab.',
+  saveFailed: 'Could not keep the change in this tab.',
+  changedElsewhere: 'This diagram changed in the folder.',
+  removedElsewhere: 'The file of this diagram was deleted or moved.',
+  missingTitle: 'This diagram is not in the folder',
+  missingDetail: 'Choose the folder again to see the files that are new in it.',
+  stillSaved: 'The files in the folder did not change.',
+  deleteDetail: 'This removes the diagram from this tab. The file stays in the folder.',
+  removeFailed: 'Could not remove the diagram from this tab.',
+  versionsPlace: 'in this browser',
+}
+
+const COPIES: Record<StorageLocation['kind'], StorageCopy> = {
+  browser: BROWSER_COPY,
+  folder: FOLDER_COPY,
+  'picked-folder': PICKED_FOLDER_COPY,
+  'followed-folder': FOLLOWED_FOLDER_COPY,
+}
+
 export function storageCopy(): StorageCopy {
-  const { kind } = repository().location
-  if (kind === 'folder') return FOLDER_COPY
-  return kind === 'picked-folder' ? PICKED_FOLDER_COPY : BROWSER_COPY
+  return COPIES[repository().location.kind]
 }
 
 const SAVE_FAILED_TOAST = 'save-failed'

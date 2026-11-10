@@ -985,12 +985,27 @@ The agent folder `.diagrams` (`src/folder/agent-channel.ts`), when "Let agents u
   page removes it, runs the tool with `runAgentTool` as the MCP server does, and writes `results/<name>.json` and the
   images of the result as PNG files. Calls run one at a time in file name order. A file that is not JSON gets three
   scans to finish its write.
+- Access: a program that can write `calls` can also change the diagram files of the folder, and the tools act only on
+  those diagrams and on the open tab. So the call files give no new access, and the website asks no confirmation, as
+  the MCP server of the desktop app. A call that does not name a tool of `tool-definitions.ts` gets an error result,
+  and nothing runs.
 - After a change from outside, the website writes `status/<id>.md` with the output of `lint_diagram`, and
   `status/<id>.png` from `render_image`. An agent that changes a file directly sees the result.
 - The user gives Claude Code one line for its `CLAUDE.md` that names the guide. The agent button shows the tool runs on
   the website too.
-- Only Chromium has the folder picker, so Firefox and Safari keep the diagrams in the browser and offer the desktop
-  app.
+
+Firefox and Safari have no folder picker. There, the website can show a folder only to read
+(`src/folder/followed-folder.ts`):
+
+- A file input with `webkitdirectory` gives the files of the folder. Firefox reads such a file from the disk at each
+  read, so a read once a second shows a change. The list of files stays as it was at the pick: a new file shows after
+  the user picks the folder again.
+- `switchRepository` replaces the repository without a reload, after the app goes to the library. The repository
+  keeps changes in the tab and writes nothing. A badge in the editor and a note in the library say so. A reload ends
+  it.
+- When the browser cannot read a picked file again, the diagram stays and the library asks for a new pick.
+- There is no agent folder. The setup offers two downloads: a guide for direct file changes (the rules, an example
+  file and the JSON Schema) and the icon list. It also gives the line for `CLAUDE.md`.
 
 ## Desktop app
 

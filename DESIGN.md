@@ -412,7 +412,8 @@ above 500.
 ## Layout
 
 - **Top bar:** 44px, chrome fill, hairline below; side padding 6px (editor, Present), 12px (library). Library: mark,
-  wordmark, agent button (desktop only), GitHub link, theme, Import (ghost), New diagram (primary).
+  wordmark, agent button (desktop app, and website with a folder), GitHub link, theme, Import (ghost), New diagram
+  (primary).
 - **Library, first run:** centred column, max 1152px.
   - Headline and support line; agent introduction beside them from 1280px (384px column, bottom-aligned; offer on top,
     stage above the fold), else under.
@@ -422,7 +423,8 @@ above 500.
   - Other templates as live cards under "More templates", two per row from 640px.
   - Install offer on tablets.
 - **Library, returning:** agent introduction; "Your diagrams" with count and 256px search; 1–3 column card grid;
-  storage line; live template cards (1–3 columns) under "Templates" with the first-run hint.
+  storage line (on the website also the folder: open, close, or show only to read); live template cards (1–3 columns)
+  under "Templates" with the first-run hint.
 - **Previews:** read-only 16:10 canvases, no grid.
   - Cards fit the whole diagram with 16px padding at any zoom. Low zoom: less detail, larger titles, boundary
     labels: name only.
@@ -520,7 +522,8 @@ App mark: text-colour square, 6px corners; right-angled rounded ground-colour wi
   - Desktop: action opens agent setup; strip shows until the first agent call, then the bar's agent button shows
     "Connect an agent".
   - Website, computers only: "Download for Windows" (or macOS, Linux) starts the latest release's installer, plus 13px
-    muted "All downloads" link; unknown system: "Get the desktop app", to the release page.
+    muted "All downloads" link; unknown system: "Get the desktop app", to the release page. In a browser that can use a
+    folder, the text ends with a medium-weight link "a folder of your project" that opens the folder setup.
   - Tablets: website install instead: "Install this website as an app", 13px muted line, secondary Install button (or
     13px muted steps without a browser install prompt).
   - Not on phones or in the installed app. Closing hides a strip permanently.

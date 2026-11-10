@@ -12,7 +12,7 @@ const { runAgentTool } = vi.hoisted(() => ({
     if (tool === 'render_image') {
       return { ok: true, content: [{ type: 'image', mimeType: 'image/png', data: PIXEL_PNG }] }
     }
-    if (tool === 'missing_tool') return { ok: false, message: 'The app has no tool "missing_tool".' }
+    if (tool === 'delete_diagram') return { ok: false, message: 'No diagram has the id "d_gone".' }
     return { ok: true, content: [{ type: 'text', text: `${tool} ran with ${JSON.stringify(args)}` }] }
   }),
 }))
@@ -99,11 +99,12 @@ describe('agent channel', () => {
     expect(await agentFile('calls', '001-render.json')).toBeNull()
   })
 
-  it('answers a failed tool, a call without a tool and a file that stays broken JSON', async () => {
-    await writeCall('a.json', '{ "tool": "missing_tool" }')
+  it('answers a failed tool, an unknown tool, a call without a tool and a file that stays broken JSON', async () => {
+    await writeCall('a.json', '{ "tool": "delete_diagram", "args": { "diagramId": "d_gone" } }')
+    await writeCall('a2.json', '{ "tool": "format_disk" }')
     await writeCall('b.json', '{ "name": "render_image" }')
     await writeCall('c.json', '{ "tool": ')
-    scan(['a.json', 'b.json', 'c.json'])
+    scan(['a.json', 'a2.json', 'b.json', 'c.json'])
     await expect.poll(() => agentFile('results', 'b.json')).not.toBeNull()
     await expect
       .poll(() => {
@@ -114,7 +115,11 @@ describe('agent channel', () => {
 
     expect(JSON.parse((await agentFile('results', 'a.json'))!)).toMatchObject({
       ok: false,
-      error: 'The app has no tool "missing_tool".',
+      error: 'No diagram has the id "d_gone".',
+    })
+    expect(JSON.parse((await agentFile('results', 'a2.json'))!)).toMatchObject({
+      ok: false,
+      error: 'The website has no tool "format_disk". The tools are in .diagrams/tools.json.',
     })
     expect(JSON.parse((await agentFile('results', 'b.json'))!).error).toContain('{ "tool": "<tool name>"')
     expect(JSON.parse((await agentFile('results', 'c.json'))!).error).toContain('not valid JSON')

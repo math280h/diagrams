@@ -23,6 +23,8 @@ export type StorageLocation =
   | { kind: 'folder'; path: string }
   /** A folder that the user picked on the website. The browser gives only its name. */
   | { kind: 'picked-folder'; name: string }
+  /** A folder that the website can only read, in a browser without folder access such as Firefox. */
+  | { kind: 'followed-folder'; name: string }
 
 /**
  * A change to stored diagrams.

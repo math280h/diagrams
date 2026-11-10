@@ -6,9 +6,18 @@ import { CommandBlock } from '@/desktop/ConnectAgentDialog'
 import { DesktopDownloadLink } from '@/desktop/DesktopDownloadLink'
 import { relativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { AGENT_FOLDER, claudeInstruction } from './agent-paths'
+import { AGENT_FOLDER, claudeInstruction, fileGuideInstruction } from './agent-paths'
 import { pickFolder, useFolderSettings, useFolderStore } from './folder-store'
+import { canFollowFolder, followFolder } from './followed-folder'
 import { canOpenFolder } from './support'
+
+function downloadGuide() {
+  void import('./agent-guide').then((guide) => guide.downloadFileGuide())
+}
+
+function downloadIcons() {
+  void import('./agent-guide').then((guide) => guide.downloadIconList())
+}
 
 function Status({ name, agents }: { name: string; agents: boolean }) {
   const lastCallAt = useAgentHistory((state) => state.lastCallAt)
@@ -79,12 +88,62 @@ function AgentSteps({ name }: { name: string }) {
   )
 }
 
+function ReadOnlyNotice() {
+  return (
+    <div className="rounded-lg border border-dashed px-3 py-2.5 text-[13px] leading-5 text-muted-foreground">
+      <p className="font-medium text-foreground">This browser can only read a folder</p>
+      <p className="mt-1">
+        Claude Code changes the diagram files directly, and this tab shows each change. The website cannot save your
+        changes to the folder, cannot run the agent tools, and shows new files only after you choose the folder again.
+        Support for this can change. For the full set, use Chrome, Edge or the desktop app.
+      </p>
+    </div>
+  )
+}
+
+function ReadOnlySteps() {
+  const status = useFolderStore((state) => state.status)
+  const name = useFolderStore((state) => state.name)
+  if (status !== 'following' || !name) {
+    return (
+      <div className="space-y-3">
+        <ReadOnlyNotice />
+        <Button variant="secondary" onClick={() => void followFolder()}>
+          Show a folder
+        </Button>
+      </div>
+    )
+  }
+  return (
+    <div className="space-y-4">
+      <ReadOnlyNotice />
+      <div className="space-y-2 text-[13px] leading-5 text-muted-foreground">
+        <p>
+          1. Save the guide in <span className="font-mono">{name}</span>. It tells Claude Code the file format. The icon
+          list is for products and services.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={downloadGuide}>
+            Download the guide
+          </Button>
+          <Button variant="ghost" onClick={downloadIcons}>
+            Download the icon list
+          </Button>
+        </div>
+      </div>
+      <CommandBlock label="2. Add this line to the CLAUDE.md of your project" value={fileGuideInstruction(name)} />
+      <p className="text-[13px] leading-5 text-muted-foreground">
+        3. Keep this tab open while Claude works. When Claude adds a file, choose the folder again in the library.
+      </p>
+    </div>
+  )
+}
+
 /** Explains on the website how Claude Code works on the diagrams through a folder, without a desktop app. */
 export function FolderAgentDialog() {
   const dialogOpen = useAgentStore((state) => state.dialogOpen)
   const status = useFolderStore((state) => state.status)
   const name = useFolderStore((state) => state.name)
-  const supported = canOpenFolder()
   return (
     <Dialog open={dialogOpen} onOpenChange={(open) => useAgentStore.setState({ dialogOpen: open })}>
       <DialogContent className="sm:max-w-xl">
@@ -95,7 +154,9 @@ export function FolderAgentDialog() {
             You install nothing.
           </DialogDescription>
         </DialogHeader>
-        {!supported ? (
+        {canFollowFolder() ? (
+          <ReadOnlySteps />
+        ) : !canOpenFolder() ? (
           <div className="space-y-3 text-[13px] leading-5 text-muted-foreground">
             <p>This needs Chrome or Edge, which let a website use a folder. In other browsers, use the desktop app.</p>
             <DesktopDownloadLink variant="secondary" />

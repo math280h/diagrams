@@ -13,8 +13,9 @@ import { forgetFolder, rememberedFolder, rememberFolder } from './handle-store'
  * - `open`: the diagrams are the files in the folder.
  * - `needs-permission`: the browser asks again before the website may use the folder of the last visit.
  * - `missing`: the folder of the last visit is gone or cannot be read.
+ * - `following`: the diagrams are the files of a folder that this browser can only read, until a reload.
  */
-export type FolderStatus = 'none' | 'open' | 'needs-permission' | 'missing'
+export type FolderStatus = 'none' | 'open' | 'needs-permission' | 'missing' | 'following'
 
 interface FolderState {
   status: FolderStatus

@@ -1,12 +1,16 @@
-import { AGENT_INSTRUCTIONS } from '@/agent/instructions'
+import { AGENT_INSTRUCTIONS, AGENT_RULES } from '@/agent/instructions'
 import { bundledSkillFiles, loadSkills, SKILL_FILE, type Skill } from '@/agent/skills'
 import { TOOL_DEFINITIONS, TOOL_NAMES } from '@/agent/tool-definitions'
 import { DIAGRAM_FILE_SUFFIX } from '@/desktop/constants'
+import { downloadBlob } from '@/lib/download'
 import { z } from '@/lib/zod'
-import { diagramSchema } from '@/model/schema'
+import { diagramSchema, type Diagram } from '@/model/schema'
+import { serializeDiagram } from '@/persistence/cached-repository'
+import { TEMPLATES } from '@/templates'
 import {
   AGENT_FOLDER,
   CALLS_FOLDER,
+  FILE_GUIDE_FILE,
   GUIDE_FILE,
   ICONS_FILE,
   RESULTS_FOLDER,
@@ -140,4 +144,54 @@ export async function writeGuideFiles(agentFolder: FileSystemDirectoryHandle) {
     ),
     [GUIDE_FILE]: guideText(skills),
   })
+}
+
+/** Returns the guide for an agent that changes the diagram files directly, in a folder that the website only reads. */
+export function fileGuideText(example: Diagram): string {
+  return `# Diagrams in this folder
+
+The \`*${DIAGRAM_FILE_SUFFIX}\` files in this folder are diagrams of the Diagrams website (https://draw.thias.dev). A browser tab shows them, and shows each change to a file at once. The tab can only read the folder, so there are no tool calls and no status files: change the files directly.
+
+The tab sees a new file only after the user chooses the folder again. When you add a file, tell the user to do that.
+
+## Change a diagram file
+
+- One file holds one diagram. The file name without \`${DIAGRAM_FILE_SUFFIX}\` is the diagram id, and the \`id\` in the file is the same.
+- Read a file before you change it, and keep the ids of the nodes, edges and flows that stay.
+- Give each new node, edge and flow an id that the diagram does not use yet.
+- Give each node a \`position\` in pixels, with room between the nodes: the tab does not arrange a file. A node in a boundary has the boundary as its \`parentId\`, and its position is relative to the boundary.
+- Keep the file valid JSON that matches the schema at the end of this guide. If the tab cannot open a file, it tells the user.
+
+## Icons
+
+The \`icon\` of a node is an icon id, such as \`aws:lambda\` or \`database\`. If \`${ICONS_FILE}\` is next to this guide, search it for a product or service name. Each line has the icon id, its title and its category, with tabs between them.
+
+## Rules
+
+${AGENT_RULES}
+
+## Example
+
+A diagram file:
+
+\`\`\`json
+${serializeDiagram(example).trim()}
+\`\`\`
+
+## JSON Schema
+
+\`\`\`json
+${schemaText().trim()}
+\`\`\`
+`
+}
+
+/** Downloads the guide for direct changes, with the template with the fewest nodes as the example. */
+export function downloadFileGuide() {
+  const [example] = TEMPLATES.map((template) => template.build()).toSorted((a, b) => a.nodes.length - b.nodes.length)
+  if (example) downloadBlob(new Blob([fileGuideText(example)], { type: 'text/markdown' }), FILE_GUIDE_FILE)
+}
+
+export async function downloadIconList() {
+  downloadBlob(new Blob([await iconsText()], { type: 'text/plain' }), ICONS_FILE)
 }

@@ -1,11 +1,12 @@
 import { createBrowserContext } from '@/agent/browser-context'
 import { runAgentTool } from '@/agent/runtime'
+import { isToolName } from '@/agent/tool-definitions'
 import type { ToolContent, ToolOutcome } from '@/desktop/contract'
 import { recordAgentCall } from '@/desktop/agent-store'
 import { z } from '@/lib/zod'
 import { errorMessage } from '@/lib/error-message'
 import { fileOfId } from '@/persistence/diagram-file-name'
-import { AGENT_FOLDER, CALL_SUFFIX, CALLS_FOLDER, RESULTS_FOLDER, STATUS_FOLDER } from './agent-paths'
+import { AGENT_FOLDER, CALL_SUFFIX, CALLS_FOLDER, RESULTS_FOLDER, STATUS_FOLDER, TOOLS_FILE } from './agent-paths'
 import { writeGuideFiles } from './agent-guide'
 import { removeIfThere, writeText } from './folder-files'
 import type { FolderSession } from './folder-session'
@@ -95,6 +96,11 @@ export function startAgentChannel(
     }
     parseTries.delete(name)
     await removeIfThere(calls, name)
+    if (!isToolName(call.tool)) {
+      const error = `The website has no tool "${call.tool}". The tools are in ${AGENT_FOLDER}/${TOOLS_FILE}.`
+      await writeResult(name, { tool: call.tool, ok: false, error }, [])
+      return
+    }
     recordAgentCall()
     const outcome = await runTool(call.tool, call.args ?? {})
     await writeResult(
