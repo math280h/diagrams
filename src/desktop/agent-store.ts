@@ -60,6 +60,15 @@ export function watchAgentInfo(): () => void {
   return desktop.on('agent.info', (info) => useAgentStore.setState({ info }))
 }
 
+/** Moves the agent server to another port. Agents need a new setup after it. */
+export async function changeAgentPort(): Promise<AgentInfo | null> {
+  const desktop = desktopApi()
+  if (!desktop) return null
+  const info = await desktop.request('agent.changePort', null)
+  useAgentStore.setState({ info })
+  return info
+}
+
 export async function resetAgentToken() {
   const desktop = desktopApi()
   if (!desktop) return

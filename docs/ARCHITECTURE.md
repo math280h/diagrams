@@ -1070,8 +1070,11 @@ with snapdom, because Chromium gives only pixels.
 
 ### Agent tools
 
-- The MCP server runs in main on `127.0.0.1:27419`. Calls go to the renderer for the ELK worker, Mermaid import, icon
+- The MCP server runs in main on `127.0.0.1`. Calls go to the renderer for the ELK worker, Mermaid import, icon
   catalogue and rendering.
+- Each app keeps one port of 27419 to 27428 (`agent-port` in the user data), so that several apps can run at once:
+  two users, or a development build next to an installed app. The agent setup holds the port, so an app waits for a
+  kept port that another program uses, and moves only on request.
 - Main and the renderer share `src/agent/tool-definitions.ts` (no DOM code). A tool without a handler fails the type
   check.
 - `runAgentTool` runs calls one at a time in the renderer and owns their time limits:
@@ -1205,8 +1208,9 @@ with snapdom, because Chromium gives only pixels.
 ### Handoff from the website
 
 "Open in desktop app" opens `diagrams://receive?code=...`, which starts the app or reaches the running one. The
-website then posts the diagram to the loopback server, with retries for 15 seconds. Chrome asks once before a website
-reaches local devices.
+website asks each agent port which app received the code, and posts the diagram only to that app, with retries for 15
+seconds. An app on the first port without this check is an older app, which checks the code when it takes the diagram.
+Chrome asks once before a website reaches local devices.
 
 The agent card and "Open in desktop app" show only on a computer. `deviceKind` (`src/lib/device.ts`) returns
 `computer`, `tablet` or `phone`:
@@ -1372,14 +1376,15 @@ those texts.
 | `api.github.com`, the latest release              | On a computer, once: while the agent introduction shows, and in "Could not open the app" | No diagram. Picks the installer for the system.                             |
 | `api.github.com`, release notes                   | Build time. At run time only on the dev server, or when the build could not load them    | No diagram                                                                  |
 | `github.com` releases, through `electron-updater` | Desktop app: at start, every 6 hours, "Check for updates"                                | No diagram. A random install id.                                            |
-| `127.0.0.1:27419` handoff                         | "Open in desktop app"                                                                    | The diagram, loopback interface only                                        |
-| `127.0.0.1:27419/mcp`                             | While the desktop app runs and an agent calls it                                         | Diagrams and images, to the connected agent                                 |
+| `127.0.0.1:27419-27428` handoff code check        | "Open in desktop app"                                                                    | The handoff code only, loopback interface only                              |
+| `127.0.0.1:27419-27428` handoff                   | "Open in desktop app", to the app that received the code                                 | The diagram, loopback interface only                                        |
+| `127.0.0.1:27419-27428/mcp`                       | While the desktop app runs and an agent calls it                                         | Diagrams and images, to the connected agent                                 |
 
 - Share links carry the diagram in the fragment, which a browser never sends. Links and exports use no network.
 - The desktop renderer connects only to `'self'`, `data:` and `blob:`. `https:` links open in the system browser.
 - `src/content-security-policy.ts` holds the renderer policy. `electron/app-protocol.ts` sends it as a header. The
   website build puts it in a meta element at the start of the page (`scripts/content-security-policy.ts`), with
-  `connect-src` for `api.github.com` and `127.0.0.1:27419` from the table. A meta element cannot set
+  `connect-src` for `api.github.com` and the agent ports from the table. A meta element cannot set
   `frame-ancestors`, so other sites can show the website in a frame, unless the host sets `frame-ancestors` in a
   header.
 - zod tests for eval when it creates an object schema, and the policy reports that test as a violation. App code

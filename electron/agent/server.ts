@@ -80,7 +80,7 @@ export function createAgentServer(options: AgentServerOptions) {
   return server
 }
 
-function portIsFree(port: number): Promise<boolean> {
+export function portIsFree(port: number): Promise<boolean> {
   return new Promise((resolve) => {
     const probe = createServer()
     probe.once('error', () => resolve(false))
@@ -98,7 +98,10 @@ export async function startAgentServer(
   port: number,
 ): Promise<{ state: AgentState; message: string | null }> {
   if (!(await portIsFree(port))) {
-    return { state: 'port-in-use', message: `Another program uses port ${port}, so agents cannot connect.` }
+    return {
+      state: 'port-in-use',
+      message: `Another program uses port ${port}, for example a second Diagrams app. Agents can connect when it is free, or on another port.`,
+    }
   }
   try {
     await Promise.race([

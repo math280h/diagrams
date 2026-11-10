@@ -1,5 +1,11 @@
 export const AGENT_HOST = '127.0.0.1'
+/** The first port of the agent server. Older apps use only this port. */
 export const AGENT_PORT = 27419
+const AGENT_PORT_COUNT = 10
+/** The ports that an app can keep for its agent server, so that several apps can run at once. */
+export const AGENT_PORTS: readonly number[] = Array.from({ length: AGENT_PORT_COUNT }, (_, index) => AGENT_PORT + index)
+/** The port where an app without a package starts to look, so that it does not take the port of an installed app. */
+export const FIRST_DEV_AGENT_PORT = AGENT_PORT + AGENT_PORT_COUNT / 2
 export const AGENT_ENDPOINT = '/mcp'
 
 export const DEEP_LINK_SCHEME = 'diagrams'

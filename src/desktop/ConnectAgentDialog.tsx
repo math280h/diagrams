@@ -4,9 +4,10 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { errorMessage } from '@/lib/error-message'
 import { relativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { resetAgentToken, useAgentHistory, useAgentStore } from './agent-store'
+import { changeAgentPort, resetAgentToken, useAgentHistory, useAgentStore } from './agent-store'
 import { CLAUDE_MARKETPLACE_NAME, CLAUDE_PLUGIN_NAME, CLAUDE_PLUGIN_TOKEN_KEY } from './constants'
 import type { AgentInfo } from './contract'
 
@@ -58,6 +59,27 @@ function Status({ info }: { info: AgentInfo | null }) {
         {text}
       </span>
     </p>
+  )
+}
+
+function PortTaken() {
+  const [moving, setMoving] = useState(false)
+  const move = () => {
+    setMoving(true)
+    void changeAgentPort()
+      .then((info) => {
+        if (info?.state === 'running') toast.success(`Agents now connect on port ${info.port}. Run the setup again.`)
+      })
+      .catch((error: unknown) => toast.error('Could not change the port', { description: errorMessage(error) }))
+      .finally(() => setMoving(false))
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] text-muted-foreground">
+      <Button variant="secondary" size="sm" disabled={moving} onClick={move}>
+        Use another port
+      </Button>
+      <span>Agents that you set up before then need the setup again.</span>
+    </div>
   )
 }
 
@@ -144,6 +166,7 @@ export function ConnectAgentDialog() {
           </DialogDescription>
         </DialogHeader>
         <Status info={info} />
+        {info?.state === 'port-in-use' && <PortTaken />}
         {info && (
           <Tabs defaultValue="plugin">
             <TabsList>

@@ -1,4 +1,10 @@
 import { expect, type Page } from '@playwright/test'
+import { AGENT_HOST, AGENT_PORTS } from '@/desktop/constants'
+
+/** Matches a request to the agent server of a desktop app on any agent port, for `page.route`. */
+export function isAgentUrl(url: URL) {
+  return url.hostname === AGENT_HOST && AGENT_PORTS.includes(Number(url.port))
+}
 
 export async function copyTemplate(page: Page, name: string) {
   await page

@@ -91,6 +91,7 @@ export async function runRender(args: RenderArgs): Promise<number> {
       'files.committed': refuse,
       'agent.info': async () => AGENT_OFF,
       'agent.resetToken': refuse,
+      'agent.changePort': refuse,
       'window.setTitleBarColors': async () => null,
       'update.info': async () => UPDATES_OFF,
       'update.check': async () => UPDATES_OFF,
