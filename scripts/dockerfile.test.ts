@@ -1,18 +1,28 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { pinnedImages } from './image-sbom.ts'
 
 const dockerfile = readFileSync('Dockerfile', 'utf8')
-const images = [...dockerfile.matchAll(/^FROM (?:--platform=\S+ )?(\S+)/gm)].map((match) => match[1]!)
+const stages = new Set([...dockerfile.matchAll(/^FROM .* AS (\S+)$/gm)].map((match) => match[1]!))
+const sources = [...dockerfile.matchAll(/^FROM (?:--platform=\S+ )?(\S+)/gm)]
+  .map((match) => match[1]!)
+  .filter((source) => source !== 'scratch' && !stages.has(source))
 
 describe('Dockerfile', () => {
   it('builds with the pnpm version of package.json', () => {
     const { packageManager } = JSON.parse(readFileSync('package.json', 'utf8')) as { packageManager: string }
-    const pnpmImage = images.find((image) => image.startsWith('ghcr.io/pnpm/pnpm:'))
-    expect(pnpmImage?.replace(/^ghcr\.io\/pnpm\/pnpm:([^@]+)@.*$/, 'pnpm@$1')).toBe(packageManager)
+    const pnpm = pinnedImages(dockerfile).find((image) => image.repository === 'ghcr.io/pnpm/pnpm')
+    expect(`pnpm@${pnpm?.tag}`).toBe(packageManager)
   })
 
-  it('pins each image by digest', () => {
-    expect(images.length).toBeGreaterThan(0)
-    expect(images.filter((image) => !/@sha256:[0-9a-f]{64}$/.test(image))).toEqual([])
+  it('pins each image by tag and digest', () => {
+    expect(sources.length).toBeGreaterThan(0)
+    expect(pinnedImages(dockerfile)).toHaveLength(sources.length)
+  })
+
+  it('ships the licence texts of the static-web-server version that it copies', () => {
+    const server = pinnedImages(dockerfile).find((image) => image.repository.endsWith('/static-web-server'))
+    const licences = [...dockerfile.matchAll(/static-web-server\/v([^/]+)\/LICENSE-/g)].map((match) => match[1])
+    expect(licences).toEqual([server?.tag, server?.tag])
   })
 })

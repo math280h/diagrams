@@ -43,16 +43,23 @@ gh attestation verify Diagrams-0.2.0-win-x64.exe --bundle Diagrams-0.2.0-win-pro
 
 ### Docker image
 
-The Docker image of a release (`ghcr.io/math280h/diagrams`) has a build provenance attestation in the registry.
-Check an image with its version:
+The Docker image of a release (`ghcr.io/math280h/diagrams`) has a build provenance attestation and an SBOM
+attestation in the registry. Check an image with its version:
 
 ```sh
 gh attestation verify oci://ghcr.io/math280h/diagrams:0.2.0 --repo math280h/diagrams \
   --signer-workflow math280h/diagrams/.github/workflows/docker-image.yml --source-ref refs/tags/v0.2.0
 ```
 
-The image also holds an SPDX SBOM of its files and the BuildKit provenance.
-`docker buildx imagetools inspect ghcr.io/math280h/diagrams:0.2.0 --format '{{ json .SBOM }}'` shows the SBOM.
+The SBOM attestation holds a CycloneDX 1.6 SBOM. It lists the npm packages in the website bundles with their licences
+and SHA-512 hashes, the programs, fonts and icon sets inside them, static-web-server and the distroless base image.
+Add `--predicate-type https://cyclonedx.org/bom --format json` to the command to check and see it.
+
+Each platform image also holds an SPDX SBOM from BuildKit, with the Debian packages of the base image, and the BuildKit
+provenance. `docker buildx imagetools inspect ghcr.io/math280h/diagrams:0.2.0 --format '{{ json .SBOM }}'` shows it.
+
+Trivy scans the image, its SBOM and the Dockerfile on each pull request, and a high or critical finding with a fix
+stops the merge. Each week it scans the image of the newest release again and reports new findings in code scanning.
 
 ### OpenPGP signatures
 

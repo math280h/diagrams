@@ -227,6 +227,22 @@ jobs:
           persist-credentials: false
       - name: Build the image
         run: docker build --tag diagrams-website .
+      - name: Write the SBOM of the image
+        run: |
+          docker build --target sbom --output "type=local,dest=$RUNNER_TEMP/sbom" .
+          jq -e '[.components[].name] | index("static-web-server") and index("static-debian13") and index("react")' \
+            "$RUNNER_TEMP/sbom/diagrams-website.cdx.json" > /dev/null
+      - uses: $/.github/actions/trivy
+      - name: Scan the image, its SBOM and the Dockerfile
+        env:
+          TRIVY_SEVERITY: HIGH,CRITICAL
+          TRIVY_IGNORE_UNFIXED: 'true'
+          TRIVY_EXIT_CODE: '1'
+          TRIVY_NO_PROGRESS: 'true'
+        run: |
+          trivy image --scanners vuln,secret diagrams-website
+          trivy sbom "$RUNNER_TEMP/sbom/diagrams-website.cdx.json"
+          trivy config --misconfig-scanners dockerfile Dockerfile
       - name: Serve the website from the image
         run: |
           docker run --detach --name website --publish 127.0.0.1:8080:8080 \

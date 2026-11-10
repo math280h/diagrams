@@ -1,0 +1,71 @@
+name: Scan the Docker image
+
+on:
+  schedule:
+    - cron: '23 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    name: Scan the image of the newest release
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+      attestations: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Find the image of the newest release
+        id: image
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)
+          ref="ghcr.io/${GITHUB_REPOSITORY,,}:${tag#v}"
+          if ! docker buildx imagetools inspect "$ref" > /dev/null 2>&1; then
+            echo "::notice::The release $tag has no image."
+            exit 0
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - name: Verify the image and read its SBOM
+        if: steps.image.outputs.ref
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF: ${{ steps.image.outputs.ref }}
+          TAG: ${{ steps.image.outputs.tag }}
+        run: |
+          gh attestation verify "oci://$REF" --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/docker-image.yml" --source-ref "refs/tags/$TAG" \
+            --predicate-type https://cyclonedx.org/bom --format json \
+            --jq '.[0].verificationResult.statement.predicate' > "$RUNNER_TEMP/sbom.cdx.json"
+      - uses: $/.github/actions/trivy
+        if: steps.image.outputs.ref
+      - name: Scan the image and its SBOM
+        if: steps.image.outputs.ref
+        env:
+          REF: ${{ steps.image.outputs.ref }}
+          TRIVY_SEVERITY: HIGH,CRITICAL
+          TRIVY_IGNORE_UNFIXED: 'true'
+          TRIVY_NO_PROGRESS: 'true'
+          TRIVY_FORMAT: sarif
+        run: |
+          trivy image --scanners vuln,secret --output "$RUNNER_TEMP/image.sarif" "$REF"
+          trivy sbom --output "$RUNNER_TEMP/sbom.sarif" "$RUNNER_TEMP/sbom.cdx.json"
+      - name: Upload the findings of the image
+        if: steps.image.outputs.ref
+        uses: github/codeql-action/upload-sarif@1fc58d04a4d4374f921bdac573c3811c240f9c26 # v4.39.2
+        with:
+          sarif_file: ${{ runner.temp }}/image.sarif
+          category: trivy-image
+      - name: Upload the findings of the SBOM
+        if: steps.image.outputs.ref
+        uses: github/codeql-action/upload-sarif@1fc58d04a4d4374f921bdac573c3811c240f9c26 # v4.39.2
+        with:
+          sarif_file: ${{ runner.temp }}/sbom.sarif
+          category: trivy-sbom

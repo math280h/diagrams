@@ -69,6 +69,11 @@ jobs:
           annotations: ${{ steps.meta.outputs.annotations }}
           provenance: mode=max
           sbom: true
+      - name: Write the SBOM of the image
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          docker buildx build --target sbom --build-arg "VERSION=$VERSION" --output "type=local,dest=$RUNNER_TEMP/sbom" .
       - name: Attest the build provenance of the image
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
@@ -76,3 +81,16 @@ jobs:
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
           create-storage-record: false
+      - name: Attest the SBOM of the image
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ steps.release.outputs.image }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          sbom-path: ${{ runner.temp }}/sbom/diagrams-website.cdx.json
+          push-to-registry: true
+          create-storage-record: false
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: docker-sbom
+          path: ${{ runner.temp }}/sbom/diagrams-website.cdx.json
+          if-no-files-found: error
