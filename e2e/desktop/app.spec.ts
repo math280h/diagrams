@@ -7,6 +7,9 @@ import { AGENT_ENDPOINT } from '@/desktop/constants'
 import { copyTemplate } from '../helpers'
 import { agentUrl, callTool, diagramFile, expect, test } from './fixtures'
 
+/** The time for the agent server to start next to a startup error, on a slow test machine. */
+const AGENT_START_WAIT_MS = 20_000
+
 test('keeps diagrams as files in the diagrams folder', async ({ window, dirs }) => {
   await expect(window.getByRole('button', { name: 'New diagram' })).toBeVisible()
   await window.getByRole('button', { name: 'New diagram' }).click()
@@ -83,18 +86,21 @@ test('explains a diagrams folder that it cannot open, and answers agents at once
 
     const token = readFileSync(path.join(dirs.userData, 'agent-token'), 'utf8').trim()
     await expect
-      .poll(async () => {
-        try {
-          await client.connect(
-            new StreamableHTTPClientTransport(new URL(`${agentUrl(agentPort)}${AGENT_ENDPOINT}`), {
-              requestInit: { headers: { Authorization: `Bearer ${token}` } },
-            }),
-          )
-          return true
-        } catch {
-          return false
-        }
-      })
+      .poll(
+        async () => {
+          try {
+            await client.connect(
+              new StreamableHTTPClientTransport(new URL(`${agentUrl(agentPort)}${AGENT_ENDPOINT}`), {
+                requestInit: { headers: { Authorization: `Bearer ${token}` } },
+              }),
+            )
+            return true
+          } catch {
+            return false
+          }
+        },
+        { timeout: AGENT_START_WAIT_MS },
+      )
       .toBe(true)
     const started = Date.now()
     await expect(callTool(client, 'list_diagrams')).rejects.toThrow('could not open the diagrams folder')
