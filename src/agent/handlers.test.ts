@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from '@/lib/zod'
 import type { IconSet } from '@/canvas/icons/library'
 import type { ToolContent } from '@/desktop/contract'
+import { compileFlow } from '@/engine/flow/compile'
 import { createDiagram } from '@/model/defaults'
 import { absolutePosition } from '@/model/graph'
 import { nodeLabel } from '@/model/labels'
@@ -546,6 +547,51 @@ describe('agent tools', () => {
     await call('update_flow', { flow: 'Events', steps: { update: [{ index: 1, parallel: [] }] }, paths: [] })
     expect(useDoc.getState().flows[0]!.steps[1]!.parallel).toBeUndefined()
     expect(useDoc.getState().flows[0]!.paths).toBeUndefined()
+  })
+
+  it('brings the tokens of a fan-out back at the same time', async () => {
+    await call('create_diagram', { name: 'Calls' })
+    await call('add_elements', {
+      nodes: [
+        { ref: 'a', label: 'App' },
+        { ref: 'o', label: 'Orders' },
+        { ref: 'p', label: 'Payments' },
+        { ref: 'd', label: 'Database' },
+      ],
+      edges: [
+        { from: 'a', to: 'o' },
+        { from: 'a', to: 'p' },
+        { from: 'a', to: 'd' },
+      ],
+    })
+    await call('add_flow', {
+      name: 'Checkout',
+      steps: [{ target: 'App' }, { target: 'Orders', parallel: ['Payments'] }, { target: 'App' }],
+    })
+    await call('update_flow', { flow: 'Checkout', steps: { append: [{ target: 'Orders', parallel: ['Payments'] }] } })
+    await call('update_flow', { flow: 'Checkout', steps: { append: [{ target: 'Database' }] } })
+    const { nodes, edges, flows } = useDoc.getState()
+    const timeline = compileFlow(flows[0]!, new Set(nodes.map((node) => node.id)), edges)
+    const label = (id: string | null) => {
+      const node = nodes.find((candidate) => candidate.id === id)
+      return node ? nodeLabel(node) : id
+    }
+    expect(
+      timeline.segments.map((segment) =>
+        segment.lanes.map((lane) => `${label(lane.fromNode)} → ${label(lane.toNode)}`).join(', '),
+      ),
+    ).toEqual([
+      'App → App',
+      'App → Orders, App → Payments',
+      'Orders → Orders, Payments → Payments',
+      'Orders → App, Payments → App',
+      'App → App',
+      'App → Orders, App → Payments',
+      'Orders → Orders, Payments → Payments',
+      'Orders → App, Payments → App',
+      'App → Database',
+      'Database → Database',
+    ])
   })
 
   it('makes a new diagram from a trace, with the trace as its flow', async () => {

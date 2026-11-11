@@ -36,6 +36,31 @@ test('plays a fan-out with a token for each target, and an alternate path', asyn
   await expect(page.locator('.dg-caption')).toContainText('The on-call engineer gets the alert')
 })
 
+test('records the replies of a fan-out at the same time, and turns one off', async ({ page }) => {
+  await page.goto('/')
+  await copyTemplate(page, 'Event pipeline')
+  await page.getByRole('button', { name: 'Flows' }).click()
+  await page.getByRole('button', { name: 'An event arrives' }).click()
+  await page.getByRole('menuitem', { name: 'New flow' }).click()
+  await expect(page.getByRole('button', { name: 'Recording' })).toBeVisible()
+
+  await card(page, 'events.raw').click()
+  await card(page, 'Enricher').click()
+  await card(page, 'Fraud scoring').click({ modifiers: ['Shift'] })
+  await card(page, 'events.raw').click()
+  await expect(logRow(page, 4)).toContainText('Enricher, Fraud scoring → events.raw')
+  await expect(logRow(page, 5)).toContainText('events.raw')
+  await page.keyboard.press('Escape')
+
+  await logRow(page, 4).click()
+  await expect(page.locator('[data-editor-canvas] .dg-token-dot:visible')).toHaveCount(2)
+  const reply = page.getByRole('switch', { name: 'Fraud scoring → events.raw' })
+  await expect(reply).toBeChecked()
+  await reply.click()
+  await expect(logRow(page, 4)).toContainText('Enricher → events.raw')
+  await expect(page.getByRole('switch', { name: 'Fraud scoring → events.raw' })).not.toBeChecked()
+})
+
 test('records a fan-out with Shift-click and a path after a step', async ({ page }) => {
   await page.goto('/')
   await copyTemplate(page, 'Event pipeline')

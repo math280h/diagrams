@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { edgeTravel, restingNodes, type EdgeEnds } from '@/engine/flow/compile'
 import { usePlaybackState } from '@/engine/hooks'
 import { findStep, overviewName, removeStep } from '@/model/flow'
 import { nodeTitle } from '@/model/labels'
@@ -52,18 +53,22 @@ function ParallelTargets({ flow, step }: { flow: Flow; step: Step }) {
   const segments = playback.timeline?.segments ?? []
   const index = segments.findIndex((segment) => segment.step.id === step.id)
   const segment = segments[index]
+  const before = index > 0 ? segments.slice(0, index).findLast((candidate) => candidate.lanes.length > 0) : undefined
+  const resting = restingNodes(before?.lanes ?? [])
   const name = (id: string) => {
     const node = nodes.find((candidate) => candidate.id === id)
     return node ? nodeTitle(node) : 'Missing node'
   }
-  const from = segment?.fromNode ?? null
+  const sharesEnd = (edge: EdgeEnds) => {
+    if (!segment || edge.id === step.target.id) return false
+    const travel = edgeTravel(edge, resting)
+    return (
+      travel.reversed === segment.reversed && (travel.fromNode === segment.fromNode || travel.toNode === segment.toNode)
+    )
+  }
   const candidates: Target[] =
     step.target.kind === 'edge'
-      ? edges
-          .filter(
-            (edge) => edge.id !== step.target.id && from && (segment?.reversed ? edge.target : edge.source) === from,
-          )
-          .map((edge) => ({ kind: 'edge', id: edge.id }))
+      ? edges.filter(sharesEnd).map((edge) => ({ kind: 'edge', id: edge.id }))
       : (segments[index - 1]?.lanes ?? []).flatMap((lane): Target[] =>
           lane.target.kind === 'edge' && lane.toNode && lane.toNode !== step.target.id
             ? [{ kind: 'node', id: lane.toNode }]
@@ -76,8 +81,8 @@ function ParallelTargets({ flow, step }: { flow: Flow; step: Step }) {
     if (target.kind === 'node') return name(target.id)
     const edge = edges.find((candidate) => candidate.id === target.id)
     if (!edge) return 'Missing connection'
-    const start = from && edge.target === from ? edge.target : edge.source
-    return `${name(start)} → ${name(start === edge.source ? edge.target : edge.source)}`
+    const travel = edgeTravel(edge, resting)
+    return `${name(travel.fromNode)} → ${name(travel.toNode)}`
   }
   const toggle = (target: Target, on: boolean) =>
     updateFlow(flow.id, (draft) => {
@@ -95,7 +100,7 @@ function ParallelTargets({ flow, step }: { flow: Flow; step: Step }) {
       {options.length === 0 ? (
         <p className="text-xs text-muted-foreground">
           {step.target.kind === 'edge'
-            ? 'No other connection leaves the same node in this direction.'
+            ? 'No other connection leaves or reaches the same node in this direction.'
             : 'While you record, Shift-click a node to reach it at the same time as this one.'}
         </p>
       ) : (

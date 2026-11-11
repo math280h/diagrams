@@ -256,7 +256,7 @@ const stepInput = z.object({
     .array(z.string())
     .optional()
     .describe(
-      'Other nodes or edges that the step reaches at the same time, each with its own token, for example all consumers of one event. With connect, a node step gets one edge step that reaches all its nodes at once.',
+      'Other nodes or edges that the step reaches at the same time, each with its own token, for example all consumers of one event. With connect, a node step gets one edge step that reaches all its nodes at once, and the tokens of an earlier parallel step join on the first node of the connection if an edge leads there.',
     ),
 })
 
