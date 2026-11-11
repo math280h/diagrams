@@ -17,16 +17,39 @@ export function overviewName(index: number, total: number): string {
   return 'Overview'
 }
 
-export function findPath(flow: Flow, pathId: string | null): FlowPath | null {
+/** Finds a path or a side path of a flow by its id. */
+export function findAnyPath(flow: Flow, pathId: string | null): FlowPath | null {
   if (pathId === null) return null
   return flow.paths?.find((path) => path.id === pathId) ?? null
 }
 
+/** Finds a path of a flow by its id. For a side path, it returns `null`. */
+export function findPath(flow: Flow, pathId: string | null): FlowPath | null {
+  const path = findAnyPath(flow, pathId)
+  return path && !path.concurrent ? path : null
+}
+
+/** Returns the paths that a viewer can choose: all paths except the side paths. */
+export function choosablePaths(flow: Flow): FlowPath[] {
+  return (flow.paths ?? []).filter((path) => !path.concurrent)
+}
+
+/** Returns the side paths of a flow. */
+export function sidePaths(flow: Flow): FlowPath[] {
+  return (flow.paths ?? []).filter((path) => path.concurrent === true)
+}
+
+/** Returns the steps that the recording of a path or a side path adds to: its own steps, or the main steps. */
+export function recordedSteps(flow: Flow, pathId: string | null): Step[] {
+  return findAnyPath(flow, pathId)?.steps ?? flow.steps
+}
+
 /**
  * Returns the steps that a flow plays on a path: the main steps up to the start of the path, the steps of the path,
- * and the main steps from its rejoin step.
+ * and the main steps from its rejoin step. Side paths are not in the list.
  *
- * @param pathId - The path, or `null` for the main steps. A path that starts at no main step gives the main steps.
+ * @param pathId - The path, or `null` for the main steps. A path that starts at no main step, and a side path, give
+ *     the main steps.
  */
 export function pathSteps(flow: Flow, pathId: string | null): Step[] {
   const path = findPath(flow, pathId)
@@ -63,10 +86,10 @@ export function allSteps(flow: Flow): Step[] {
   return [...flow.steps, ...(flow.paths ?? []).flatMap((path) => path.steps)]
 }
 
-/** Returns the main steps after the start of a path, where the path can rejoin. */
+/** Returns the main steps after the start of a path, where the path can rejoin. A side path does not rejoin. */
 export function rejoinCandidates(flow: Flow, path: FlowPath): Step[] {
   const start = flow.steps.findIndex((step) => step.id === path.fromStep)
-  return start === -1 ? [] : flow.steps.slice(start + 1)
+  return start === -1 || path.concurrent ? [] : flow.steps.slice(start + 1)
 }
 
 export interface LaneName {

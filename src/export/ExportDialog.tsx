@@ -16,6 +16,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useEngine } from '@/engine/hooks'
 import { compileFlow } from '@/engine/flow/compile'
+import { choosablePaths, findPath } from '@/model/flow'
 import { downloadBlob } from '@/lib/download'
 import { formatBytes, formatSeconds, plural, safeFileName } from '@/lib/format'
 import { detachedSelection } from '@/store/actions'
@@ -381,7 +382,7 @@ function VideoExport({ onClose }: { onClose: () => void }) {
   const [timeLeftMs, setTimeLeftMs] = useState<number | null>(null)
   const content = useStageContent(themeChoice, grid)
   const flow = flows.find((candidate) => candidate.id === source)
-  const pathId = flow?.paths?.some((path) => path.id === pathChoice) ? pathChoice : null
+  const pathId = (flow && findPath(flow, pathChoice)?.id) ?? null
   const size = FRAME_SIZE[frame]
   const gif = format === 'gif'
   const scale = gif ? Math.min(1, GIF_MAX_WIDTH / size.width) : quality === '1080' ? 1.5 : 1
@@ -390,7 +391,7 @@ function VideoExport({ onClose }: { onClose: () => void }) {
     () => (flow ? compileFlow(flow, new Set(content.nodes.map((node) => node.id)), content.edges, pathId) : null),
     [flow, content.nodes, content.edges, pathId],
   )
-  const paths = flow?.paths?.filter((path) => path.steps.length > 0) ?? []
+  const paths = flow ? choosablePaths(flow).filter((path) => path.steps.length > 0) : []
   const durationMs = timeline ? timeline.durationMs + FLOW_END_HOLD_MS : ambientSeconds * 1000
   const stageKey = `${frame}|${themeChoice}|${grid}`
   const { nodes, edges, theme, resolvedTheme } = content

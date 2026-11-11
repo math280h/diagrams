@@ -1,21 +1,31 @@
 import { edgeTravel, type EdgeEnds } from './flow/compile'
 
+export interface EdgePathOptions {
+  /** If true, the chain does not go from the target to the source of an edge that does not reply. */
+  token?: boolean
+}
+
 /**
  * Finds the shortest chain of edges between two nodes.
  *
- * The search ignores edge direction.
+ * The search ignores edge direction, except for edges that do not reply when `options.token` is true.
  *
  * @returns The edge ids in travel order, an empty list if the nodes are the same, or `null` if no
  *     chain exists.
  */
-export function findEdgePath(from: string, to: string, edges: readonly EdgeEnds[]): string[] | null {
+export function findEdgePath(
+  from: string,
+  to: string,
+  edges: readonly EdgeEnds[],
+  options: EdgePathOptions = {},
+): string[] | null {
   if (from === to) return []
   const adjacency = new Map<string, { edge: string; next: string }[]>()
   for (const edge of edges) {
     if (!adjacency.has(edge.source)) adjacency.set(edge.source, [])
     if (!adjacency.has(edge.target)) adjacency.set(edge.target, [])
     adjacency.get(edge.source)!.push({ edge: edge.id, next: edge.target })
-    adjacency.get(edge.target)!.push({ edge: edge.id, next: edge.source })
+    if (!(options.token && edge.data?.noReply)) adjacency.get(edge.target)!.push({ edge: edge.id, next: edge.source })
   }
   const previous = new Map<string, { node: string; edge: string }>()
   const queue = [from]
@@ -39,6 +49,25 @@ export function findEdgePath(from: string, to: string, edges: readonly EdgeEnds[
     cursor = step.node
   }
   return path
+}
+
+/**
+ * Finds the token with the shortest chain of edges that a token can travel to a node, see {@link findEdgePath}.
+ *
+ * @param tokens - The nodes that have a token, the main token first. The first one wins a tie.
+ * @returns The token node and the edge ids in travel order, or `null` if no chain starts at a token.
+ */
+export function nearestToken(
+  tokens: readonly string[],
+  to: string,
+  edges: readonly EdgeEnds[],
+): { from: string; route: string[] } | null {
+  let best: { from: string; route: string[] } | null = null
+  for (const from of new Set(tokens)) {
+    const route = findEdgePath(from, to, edges, { token: true })
+    if (route && (!best || route.length < best.route.length)) best = { from, route }
+  }
+  return best
 }
 
 /**

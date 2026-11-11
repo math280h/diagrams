@@ -1,5 +1,5 @@
 import { useReactFlow } from '@xyflow/react'
-import { Camera, Diamond, Eye, Minus, Plus, Trash2, Waves } from 'lucide-react'
+import { Camera, Diamond, Eye, GitFork, Minus, Plus, Trash2, Waves } from 'lucide-react'
 import {
   useEffect,
   useLayoutEffect,
@@ -14,6 +14,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useEngine, usePlaybackState } from '@/engine/hooks'
 import { viewportToCamera } from '@/engine/camera'
+import type { TimelineSegment } from '@/engine/flow/compile'
+import { allSegments } from '@/engine/flow/sides'
 import { cn } from '@/lib/utils'
 import { newId } from '@/model/defaults'
 import type { CameraKeyframe, Ease, Flow, Track, ValueKeyframe } from '@/model/schema'
@@ -58,6 +60,86 @@ function dragHandler(onMove: (deltaPx: number, event: PointerEvent) => void, onE
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
   }
+}
+
+function StepBlocks({
+  flow,
+  segments,
+  scale,
+  order,
+  selectedStepIds,
+}: {
+  flow: Flow
+  segments: readonly TimelineSegment[]
+  scale: number
+  order: readonly string[]
+  selectedStepIds: readonly string[]
+}) {
+  const engine = useEngine()
+  return segments.map((segment, position) => {
+    const { step } = segment
+    const width = Math.max(6, (segment.endMs - segment.startMs) * scale)
+    const line = stepLine(step, segment.lanes)
+    const label =
+      step.target.kind === 'flow'
+        ? overviewName(position, segments.length)
+        : step.target.kind === 'node'
+          ? targetName(step.target)
+          : `→ ${line.event || line.element}`
+    const next = segments[position + 1]?.step
+    const resize = (requestedMs: number, local: boolean) =>
+      updateFlow(
+        flow.id,
+        (draft) => {
+          const place = findStep(draft, step.id)
+          if (!place) return
+          const after = local ? place.list.find((candidate) => candidate.id === next?.id) : undefined
+          let target = Math.max(MIN_STEP_MS, Math.round(requestedMs / STEP_SNAP_MS) * STEP_SNAP_MS)
+          if (after && next) {
+            const total = step.durationMs + next.durationMs
+            target = Math.min(target, total - MIN_STEP_MS)
+            after.durationMs = total - target
+          }
+          place.step.durationMs = target
+        },
+        `duration:${step.id}`,
+      )
+    return (
+      <div
+        key={step.id}
+        title={[step.target.kind === 'flow' ? label : line.element, line.event].filter(Boolean).join(': ')}
+        className={cn(
+          'absolute top-1 bottom-1 flex items-center overflow-hidden rounded-md border px-1.5 text-[11px] select-none',
+          step.target.kind === 'flow' ? 'bg-flow/15' : step.target.kind === 'node' ? 'bg-accent' : 'bg-muted/50',
+          selectedStepIds.includes(step.id) ? 'border-foreground/50' : 'border-transparent',
+        )}
+        style={{ left: segment.startMs * scale, width: width - 2 }}
+        onClick={(event) => {
+          if (selectClickedStep(event, step.id, order)) engine.playback.seek(segment.startMs + 1)
+        }}
+      >
+        <span className="truncate">{label}</span>
+        <div
+          role="separator"
+          tabIndex={0}
+          aria-orientation="vertical"
+          aria-label={`End of step ${position + 1}. Arrow keys change its time; with Alt, the next step keeps its start.`}
+          aria-valuenow={step.durationMs}
+          aria-valuemin={MIN_STEP_MS}
+          title="Drag to change the time of the step. The later steps move with it; hold Alt to keep them in place."
+          className="absolute top-0 right-0 bottom-0 w-1.5 cursor-ew-resize outline-none hover:bg-foreground/30 focus-visible:bg-ring"
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => {
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+            event.preventDefault()
+            const delta = (event.key === 'ArrowRight' ? 1 : -1) * (event.shiftKey ? 500 : STEP_SNAP_MS * 2)
+            resize(step.durationMs + delta, event.altKey)
+          }}
+          onPointerDown={dragHandler((delta, moveEvent) => resize(step.durationMs + delta / scale, moveEvent.altKey))}
+        />
+      </div>
+    )
+  })
 }
 
 function KeyframeEditor({ flow, track, keyframeId }: { flow: Flow; track: Track; keyframeId: string }) {
@@ -155,7 +237,8 @@ export function Timeline({ flow }: { flow: Flow }) {
   const [openKeyframe, setOpenKeyframe] = useState<string | null>(null)
   const durationMs = Math.max(playback.durationMs, 1000)
   const segments = playback.timeline?.segments ?? []
-  const order = segments.map((segment) => segment.step.id)
+  const sides = playback.timeline?.sides ?? []
+  const order = playback.timeline ? allSegments(playback.timeline).map((segment) => segment.step.id) : []
 
   useLayoutEffect(() => {
     if (pxPerSecond !== null || !scrollRef.current) return
@@ -260,6 +343,17 @@ export function Timeline({ flow }: { flow: Flow }) {
         <div className="flex items-center px-2 text-muted-foreground" style={{ height: LANE_HEIGHT }}>
           Steps
         </div>
+        {sides.map((side) => (
+          <div
+            key={side.path.id}
+            className="flex items-center gap-1.5 px-2 text-muted-foreground"
+            style={{ height: LANE_HEIGHT }}
+            title={`${side.path.name} plays at the same time as the main steps`}
+          >
+            <GitFork className="size-3.5 shrink-0" />
+            <span className="min-w-0 flex-1 truncate text-foreground/85">{side.path.name}</span>
+          </div>
+        ))}
         <div className="min-h-0 flex-1 overflow-y-auto">
           {flow.tracks.map((track) => {
             const label = trackLabel(track)
@@ -316,77 +410,25 @@ export function Timeline({ flow }: { flow: Flow }) {
             ))}
           </div>
           <div className="relative border-b border-panel-border" style={{ height: LANE_HEIGHT }}>
-            {segments.map((segment) => {
-              const { step } = segment
-              const width = Math.max(6, (segment.endMs - segment.startMs) * scale)
-              const line = stepLine(step, segment.lanes)
-              const label =
-                step.target.kind === 'flow'
-                  ? overviewName(segment.index, segments.length)
-                  : step.target.kind === 'node'
-                    ? targetName(step.target)
-                    : `→ ${line.event || line.element}`
-              const next = segments[segment.index + 1]?.step
-              const resize = (requestedMs: number, local: boolean) =>
-                updateFlow(
-                  flow.id,
-                  (draft) => {
-                    const place = findStep(draft, step.id)
-                    if (!place) return
-                    const after = local ? place.list.find((candidate) => candidate.id === next?.id) : undefined
-                    let target = Math.max(MIN_STEP_MS, Math.round(requestedMs / STEP_SNAP_MS) * STEP_SNAP_MS)
-                    if (after && next) {
-                      const total = step.durationMs + next.durationMs
-                      target = Math.min(target, total - MIN_STEP_MS)
-                      after.durationMs = total - target
-                    }
-                    place.step.durationMs = target
-                  },
-                  `duration:${step.id}`,
-                )
-              return (
-                <div
-                  key={step.id}
-                  title={[step.target.kind === 'flow' ? label : line.element, line.event].filter(Boolean).join(': ')}
-                  className={cn(
-                    'absolute top-1 bottom-1 flex items-center overflow-hidden rounded-md border px-1.5 text-[11px] select-none',
-                    step.target.kind === 'flow'
-                      ? 'bg-flow/15'
-                      : step.target.kind === 'node'
-                        ? 'bg-accent'
-                        : 'bg-muted/50',
-                    selectedStepIds.includes(step.id) ? 'border-foreground/50' : 'border-transparent',
-                  )}
-                  style={{ left: segment.startMs * scale, width: width - 2 }}
-                  onClick={(event) => {
-                    if (selectClickedStep(event, step.id, order)) engine.playback.seek(segment.startMs + 1)
-                  }}
-                >
-                  <span className="truncate">{label}</span>
-                  <div
-                    role="separator"
-                    tabIndex={0}
-                    aria-orientation="vertical"
-                    aria-label={`End of step ${segment.index + 1}. Arrow keys change its time; with Alt, the next step keeps its start.`}
-                    aria-valuenow={step.durationMs}
-                    aria-valuemin={MIN_STEP_MS}
-                    title="Drag to change the time of the step. The later steps move with it; hold Alt to keep them in place."
-                    className="absolute top-0 right-0 bottom-0 w-1.5 cursor-ew-resize outline-none hover:bg-foreground/30 focus-visible:bg-ring"
-                    onClick={(event) => event.stopPropagation()}
-                    onKeyDown={(event) => {
-                      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
-                      event.preventDefault()
-                      const delta = (event.key === 'ArrowRight' ? 1 : -1) * (event.shiftKey ? 500 : STEP_SNAP_MS * 2)
-                      resize(step.durationMs + delta, event.altKey)
-                    }}
-                    onPointerDown={dragHandler((delta, moveEvent) =>
-                      resize(step.durationMs + delta / scale, moveEvent.altKey),
-                    )}
-                  />
-                </div>
-              )
-            })}
+            <StepBlocks flow={flow} segments={segments} scale={scale} order={order} selectedStepIds={selectedStepIds} />
           </div>
+          {sides.map((side) => (
+            <div
+              key={side.path.id}
+              className="relative border-b border-panel-border"
+              style={{ height: LANE_HEIGHT }}
+              aria-label={`Side path ${side.path.name}`}
+              role="group"
+            >
+              <StepBlocks
+                flow={flow}
+                segments={side.segments}
+                scale={scale}
+                order={order}
+                selectedStepIds={selectedStepIds}
+              />
+            </div>
+          ))}
           {flow.tracks.map((track) => (
             <div
               key={track.id}

@@ -1,9 +1,11 @@
 import { Waypoints } from 'lucide-react'
 import { useEffect, useRef } from 'react'
-import { useEngine, usePlaybackState } from '@/engine/hooks'
+import type { Timeline, TimelineSegment } from '@/engine/flow/compile'
+import { stepState } from '@/engine/flow/sides'
+import { useEngine, usePlaybackState, useSideIndices } from '@/engine/hooks'
 import { cn } from '@/lib/utils'
-import { findPath, pathSteps, stepTargets, isOverview, overviewName } from '@/model/flow'
-import type { Flow } from '@/model/schema'
+import { findAnyPath, pathSteps, stepTargets, isOverview, overviewName } from '@/model/flow'
+import type { Flow, FlowPath, Step } from '@/model/schema'
 import { useDoc } from '@/store/doc-store'
 import { useUi } from '@/store/ui-store'
 import { useSegmentIndex } from '@/engine/hooks'
@@ -22,24 +24,81 @@ function offset(ms: number): string {
   return `+${(ms / 1000).toFixed(3)}s`
 }
 
+interface LogRow {
+  step: Step
+  segment: TimelineSegment | undefined
+  number: string
+  element: (line: ReturnType<typeof stepLine>) => string
+  state: 'skipped' | 'done' | 'active' | 'pending'
+  onPath: boolean
+  side: boolean
+}
+
+function logRows(
+  steps: readonly Step[],
+  path: FlowPath | null,
+  timeline: Timeline | null,
+  current: number,
+  sideIndices: readonly number[],
+): LogRow[] {
+  const segments = timeline?.segments ?? []
+  const pathStepIds = new Set(path?.steps.map((step) => step.id))
+  const sides = (timeline?.sides ?? []).flatMap((side, track) => {
+    const fromNumber = steps.findIndex((step) => step.id === side.from.step.id) + 1
+    let startMs = side.from.endMs
+    return side.path.steps.map((step, index) => {
+      const segment = side.segments.find((candidate) => candidate.step.id === step.id)
+      if (segment) startMs = segment.startMs
+      const row: LogRow = {
+        step,
+        segment,
+        number: `${fromNumber}.${index + 1}`,
+        element: (line) => (isOverview(step) ? overviewName(index, side.path.steps.length) : line.element),
+        state: segment ? stepState(segment.index, sideIndices[track] ?? -1) : 'skipped',
+        onPath: true,
+        side: true,
+      }
+      return { row, startMs }
+    })
+  })
+  const pending = sides.toSorted((a, b) => a.startMs - b.startMs)
+  const rows: LogRow[] = []
+  steps.forEach((step, index) => {
+    const segment = segments.find((candidate) => candidate.step.id === step.id)
+    const startMs = segment?.startMs ?? -Infinity
+    while (pending.length > 0 && pending[0]!.startMs <= startMs) rows.push(pending.shift()!.row)
+    rows.push({
+      step,
+      segment,
+      number: String(index + 1),
+      element: (line) => (isOverview(step) ? overviewName(index, steps.length) : line.element),
+      state: segment ? stepState(segment.index, current) : 'skipped',
+      onPath: pathStepIds.has(step.id),
+      side: false,
+    })
+  })
+  return [...rows, ...pending.map(({ row }) => row)]
+}
+
 export function LogTable({ flow }: { flow: Flow }) {
   const engine = useEngine()
   const playback = usePlaybackState()
   const recording = useUi((state) => state.recording)
   const selectedStepIds = useUi((state) => state.selectedStepIds)
-  const path = findPath(
+  const path = findAnyPath(
     flow,
     useUi((state) => state.activePathId),
   )
-  const steps = pathSteps(flow, path?.id ?? null)
-  const order = steps.map((step) => step.id)
-  const pathStepIds = new Set(path?.steps.map((step) => step.id))
+  const alternative = path && !path.concurrent ? path : null
+  const steps = pathSteps(flow, alternative?.id ?? null)
   const current = useSegmentIndex()
+  const sideIndices = useSideIndices()
   useDoc((state) => state.nodes)
   useDoc((state) => state.edges)
-  const segments = playback.timeline?.segments ?? []
+  const rows = logRows(steps, alternative, playback.timeline, current, sideIndices)
+  const order = rows.map((row) => row.step.id)
   const listRef = useRef<HTMLDivElement>(null)
-  const showLatency = steps.some((step) => step.latencyMs !== null)
+  const showLatency = rows.some((row) => row.step.latencyMs !== null)
   const columns = showLatency ? COLUMNS : COLUMNS_WITHOUT_LATENCY
 
   useEffect(() => {
@@ -52,12 +111,13 @@ export function LogTable({ flow }: { flow: Flow }) {
   useEffect(() => () => markOnCanvas([]), [])
 
   if (path && path.steps.length === 0) {
+    const kind = path.concurrent ? 'side path' : 'path'
     return (
       <div className="m-2 flex flex-1 items-center gap-3 rounded-md border border-dashed px-4 text-sm text-muted-foreground">
         <Waypoints className="size-4 shrink-0" />
         {recording
-          ? 'Click the node that the path reaches first.'
-          : `Press Record, then click the nodes that “${path.name}” reaches instead of the main steps.`}
+          ? `Click the node that the ${kind} reaches first.`
+          : `Press Record, then click the nodes that “${path.name}” reaches ${path.concurrent ? 'at the same time as' : 'instead of'} the main steps.`}
       </div>
     )
   }
@@ -90,17 +150,9 @@ export function LogTable({ flow }: { flow: Flow }) {
         {showLatency && <span className="text-right">Latency</span>}
         <span className="max-lg:hidden">Caption</span>
       </div>
-      {steps.map((step, index) => {
-        const segment = segments.find((candidate) => candidate.step.id === step.id)
-        const state = !segment
-          ? 'skipped'
-          : segment.index < current
-            ? 'done'
-            : segment.index === current
-              ? 'active'
-              : 'pending'
+      {rows.map(({ step, segment, number, element: elementOf, state, onPath, side }) => {
         const line = stepLine(step, segment?.lanes)
-        const element = isOverview(step) ? overviewName(index, steps.length) : line.element
+        const element = elementOf(line)
         const { event } = line
         const body = flow.bodies ? line.body : ''
         const selected = selectedStepIds.includes(step.id)
@@ -108,11 +160,12 @@ export function LogTable({ flow }: { flow: Flow }) {
           <button
             key={step.id}
             type="button"
-            data-index={segment?.index}
+            data-index={side ? undefined : segment?.index}
+            data-side={side || undefined}
             data-state={state}
             data-kind={step.target.kind}
             data-level={step.level}
-            data-path={pathStepIds.has(step.id) || undefined}
+            data-path={onPath || undefined}
             data-selected={selected || undefined}
             aria-current={state === 'active' ? 'step' : undefined}
             onClick={(click) => {
@@ -127,7 +180,7 @@ export function LogTable({ flow }: { flow: Flow }) {
               'dg-log-row h-6 w-full items-center gap-x-3 px-3 text-left font-mono text-xs tabular-nums',
             )}
           >
-            <span className="text-right text-muted-foreground">{index + 1}</span>
+            <span className="text-right text-muted-foreground">{number}</span>
             <span className="dg-log-dim max-sm:hidden">{segment ? offset(segment.startMs) : '—'}</span>
             <span className="dg-log-dot" />
             <span className="truncate font-sans text-[13px]">{element}</span>

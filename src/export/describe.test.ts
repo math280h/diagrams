@@ -89,6 +89,31 @@ describe('describeDiagram', () => {
     )
   })
 
+  it('describes a side path and a connection with no reply', () => {
+    const b = new DiagramBuilder()
+    const api = b.card(0, 0, { title: 'Orders API' })
+    const queue = b.card(300, 0, { form: 'queue', title: 'Emails' })
+    const worker = b.card(600, 0, { title: 'Mailer' })
+    const toQueue = b.edge(api, queue, { label: 'publish', noReply: true })
+    const toWorker = b.edge(queue, worker, { noReply: true })
+    const flow = b.flow('Order', [
+      nodeStep(api, 'The order is in.'),
+      nodeStep(api, '', 1300, 'fit', 1, { event: '201' }),
+    ])
+    b.sidePath(flow, 'Send the email', 0, [edgeStep(toQueue), edgeStep(toWorker, 'The mailer sends it.')])
+    const diagram = b.build('Order')
+    const text = descriptionText(describeDiagram({ ...fromDiagram(diagram), name: diagram.name, flows: diagram.flows }))
+    expect(text).toContain('- Orders API → Emails: publish (no reply)\n- Emails → Mailer (no reply)')
+    expect(text).toContain(
+      [
+        'Side path “Send the email” of “Order”, at the same time after step 1:',
+        '1. Orders API → Emails: publish',
+        '2. Emails → Mailer — The mailer sends it.',
+        'The side path ends.',
+      ].join('\n'),
+    )
+  })
+
   it('names an empty diagram', () => {
     expect(describeDiagram({ name: ' ', nodes: [], edges: [], flows: [] })).toEqual({
       name: 'Untitled diagram',

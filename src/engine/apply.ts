@@ -20,7 +20,7 @@ function setOpacity(element: HTMLElement | SVGElement, value: number | undefined
  * key write the same DOM.
  */
 export function flowStateKey(frame: FlowFrame, spotlight: boolean): string {
-  let key = `${frame.segmentIndex}|${spotlight ? 1 : 0}`
+  let key = `${frame.segmentIndex}|${frame.sideIndices.join(',')}|${spotlight ? 1 : 0}`
   for (const [element, value] of frame.emphasis) key += `|${element}=${value}`
   return key
 }

@@ -1,6 +1,7 @@
 import { Waypoints } from 'lucide-react'
 import { useEffect, useMemo, useRef } from 'react'
-import { useEngine } from '@/engine/hooks'
+import { stepState } from '@/engine/flow/sides'
+import { useEngine, useSideIndices } from '@/engine/hooks'
 import { flowSequence, type SequenceRow } from '@/export/sequence'
 import type { Flow } from '@/model/schema'
 import { selectOnly } from '@/store/actions'
@@ -62,6 +63,12 @@ function Message({ row, rowWidth }: { row: Extract<SequenceRow, { kind: 'message
         />
         {row.level === 'error' ? (
           <path d={`M${tip - 4} ${ARROW_Y_PX - 4} l8 8 M${tip - 4} ${ARROW_Y_PX + 4} l8 -8`} className="dg-seq-line" />
+        ) : row.noReply ? (
+          <path
+            d={`M${tip - direction * ARROW_HEAD_PX} ${ARROW_Y_PX - ARROW_HEAD_PX / 1.5} L${tip} ${ARROW_Y_PX} L${tip - direction * ARROW_HEAD_PX} ${ARROW_Y_PX + ARROW_HEAD_PX / 1.5} M${tip - direction * ARROW_HEAD_PX} ${ARROW_Y_PX} H${tip}`}
+            className="dg-seq-line"
+            fill="none"
+          />
         ) : (
           <path
             d={`M${tip} ${ARROW_Y_PX} l${-direction * ARROW_HEAD_PX} ${-ARROW_HEAD_PX / 1.5} v${(ARROW_HEAD_PX * 4) / 3} z`}
@@ -97,6 +104,7 @@ export function SequenceView({ flow }: { flow: Flow }) {
       useUi((state) => state.activePathId),
     )?.id ?? null
   const current = useSegmentIndex()
+  const sideIndices = useSideIndices()
   const sequence = useMemo(() => flowSequence(flow, { nodes, edges }, pathId), [flow, nodes, edges, pathId])
   const scrollRef = useRef<HTMLDivElement>(null)
   const width = sequence.participants.length * COLUMN_PX
@@ -105,7 +113,7 @@ export function SequenceView({ flow }: { flow: Flow }) {
 
   useEffect(() => {
     const scroller = scrollRef.current
-    const row = scroller?.querySelector<HTMLElement>(`[data-index="${current}"][data-lane="0"]`)
+    const row = scroller?.querySelector<HTMLElement>(`[data-index="${current}"][data-lane="0"]:not([data-side])`)
     if (!scroller || !row) return
     scroller.scrollTo({ top: Math.max(0, row.offsetTop - HEADER_PX - ROW_PX), behavior: 'smooth' })
   }, [current])
@@ -156,7 +164,8 @@ export function SequenceView({ flow }: { flow: Flow }) {
           ))}
         </div>
         {sequence.rows.map((row) => {
-          const state = row.segmentIndex < current ? 'done' : row.segmentIndex === current ? 'active' : 'pending'
+          const side = row.track === null ? null : (engine.playback.timeline?.sides[row.track] ?? null)
+          const state = stepState(row.segmentIndex, row.track === null ? current : (sideIndices[row.track] ?? -1))
           const selected = selectedStepIds.includes(row.step.id)
           return (
             <button
@@ -164,11 +173,12 @@ export function SequenceView({ flow }: { flow: Flow }) {
               type="button"
               data-index={row.segmentIndex}
               data-lane={row.lane}
-              data-path={pathStepIds.has(row.step.id) || undefined}
+              data-side={row.track === null ? undefined : true}
+              data-path={pathStepIds.has(row.step.id) || row.track !== null || undefined}
               data-state={state}
               data-level={row.level}
               aria-current={state === 'active' ? 'step' : undefined}
-              aria-label={`Step ${row.segmentIndex + 1}${row.lanes > 1 ? `, ${row.lane + 1} of ${row.lanes} at the same time` : ''}: ${
+              aria-label={`Step ${row.number}${side ? ` of ${side.path.name}` : ''}${row.lanes > 1 ? `, ${row.lane + 1} of ${row.lanes} at the same time` : ''}: ${
                 row.kind === 'message'
                   ? `${sequence.participants[row.from]!.title} to ${sequence.participants[row.to]!.title}`
                   : sequence.participants[row.over]!.title
@@ -176,7 +186,8 @@ export function SequenceView({ flow }: { flow: Flow }) {
               title={rowTitle(row)}
               onClick={(event) => {
                 if (!selectClickedStep(event, row.step.id, order)) return
-                engine.playback.seek((engine.playback.timeline?.segments[row.segmentIndex]?.startMs ?? 0) + 1)
+                const segments = side ? side.segments : (engine.playback.timeline?.segments ?? [])
+                engine.playback.seek((segments[row.segmentIndex]?.startMs ?? 0) + 1)
               }}
               onPointerEnter={() => markOnCanvas(stepTargets(row.step))}
               onPointerLeave={() => markOnCanvas([])}

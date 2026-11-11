@@ -1,7 +1,8 @@
-import { use, useEffect, useState, useSyncExternalStore } from 'react'
+import { use, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import type { Engine, PlaybackSnapshot } from './engine'
 import { EngineContext } from './engine-context'
 import { segmentIndexAt } from './flow/compile'
+import { sideIndexAt } from './flow/sides'
 
 export function useEngine(): Engine {
   const engine = use(EngineContext)
@@ -32,4 +33,19 @@ export function useSegmentIndex(): number {
     return engine.playback.time.on('change', update)
   }, [engine, engine.playback.timeline])
   return index
+}
+
+/** Returns the {@link sideIndexAt} result of each side path of the timeline at the playback time. */
+export function useSideIndices(): readonly number[] {
+  const engine = useEngine()
+  const [key, setKey] = useState('')
+  useEffect(() => {
+    const update = (time: number) => {
+      const timeline = engine.playback.timeline
+      setKey(timeline ? timeline.sides.map((side) => sideIndexAt(timeline, side, time)).join(',') : '')
+    }
+    update(engine.playback.time.get())
+    return engine.playback.time.on('change', update)
+  }, [engine, engine.playback.timeline])
+  return useMemo(() => (key === '' ? [] : key.split(',').map(Number)), [key])
 }

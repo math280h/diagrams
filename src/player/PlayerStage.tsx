@@ -42,7 +42,7 @@ import type { DiagramEdge } from '@/model/types'
 import { fromDiagram } from '@/persistence/serialize'
 import { Scrubber } from './Scrubber'
 import { describeDiagram } from '@/export/describe'
-import { findPath } from '@/model/flow'
+import { choosablePaths, findPath } from '@/model/flow'
 import { ExploreStrip } from './ExploreStrip'
 import { useExplore } from './use-explore'
 
@@ -115,7 +115,7 @@ function PathPicker({
   pathId: string | null
   onChange: (pathId: string | null) => void
 }) {
-  const paths = (flow.paths ?? []).filter((path) => path.steps.length > 0)
+  const paths = choosablePaths(flow).filter((path) => path.steps.length > 0)
   if (paths.length === 0) return null
   return (
     <DropdownMenu>

@@ -6,6 +6,7 @@ import { createClock } from './clock'
 import { clamp01, easeInOutCubic } from './easing'
 import type { Timeline } from './flow/compile'
 import { evaluateFlow, type FlowFrame, type FlowGeometry } from './flow/evaluate'
+import { sideView } from './flow/sides'
 import { pointAt, type ArcTable, type PathPoint } from './path-sampler'
 import { COMET_TRAIL, dashPattern, marchOffsetPx, particleProgress } from './traffic'
 
@@ -45,6 +46,21 @@ export interface CaptionLane {
   reversed: boolean
 }
 
+/** A side step that plays at the same time as the main step of a {@link Caption}. */
+export interface SideCaption {
+  /** The index of the side path in {@link Timeline.sides}. */
+  track: number
+  /** The index of the step in the segments of the side path. */
+  index: number
+  /** The step number, for example `3.2` for the second step of a side path after main step 3. */
+  number: string
+  name: string
+  text: string
+  /** The main target first, then the parallel targets. */
+  lanes: CaptionLane[]
+  event: string
+}
+
 export interface Caption extends Omit<CaptionLane, 'target'> {
   /** The main target, or the whole flow for an overview step. */
   target: StepTarget
@@ -57,6 +73,8 @@ export interface Caption extends Omit<CaptionLane, 'target'> {
   level: LogLevel
   /** True if the log line of an edge step shows the body of the edge. */
   bodies: boolean
+  /** The side steps that play at the time. */
+  sides: SideCaption[]
 }
 
 const MAX_FRAME_DELTA_MS = 1000
@@ -66,6 +84,25 @@ const LABEL_VISIBLE = 0.05
 const DOT_CLEAR_PX = 6
 const IDLE_COVER_INTERVAL_MS = 100
 const HANDOFF_MS = 700
+
+function sideCaptions(timeline: Timeline, sideIndices: readonly number[]): SideCaption[] {
+  return sideIndices.flatMap((index, track) => {
+    const side = timeline.sides[track]!
+    const segment = side.segments[index]
+    if (!segment) return []
+    return [
+      {
+        track,
+        index,
+        number: `${side.from.index + 1}.${index + 1}`,
+        name: side.path.name,
+        text: segment.step.caption,
+        lanes: segment.lanes.map(({ target, reversed }) => ({ target, reversed })),
+        event: segment.step.event,
+      },
+    ]
+  })
+}
 
 /** The state of a playback at one moment. A change gives a new object. */
 export interface PlaybackSnapshot {
@@ -403,7 +440,8 @@ export class Engine {
       previous?.reversed === next?.reversed &&
       previous?.event === next?.event &&
       previous?.level === next?.level &&
-      previous?.bodies === next?.bodies
+      previous?.bodies === next?.bodies &&
+      JSON.stringify(previous?.sides) === JSON.stringify(next?.sides)
     ) {
       return
     }
@@ -579,7 +617,10 @@ export class Engine {
     result.parallelTokens.forEach((token, index) => {
       const element = this.parallelTokenElement(index)
       if (!element) return
-      const protocol = this.laneProtocol(timeline, result.segmentIndex, token.lane)
+      const side = token.side ? timeline.sides[token.side.track] : undefined
+      const protocol = side
+        ? this.laneProtocol(sideView(timeline, side), token.side!.index, token.lane)
+        : this.laneProtocol(timeline, result.segmentIndex, token.lane)
       this.placeToken(element, protocol, token.point, token.lift, token.label)
     })
     for (const element of this.parallelTokenElements.slice(result.parallelTokens.length)) {
@@ -626,6 +667,7 @@ export class Engine {
             event: segment.step.event,
             level: segment.step.level,
             bodies: timeline.flow.bodies,
+            sides: sideCaptions(timeline, result.sideIndices),
           }
         : null,
     )

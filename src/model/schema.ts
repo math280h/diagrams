@@ -1,7 +1,7 @@
 import { z } from '@/lib/zod'
 import { COLORS } from './colors'
 
-export const DIAGRAM_VERSION = 16
+export const DIAGRAM_VERSION = 17
 
 const colorSchema = z.enum(COLORS)
 
@@ -214,6 +214,8 @@ export const edgeDataSchema = z.object({
   request: payloadSchema.optional(),
   /** The body that the target sends back to the source. */
   response: payloadSchema.optional(),
+  /** If true, the target never replies. A token never goes back along the edge, and a flow shows no response body. */
+  noReply: z.boolean().optional(),
 })
 export type EdgeData = z.infer<typeof edgeDataSchema>
 
@@ -262,15 +264,21 @@ export type Step = z.infer<typeof stepSchema>
 /**
  * A different way through the flow, for example the steps after a failed payment.
  *
- * The path starts after the step `fromStep` of the main steps and takes the place of the main steps after it.
+ * The path starts after the step `fromStep` of the main steps and takes the place of the main steps after it. A side
+ * path (`concurrent`) plays its steps at the same time as the main steps after `fromStep`, and the main steps stay.
  */
 export const flowPathSchema = z.object({
   id: z.string(),
   name: z.string(),
   fromStep: z.string(),
   steps: z.array(stepSchema),
-  /** A later main step where the flow continues after the path. With `null`, the flow ends after the path. */
+  /**
+   * A later main step where the flow continues after the path. With `null`, the flow ends after the path. A side path
+   * does not use it.
+   */
   rejoinStep: z.string().nullable(),
+  /** If true, the path is a side path: it plays at the same time as the main steps, and always plays. */
+  concurrent: z.boolean().optional(),
 })
 export type FlowPath = z.infer<typeof flowPathSchema>
 

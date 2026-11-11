@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { flowStateKey } from './apply'
 import type { ElementKey, FlowFrame } from './flow/evaluate'
 
-function frame(segmentIndex: number, emphasis: [ElementKey, number][] = []): FlowFrame {
+function frame(segmentIndex: number, emphasis: [ElementKey, number][] = [], sideIndices: number[] = []): FlowFrame {
   return {
     segmentIndex,
     token: { x: segmentIndex * 10, y: 0 },
     tokenLift: 0,
     tokenLabel: 1,
     parallelTokens: [],
+    sideIndices,
     activeNodes: new Set(),
     activeEdges: new Set(),
     visitedNodes: new Set(),
@@ -34,5 +35,10 @@ describe('flowStateKey', () => {
     expect(flowStateKey(frame(2), false)).not.toBe(base)
     expect(flowStateKey(frame(2, [['node:a', 0.5]]), true)).not.toBe(base)
     expect(flowStateKey(frame(2, [['node:a', 0.5]]), true)).not.toBe(flowStateKey(frame(2, [['node:a', 0.6]]), true))
+  })
+
+  it('changes when a side path moves to its next step during one main step', () => {
+    expect(flowStateKey(frame(2, [], [0]), true)).not.toBe(flowStateKey(frame(2, [], [1]), true))
+    expect(flowStateKey(frame(2, [], [-1, 0]), true)).not.toBe(flowStateKey(frame(2, [], [0, 0]), true))
   })
 })

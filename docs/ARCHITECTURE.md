@@ -141,6 +141,7 @@ The visual system is in `DESIGN.md` at the repository root.
     `gentle`).
   - 15: overview steps (`target` of kind `flow`, empty id); `stepNumbers` on flows (off).
   - 16: theme `routeAround`, default off (off); optional hand-drawn edge `bends`.
+  - 17, optional: `noReply` on edges; `concurrent` on paths (side paths).
 - Groups are boundaries. `kind` points into `src/model/boundaries.ts`: AWS, Azure, Google Cloud, Kubernetes, general
   and custom kinds.
   - Each kind has a family (scope, logical, location, zone, network, subnet, security, runtime) that sets the line
@@ -412,13 +413,25 @@ One flow shows fan-out and failure branches; there is no second kind of flow.
   `Enricher, Fraud scoring → Warehouse` when the lanes end on one node.
 - **Paths.** Optional `paths`, for example "Card declined". A path starts after a main step (`fromStep`) and replaces
   the later main steps with its own. It then ends the flow or rejoins a later main step (`rejoinStep`). `pathSteps`
-  gives its steps. `compileFlow` takes one path, so the timeline stays one line and each frame stays a function of time.
+  gives its steps. `compileFlow` takes one path, so the main track stays one line.
 - The viewer selects the path: flow panel, Present, web page export, video export, `render_image` and `--path` (CLI).
 - No path starts from another path. `removeStep` moves a path start to the previous main step, or removes the path
   when none exists. It moves a rejoin to the next main step.
+- **Side paths.** A path with `concurrent` starts when its `fromStep` ends. Its steps play at their own pace, at the
+  same time as the later main steps. It does not rejoin, and it always plays, so the path pickers do not show it.
+- `compileFlow` gives each side path a track in `Timeline.sides`. `segments` stays the main track, so code that reads
+  the main steps by index does not change.
+- Each frame stays a function of time. `evaluateFlow` adds one token for each lane of a running side step.
+  `sideView` puts the fork step before the side steps, so the side tokens use the same token code.
+- The camera follows `cameraTimeline`: the main segments, cut where a side step starts or ends, with the side lanes
+  added. A flow without side paths keeps its camera.
+- Step navigation and "Step N of total" use the main track. The log, the sequence, the caption and the step numbers
+  show a side step as `N.k`, after main step N.
+- Recording and agent `connect` start at the token with the shortest route to the next node (`nearestToken`). After
+  a fan-out, the main steps can thus continue from the branch that replies.
 - Mermaid export: a parallel step is `par`, a branch point is `alt`, or a nested `alt` inside a main section. The
   first section has the main steps up to the furthest rejoin; each path section has its steps and the main steps from
-  its rejoin.
+  its rejoin. The start of a side path is a `par` block: the later main steps, then the side steps.
 
 ### Change the diagram format
 
@@ -496,6 +509,9 @@ An edge can carry a `request` body (what the source sends) and a `response` body
   the canvas.
 - In playback, the log line of an edge step shows the request body as compact JSON, or the response body when the
   token goes back (`reversed` in the timeline). The flow setting `bodies` turns this off.
+- An edge with `noReply` (for example an event) never takes a token back: `edgeTravel` does not reverse it, and
+  `findEdgePath` with `token` does not go back along it. So the flow never shows its response body. The editor hides
+  the response fields, but the stored body stays.
 - The strip and the log table read the body from the edge at render. The timeline and `evaluateFlow` do not change,
   so a video export shows the same text.
 - The strip truncates the body and hides it on narrow frames, like the event text.

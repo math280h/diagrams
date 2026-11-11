@@ -107,8 +107,9 @@ function roundMs(value: number): number {
  * Plans a flow that plays a trace on a diagram.
  *
  * Each peer of the trace uses the card that stands for it, or a new card. Each call uses an edge between its two cards,
- * or a new edge. A call is a request step and, unless it is one way, a response step after the calls under it. Each
- * root span adds a step on its node, its calls, and then its one-way calls.
+ * or a new edge. A new edge has no reply when it carries only one-way calls in its own direction. A call is a request
+ * step and, unless it is one way, a response step after the calls under it. Each root span adds a step on its node,
+ * its calls, and then its one-way calls.
  */
 export function planTraceFlow(
   walk: TraceWalk,
@@ -138,11 +139,17 @@ export function planTraceFlow(
     const found =
       known.find((edge) => edge.source === source && edge.target === target) ??
       known.find((edge) => edge.source === target && edge.target === source)
+    const created = found && edges.includes(found) ? found : undefined
+    if (created?.data?.noReply && (!call.oneWay || created.source !== source)) delete created.data.noReply
     if (found) return found.id
-    const created = createEdge(source, target, { label: call.label, protocol: call.protocol ?? 'auto' })
-    edges.push(created)
-    known.push(created)
-    return created.id
+    const edge = createEdge(source, target, {
+      label: call.label,
+      protocol: call.protocol ?? 'auto',
+      ...(call.oneWay ? { noReply: true } : {}),
+    })
+    edges.push(edge)
+    known.push(edge)
+    return edge.id
   }
 
   const steps: Step[] = []

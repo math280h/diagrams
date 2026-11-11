@@ -177,6 +177,11 @@ function toVersion16(raw: Record<string, unknown>): Record<string, unknown> {
   return { ...raw, theme: { routeAround: false, ...theme } }
 }
 
+/** Version 17 adds the optional `noReply` flag to edge data and `concurrent` to paths, so earlier data needs no change. */
+function toVersion17(raw: Record<string, unknown>): Record<string, unknown> {
+  return raw
+}
+
 /** The migration at index `n` converts a diagram from version `n + 1` to version `n + 2`. */
 const MIGRATIONS: Migration[] = [
   toVersion2,
@@ -194,6 +199,7 @@ const MIGRATIONS: Migration[] = [
   toVersion14,
   toVersion15,
   toVersion16,
+  toVersion17,
 ]
 
 /**

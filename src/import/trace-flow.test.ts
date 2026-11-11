@@ -60,6 +60,7 @@ describe('planTraceFlow', () => {
       ['publish', 'messaging'],
       ['consume', 'messaging'],
     ])
+    expect(plan.edges.map((edge) => edge.data!.noReply ?? false)).toEqual([false, false, false, false, false, true])
     expect(hops(plan, [], [])).toEqual([
       'Browser',
       'Browser -> API gateway',
