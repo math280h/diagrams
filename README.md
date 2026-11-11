@@ -241,7 +241,8 @@ repository.
 
 For releases in a private repository, create a GitHub App in your organization with the repository permission
 "Contents: Read-only" and "Enable Device Flow" on, and install it on the repository. Set its client ID as
-`DIAGRAMS_GITHUB_APP`. Users then sign in to GitHub in the app settings, and the app renews the sign-in by itself.
+`DIAGRAMS_GITHUB_APP`. The build checks the client ID with GitHub. The app asks users to sign in to GitHub only when
+the update repository is private, and it renews the sign-in by itself.
 
 ## Development
 

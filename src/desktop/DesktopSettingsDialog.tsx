@@ -190,7 +190,7 @@ function UpdateRepository({ repository }: { repository: string }) {
   )
 }
 
-function GitHubSignInSetting() {
+function GitHubSignInSetting({ repositoryNeedsSignIn }: { repositoryNeedsSignIn: boolean }) {
   const info = useGitHubSignIn((state) => state.info)
   if (!info) return null
   if (info.state === 'signed-in') {
@@ -234,10 +234,13 @@ function GitHubSignInSetting() {
       </div>
     )
   }
+  if (!repositoryNeedsSignIn && !BUILD.repositoryEditable) return null
   return (
     <div className="space-y-2">
       <p className="leading-5 text-muted-foreground">
-        The updates are in a private repository. Sign in to GitHub with an account that can read it.
+        {repositoryNeedsSignIn
+          ? 'The updates are in a private repository. Sign in to GitHub with an account that can read it.'
+          : 'To get updates from a private repository, sign in to GitHub first.'}
       </p>
       {info.message && <p className="text-destructive">{info.message}</p>}
       <Button size="sm" variant="outline" onClick={() => void signInToGitHub()}>
@@ -269,8 +272,13 @@ function Updates() {
     )
   return (
     <Section title="Updates" description={description}>
+      {info.state === 'failed' && info.message && (
+        <p className="break-words text-destructive">{info.message.split('\n', 1)[0]}</p>
+      )}
       {BUILD.repositoryEditable && <UpdateRepository key={info.repository} repository={info.repository} />}
-      {BUILD.githubApp && <GitHubSignInSetting />}
+      {BUILD.githubApp && info.state !== 'unsupported' && (
+        <GitHubSignInSetting repositoryNeedsSignIn={info.state === 'sign-in'} />
+      )}
       <Button variant="outline" size="sm" onClick={() => void checkForUpdates()}>
         <RefreshCw /> Check for updates
       </Button>

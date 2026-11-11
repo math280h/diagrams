@@ -1,6 +1,7 @@
 import { builtinModules } from 'node:module'
 import { fileURLToPath, URL } from 'node:url'
-import { defineConfig } from 'vite'
+import { defineConfig, type UserConfig } from 'vite'
+import { checkGitHubApp } from './scripts/github-app.ts'
 import { thirdPartyLicenses, withoutPackages } from './scripts/third-party-licenses.ts'
 import { buildDefine, readBuildConfig } from './src/desktop/build-config.ts'
 
@@ -11,10 +12,12 @@ const ENTRIES = {
   preload: { input: './electron/preload.ts', format: 'cjs', fileName: 'preload.cjs' },
 } as const
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(async ({ mode }): Promise<UserConfig> => {
   const entry = mode === 'preload' ? ENTRIES.preload : ENTRIES.main
+  const build = readBuildConfig(process.env)
+  if (entry === ENTRIES.main && build.githubApp) await checkGitHubApp(build.githubApp)
   return {
-    define: buildDefine(readBuildConfig(process.env)),
+    define: buildDefine(build),
     publicDir: false,
     plugins: mode === 'preload' ? [withoutPackages()] : [thirdPartyLicenses('third-party-licenses.main.txt').main],
     resolve: {

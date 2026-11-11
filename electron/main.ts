@@ -46,8 +46,8 @@ import { createDiagramFiles } from './storage/diagram-files'
 import { committedText } from './storage/git'
 import { createLinkedFiles, isLinkedId } from './storage/linked-files'
 import { watchDiagramFolder, watchLinkedFiles } from './storage/watcher'
-import { checkUpdateRepository } from './update-repository'
-import { createUpdates, updatePolicy, type UpdateFeed, type UpdatePolicy } from './updates'
+import { checkUpdateRepository, repositoryFeed } from './update-repository'
+import { createUpdates, updatePolicy, type UpdatePolicy } from './updates'
 import { layoutGraphviz } from './graphviz'
 import {
   createMainWindow,
@@ -210,11 +210,10 @@ async function start() {
   const noGitHub = (): never => {
     throw new Error('This build has no GitHub sign-in.')
   }
-  const updateFeed = async (): Promise<UpdateFeed | 'sign-in'> => {
+  const accessToken = github && (() => github.accessToken())
+  const updateFeed = async () => {
     const repository = updateRepository()
-    if (!github) return { repository, token: null }
-    const accessToken = await github.accessToken()
-    return accessToken === null ? 'sign-in' : { repository, token: accessToken }
+    return accessToken ? repositoryFeed(repository, { accessToken }) : { repository, token: null }
   }
   const policy = currentUpdatePolicy()
   const updates = createUpdates({
@@ -383,10 +382,13 @@ async function start() {
         const name = repository === null ? BUILD.repository : repositoryName(repository)
         if (name === null) throw new Error('Enter a GitHub repository as owner/name.')
         if (name !== BUILD.repository) {
-          await checkUpdateRepository(name, {
-            token: (await github?.accessToken()) ?? null,
-            platform: process.platform,
-          })
+          const feed = await repositoryFeed(name, { accessToken })
+          if (feed === 'sign-in') {
+            throw new Error(
+              `GitHub has no public repository ${name}. For a private repository, sign in to GitHub first.`,
+            )
+          }
+          await checkUpdateRepository(name, { token: feed.token, platform: process.platform })
         }
         settings.update({ updateRepository: name === BUILD.repository ? null : name })
         const info = updates.setRepository(name)

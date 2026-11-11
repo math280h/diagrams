@@ -1307,6 +1307,12 @@ agent call opens the window again, because the tools run in the renderer. A sett
   - The updater keeps the feed of `app-update.yml` until the repository or the token changes (`setFeedURL`).
 - `DIAGRAMS_GITHUB_APP` names a GitHub App for a private repository. The user signs in with the device flow
   (`electron/github-auth.ts`), which needs no client secret, also for the renewal.
+  - `desktop:build` stops if GitHub does not start a device flow for the client ID (`scripts/github-app.ts`), so a
+    build cannot ship a wrong client ID or an app without the device flow. Without a GitHub token, the build cannot
+    check that the app is installed on the repository.
+  - Before each check, `repositoryFeed` reads the repository with the token, else without a token. The app asks for a
+    sign-in only if GitHub hides the repository without a token, so a public repository needs none. Without a token it
+    reads the releases feed: the API permits only 60 requests an hour from one address.
   - Before a check, the app renews an access token that expires within 5 minutes. Each renewal replaces the refresh
     token, so the app writes the new tokens before it uses them.
   - `safeStorage` encrypts the tokens. On Linux with the `basic_text` key, the app keeps them only in memory.
@@ -1511,6 +1517,7 @@ those texts.
 | `github.com` releases, through `electron-updater` | Desktop app: at start, every 6 hours, "Check for updates"                                | No diagram. A random install id. The GitHub token for a private repository. |
 | `github.com/login`, GitHub sign-in                | A build with a GitHub App: sign-in, and the renewal of the sign-in before a check        | No diagram. The client ID and the GitHub tokens.                            |
 | `api.github.com`, newest release of a repository  | A build with an editable update source: the user saves another repository                | No diagram. The GitHub token for a private repository.                      |
+| Repository access, `github.com` or the API        | A build with a GitHub App: before each check. An editable update source: on save         | No diagram. The GitHub token after a sign-in.                               |
 | `127.0.0.1:27419-27428` handoff code check        | "Open in desktop app"                                                                    | The handoff code only, loopback interface only                              |
 | `127.0.0.1:27419-27428` handoff                   | "Open in desktop app", to the app that received the code                                 | The diagram, loopback interface only                                        |
 | `127.0.0.1:27419-27428`, is the app running       | The Desktop app tab of "Connect an agent" opens                                          | No data, loopback interface only                                            |
