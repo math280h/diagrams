@@ -86,7 +86,7 @@ function LogLines({ node }: { node: DiagramNode }) {
               <Button
                 variant="ghost"
                 onClick={() => {
-                  setUi({ flowPanelOpen: true, activeFlowId: flow.id, selectedStepId: segment.step.id })
+                  setUi({ flowPanelOpen: true, activeFlowId: flow.id, selectedStepIds: [segment.step.id] })
                   selectOnly([])
                   requestAnimationFrame(() => engine.playback.seek(segment.startMs + 1))
                 }}

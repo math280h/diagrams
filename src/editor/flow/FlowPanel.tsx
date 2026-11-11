@@ -210,7 +210,7 @@ function FlowMenu({ flows, flow }: { flows: Flow[]; flow: Flow | undefined }) {
           <>
             <DropdownMenuRadioGroup
               value={flow?.id ?? ''}
-              onValueChange={(id) => setUi({ activeFlowId: String(id), activePathId: null, selectedStepId: null })}
+              onValueChange={(id) => setUi({ activeFlowId: String(id), activePathId: null, selectedStepIds: [] })}
             >
               {flows.map((candidate) => (
                 <DropdownMenuRadioItem key={candidate.id} value={candidate.id}>
@@ -224,7 +224,7 @@ function FlowMenu({ flows, flow }: { flows: Flow[]; flow: Flow | undefined }) {
         <DropdownMenuItem
           onClick={() => {
             const created = addFlow()
-            setUi({ activeFlowId: created.id, selectedStepId: null, recording: true })
+            setUi({ activeFlowId: created.id, selectedStepIds: [], recording: true })
           }}
         >
           <Plus /> New flow
@@ -247,7 +247,7 @@ function FlowMenu({ flows, flow }: { flows: Flow[]; flow: Flow | undefined }) {
               onClick={() => {
                 const step = createOverviewStep(flow.name)
                 updateFlow(flow.id, (draft) => void draft.steps.unshift(step))
-                setUi({ selectedStepId: step.id })
+                setUi({ selectedStepIds: [step.id] })
               }}
             >
               <PanelTop /> Add an introduction
@@ -257,7 +257,7 @@ function FlowMenu({ flows, flow }: { flows: Flow[]; flow: Flow | undefined }) {
               onClick={() => {
                 const step = createOverviewStep()
                 updateFlow(flow.id, (draft) => void draft.steps.push(step))
-                setUi({ selectedStepId: step.id })
+                setUi({ selectedStepIds: [step.id] })
               }}
             >
               <PanelBottom /> Add a conclusion
@@ -269,7 +269,7 @@ function FlowMenu({ flows, flow }: { flows: Flow[]; flow: Flow | undefined }) {
               variant="destructive"
               onClick={() => {
                 deleteFlow(flow.id)
-                setUi({ activeFlowId: null, selectedStepId: null })
+                setUi({ activeFlowId: null, selectedStepIds: [] })
               }}
             >
               <Trash2 /> Delete flow

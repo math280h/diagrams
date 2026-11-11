@@ -10,6 +10,8 @@ import { updateFlow } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
 import { setUi } from '@/store/ui-store'
 import { targetName } from '@/editor/flow/names'
+import { deleteSelectedSteps } from '@/editor/flow/step-selection'
+import { IS_MAC } from '@/lib/shortcut-keys'
 import { Field, Section, Segmented, SliderField, SwitchField, TextInput } from './controls'
 
 function StepBody({ flow, step }: { flow: Flow; step: Step }) {
@@ -110,6 +112,19 @@ function ParallelTargets({ flow, step }: { flow: Flow; step: Step }) {
   )
 }
 
+export function StepsInspector({ count }: { count: number }) {
+  return (
+    <Section title="Selection">
+      <p className="text-xs text-muted-foreground">
+        Shift-click a step to select a range. {IS_MAC ? 'Command-click' : 'Ctrl-click'} a step to add or remove it.
+      </p>
+      <Button variant="outline" size="sm" className="w-full" onClick={deleteSelectedSteps}>
+        <Trash2 /> Delete {count} steps
+      </Button>
+    </Section>
+  )
+}
+
 export function StepInspector({ flow, step }: { flow: Flow; step: Step }) {
   const place = findStep(flow, step.id)
   const index = place?.index ?? 0
@@ -161,7 +176,7 @@ export function StepInspector({ flow, step }: { flow: Flow; step: Step }) {
             aria-label="Delete step"
             onClick={() => {
               updateFlow(flow.id, (draft) => removeStep(draft, step.id))
-              setUi({ selectedStepId: null })
+              setUi({ selectedStepIds: [] })
             }}
           >
             <Trash2 />
