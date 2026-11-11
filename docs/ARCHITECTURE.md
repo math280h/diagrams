@@ -1026,6 +1026,9 @@ Firefox and Safari have no folder picker. There, the website can show a folder o
   - Dependabot bumps the pnpm image in a separate pull request, outside the `images` group. Dependabot cannot bump
     `packageManager`, so add that change to the same pull request. Thus a failed pnpm bump does not block the other
     images.
+- The pnpm store is a cache mount. The website host accepts only the cache mount ID `s/<service ID>-<target>`, and
+  no variable in it. Thus the ID holds the service ID of the website, and a fork that deploys to its own service
+  changes it.
 - The static-web-server configuration file overrides the `SERVER_*` variables. Thus the image sets the options as
   variables, and `docker/sws.toml` holds only the headers.
 - The image holds the licence texts of static-web-server, from the release tag, with a checksum.
