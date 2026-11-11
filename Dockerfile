@@ -8,8 +8,11 @@ ENV PATH=/opt/pnpm:$PATH
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY patches patches
-RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
+# The hosted builder accepts only the cache mount ID s/<service ID>-<target>, without variables.
+RUN --mount=type=cache,id=s/e3f64b02-d3db-4aa3-afd2-acf19f1d664f-/root/.local/share/pnpm/store,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
 COPY . .
+ARG VITE_RELEASE_CHANNEL
 ARG DIAGRAMS_WEBSITE=
 ARG DIAGRAMS_REPOSITORY=
 RUN pnpm build
