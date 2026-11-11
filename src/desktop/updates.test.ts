@@ -78,9 +78,13 @@ describe('desktop updates', () => {
 
     installDesktop({ ...BASE, state: 'failed', message: 'No published versions on GitHub' })
     await checkForUpdates()
-    expect(toast.error).toHaveBeenCalledWith('Could not check for updates', {
-      description: 'No published versions on GitHub',
-    })
+    expect(toast.error).toHaveBeenCalledWith(
+      'Could not check for updates',
+      expect.objectContaining({
+        description: 'No published versions on GitHub',
+        action: expect.objectContaining({ label: 'More details' }),
+      }),
+    )
   })
 
   it('says that a restart installs a Linux package', async () => {

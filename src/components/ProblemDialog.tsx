@@ -1,10 +1,11 @@
 import { ArrowUpRight } from 'lucide-react'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import { CommandBlock } from '@/components/CommandBlock'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { desktopApi } from '@/desktop/bridge'
 import { BUG_REPORT_URL } from '@/desktop/constants'
 import { problemReport, type Problem } from '@/lib/problem-report'
+import { closeProblem, useProblemStore } from '@/store/problem-store'
 
 function websiteAbout() {
   return `Diagrams website at ${window.location.host}, ${navigator.userAgent}`
@@ -29,7 +30,7 @@ function useAboutLine() {
   return about
 }
 
-function ProblemContent({ problem, actions }: { problem: Problem; actions?: ReactNode }) {
+function ProblemContent({ problem }: { problem: Problem }) {
   const about = useAboutLine()
   return (
     <>
@@ -37,7 +38,6 @@ function ProblemContent({ problem, actions }: { problem: Problem; actions?: Reac
         <DialogTitle>{problem.title}</DialogTitle>
         <DialogDescription>{problem.message}</DialogDescription>
       </DialogHeader>
-      {actions}
       <CommandBlock label="Details for a bug report" value={problemReport(about, problem)} />
       <a
         href={BUG_REPORT_URL}
@@ -52,27 +52,19 @@ function ProblemContent({ problem, actions }: { problem: Problem; actions?: Reac
 }
 
 /**
- * Shows a problem: what happened, what the user can do, and the details to copy into a bug report. The caller keeps
- * the problem up to date. The dialog closes when the problem becomes `null`.
- *
- * @param actions - Buttons that fix the problem, under the message.
+ * Shows the problem of the problem store: what happened, what the user can do, and the details to copy into a bug
+ * report. Mount it once at the root of the app.
  */
-export function ProblemDialog({
-  open,
-  onOpenChange,
-  problem,
-  actions,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  problem: Problem | null
-  actions?: ReactNode
-}) {
+export function ProblemDialog() {
+  const problem = useProblemStore((state) => state.problem)
   return (
-    <Dialog open={open && problem !== null} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        {problem && <ProblemContent problem={problem} actions={actions} />}
-      </DialogContent>
+    <Dialog
+      open={problem !== null}
+      onOpenChange={(open) => {
+        if (!open) closeProblem()
+      }}
+    >
+      <DialogContent className="sm:max-w-lg">{problem && <ProblemContent problem={problem} />}</DialogContent>
     </Dialog>
   )
 }

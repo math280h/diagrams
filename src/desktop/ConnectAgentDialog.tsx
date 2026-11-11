@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { CommandBlock } from '@/components/CommandBlock'
+import { MoreDetails } from '@/components/MoreDetails'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { relativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { isAgentProblem } from './agent-problem'
-import { movedPortNotice, openAgentProblem, resetAgentToken, useAgentHistory, useAgentStore } from './agent-store'
+import { AGENT_PROBLEM_KEY, agentProblem, isAgentProblem } from './agent-problem'
+import { showProblem } from '@/store/problem-store'
+import { movedPortNotice, resetAgentToken, useAgentHistory, useAgentStore } from './agent-store'
 import { CLAUDE_MARKETPLACE_NAME, CLAUDE_PLUGIN_NAME, CLAUDE_PLUGIN_TOKEN_KEY } from './constants'
 import type { AgentInfo } from './contract'
 
@@ -124,13 +126,10 @@ export function ConnectAgentDialog() {
         </DialogHeader>
         <Status info={info} />
         {isAgentProblem(info) && (
-          <button
-            type="button"
-            onClick={openAgentProblem}
-            className="-mt-2 self-start pl-3.5 text-[13px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            More details…
-          </button>
+          <MoreDetails
+            className="-mt-2 self-start pl-3.5"
+            onClick={() => showProblem(agentProblem(info), { key: AGENT_PROBLEM_KEY })}
+          />
         )}
         {movedNotice && <p className="-mt-2 pl-3.5 text-[13px] leading-5 text-muted-foreground">{movedNotice}</p>}
         {info && (

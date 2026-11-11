@@ -1,7 +1,7 @@
 import { Outlet } from '@tanstack/react-router'
+import { ProblemDialog } from '@/components/ProblemDialog'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { AgentProblemDialog } from '@/desktop/AgentProblemDialog'
 import { isDesktop } from '@/desktop/bridge'
 import { ConnectAgentDialog } from '@/desktop/ConnectAgentDialog'
 import { OpenInAppDialog } from '@/desktop/OpenInAppDialog'
@@ -16,16 +16,14 @@ export function RootLayout() {
       {isDesktop() && <div className="dg-drag-strip" aria-hidden />}
       <Outlet />
       {isDesktop() ? (
-        <>
-          <ConnectAgentDialog />
-          <AgentProblemDialog />
-        </>
+        <ConnectAgentDialog />
       ) : (
         <>
           <OpenInAppDialog />
           <FolderAgentDialog />
         </>
       )}
+      <ProblemDialog />
       <Toaster theme={theme} position="top-center" offset={64} />
     </TooltipProvider>
   )
