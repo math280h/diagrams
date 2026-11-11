@@ -3,6 +3,7 @@ import { createFlow } from '@/model/defaults'
 import { lanesText, pathSteps, removeStep } from '@/model/flow'
 import type { Flow, FlowPath, Step, Target } from '@/model/schema'
 import { buildArcTable } from '@/engine/path-sampler'
+import { joinEdges } from '@/engine/route'
 import { compileFlow } from './compile'
 import { evaluateFlow, type FlowGeometry } from './evaluate'
 
@@ -53,6 +54,18 @@ describe('parallel targets', () => {
     const timeline = compileFlow(flowWith([step('edge', 'ab', [{ kind: 'edge', id: 'gone' }])]), nodeIds, edges)
     expect(timeline.segments).toHaveLength(1)
     expect(timeline.segments[0]!.lanes).toHaveLength(1)
+  })
+
+  it('brings the tokens of a fan-out back along their edges to one node', () => {
+    const timeline = compileFlow(
+      flowWith([...fanOut, step('edge', 'ab', [{ kind: 'edge', id: 'ac' }])]),
+      nodeIds,
+      edges,
+    )
+    expect(timeline.segments[3]!.lanes.map((lane) => [lane.fromNode, lane.toNode, lane.reversed])).toEqual([
+      ['b', 'a', true],
+      ['c', 'a', true],
+    ])
   })
 
   it('reverses an edge when one of the tokens rests on its target', () => {
@@ -186,5 +199,51 @@ describe('lanesText', () => {
       ]),
     ).toBe('Enricher, Fraud scoring')
     expect(lanesText([{ kind: 'edge', from: 'Web', to: 'Collector' }])).toBe('Web → Collector')
+  })
+
+  it('names the shared target of a join once', () => {
+    expect(
+      lanesText([
+        { kind: 'edge', from: 'Service 1', to: 'App' },
+        { kind: 'edge', from: 'Service 2', to: 'App' },
+      ]),
+    ).toBe('Service 1, Service 2 → App')
+    expect(
+      lanesText([
+        { kind: 'edge', from: 'Service 1', to: 'App' },
+        { kind: 'edge', from: 'Service 2', to: 'Queue' },
+      ]),
+    ).toBe('Service 1 → App, Service 2 → Queue')
+  })
+})
+
+describe('joinEdges', () => {
+  const services = [
+    { id: 'toOne', source: 'app', target: 'one' },
+    { id: 'toTwo', source: 'app', target: 'two' },
+    { id: 'toStore', source: 'app', target: 'store' },
+    { id: 'oneDone', source: 'one', target: 'next' },
+    { id: 'twoDone', source: 'two', target: 'next' },
+  ]
+  const fannedOut = new Set(['one', 'two'])
+
+  it('brings the other tokens back against the edge direction', () => {
+    expect(joinEdges('one', ['toOne'], fannedOut, services)).toEqual(['toTwo'])
+  })
+
+  it('brings the other tokens along the edge direction', () => {
+    expect(joinEdges('one', ['oneDone'], fannedOut, services)).toEqual(['twoDone'])
+  })
+
+  it('joins on the first node of a longer route', () => {
+    expect(joinEdges('one', ['toOne', 'toStore'], fannedOut, services)).toEqual(['toTwo'])
+  })
+
+  it('keeps a token on the route, a token without an edge to the first node, and a route without edges', () => {
+    expect(joinEdges('one', ['toOne', 'toTwo'], fannedOut, services)).toEqual([])
+    expect(joinEdges('one', ['toOne'], new Set(['one', 'store', 'next']), services)).toEqual(['toStore'])
+    expect(joinEdges('one', ['oneDone'], new Set(['one', 'store']), services)).toEqual([])
+    expect(joinEdges('one', [], fannedOut, services)).toEqual([])
+    expect(joinEdges('one', ['gone'], fannedOut, services)).toEqual([])
   })
 })

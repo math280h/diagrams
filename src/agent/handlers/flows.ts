@@ -62,13 +62,13 @@ function buildPaths(steps: readonly Step[], inputs: readonly PathInput[], contex
       }
       rejoinStep = rejoin.id
     }
-    const startNode = timeline.segments.find((segment) => segment.step.id === from.id)?.toNode ?? null
+    const start = timeline.segments.find((segment) => segment.step.id === from.id)
     return {
       id: newId('p'),
       name: input.name,
       fromStep: from.id,
       rejoinStep,
-      steps: buildSteps(input.steps, context.resolver, context.edges, context.connect, context.warnings, startNode),
+      steps: buildSteps(input.steps, context.resolver, context.edges, context.connect, context.warnings, start),
     }
   })
 }
@@ -145,8 +145,8 @@ export const updateFlowHandler: ToolHandler<'update_flow'> = async (input, ctx) 
     }
     if (changes.append) {
       const nodeIds = new Set(doc.nodes.map((node) => node.id))
-      const tokenAt = compileFlow({ ...flow, steps }, nodeIds, doc.edges).segments.at(-1)?.toNode ?? null
-      steps.push(...buildSteps(changes.append, resolver, doc.edges, connect, warnings, tokenAt))
+      const last = compileFlow({ ...flow, steps }, nodeIds, doc.edges).segments.at(-1)
+      steps.push(...buildSteps(changes.append, resolver, doc.edges, connect, warnings, last))
     }
   }
 

@@ -1,8 +1,8 @@
 import { definedFields } from '@/lib/defined-fields'
-import { edgeTravel } from '@/engine/flow/compile'
+import { edgeTravel, restingNodes, type TimelineSegment } from '@/engine/flow/compile'
 import { iconSourceOf, type IconSet } from '@/canvas/icons/library'
 import { createOverviewStep, createStep } from '@/editor/flow/record'
-import { findEdgePath } from '@/engine/route'
+import { findEdgePath, joinEdges } from '@/engine/route'
 import { boundaryKind, BOUNDARY_BY_ID, TINTED_TIERS } from '@/model/boundaries'
 import type { Color } from '@/model/colors'
 import {
@@ -17,6 +17,7 @@ import {
   newId,
 } from '@/model/defaults'
 import { safeLinkUrl } from '@/model/details'
+import { stepTargets } from '@/model/flow'
 import { loadDiagramOrNull } from '@/persistence/active-repository'
 import { DEFAULT_NODE_SIZE, ELEMENT_Z } from '@/model/graph'
 import { fieldIssues, fieldsFromExample, mergeFields, PayloadJsonError, type PayloadPart } from '@/model/payload'
@@ -414,8 +415,9 @@ function withParallel(step: Step, targets: readonly Target[]): Step {
  * Makes flow steps from agent input.
  *
  * @param connect - If true, a step to a node that the previous node does not touch gets edge steps along the shortest
- *     connection in front of it.
- * @param startNode - The node where the token is before the first new step.
+ *     connection in front of it. Tokens that a parallel step left on other nodes join the first of these steps, see
+ *     {@link joinEdges}.
+ * @param start - The segment before the first new step. Its lanes give the nodes that have a token.
  */
 export function buildSteps(
   inputs: readonly StepInput[],
@@ -423,10 +425,22 @@ export function buildSteps(
   edges: readonly DiagramEdge[],
   connect: boolean,
   warnings: string[],
-  startNode: string | null = null,
+  start?: Pick<TimelineSegment, 'toNode' | 'lanes'>,
 ): Step[] {
   const steps: Step[] = []
-  let tokenAt = startNode
+  let tokenAt = start?.toNode ?? null
+  let resting = restingNodes(start?.lanes ?? [])
+  const push = (step: Step) => {
+    steps.push(step)
+    const ends = stepTargets(step).map((target) => {
+      if (target.kind === 'node') return target.id
+      const edge = edges.find((candidate) => candidate.id === target.id)
+      return edge ? edgeTravel(edge, resting).toNode : null
+    })
+    if (!ends[0]) return
+    tokenAt = ends[0]
+    resting = new Set(ends.filter((end) => end !== null))
+  }
   for (const input of inputs) {
     if (input.overview) {
       steps.push(applyStepInput(createOverviewStep(input.caption ?? ''), input))
@@ -435,33 +449,27 @@ export function buildSteps(
     if (!input.target) throw new ToolError('A step needs a target, or overview: true.')
     const target = resolver.target(input.target)
     const parallel = (input.parallel ?? []).map((reference) => resolver.target(reference))
-    if (target.kind === 'node') {
+    if (target.kind === 'node' && connect && tokenAt) {
+      const from = tokenAt
       const nodes = [target, ...parallel].filter((candidate) => candidate.kind === 'node')
-      if (connect && tokenAt) {
-        const from = tokenAt
-        const routes = nodes.map((node) => (node.id === from ? [] : findEdgePath(from, node.id, edges)))
-        routes.forEach((route, index) => {
-          if (route === null) {
-            const name = index === 0 ? input.target : input.parallel?.[index - 1]
-            warnings.push(`No edges connect the previous node to "${name}", so the token jumps there.`)
-          }
-        })
-        const layers = Math.max(0, ...routes.map((route) => route?.length ?? 0))
-        for (let layer = 0; layer < layers; layer++) {
-          const layerEdges = routes.flatMap((route): Target[] => {
-            const edgeId = route?.[layer]
-            return edgeId ? [{ kind: 'edge', id: edgeId }] : []
-          })
-          const [first, ...rest] = [...new Map(layerEdges.map((edge) => [edge.id, edge])).values()]
-          if (first) steps.push(withParallel(createStep(first), rest))
+      const routes = nodes.map((node) => (node.id === from ? [] : findEdgePath(from, node.id, edges)))
+      routes.forEach((route, index) => {
+        if (route === null) {
+          const name = index === 0 ? input.target : input.parallel?.[index - 1]
+          warnings.push(`No edges connect the previous node to "${name}", so the token jumps there.`)
         }
+      })
+      const joins = routes[0] ? joinEdges(from, routes[0], resting, edges) : []
+      const layers = Math.max(0, ...routes.map((route) => route?.length ?? 0))
+      for (let layer = 0; layer < layers; layer++) {
+        const layerEdges = [...routes.map((route) => route?.[layer]), ...(layer === 0 ? joins : [])].flatMap(
+          (edgeId): Target[] => (edgeId ? [{ kind: 'edge', id: edgeId }] : []),
+        )
+        const [first, ...rest] = [...new Map(layerEdges.map((edge) => [edge.id, edge])).values()]
+        if (first) push(withParallel(createStep(first), rest))
       }
-      tokenAt = target.id
-    } else {
-      const edge = edges.find((candidate) => candidate.id === target.id)
-      if (edge) tokenAt = edgeTravel(edge, tokenAt).toNode
     }
-    steps.push(withParallel(applyStepInput(createStep(target, input.caption ?? ''), input), parallel))
+    push(withParallel(applyStepInput(createStep(target, input.caption ?? ''), input), parallel))
   }
   return steps
 }

@@ -403,9 +403,13 @@ One flow shows fan-out and failure branches; there is no second kind of flow.
   steps; with Alt the next step takes the difference, so later steps keep their start.
 - In record mode, Shift-click adds a node to the last node step. Its edge from the same source joins the last edge
   step.
-- Parallel candidates (switches in step properties): other edges from the same node in the token direction, or nodes
-  that the previous step's parallel edges reach.
-- Log lines, the caption and the sequence name all lanes: `Kafka → Enricher, Fraud scoring`.
+- A click after a parallel step also moves the other tokens (`joinEdges`), so the replies to a fan-out arrive
+  together. Each token node off the route with an edge to the first route node adds that edge to the first edge step.
+  Agent steps with `connect` do the same.
+- Parallel candidates (switches in step properties): other edges from or to the same node in the token direction, or
+  nodes that the previous step's parallel edges reach. The direction comes from `edgeTravel`, as in `compileFlow`.
+- Log lines, the caption and the sequence name all lanes: `Kafka → Enricher, Fraud scoring`, or
+  `Enricher, Fraud scoring → Warehouse` when the lanes end on one node.
 - **Paths.** Optional `paths`, for example "Card declined". A path starts after a main step (`fromStep`) and replaces
   the later main steps with its own. It then ends the flow or rejoins a later main step (`rejoinStep`). `pathSteps`
   gives its steps. `compileFlow` takes one path, so the timeline stays one line and each frame stays a function of time.

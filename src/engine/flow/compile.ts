@@ -54,6 +54,11 @@ export function edgeTravel(edge: EdgeEnds, lastNodes: string | null | ReadonlySe
   return { reversed, fromNode: reversed ? edge.target : edge.source, toNode: reversed ? edge.source : edge.target }
 }
 
+/** Returns the nodes where the lanes leave a token at the end of their segment. */
+export function restingNodes(lanes: readonly Pick<Lane, 'toNode'>[]): Set<string> {
+  return new Set(lanes.flatMap((candidate) => (candidate.toNode ? [candidate.toNode] : [])))
+}
+
 function lane(
   target: Target,
   nodeIds: ReadonlySet<string>,
@@ -117,7 +122,7 @@ export function compileFlow(
       pathId: path && pathStepIds.has(step.id) ? path.id : null,
     })
     cursor += step.durationMs
-    lastNodes = new Set(lanes.flatMap((candidate) => (candidate.toNode ? [candidate.toNode] : [])))
+    lastNodes = restingNodes(lanes)
   }
 
   let durationMs = cursor

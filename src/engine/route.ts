@@ -1,4 +1,4 @@
-import type { EdgeEnds } from './flow/compile'
+import { edgeTravel, type EdgeEnds } from './flow/compile'
 
 /**
  * Finds the shortest chain of edges between two nodes.
@@ -39,4 +39,38 @@ export function findEdgePath(from: string, to: string, edges: readonly EdgeEnds[
     cursor = step.node
   }
   return path
+}
+
+/**
+ * Returns the edges that take the tokens on other nodes to the first node after `from` on a route, at the same time
+ * as the first edge of the route. A token on a node of the route stays.
+ *
+ * @param route - The edge ids in travel order from `from`, see {@link findEdgePath}.
+ * @param resting - The nodes that have a token before the route. The direction of each edge comes from them, as in
+ *     {@link edgeTravel}.
+ * @returns At most one edge for each token node, in the order of `resting`.
+ */
+export function joinEdges(
+  from: string,
+  route: readonly string[],
+  resting: ReadonlySet<string>,
+  edges: readonly EdgeEnds[],
+): string[] {
+  const edgeById = new Map(edges.map((edge) => [edge.id, edge]))
+  const routeNodes = [from]
+  for (const id of route) {
+    const edge = edgeById.get(id)
+    if (!edge) return []
+    routeNodes.push(edge.source === routeNodes.at(-1) ? edge.target : edge.source)
+  }
+  const hop = routeNodes[1]
+  if (hop === undefined) return []
+  return [...resting].flatMap((node) => {
+    if (routeNodes.includes(node)) return []
+    const edge = edges.find((candidate) => {
+      const travel = edgeTravel(candidate, resting)
+      return travel.fromNode === node && travel.toNode === hop
+    })
+    return edge ? [edge.id] : []
+  })
 }

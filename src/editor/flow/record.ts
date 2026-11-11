@@ -1,6 +1,6 @@
 import { toast } from 'sonner'
-import { compileFlow, type Timeline } from '@/engine/flow/compile'
-import { findEdgePath } from '@/engine/route'
+import { compileFlow, restingNodes, type Timeline, type TimelineSegment } from '@/engine/flow/compile'
+import { findEdgePath, joinEdges } from '@/engine/route'
 import { newId } from '@/model/defaults'
 import { findPath } from '@/model/flow'
 import type { Flow, Step, Target } from '@/model/schema'
@@ -70,12 +70,9 @@ function insertIndex(steps: Step[]): number {
   return steps.length > 1 && steps.at(-1)!.target.kind === 'flow' ? steps.length - 1 : steps.length
 }
 
-function lastTokenNode({ steps, timeline, pathId }: Recording): string | null {
+function lastSegment({ steps, timeline, pathId }: Recording): TimelineSegment | undefined {
   const lastId = lastMovingStep(steps)?.id ?? (pathId ? findPath(timeline.flow, pathId)?.fromStep : undefined)
-  const segment = lastId
-    ? timeline.segments.find((candidate) => candidate.step.id === lastId)
-    : timeline.segments.at(-1)
-  return segment?.toNode ?? null
+  return lastId ? timeline.segments.find((candidate) => candidate.step.id === lastId) : timeline.segments.at(-1)
 }
 
 function editSteps({ flowId, pathId }: Recording, recipe: (steps: Step[]) => void) {
@@ -88,17 +85,25 @@ function editSteps({ flowId, pathId }: Recording, recipe: (steps: Step[]) => voi
 /**
  * Adds steps that move the token from its last node to the node, along the shortest edge chain.
  *
- * If no chain exists, the function adds only a step for the node. With an active path, the steps join the path.
+ * If no chain exists, the function adds only a step for the node. Tokens that a parallel step left on other nodes
+ * join the first edge step, see {@link joinEdges}. With an active path, the steps join the path.
  */
 export function appendNodeToFlow(nodeId: string) {
   const current = recording()
   if (!current) return
-  const from = lastTokenNode(current)
+  const last = lastSegment(current)
+  const from = last?.toNode ?? null
   if (from === nodeId) return
-  const path = from ? findEdgePath(from, nodeId, useDoc.getState().edges) : []
+  const { edges } = useDoc.getState()
+  const path = from ? findEdgePath(from, nodeId, edges) : []
   if (from && path === null) toast.message('These nodes are not connected, so the token jumps between them.')
+  const joins = from && path ? joinEdges(from, path, restingNodes(last?.lanes ?? []), edges) : []
   const steps = [
-    ...(path ?? []).map((edgeId) => createStep({ kind: 'edge', id: edgeId })),
+    ...(path ?? []).map((edgeId, index) => {
+      const step = createStep({ kind: 'edge', id: edgeId })
+      if (index === 0 && joins.length > 0) step.parallel = joins.map((id): Target => ({ kind: 'edge', id }))
+      return step
+    }),
     createStep({ kind: 'node', id: nodeId }),
   ]
   editSteps(current, (list) => void list.splice(insertIndex(list), 0, ...steps))

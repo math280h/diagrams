@@ -80,13 +80,17 @@ export interface LaneName {
 /**
  * Returns the element text of a step with several lanes, for example `Kafka → Email worker, Inventory`.
  *
- * Edges from one node show that node once. Other lanes show one after the other.
+ * Edges from one node show that node once, and edges to one node show that node once. Other lanes show one after the
+ * other.
  */
 export function lanesText(lanes: readonly LaneName[]): string {
   if (lanes.length === 0) return ''
   const edges = lanes.filter((lane) => lane.kind === 'edge')
   if (edges.length === lanes.length && edges.every((lane) => lane.from === edges[0]!.from)) {
     return `${edges[0]!.from} → ${edges.map((lane) => lane.to).join(', ')}`
+  }
+  if (edges.length === lanes.length && edges.every((lane) => lane.to === edges[0]!.to)) {
+    return `${edges.map((lane) => lane.from).join(', ')} → ${edges[0]!.to}`
   }
   return lanes.map((lane) => (lane.kind === 'edge' ? `${lane.from} → ${lane.to}` : lane.from)).join(', ')
 }
