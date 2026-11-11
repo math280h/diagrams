@@ -1,16 +1,18 @@
 import { devices, expect, test, type Page } from './fixtures'
-import { DESKTOP_DOWNLOAD_URL, LATEST_RELEASE_API_URL, RELEASE_ASSET_URL_PREFIX } from '@/desktop/constants'
+import { BUILD_RELEASES } from '@/desktop/build-config'
+import { AGENT_HOST, AGENT_PORT } from '@/desktop/constants'
 import { copyTemplate, isAgentUrl } from './helpers'
 
+const DESKTOP_DOWNLOAD_URL = BUILD_RELEASES.latestRelease
 const RELEASE_ASSETS = [
   'Diagrams-9.9.9-win-x64.exe',
   'Diagrams-9.9.9-mac-arm64.dmg',
   'Diagrams-9.9.9-mac-x64.dmg',
   'Diagrams-9.9.9-linux-x86_64.AppImage',
-].map((name) => ({ name, browser_download_url: `${RELEASE_ASSET_URL_PREFIX}v9.9.9/${name}` }))
+].map((name) => ({ name, browser_download_url: `${BUILD_RELEASES.assetPrefix}v9.9.9/${name}` }))
 
 async function serveLatestRelease(page: Page) {
-  await page.route(LATEST_RELEASE_API_URL, (route) =>
+  await page.route(BUILD_RELEASES.latestReleaseApi, (route) =>
     route.fulfill({ json: { assets: RELEASE_ASSETS }, headers: { 'access-control-allow-origin': '*' } }),
   )
 }
@@ -29,7 +31,7 @@ test('downloads the installer of the latest release for this system', async ({ p
 
 test('explains what to do when the desktop app does not answer', async ({ page }) => {
   await page.clock.install()
-  await page.route(LATEST_RELEASE_API_URL, (route) => route.abort('connectionrefused'))
+  await page.route(BUILD_RELEASES.latestReleaseApi, (route) => route.abort('connectionrefused'))
   await page.route(isAgentUrl, (route) => route.abort('connectionrefused'))
   await page.addInitScript(() => {
     HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
@@ -46,6 +48,34 @@ test('explains what to do when the desktop app does not answer', async ({ page }
   await expect(page.getByText('Could not open the app')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Get the desktop app' })).toHaveAttribute('href', DESKTOP_DOWNLOAD_URL)
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible()
+})
+
+test('tells the user to add the website when the app does not take diagrams from it', async ({ page }) => {
+  const posts: string[] = []
+  await page.route(BUILD_RELEASES.latestReleaseApi, (route) => route.abort('connectionrefused'))
+  await page.route(isAgentUrl, (route) => {
+    if (route.request().method() === 'POST') posts.push(route.request().url())
+    return route.request().url().startsWith(`http://${AGENT_HOST}:${AGENT_PORT}/`)
+      ? route.fulfill({
+          json: { received: true, allowed: false },
+          headers: { 'access-control-allow-origin': new URL(page.url()).origin },
+        })
+      : route.abort('connectionrefused')
+  })
+  await page.addInitScript(() => {
+    HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+      if (!this.href.startsWith('diagrams:')) HTMLElement.prototype.click.call(this)
+    }
+  })
+  await page.goto('/')
+  await copyTemplate(page, 'Event pipeline')
+  await page.getByRole('button', { name: 'Export' }).click()
+  await page.getByRole('menuitem', { name: 'Open in desktop app' }).click()
+
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByText('Could not open the app')).toBeVisible()
+  await expect(dialog).toContainText(`Add ${new URL(page.url()).origin} under Websites in the app settings`)
+  expect(posts).toEqual([])
 })
 
 const MAC_SAFARI =

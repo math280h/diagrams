@@ -1,6 +1,6 @@
 import { ArrowUpRight, Download } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
-import { DESKTOP_DOWNLOAD_URL } from './constants'
+import { BUILD_RELEASES } from './build-config'
 import { SYSTEM_NAMES, useDesktopDownload } from './download'
 
 /**
@@ -30,7 +30,7 @@ export function DesktopDownloadLink({
       </a>
       {allDownloads && (
         <a
-          href={DESKTOP_DOWNLOAD_URL}
+          href={BUILD_RELEASES.latestRelease}
           target="_blank"
           rel="noreferrer"
           className="text-[13px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"

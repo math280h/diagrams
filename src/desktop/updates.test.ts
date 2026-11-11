@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DesktopApi, MainEvents, UpdateInfo } from './contract'
-import { checkForUpdates, watchUpdates } from './updates'
+import { useDesktopSettingsDialog } from './settings-dialog'
+import { checkForUpdates, setUpdateRepository, useUpdateInfo, watchUpdates } from './updates'
 
 const toast = vi.hoisted(() => ({ info: vi.fn(), success: vi.fn(), error: vi.fn() }))
 vi.mock('sonner', () => ({ toast }))
@@ -10,6 +11,7 @@ const BASE: UpdateInfo = {
   currentVersion: '0.1.0',
   version: null,
   installsOnQuit: true,
+  repository: 'acme/diagrams',
   message: null,
 }
 
@@ -52,7 +54,7 @@ describe('desktop updates', () => {
     expect(request).toHaveBeenCalledWith('update.install', null)
   })
 
-  it('links to the release when the build may only notify', async () => {
+  it('links to the release in the repository of the updates when the build may only notify', async () => {
     const { emit } = installDesktop(BASE)
     watchUpdates()
     await Promise.resolve()
@@ -61,10 +63,33 @@ describe('desktop updates', () => {
     expect(title).toBe('Version 0.2.0 is available')
     options.action.onClick()
     expect(window.open).toHaveBeenCalledWith(
-      'https://github.com/math280h/diagrams/releases/tag/v0.2.0',
+      'https://github.com/acme/diagrams/releases/tag/v0.2.0',
       '_blank',
       'noreferrer',
     )
+    expect(useUpdateInfo.getState().info).toEqual({ ...BASE, state: 'available', version: '0.2.0' })
+  })
+
+  it('asks for a GitHub sign-in when the updates are in a private repository', async () => {
+    installDesktop({ ...BASE, state: 'sign-in' })
+    await checkForUpdates()
+    const [title, options] = toast.info.mock.calls[0]!
+    expect(title).toBe('Sign in to GitHub to get updates')
+    expect(options.description).toBe('The updates of this build are in the private repository acme/diagrams.')
+    options.action.onClick()
+    expect(useDesktopSettingsDialog.getState().open).toBe(true)
+  })
+
+  it('sets the repository of updates, and returns the reason of the main process when it refuses', async () => {
+    const { request } = installDesktop({ ...BASE, repository: 'acme/fork' })
+    expect(await setUpdateRepository('acme/fork')).toBeNull()
+    expect(request).toHaveBeenCalledWith('update.setRepository', { repository: 'acme/fork' })
+    expect(useUpdateInfo.getState().info?.repository).toBe('acme/fork')
+
+    request.mockRejectedValueOnce(
+      new Error("Error invoking remote method 'dg:request': Error: GitHub has no release in acme/none."),
+    )
+    expect(await setUpdateRepository('acme/none')).toBe('GitHub has no release in acme/none.')
   })
 
   it('tells the user the result of a check', async () => {

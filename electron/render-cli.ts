@@ -3,6 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { app, BrowserWindow } from 'electron'
+import { BUILD } from '@/desktop/build-config'
 import type { AgentInfo, UpdateInfo } from '@/desktop/contract'
 import { appAbout } from './about'
 import { APP_ORIGIN, serveRenderer } from './app-protocol'
@@ -36,6 +37,7 @@ const UPDATES_OFF: UpdateInfo = {
   currentVersion: '',
   version: null,
   installsOnQuit: false,
+  repository: BUILD.repository,
   message: null,
 }
 
@@ -95,12 +97,20 @@ export async function runRender(args: RenderArgs): Promise<number> {
       'agent.info': async () => AGENT_OFF,
       'agent.resetToken': refuse,
       'window.setTitleBarColors': async () => null,
-      'app.settings': async () => ({ keepRunning: false }),
+      'app.settings': async () => ({ keepRunning: false, websites: [BUILD.website], shareWebsite: BUILD.website }),
       'app.setKeepRunning': refuse,
+      'app.addWebsite': refuse,
+      'app.removeWebsite': refuse,
+      'app.setShareWebsite': refuse,
       'app.quit': refuse,
       'update.info': async () => UPDATES_OFF,
       'update.check': async () => UPDATES_OFF,
       'update.install': refuse,
+      'update.setRepository': refuse,
+      'github.info': async () => ({ state: 'signed-out', message: null }),
+      'github.signIn': refuse,
+      'github.cancelSignIn': refuse,
+      'github.signOut': refuse,
       'layout.graphviz': refuse,
     }
     registerIpc(handlers, rendererOrigin)

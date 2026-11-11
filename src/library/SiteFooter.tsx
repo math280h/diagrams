@@ -1,7 +1,8 @@
 import { Link } from '@tanstack/react-router'
 import { ArrowUpRight } from 'lucide-react'
 import { AppMark } from '@/components/AppMark'
-import { DESKTOP_DOWNLOAD_URL, REPOSITORY_URL } from '@/desktop/constants'
+import { BUILD_RELEASES } from '@/desktop/build-config'
+import { REPOSITORY_URL } from '@/desktop/constants'
 
 type FooterLink = { label: string; to: '/releases' } | { label: string; href: string }
 
@@ -10,7 +11,7 @@ const GROUPS: { title: string; links: FooterLink[] }[] = [
     title: 'App',
     links: [
       { label: 'What’s new', to: '/releases' },
-      { label: 'Get the desktop app', href: DESKTOP_DOWNLOAD_URL },
+      { label: 'Get the desktop app', href: BUILD_RELEASES.latestRelease },
     ],
   },
   {

@@ -5,7 +5,8 @@ import { createRequire } from 'node:module'
 import path from 'node:path'
 import * as simpleIcons from 'simple-icons'
 import type { SimpleIcon } from 'simple-icons'
-import { REPOSITORY_URL, WEBSITE_ORIGIN } from '../src/desktop/constants.ts'
+import { OFFICIAL_WEBSITE } from '../src/desktop/build-config.ts'
+import { REPOSITORY_URL } from '../src/desktop/constants.ts'
 import { ICON_SOURCES } from './icons/sources.ts'
 import {
   chromiumProjects,
@@ -148,7 +149,7 @@ export function releaseSbom(bom: Bom, release: Release): Bom {
       purl: rootRef,
       externalReferences: [
         { type: 'vcs', url: REPOSITORY_URL },
-        { type: 'website', url: WEBSITE_ORIGIN },
+        { type: 'website', url: OFFICIAL_WEBSITE },
         { type: 'issue-tracker', url: `${REPOSITORY_URL}/issues` },
       ],
     },

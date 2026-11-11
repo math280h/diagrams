@@ -44,6 +44,7 @@ import { AgentButton } from '@/desktop/AgentButton'
 import { useAgentIntroVisible } from '@/desktop/agent-store'
 import { REPOSITORY_URL } from '@/desktop/constants'
 import { AgentIntro } from '@/desktop/AgentIntro'
+import { DesktopSettingsButton } from '@/desktop/DesktopSettingsButton'
 import { InstallIntro } from '@/install/InstallIntro'
 import { desktopApi } from '@/desktop/bridge'
 import { canOpenInApp, openInApp, useOpenedInApp } from '@/desktop/open-in-app'
@@ -395,6 +396,7 @@ export function LibraryPage() {
             <TooltipContent>Source code on GitHub</TooltipContent>
           </Tooltip>
           <ThemeToggle />
+          {isDesktop() && <DesktopSettingsButton />}
           {isDesktop() && (
             <Button variant="ghost" aria-label="Open a diagram file" onClick={openFiles}>
               <FolderOpen /> <span className="hidden sm:inline">Open file</span>

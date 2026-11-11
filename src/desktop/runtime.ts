@@ -8,6 +8,7 @@ import { router } from '@/router'
 import { flushPendingSave } from '@/store/document'
 import { openConnectAgent, recordAgentCall, watchAgentInfo } from './agent-store'
 import { loadAppSettings } from './app-settings'
+import { watchGitHubSignIn } from './github-sign-in'
 import { serveMainRequests } from './serve'
 import { watchUpdates } from './updates'
 
@@ -22,6 +23,7 @@ const ONLY_IN_CAPTURE_WINDOW = 'Only the capture window renders export stages.'
 export function startDesktopRuntime(storageError: string | null = null) {
   watchAgentInfo()
   watchUpdates()
+  watchGitHubSignIn()
   loadAppSettings()
   const unavailable = `The app could not open the diagrams folder: ${storageError}`
   return serveMainRequests({

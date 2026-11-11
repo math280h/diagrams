@@ -12,6 +12,9 @@ concurrency:
   group: preview-app
   cancel-in-progress: true
 
+env:
+  DIAGRAMS_REPOSITORY: ${{ github.repository }}
+
 jobs:
   prepare:
     name: Prepare the preview release

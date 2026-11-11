@@ -4,12 +4,14 @@ import babel from '@rolldown/plugin-babel'
 import tailwindcss from '@tailwindcss/vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import { buildDefine, readBuildConfig, releaseLinks } from './src/desktop/build-config.ts'
 import { contentSecurityPolicy } from './scripts/content-security-policy.ts'
 import { reactCompilerCheck, reactCompilerLogger } from './scripts/react-compiler.ts'
 import { releaseNotes } from './scripts/release-notes.ts'
 import { serviceWorker } from './scripts/service-worker.ts'
 import { standalonePlayer } from './scripts/standalone-player.ts'
 import { thirdPartyLicenses } from './scripts/third-party-licenses.ts'
+import { websiteAddress } from './scripts/website-address.ts'
 
 // Vite reloads each open page when an HTML file in the project folder or in a subfolder changes.
 const GENERATED_FOLDERS = [
@@ -38,8 +40,10 @@ function inGeneratedFolder(file: string): boolean {
 }
 
 const licenses = thirdPartyLicenses()
+const build = readBuildConfig(process.env)
 
 export default defineConfig({
+  define: buildDefine(build),
   plugins: [
     react(),
     babel({ presets: [reactCompilerPreset({ logger: reactCompilerLogger })] }),
@@ -47,7 +51,8 @@ export default defineConfig({
     tailwindcss(),
     licenses.main,
     standalonePlayer(),
-    releaseNotes(),
+    releaseNotes(releaseLinks(build.repository)),
+    websiteAddress(build.website),
     serviceWorker(),
     contentSecurityPolicy(),
   ],

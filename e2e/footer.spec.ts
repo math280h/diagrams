@@ -1,11 +1,12 @@
-import { DESKTOP_DOWNLOAD_URL, REPOSITORY_URL } from '@/desktop/constants'
+import { BUILD_RELEASES } from '@/desktop/build-config'
+import { REPOSITORY_URL } from '@/desktop/constants'
 import { expect, test } from './fixtures'
 
 test('links the releases, the source code and the legal texts in the website footer', async ({ page }) => {
   await page.goto('/')
   const footer = page.locator('footer')
   const link = (name: string) => footer.getByRole('link', { name, exact: true })
-  await expect(link('Get the desktop app')).toHaveAttribute('href', DESKTOP_DOWNLOAD_URL)
+  await expect(link('Get the desktop app')).toHaveAttribute('href', BUILD_RELEASES.latestRelease)
   await expect(link('Source code on GitHub')).toHaveAttribute('href', REPOSITORY_URL)
   await expect(link('Source code on GitHub')).toHaveAttribute('target', '_blank')
   await expect(link('Report a problem')).toHaveAttribute('href', `${REPOSITORY_URL}/issues/new/choose`)

@@ -13,16 +13,11 @@ export const DEEP_LINK_SCHEME = 'diagrams'
 export const CONNECT_AGENT_LINK = `${DEEP_LINK_SCHEME}://connect-agent`
 /** The route of the hidden window that renders export stages for the native capture. */
 export const CAPTURE_HASH = '#/capture'
-export const WEBSITE_ORIGIN = 'https://draw.thias.dev'
 export const DEV_ORIGINS = ['http://127.0.0.1:5173', 'http://localhost:5173']
+/** The repository of the source code. The releases of a build can be in another repository. */
 export const REPOSITORY_URL = 'https://github.com/math280h/diagrams'
 export const BUG_REPORT_URL = `${REPOSITORY_URL}/issues/new?template=bug_report.yml`
-/** GitHub redirects this address to the newest published release that is not a pre-release. */
-export const DESKTOP_DOWNLOAD_URL = `${REPOSITORY_URL}/releases/latest`
-export const REPOSITORY_API_URL = 'https://api.github.com/repos/math280h/diagrams'
-export const LATEST_RELEASE_API_URL = `${REPOSITORY_API_URL}/releases/latest`
-export const RELEASES_API_URL = `${REPOSITORY_API_URL}/releases?per_page=30`
-export const RELEASE_ASSET_URL_PREFIX = `${REPOSITORY_URL}/releases/download/`
+export const GITHUB_API_ORIGIN = 'https://api.github.com'
 /** The pre-release label in the app version of a build of `main`, as in `0.2.1-preview.57`. */
 export const PREVIEW_APP_LABEL = 'preview'
 /** Matches the tag of a pre-release with a build of `main`, such as `preview-57` for the version `0.2.1-preview.57`. */

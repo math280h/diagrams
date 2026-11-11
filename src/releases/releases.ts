@@ -1,10 +1,6 @@
 import builtReleases, { unreleased } from 'virtual:release-notes'
-import {
-  PREVIEW_APP_TAG_PATTERN,
-  RELEASE_ASSET_URL_PREFIX,
-  RELEASES_API_URL,
-  REPOSITORY_URL,
-} from '@/desktop/constants'
+import { BUILD_RELEASES } from '@/desktop/build-config'
+import { PREVIEW_APP_TAG_PATTERN } from '@/desktop/constants'
 import type { UnreleasedChanges } from './unreleased'
 
 const LOOKUP_TIMEOUT_MS = 8000
@@ -84,7 +80,7 @@ export function parseReleases(data: unknown, previews = false): Release[] {
         name: text(release.name) || tag,
         publishedAt: publishedAtMs(release),
         html: text(release.body_html),
-        url: url.startsWith(`${REPOSITORY_URL}/releases/`) ? url : `${REPOSITORY_URL}/releases/tag/${tag}`,
+        url: url.startsWith(`${BUILD_RELEASES.releases}/`) ? url : `${BUILD_RELEASES.releases}/tag/${tag}`,
         preview: release.prerelease === true,
       }
     })
@@ -103,7 +99,7 @@ export function previewDownloads(data: unknown): Download[] {
     (asset): asset is { name: string; browser_download_url: string } =>
       typeof asset.name === 'string' &&
       typeof asset.browser_download_url === 'string' &&
-      asset.browser_download_url.startsWith(`${RELEASE_ASSET_URL_PREFIX}${text(preview?.tag_name)}/`),
+      asset.browser_download_url.startsWith(`${BUILD_RELEASES.assetPrefix}${text(preview?.tag_name)}/`),
   )
   return PREVIEW_INSTALLERS.flatMap(({ label, pattern }) => {
     const asset = assets.find((candidate) => pattern.test(candidate.name))
@@ -119,7 +115,7 @@ export function nextRelease(changes: UnreleasedChanges, downloads: Download[] = 
     name: 'Next release',
     publishedAt: Math.max(...changes.changes.map((change) => change.committedAt)),
     html: '',
-    url: `${REPOSITORY_URL}/compare/${encodeURIComponent(changes.base)}...main`,
+    url: `${BUILD_RELEASES.page}/compare/${encodeURIComponent(changes.base)}...main`,
     preview: true,
     unreleased: changes,
     downloads,
@@ -141,7 +137,7 @@ export async function loadReleases(): Promise<Release[]> {
   }
   let response: Response
   try {
-    response = await fetch(RELEASES_API_URL, {
+    response = await fetch(BUILD_RELEASES.releasesApi, {
       headers: { Accept: 'application/vnd.github.html+json' },
       signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS),
     })

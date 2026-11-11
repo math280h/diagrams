@@ -1,19 +1,19 @@
 import { toast } from 'sonner'
+import { create } from 'zustand'
 import { reportError } from '@/store/problem-store'
-import { desktopApi } from './bridge'
-import { REPOSITORY_URL } from './constants'
+import { desktopApi, requestErrorMessage } from './bridge'
+import { releaseLinks } from './build-config'
 import type { UpdateInfo } from './contract'
+import { openDesktopSettings } from './settings-dialog'
 
 const UPDATE_TOAST_ID = 'update'
 
-function releaseUrl(version: string) {
-  return `${REPOSITORY_URL}/releases/tag/v${version}`
-}
+export const useUpdateInfo = create<{ info: UpdateInfo | null }>(() => ({ info: null }))
 
 function showUpdate(info: UpdateInfo) {
   if (!info.version) return
   if (info.state === 'available') {
-    const url = releaseUrl(info.version)
+    const url = releaseLinks(info.repository).releaseTag(info.version)
     toast.info(`Version ${info.version} is available`, {
       id: UPDATE_TOAST_ID,
       description: 'Download it from GitHub and install it over this version.',
@@ -38,6 +38,7 @@ export function watchUpdates(): () => void {
   if (!desktop) return () => undefined
   let shown: string | null = null
   const follow = (info: UpdateInfo) => {
+    useUpdateInfo.setState({ info })
     if (info.state !== 'available' && info.state !== 'ready') return
     const key = `${info.state}:${info.version}`
     if (key === shown) return
@@ -59,10 +60,18 @@ export async function checkForUpdates() {
     reportError('Could not check for updates', error)
     return
   }
+  useUpdateInfo.setState({ info })
   switch (info.state) {
     case 'unsupported':
       toast.info('This build does not update itself', {
         description: 'Only the installed app gets updates. Pull the latest source and build it again.',
+      })
+      return
+    case 'sign-in':
+      toast.info('Sign in to GitHub to get updates', {
+        id: UPDATE_TOAST_ID,
+        description: `The updates of this build are in the private repository ${info.repository}.`,
+        action: { label: 'Settings', onClick: openDesktopSettings },
       })
       return
     case 'available':
@@ -84,5 +93,21 @@ export async function checkForUpdates() {
       return
     case 'checking':
       return
+  }
+}
+
+/**
+ * Sets the repository of updates, or the repository of the build for `null`.
+ *
+ * @returns The reason when the main process refuses the repository, or `null`.
+ */
+export async function setUpdateRepository(repository: string | null): Promise<string | null> {
+  const desktop = desktopApi()
+  if (!desktop) return null
+  try {
+    useUpdateInfo.setState({ info: await desktop.request('update.setRepository', { repository }) })
+    return null
+  } catch (error) {
+    return requestErrorMessage(error)
   }
 }

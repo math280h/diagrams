@@ -15,6 +15,7 @@ const HEX_COLOR = z.string().regex(HEX_COLOR_PATTERN)
 const MAX_DOT_CHARS = 2_000_000
 /** The largest side of an export stage in CSS pixels. */
 const MAX_STAGE_SIDE_PX = 1_000_000
+const MAX_ADDRESS_CHARS = 2048
 
 const CAPTURE = z.object({
   sessionId: z.uuid(),
@@ -38,10 +39,18 @@ const INPUTS = {
   'window.setTitleBarColors': z.object({ color: HEX_COLOR, symbolColor: HEX_COLOR }),
   'app.settings': z.null(),
   'app.setKeepRunning': z.object({ keepRunning: z.boolean() }),
+  'app.addWebsite': z.object({ website: z.string().max(MAX_ADDRESS_CHARS) }),
+  'app.removeWebsite': z.object({ website: z.string().max(MAX_ADDRESS_CHARS) }),
+  'app.setShareWebsite': z.object({ website: z.string().max(MAX_ADDRESS_CHARS) }),
   'app.quit': z.null(),
   'update.info': z.null(),
   'update.check': z.null(),
   'update.install': z.null(),
+  'update.setRepository': z.object({ repository: z.string().max(MAX_ADDRESS_CHARS).nullable() }),
+  'github.info': z.null(),
+  'github.signIn': z.null(),
+  'github.cancelSignIn': z.null(),
+  'github.signOut': z.null(),
   'layout.graphviz': z.object({ dot: z.string().max(MAX_DOT_CHARS), engine: z.enum(GRAPHVIZ_ENGINES) }),
   'capture.open': z.object({
     stage: z.unknown(),

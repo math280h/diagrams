@@ -31,6 +31,7 @@ import {
   Power,
   Redo2,
   RefreshCw,
+  Settings,
   ShieldAlert,
   Sun,
   Trash2,
@@ -42,6 +43,7 @@ import { openConnectAgent } from '@/desktop/agent-store'
 import { quitApp } from '@/desktop/app-settings'
 import { canFollowFolder, canOpenFolder } from '@/folder/support'
 import { isDesktop } from '@/desktop/bridge'
+import { openDesktopSettings } from '@/desktop/settings-dialog'
 import { checkForUpdates } from '@/desktop/updates'
 import {
   CommandDialog,
@@ -284,6 +286,9 @@ export function CommandMenu() {
           )}
           {isDesktop() && (
             <>
+              <CommandItem onSelect={run(openDesktopSettings)}>
+                <Settings /> App settings
+              </CommandItem>
               <CommandItem onSelect={run(() => void checkForUpdates())}>
                 <RefreshCw /> Check for updates
               </CommandItem>

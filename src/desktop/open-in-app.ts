@@ -54,17 +54,19 @@ function handoffUrl(port: number, code: string) {
   return `http://${AGENT_HOST}:${port}${HANDOFF_PATH}/${code}`
 }
 
-/** Asks the app on a port whether it received the code. An app without this check answers 404. */
-async function codeAnswer(
-  port: number,
-  code: string,
-  signal: AbortSignal,
-): Promise<'received' | 'not-received' | 'no-check' | null> {
+type CodeAnswer = 'received' | 'not-allowed' | 'not-received' | 'no-check' | null
+
+/**
+ * Asks the app on a port whether it received the code, and whether it takes diagrams from this website. An app
+ * without this check answers 404. An older app does not tell whether it takes diagrams from this website.
+ */
+async function codeAnswer(port: number, code: string, signal: AbortSignal): Promise<CodeAnswer> {
   try {
     const response = await fetch(handoffUrl(port, code), { signal })
     if (!response.ok) return 'no-check'
-    const data = (await response.json()) as { received?: unknown }
-    return data.received === true ? 'received' : 'not-received'
+    const data = (await response.json()) as { received?: unknown; allowed?: unknown }
+    if (data.received !== true) return 'not-received'
+    return data.allowed === false ? 'not-allowed' : 'received'
   } catch {
     return null
   }
@@ -75,11 +77,15 @@ async function codeAnswer(
  * the code check counts as the receiver, because older apps listen only there and check the code when they take the
  * diagram.
  */
-async function portWithCode(code: string, signal: AbortSignal): Promise<number | null> {
+async function appWithCode(code: string, signal: AbortSignal): Promise<{ port: number; allowed: boolean } | null> {
   const answers = await Promise.all(AGENT_PORTS.map((port) => codeAnswer(port, code, signal)))
-  const index = answers.indexOf('received')
-  if (index >= 0) return AGENT_PORTS[index]!
-  return answers[0] === 'no-check' ? AGENT_PORT : null
+  const index = answers.findIndex((answer) => answer === 'received' || answer === 'not-allowed')
+  if (index >= 0) return { port: AGENT_PORTS[index]!, allowed: answers[index] === 'received' }
+  return answers[0] === 'no-check' ? { port: AGENT_PORT, allowed: true } : null
+}
+
+function notAllowedMessage() {
+  return `The app takes diagrams only from the websites in its settings. Add ${window.location.origin} under Websites in the app settings, then try again.`
 }
 
 /**
@@ -92,10 +98,11 @@ async function sendToApp(diagram: Diagram, code: string, signal: AbortSignal): P
   const body = JSON.stringify(diagram)
   const deadline = Date.now() + HANDOFF_RETRY_MS
   while (Date.now() < deadline && !signal.aborted) {
-    const port = await portWithCode(code, signal)
-    if (port !== null) {
+    const found = await appWithCode(code, signal)
+    if (found && !found.allowed) return { ok: false, reason: 'refused', message: notAllowedMessage() }
+    if (found) {
       try {
-        const response = await fetch(handoffUrl(port, code), {
+        const response = await fetch(handoffUrl(found.port, code), {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body,

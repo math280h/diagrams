@@ -3,7 +3,7 @@ import { ArrowLeft, ExternalLink, Loader2 } from 'lucide-react'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { DESKTOP_DOWNLOAD_URL, REPOSITORY_URL } from '@/desktop/constants'
+import { BUILD_RELEASES } from '@/desktop/build-config'
 import { errorMessage } from '@/lib/error-message'
 import { cleanReleaseHtml } from './clean-html'
 import { isPreviewSite, loadReleases, type Download, type Release } from './releases'
@@ -25,8 +25,8 @@ function UnreleasedNotes({ changes, downloads }: { changes: UnreleasedChanges; d
             <a
               href={
                 change.pullRequest === null
-                  ? `${REPOSITORY_URL}/commit/${change.sha}`
-                  : `${REPOSITORY_URL}/pull/${change.pullRequest}`
+                  ? `${BUILD_RELEASES.page}/commit/${change.sha}`
+                  : `${BUILD_RELEASES.page}/pull/${change.pullRequest}`
               }
               target="_blank"
               rel="noreferrer"
@@ -143,7 +143,7 @@ export function ReleasesPage() {
             <div className="my-8 rounded-md border border-dashed p-4 text-sm">
               <p>The release notes could not be loaded. {state.message}</p>
               <a
-                href={`${REPOSITORY_URL}/releases`}
+                href={BUILD_RELEASES.releases}
                 target="_blank"
                 rel="noreferrer"
                 className={buttonVariants({ variant: 'outline', size: 'sm', className: 'mt-3' })}
@@ -155,7 +155,7 @@ export function ReleasesPage() {
           {state.kind === 'loaded' && state.releases.length === 0 && (
             <p className="py-8 text-sm text-muted-foreground">
               No release is out yet.{' '}
-              <a href={DESKTOP_DOWNLOAD_URL} target="_blank" rel="noreferrer" className="underline">
+              <a href={BUILD_RELEASES.latestRelease} target="_blank" rel="noreferrer" className="underline">
                 See GitHub Releases
               </a>
               .

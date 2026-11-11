@@ -4,31 +4,35 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { useAppSettings } from '@/desktop/app-settings'
 import { isDesktop } from '@/desktop/bridge'
-import { WEBSITE_ORIGIN } from '@/desktop/constants'
+import { BUILD } from '@/desktop/build-config'
 import { errorMessage } from '@/lib/error-message'
 import { encodeShareData, LONG_LINK_CHARS, shareUrl } from '@/share/share-link'
 import { currentDiagram } from '@/store/document'
 
-type State = { kind: 'working' } | { kind: 'failed'; message: string } | { kind: 'ready'; url: string }
+type State = { kind: 'working' } | { kind: 'failed'; message: string } | { kind: 'ready'; data: string }
 
-function siteBase(): string {
-  return isDesktop() ? `${WEBSITE_ORIGIN}/` : `${window.location.origin}${window.location.pathname}`
+function siteBase(shareWebsite: string | undefined): string {
+  if (!isDesktop()) return `${window.location.origin}${window.location.pathname}`
+  return `${shareWebsite ?? BUILD.website}/`
 }
 
 export function LinkExport() {
   const [state, setState] = useState<State>({ kind: 'working' })
+  const shareWebsite = useAppSettings((settings) => settings.settings?.shareWebsite)
 
   useEffect(() => {
     let active = true
     encodeShareData(currentDiagram()).then(
-      (data) => active && setState({ kind: 'ready', url: shareUrl(siteBase(), data) }),
+      (data) => active && setState({ kind: 'ready', data }),
       (error: unknown) => active && setState({ kind: 'failed', message: errorMessage(error) }),
     )
     return () => {
       active = false
     }
   }, [])
+  const link = state.kind === 'ready' ? shareUrl(siteBase(shareWebsite), state.data) : ''
 
   const copy = (url: string) =>
     void navigator.clipboard.writeText(url).then(
@@ -51,15 +55,15 @@ export function LinkExport() {
           <>
             <Input
               readOnly
-              value={state.url}
+              value={link}
               aria-label="Share link"
               spellCheck={false}
               onFocus={(event) => event.currentTarget.select()}
               className="font-mono text-xs md:text-xs"
             />
             <p className="text-xs text-muted-foreground">
-              {state.url.length.toLocaleString()} characters.
-              {state.url.length > LONG_LINK_CHARS &&
+              {link.length.toLocaleString()} characters.
+              {link.length > LONG_LINK_CHARS &&
                 ' Some chat apps and mail programs cut links this long. A web page export works at any size.'}
             </p>
           </>
@@ -72,14 +76,10 @@ export function LinkExport() {
       <DialogFooter>
         {state.kind === 'ready' && (
           <>
-            <Button
-              variant="outline"
-              nativeButton={false}
-              render={<a href={state.url} target="_blank" rel="noreferrer" />}
-            >
+            <Button variant="outline" nativeButton={false} render={<a href={link} target="_blank" rel="noreferrer" />}>
               <ExternalLink /> Open
             </Button>
-            <Button onClick={() => copy(state.url)}>
+            <Button onClick={() => copy(link)}>
               <Copy /> Copy link
             </Button>
           </>

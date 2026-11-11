@@ -1,6 +1,6 @@
 import type { Plugin } from 'vite'
 import { type ContentSecurityPolicy, policyText, RENDERER_POLICY } from '../src/content-security-policy.ts'
-import { AGENT_HOST, AGENT_PORTS, REPOSITORY_API_URL } from '../src/desktop/constants.ts'
+import { AGENT_HOST, AGENT_PORTS, GITHUB_API_ORIGIN } from '../src/desktop/constants.ts'
 
 /**
  * Returns the policy of the website. It holds the renderer policy of the desktop app and the connections that only the
@@ -13,7 +13,7 @@ export function websitePolicy(): ContentSecurityPolicy {
     ...policy,
     'connect-src': [
       ...(policy['connect-src'] ?? []),
-      new URL(REPOSITORY_API_URL).origin,
+      GITHUB_API_ORIGIN,
       ...AGENT_PORTS.map((port) => `http://${AGENT_HOST}:${port}`),
     ],
   }

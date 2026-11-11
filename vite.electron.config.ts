@@ -2,6 +2,7 @@ import { builtinModules } from 'node:module'
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import { thirdPartyLicenses, withoutPackages } from './scripts/third-party-licenses.ts'
+import { buildDefine, readBuildConfig } from './src/desktop/build-config.ts'
 
 const NODE_BUILTINS = [...builtinModules, ...builtinModules.map((name) => `node:${name}`)]
 
@@ -13,6 +14,7 @@ const ENTRIES = {
 export default defineConfig(({ mode }) => {
   const entry = mode === 'preload' ? ENTRIES.preload : ENTRIES.main
   return {
+    define: buildDefine(readBuildConfig(process.env)),
     publicDir: false,
     plugins: mode === 'preload' ? [withoutPackages()] : [thirdPartyLicenses('third-party-licenses.main.txt').main],
     resolve: {

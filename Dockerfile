@@ -10,6 +10,8 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY patches patches
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
 COPY . .
+ARG DIAGRAMS_WEBSITE=
+ARG DIAGRAMS_REPOSITORY=
 RUN pnpm build
 
 FROM build AS sbom-build
