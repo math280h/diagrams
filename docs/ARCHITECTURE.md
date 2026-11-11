@@ -1014,6 +1014,34 @@ Firefox and Safari have no folder picker. There, the website can show a folder o
 - There is no agent folder. The setup offers two downloads: a guide for direct file changes (the rules, an example
   file and the JSON Schema) and the icon list. It also gives the line for `CLAUDE.md`.
 
+### Docker image
+
+`Dockerfile` builds the website image that `.github/workflows/docker-image.yml` publishes for each release.
+
+- The build stage runs on the platform of the build computer, because `dist/` is the same for each platform. The final
+  stage has no `RUN` step, so the arm64 image needs no emulation.
+- The final stage is distroless with static-web-server, a static binary. It has no shell and runs as `nonroot`.
+- The Node.js image has no corepack, so the build copies pnpm from the official pnpm image.
+  `scripts/dockerfile.test.ts` keeps its version equal to `packageManager`.
+- The static-web-server configuration file overrides the `SERVER_*` variables. Thus the image sets the options as
+  variables, and `docker/sws.toml` holds only the headers.
+- The image holds the licence texts of static-web-server, from the release tag, with a checksum.
+- The BuildKit SBOM scanner reads package files. The bundles in `dist/` have none, so it does not find the npm
+  packages. Thus the `sbom` stage writes a CycloneDX SBOM from the same build (`scripts/image-sbom.ts`).
+  - It starts from `pnpm sbom --prod` and keeps the packages in the licence files of the website bundles, as the
+    desktop SBOM does. The desktop-only packages, such as the agent server, are not in it.
+  - A kept package that only a removed package needs becomes a dependency of the image.
+  - The publish workflow attests the SBOM to the image digest. The CI job "Docker image" builds it on each pull
+    request.
+- Trivy scans the image, the SBOM and the Dockerfile. The image scan finds only the Debian packages, so the npm
+  packages and static-web-server come from the SBOM scan.
+  - CI fails on a high or critical finding that has a fix.
+  - Each Monday, `.github/workflows/docker-scan.yml` verifies the attestations of the newest release image. Then it
+    scans the image and the attested SBOM and uploads the findings to code scanning. A release image does not change, so
+    only this scan finds a new advisory for it.
+  - `.github/actions/trivy` downloads the Trivy release and checks its SHA-256, without the Trivy action. Attackers
+    moved the tags of that action to malicious commits in March 2026.
+
 ## Desktop app
 
 The React app in Electron, plus file storage, agent control, the website handoff and GitHub Releases updates.
@@ -1387,6 +1415,8 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
   `CODEOWNERS`, the issue and pull request templates, `dependabot.yml` and some other Markdown files), the jobs of the
   app do not run. `README.md`, `LICENSE` and the skills are not in the list, because tests read them.
 - "Typecheck, lint and unit tests": static checks and Vitest, with browser tests in Chromium.
+- "Docker image": builds the website image and its SBOM, and scans both and the Dockerfile with Trivy. It runs the image
+  with a read-only file system and no capabilities, and checks the content types, cache headers and compression.
 - "Web tests 1 of 4" to "4 of 4": the end-to-end tests, split with Playwright `--shard`. A 4-core runner gets 2
   workers; four shards give the 8 of a developer computer. The matrix sets the number (`strategy.job-total`).
 - "All checks": the required check of the "Protect main" ruleset, also for the desktop jobs. It fails unless each job

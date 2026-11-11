@@ -26,6 +26,10 @@ version in `package.json` only names builds on your own computer, so a release n
    See "Release notes" below for what the draft holds and what to add.
 5. Publishing starts the Deploy the website workflow. Approve its job in the `release` environment, and it deploys the
    tag to the live site.
+6. Publishing also starts the Publish the Docker image workflow. It pushes the website image for `linux/amd64` and
+   `linux/arm64` to `ghcr.io/math280h/diagrams` with the tags `<version>`, `<major>.<minor>`, `<major>` (from 1.0.0)
+   and `latest` (only for the newest release). It attests the build provenance and the SBOM of the image. A preview
+   release gets no image.
 
 ## Release notes
 

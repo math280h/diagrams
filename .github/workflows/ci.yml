@@ -216,9 +216,73 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: node scripts/release-formats.ts --base "$BASE"
 
+  docker:
+    name: Docker image
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the image
+        run: docker build --tag diagrams-website .
+      - name: Write the SBOM of the image
+        run: |
+          docker build --target sbom --output "type=local,dest=$RUNNER_TEMP/sbom" .
+          jq -e '[.components[].name] | index("static-web-server") and index("static-debian13") and index("react")' \
+            "$RUNNER_TEMP/sbom/diagrams-website.cdx.json" > /dev/null
+      - uses: $/.github/actions/trivy
+      - name: Scan the image, its SBOM and the Dockerfile
+        env:
+          TRIVY_SEVERITY: HIGH,CRITICAL
+          TRIVY_IGNORE_UNFIXED: 'true'
+          TRIVY_EXIT_CODE: '1'
+          TRIVY_NO_PROGRESS: 'true'
+        run: |
+          trivy image --scanners vuln,secret diagrams-website
+          trivy sbom "$RUNNER_TEMP/sbom/diagrams-website.cdx.json"
+          trivy config --misconfig-scanners dockerfile Dockerfile
+      - name: Serve the website from the image
+        run: |
+          docker run --detach --name website --publish 127.0.0.1:8080:8080 \
+            --read-only --cap-drop ALL --security-opt no-new-privileges diagrams-website
+          curl -fsS --retry 10 --retry-connrefused --retry-delay 1 -o /dev/null http://127.0.0.1:8080/health
+      - name: Check the headers of the website
+        run: |
+          base=http://127.0.0.1:8080
+          expect() {
+            local path=$1 name=$2 pattern=$3
+            shift 3
+            local value
+            value=$(curl -sS -o /dev/null -D - "$@" "$base$path" | tr -d '\r' | sed -n "s/^$name: //Ip" | head -n 1)
+            if ! [[ "$value" =~ $pattern ]]; then
+              echo "::error::$path: $name is '$value', not '$pattern'."
+              exit 1
+            fi
+          }
+          asset=$(curl -fsS "$base/" | grep -o '/assets/index-[^"]*\.js' | head -n 1)
+          expect / content-type '^text/html'
+          expect / cache-control '^no-cache$'
+          expect / x-content-type-options '^nosniff$'
+          expect "$asset" content-type 'javascript'
+          expect "$asset" cache-control '^public, max-age=31536000, immutable$'
+          expect "$asset" content-encoding '^zstd$' -H 'Accept-Encoding: zstd'
+          expect /sw.js content-type 'javascript'
+          expect /sw.js cache-control '^no-cache$'
+          expect /manifest.webmanifest content-type '^application/manifest\+json'
+          status=$(curl -sS -o /dev/null -w '%{http_code}' "$base/missing")
+          if [ "$status" != 404 ]; then
+            echo "::error::/missing gives $status, not 404."
+            exit 1
+          fi
+      - name: Show the server log
+        if: failure()
+        run: docker logs website
+
   checks:
     name: All checks
-    needs: [changes, static, web, coverage, actions-lockfile, release-formats, desktop]
+    needs: [changes, static, web, coverage, actions-lockfile, release-formats, docker, desktop]
     if: always()
     runs-on: ubuntu-26.04
     steps:

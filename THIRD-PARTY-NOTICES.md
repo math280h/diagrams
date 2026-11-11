@@ -170,3 +170,11 @@ undici (https://undici.nodejs.org), each licensed under the MIT licence, and the
 PBC and the Model Context Protocol contributors. Updates use electron-updater
 (https://github.com/electron-userland/electron-builder), licensed under the MIT licence.
 `third-party-licenses.main.txt` lists all packages of the main process.
+
+## Docker image
+
+The Docker image serves the website with static-web-server (https://static-web-server.net), licensed under the MIT
+licence or the Apache-2.0 licence. Copyright (c) 2019-present Jose Quintana. Its licence texts are in
+`/usr/share/doc/static-web-server/` in the image. The base image is distroless
+(https://github.com/GoogleContainerTools/distroless), licensed under the Apache-2.0 licence. The copyright files of its
+Debian packages are in `/usr/share/doc/` in the image.

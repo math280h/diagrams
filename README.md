@@ -186,6 +186,52 @@ changes the diagram format still gets old images. With `screens` and `base-scree
 app screenshots and adds the ones that look different. This repository does both for each pull request that changes
 the app (`.github/workflows/display-previews.yml`).
 
+## Host the website
+
+The website is a set of static files, so you can run your own copy.
+
+Your copy stores no diagrams, as on draw.thias.dev: each visitor keeps them in the browser or in a folder on their
+computer. A browser keeps the diagrams of each website apart, so the diagrams from draw.thias.dev do not show in your
+copy. Move them with "Diagram file (JSON)" in the export menu and Import in the library, or with a share link. "Open in desktop app" works only on
+draw.thias.dev, because the desktop app accepts diagrams only from there. In your copy, export the diagram file and
+open it in the app.
+
+### Docker image
+
+Each release is also a Docker image for `linux/amd64` and `linux/arm64`:
+
+```sh
+docker run -d -p 8080:8080 ghcr.io/math280h/diagrams
+```
+
+Then open http://localhost:8080. The image serves the website with
+[static-web-server](https://static-web-server.net) on a distroless base, as a user without root rights, and sends the
+cache headers from the list under "Static files". `/health` answers while the server runs, and the `SERVER_*`
+variables of static-web-server change its settings, for example `-e SERVER_LOG_LEVEL=info`. For other computers, put a
+proxy with HTTPS in front of it. `docker build -t diagrams .` builds the same image from the source. Each image has a
+build provenance and an SBOM ([check them](SECURITY.md#docker-image)).
+
+### Static files
+
+You need Node.js 24 or later and pnpm 12.16:
+
+```sh
+pnpm install
+pnpm build
+pnpm preview
+```
+
+`pnpm build` writes the site to `dist/`, and `pnpm preview` serves it at http://127.0.0.1:4173 to try it. On a real
+host, serve `dist/` with any static file server:
+
+- Serve it at the root of a host name, for example `https://diagrams.example.com/`, not in a sub-path. The pages load
+  their files from absolute paths such as `/assets/` and `/sw.js`.
+- The routes are after the `#` in the address, so the server needs no rewrite rules.
+- Use HTTPS (or `localhost`). Over plain HTTP, the copy buttons and "Open a folder" in Chrome and Edge do not work, and
+  the browser does not offer to install the app.
+- The files in `dist/assets/` have a content hash in their names, so a cache can keep them for a year. Send
+  `index.html` and `sw.js` with `Cache-Control: no-cache`, so that visitors get a new version at once.
+
 ## Development
 
 ```sh
