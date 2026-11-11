@@ -1,7 +1,10 @@
 import { Link, type ErrorComponentProps } from '@tanstack/react-router'
+import { MoreDetails } from '@/components/MoreDetails'
 import { Button } from '@/components/ui/button'
 import { storageCopy } from '@/persistence/storage-copy'
 import { errorMessage } from '@/lib/error-message'
+import { errorProblem } from '@/lib/problem-report'
+import { showProblem } from '@/store/problem-store'
 
 export function RouteNotFound() {
   return (
@@ -19,12 +22,19 @@ export function RouteNotFound() {
   )
 }
 
+const PAGE_ERROR = 'This page hit an error'
+
+function pageWithoutIds() {
+  return `/${window.location.hash.split('/')[1] ?? ''}`
+}
+
 export function RouteError({ error, reset }: ErrorComponentProps) {
   return (
     <div className="grid h-full place-items-center p-6">
       <div className="max-w-md text-center">
-        <p className="text-base font-medium">This page hit an error</p>
+        <p className="text-base font-medium">{PAGE_ERROR}</p>
         <p className="mt-1 font-mono text-xs break-words text-muted-foreground">{errorMessage(error)}</p>
+        <MoreDetails onClick={() => showProblem(errorProblem(PAGE_ERROR, error, [`Page: ${pageWithoutIds()}`]))} />
         <p className="mt-3 text-sm text-muted-foreground">{storageCopy().stillSaved}</p>
         <div className="mt-5 flex justify-center gap-2">
           <Button variant="outline" onClick={() => (reset ? reset() : window.location.reload())}>

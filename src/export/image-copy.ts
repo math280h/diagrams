@@ -1,5 +1,5 @@
 import { toast } from 'sonner'
-import { errorMessage } from '@/lib/error-message'
+import { reportError } from '@/store/problem-store'
 import type { Diagram, StoredEdge } from '@/model/schema'
 import { toStoredEdge, toStoredNode } from '@/persistence/serialize'
 import { detachedSelection } from '@/store/actions'
@@ -63,6 +63,6 @@ export function copyDiagramAsPng() {
   })()
   void writeImageToClipboard('png', image).then(
     () => toast.success(selectionOnly ? 'Copied the selection as a PNG' : 'Copied the diagram as a PNG'),
-    (error: unknown) => toast.error('The image could not be copied.', { description: errorMessage(error) }),
+    (error: unknown) => reportError('The image could not be copied.', error),
   )
 }

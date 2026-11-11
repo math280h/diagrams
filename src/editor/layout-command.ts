@@ -1,9 +1,8 @@
-import { toast } from 'sonner'
 import type { LayoutDirection } from '@/layout/diagram-layout'
 import { useDoc } from '@/store/doc-store'
 import { applyLayoutResult } from '@/store/actions'
 import { openDiagramId } from '@/store/document'
-import { errorMessage } from '@/lib/error-message'
+import { reportError } from '@/store/problem-store'
 
 /**
  * Lays out the open diagram in a worker, then applies the result to the diagram as it is then.
@@ -21,6 +20,6 @@ export async function tidyUp(direction: LayoutDirection, fitView?: () => void) {
     applyLayoutResult(laidOut)
     window.setTimeout(() => fitView?.(), 30)
   } catch (error) {
-    toast.error('Tidy up failed.', { description: errorMessage(error) })
+    reportError('Tidy up failed.', error)
   }
 }

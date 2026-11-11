@@ -1,6 +1,5 @@
-import { toast } from 'sonner'
 import { create } from 'zustand'
-import { errorMessage } from '@/lib/error-message'
+import { reportError } from '@/store/problem-store'
 import { desktopApi } from './bridge'
 import type { AppSettings } from './contract'
 
@@ -22,7 +21,7 @@ export async function setKeepRunning(keepRunning: boolean) {
   try {
     useAppSettings.setState({ settings: await desktop.request('app.setKeepRunning', { keepRunning }) })
   } catch (error) {
-    toast.error('Could not change the setting', { description: errorMessage(error) })
+    reportError('Could not change the setting', error, { facts: [`Keep running: ${keepRunning}`] })
   }
 }
 

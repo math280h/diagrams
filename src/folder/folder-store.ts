@@ -1,4 +1,3 @@
-import { toast } from 'sonner'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { useAgentStore } from '@/desktop/agent-store'
@@ -7,6 +6,7 @@ import { loadDiagramOrNull } from '@/persistence/active-repository'
 import { serializeDiagram } from '@/persistence/cached-repository'
 import { fileOfId } from '@/persistence/diagram-file-name'
 import { flushPendingSave } from '@/store/document'
+import { reportError } from '@/store/problem-store'
 import { writeText } from './folder-files'
 import { openFolderSession, type FolderSession } from './folder-session'
 import { forgetFolder, rememberedFolder, rememberFolder } from './handle-store'
@@ -114,7 +114,7 @@ export async function pickFolder(options: { agents?: boolean; copy?: readonly st
     handle = await window.showDirectoryPicker({ id: 'diagrams', mode: 'readwrite' })
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') return
-    toast.error('Could not open the folder.', { description: errorMessage(error) })
+    reportError('Could not open the folder.', error)
     return
   }
   if (options.copy?.length) {
@@ -125,7 +125,7 @@ export async function pickFolder(options: { agents?: boolean; copy?: readonly st
         if (diagram) await writeText(handle, fileOfId(id), serializeDiagram(diagram))
       }
     } catch (error) {
-      toast.error('Could not copy the diagram to the folder.', { description: errorMessage(error) })
+      reportError('Could not copy the diagram to the folder.', error, { facts: ['Storage: picked folder'] })
       return
     }
   }
