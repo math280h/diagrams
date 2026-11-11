@@ -122,11 +122,50 @@ describe('diagram session', () => {
 })
 
 describe('changes from outside the editor', () => {
-  it('offers the newer version of a diagram that changed, and says when its file is gone', async () => {
+  it('loads a diagram that changed at once when no change waits for its save', async () => {
     const { toast } = await import('sonner')
     const warning = vi.spyOn(toast, 'warning')
     const diagram = stored('Shop')
     openDiagramSession(diagram)
+    folderRepository().applyExternal({
+      kind: 'changed',
+      id: diagram.id,
+      text: JSON.stringify({ ...diagram, name: 'Edited outside', rev: 4 }),
+    })
+    expect(useDoc.getState()).toMatchObject({ name: 'Edited outside', rev: 4 })
+    expect(warning).not.toHaveBeenCalled()
+    flushPendingSave()
+    expect(saves).toBe(0)
+    warning.mockRestore()
+  })
+
+  it('loads a diagram that changed while only measured sizes and the viewport wait for their save', async () => {
+    const { toast } = await import('sonner')
+    const warning = vi.spyOn(toast, 'warning')
+    const diagram = stored('Shop')
+    openDiagramSession(diagram)
+    useDoc.setState((state) => ({
+      nodes: state.nodes.map((node) => ({ ...node, measured: { width: 120, height: 48 } })),
+      viewport: { x: 10, y: 20, zoom: 1.5 },
+    }))
+    folderRepository().applyExternal({
+      kind: 'changed',
+      id: diagram.id,
+      text: JSON.stringify({ ...diagram, name: 'Edited by an agent' }),
+    })
+    expect(useDoc.getState().name).toBe('Edited by an agent')
+    expect(warning).not.toHaveBeenCalled()
+    flushPendingSave()
+    expect(saves).toBe(0)
+    warning.mockRestore()
+  })
+
+  it('offers the newer version while a change waits for its save, and says when its file is gone', async () => {
+    const { toast } = await import('sonner')
+    const warning = vi.spyOn(toast, 'warning')
+    const diagram = stored('Shop')
+    openDiagramSession(diagram)
+    useDoc.setState({ name: 'Edit that waits' })
     const folder = repository() as ReturnType<typeof createCachedRepository>
 
     folder.applyExternal({ kind: 'changed', id: diagram.id, text: JSON.stringify({ ...diagram, name: 'Edited' }) })
@@ -176,11 +215,9 @@ describe('changes from outside the editor', () => {
   it('says when the newer version cannot be read, and keeps the open version', async () => {
     const { toast } = await import('sonner')
     const error = vi.spyOn(toast, 'error')
-    const clickLoadNewer = await loadNewerAction()
     const diagram = stored('Shop')
     openDiagramSession(diagram)
     folderRepository().applyExternal({ kind: 'changed', id: diagram.id, text: '{ broken' })
-    clickLoadNewer()
     expect(error).toHaveBeenCalledWith('The newer version cannot be read.', expect.anything())
     expect(useDoc.getState().name).toBe('Shop')
   })

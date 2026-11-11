@@ -1,6 +1,6 @@
 import { existsSync, readdirSync } from 'node:fs'
 import path from 'node:path'
-import { AGENT_PORTS } from '@/desktop/constants'
+import { AGENT_PORTS, CONNECT_AGENT_LINK } from '@/desktop/constants'
 import { copyTemplate, isAgentUrl } from '../helpers'
 import { agentUrl, expect, test } from './fixtures'
 
@@ -41,4 +41,11 @@ test('the website finds the app that received its code on any agent port and han
   const id = decodeURIComponent(window.url().split('#/d/')[1] ?? '')
   expect(existsSync(path.join(dirs.data, `${id}.diagram.json`))).toBe(true)
   expect(readdirSync(dirs.data)).toHaveLength(1)
+})
+
+test('opens the agent setup from the link of the website', async ({ window, launchWithArgs }) => {
+  await expect(window.getByRole('button', { name: 'New diagram' })).toBeVisible()
+  await launchWithArgs([CONNECT_AGENT_LINK])
+  await expect(window.getByRole('dialog', { name: 'Connect an agent' })).toBeVisible()
+  await expect(window.getByRole('dialog')).toContainText('claude plugin install')
 })

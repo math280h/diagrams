@@ -42,6 +42,12 @@ function savedContent(diagram: Diagram) {
   return JSON.stringify([diagram.name, diagram.theme, diagram.nodes, diagram.edges, diagram.flows, diagram.viewport])
 }
 
+/** Returns the parts of a diagram that the user changes: the saved parts without the viewport and measured sizes. */
+function userContent(diagram: Diagram) {
+  const nodes = diagram.nodes.map(({ measured: _measured, ...node }) => node)
+  return JSON.stringify([diagram.name, diagram.theme, nodes, diagram.edges, diagram.flows])
+}
+
 interface Session {
   id: string
   /** Saves now if a save is due. */
@@ -58,11 +64,16 @@ interface Session {
  * A save runs {@link SAVE_DELAY_MS} after the last change, when the page hides, and on {@link Session.flush}. It
  * writes nothing when the content is the same as at the open, after a reload or at the last save. It compares the
  * content in the form that a save writes. For example, a change of only the selection writes nothing.
+ *
+ * A change from outside loads at once, unless a change of the user waits for its save. A change of only the viewport
+ * or the measured sizes does not count. Otherwise the session offers the newer version.
  */
 function startSession(diagram: Diagram): Session {
   const id = diagram.id
   let timer: ReturnType<typeof setTimeout> | undefined
   let lastSaved = savedContent(currentDiagram())
+  let lastUserContent = userContent(currentDiagram())
+  const userChangeWaits = () => timer !== undefined && userContent(currentDiagram()) !== lastUserContent
 
   const save = () => {
     clearTimeout(timer)
@@ -73,6 +84,7 @@ function startSession(diagram: Diagram): Session {
     const content = savedContent(next)
     if (content === lastSaved) return
     lastSaved = content
+    lastUserContent = userContent(next)
     if (repository().save(next).ok) useDoc.setState({ rev: next.rev })
     recordVersion(next)
   }
@@ -85,6 +97,7 @@ function startSession(diagram: Diagram): Session {
     openDiagram(loaded)
     beginVersions(loaded)
     lastSaved = savedContent(currentDiagram())
+    lastUserContent = userContent(currentDiagram())
   }
 
   const stopDoc = useDoc.subscribe((state, previous) => {
@@ -103,12 +116,14 @@ function startSession(diagram: Diagram): Session {
       reportError('The newer version cannot be read.', error)
     }
   }
+  let noticeShown = false
   const stopRepository = repository().subscribe((event) => {
     if (event.kind !== 'changed' || event.id !== id) return
     const stored = repository()
       .list()
       .some((meta) => meta.id === id)
     if (!stored) {
+      noticeShown = true
       toast.warning(storageCopy().removedElsewhere, {
         id: `changed:${id}`,
         description: 'The diagram stays open here, and your next change saves it again.',
@@ -116,6 +131,13 @@ function startSession(diagram: Diagram): Session {
       })
       return
     }
+    if (!userChangeWaits()) {
+      if (noticeShown) toast.dismiss(`changed:${id}`)
+      noticeShown = false
+      loadNewer()
+      return
+    }
+    noticeShown = true
     toast.warning(storageCopy().changedElsewhere, {
       id: `changed:${id}`,
       description: 'Load the newer version, or keep this version and save over it.',

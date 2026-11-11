@@ -63,7 +63,7 @@ function TraceImportForm({ onClose }: { onClose: () => void }) {
         flowPanelOpen: true,
         flowView: 'steps',
         activeFlowId: flowId,
-        selectedStepId: null,
+        selectedStepIds: [],
         recording: false,
       })
     } catch (cause) {

@@ -18,6 +18,7 @@ import { updateFlow } from '@/store/actions'
 import { setUi, useUi } from '@/store/ui-store'
 import { Choice, Field, TextInput } from '@/editor/inspector/controls'
 import { stepLine } from './names'
+import { useSelectedStepId } from './step-selection'
 
 const MAIN = 'main'
 const END = 'end'
@@ -85,7 +86,7 @@ function PathSettings({ flow, path }: { flow: Flow; path: FlowPath }) {
             updateFlow(flow.id, (draft) => {
               draft.paths = draft.paths?.filter((candidate) => candidate.id !== path.id)
             })
-            setUi({ activePathId: null, selectedStepId: null })
+            setUi({ activePathId: null, selectedStepIds: [] })
           }}
         >
           <Trash2 /> Delete path
@@ -101,7 +102,7 @@ export function PathMenu({ flow }: { flow: Flow }) {
     flow,
     useUi((state) => state.activePathId),
   )
-  const selectedStepId = useUi((state) => state.selectedStepId)
+  const selectedStepId = useSelectedStepId()
   const fromIndex = flow.steps.findIndex((step) => step.id === selectedStepId)
   const paths = flow.paths ?? []
 
@@ -118,7 +119,7 @@ export function PathMenu({ flow }: { flow: Flow }) {
     updateFlow(flow.id, (draft) => {
       draft.paths = [...(draft.paths ?? []), created]
     })
-    setUi({ activePathId: created.id, selectedStepId: null, recording: true })
+    setUi({ activePathId: created.id, selectedStepIds: [], recording: true })
   }
 
   return (
@@ -135,7 +136,7 @@ export function PathMenu({ flow }: { flow: Flow }) {
         <DropdownMenuContent className="w-64" side="top" align="start">
           <DropdownMenuRadioGroup
             value={path?.id ?? MAIN}
-            onValueChange={(id) => setUi({ activePathId: id === MAIN ? null : String(id), selectedStepId: null })}
+            onValueChange={(id) => setUi({ activePathId: id === MAIN ? null : String(id), selectedStepIds: [] })}
           >
             <DropdownMenuRadioItem value={MAIN}>Main path</DropdownMenuRadioItem>
             {paths.map((candidate) => (

@@ -12,7 +12,7 @@ import { SidePanel } from '@/editor/SidePanel'
 import { MultiInspector } from './DiagramInspector'
 import { EdgeInspector } from './EdgeInspector'
 import { NodeInspector } from './NodeInspector'
-import { StepInspector } from './StepInspector'
+import { StepInspector, StepsInspector } from './StepInspector'
 import { findStep } from '@/model/flow'
 
 const NODE_KIND: Record<DiagramNode['type'], string> = { card: 'Node', shape: 'Shape', text: 'Text', group: 'Boundary' }
@@ -23,18 +23,17 @@ export function Inspector() {
   const nodes = useDoc((state) => state.nodes)
   const edges = useDoc((state) => state.edges)
   const flows = useDoc((state) => state.flows)
-  const selectedStepId = useUi((state) => state.selectedStepId)
+  const selectedStepIds = useUi((state) => state.selectedStepIds)
   const activeFlowId = useUi((state) => state.activeFlowId)
   const flowPanelOpen = useUi((state) => state.flowPanelOpen)
 
   const selectedNodes = nodes.filter((node) => node.selected)
   const selectedEdges = edges.filter((edge) => edge.selected)
   const flow = flows.find((candidate) => candidate.id === activeFlowId)
-  const place = flowPanelOpen && flow && selectedStepId ? findStep(flow, selectedStepId) : null
-  const step = place?.step
+  const places = flowPanelOpen && flow ? selectedStepIds.flatMap((id) => findStep(flow, id) ?? []) : []
   const hasSelection = selectedNodes.length > 0 || selectedEdges.length > 0
 
-  if (!hasSelection && !step) return null
+  if (!hasSelection && places.length === 0) return null
 
   if (!open) {
     return (
@@ -54,9 +53,14 @@ export function Inspector() {
   let content
   let title: string
   let kind: string
-  if (step && flow && !hasSelection) {
-    content = <StepInspector flow={flow} step={step} />
-    title = place?.path ? `${place.path.name}, step ${place.index + 1}` : `Step ${(place?.index ?? 0) + 1}`
+  const place = places.length === 1 ? places[0] : undefined
+  if (flow && !hasSelection && places.length > 1) {
+    content = <StepsInspector count={places.length} />
+    title = `${places.length} steps`
+    kind = flow.name
+  } else if (flow && !hasSelection && place) {
+    content = <StepInspector flow={flow} step={place.step} />
+    title = place.path ? `${place.path.name}, step ${place.index + 1}` : `Step ${place.index + 1}`
     kind = flow.name
   } else if (selectedNodes.length === 1 && selectedEdges.length === 0) {
     const node = selectedNodes[0]!

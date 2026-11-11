@@ -31,6 +31,8 @@ function newHandoffCode(): string {
     .replace(/=+$/, '')
 }
 
+const APP_CHECK_TIMEOUT_MS = 2000
+
 /** Opens the deep link that starts the desktop app. Call it inside a click handler. */
 function launchDeepLink(code: string) {
   const link = document.createElement('a')
@@ -130,6 +132,55 @@ export function forgetOpenedInApp(id: string) {
   useOpenedInApp.setState({ opened: rest })
 }
 
+interface DesktopAppSeen {
+  /**
+   * The last time that the desktop app took a diagram from this browser or answered it, in milliseconds since the
+   * epoch, or `null`.
+   */
+  seenAt: number | null
+}
+
+export const useDesktopAppSeen = create<DesktopAppSeen>()(
+  persist((): DesktopAppSeen => ({ seenAt: null }), {
+    name: 'dg:desktop-app-seen',
+    storage: createJSONStorage(() => localStorage),
+  }),
+)
+
+/**
+ * Returns true if the desktop app took a diagram from this browser or answered it before. The app is then probably on
+ * this computer.
+ */
+export function useKnowsDesktopApp() {
+  const seen = useDesktopAppSeen((state) => state.seenAt !== null)
+  const opened = useOpenedInApp((state) => Object.keys(state.opened).length > 0)
+  return seen || opened
+}
+
+/**
+ * Asks the loopback server of the desktop app whether the app runs on this computer, and records a positive answer.
+ * The request sends no data.
+ *
+ * @returns True if a server answered on one of the agent ports.
+ */
+export async function findRunningApp(): Promise<boolean> {
+  try {
+    // A `no-cors` request resolves with any answer of the server, and rejects when nothing listens.
+    await Promise.any(
+      AGENT_PORTS.map((port) =>
+        fetch(`http://${AGENT_HOST}:${port}${HANDOFF_PATH}`, {
+          mode: 'no-cors',
+          signal: AbortSignal.timeout(APP_CHECK_TIMEOUT_MS),
+        }),
+      ),
+    )
+  } catch {
+    return false
+  }
+  useDesktopAppSeen.setState({ seenAt: Date.now() })
+  return true
+}
+
 type HandoffState =
   | { status: 'idle' }
   | { status: 'opening'; name: string }
@@ -160,6 +211,7 @@ export function openInApp(getDiagram: () => Diagram) {
     if (result.ok) {
       lastRequest = null
       useOpenedInApp.setState((state) => ({ opened: { ...state.opened, [diagram.id]: Date.now() } }))
+      useDesktopAppSeen.setState({ seenAt: Date.now() })
       useHandoff.setState({ status: 'opened', name: diagram.name }, true)
     } else {
       useHandoff.setState(
