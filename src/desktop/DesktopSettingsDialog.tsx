@@ -111,7 +111,9 @@ function Websites() {
         </span>
         <Select<string>
           value={settings.shareWebsite}
-          onValueChange={(website) => website !== null && void setShareWebsite(website)}
+          onValueChange={(website) =>
+            website !== null && website !== settings.shareWebsite && void setShareWebsite(website)
+          }
           items={settings.websites.map((website) => ({ value: website, label: website }))}
         >
           <SelectTrigger size="sm" aria-labelledby={shareLabelId} className="min-w-0 rounded-lg px-2 text-xs">
