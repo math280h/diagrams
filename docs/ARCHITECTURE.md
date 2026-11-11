@@ -1023,6 +1023,9 @@ Firefox and Safari have no folder picker. There, the website can show a folder o
 - The final stage is distroless with static-web-server, a static binary. It has no shell and runs as `nonroot`.
 - The Node.js image has no corepack, so the build copies pnpm from the official pnpm image.
   `scripts/dockerfile.test.ts` keeps its version equal to `packageManager`.
+  - Dependabot bumps the pnpm image in a separate pull request, outside the `images` group. Dependabot cannot bump
+    `packageManager`, so add that change to the same pull request. Thus a failed pnpm bump does not block the other
+    images.
 - The static-web-server configuration file overrides the `SERVER_*` variables. Thus the image sets the options as
   variables, and `docker/sws.toml` holds only the headers.
 - The image holds the licence texts of static-web-server, from the release tag, with a checksum.
