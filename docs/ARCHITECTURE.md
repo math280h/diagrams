@@ -1023,6 +1023,8 @@ Firefox and Safari have no folder picker. There, the website can show a folder o
 - The final stage is distroless with static-web-server, a static binary. It has no shell and runs as `nonroot`.
 - The Node.js image has no corepack, so the build copies pnpm from the official pnpm image.
   `scripts/dockerfile.test.ts` keeps its version equal to `packageManager`.
+- The build has no cache mount. Some hosted builders accept a cache mount only with an ID prefix of their own, and
+  stop the build without it.
 - The static-web-server configuration file overrides the `SERVER_*` variables. Thus the image sets the options as
   variables, and `docker/sws.toml` holds only the headers.
 - The image holds the licence texts of static-web-server, from the release tag, with a checksum.

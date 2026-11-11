@@ -20,6 +20,10 @@ describe('Dockerfile', () => {
     expect(pinnedImages(dockerfile)).toHaveLength(sources.length)
   })
 
+  it('has no cache mount', () => {
+    expect(dockerfile).not.toMatch(/--mount=type=cache/)
+  })
+
   it('ships the licence texts of the static-web-server version that it copies', () => {
     const server = pinnedImages(dockerfile).find((image) => image.repository.endsWith('/static-web-server'))
     const licences = [...dockerfile.matchAll(/static-web-server\/v([^/]+)\/LICENSE-/g)].map((match) => match[1])

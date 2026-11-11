@@ -8,8 +8,9 @@ ENV PATH=/opt/pnpm:$PATH
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY patches patches
-RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 COPY . .
+ARG VITE_RELEASE_CHANNEL
 RUN pnpm build
 
 FROM build AS sbom-build
