@@ -1,7 +1,10 @@
+import { AGENT_PORTS } from '@/desktop/constants'
 import { expect, test, type Page } from './fixtures'
-import { copyTemplate } from './helpers'
+import { copyTemplate, isAgentUrl } from './helpers'
 
 const FOLDER = 'project'
+/** The time for a page reload that opens or closes the folder, or for a folder scan, on a slow test machine. */
+const FOLDER_WAIT_MS = 20_000
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript((name) => {
@@ -62,20 +65,22 @@ test('keeps the diagrams as files in an opened folder and shows the changes from
   await copyTemplate(page, 'Checkout flow')
   await page.goto('/')
   await page.getByRole('button', { name: 'Open a folder' }).click()
-  await expect(page.getByText(`Saved as files in the folder ${FOLDER}`)).toBeVisible()
+  await expect(page.getByText(`Saved as files in the folder ${FOLDER}`)).toBeVisible({ timeout: FOLDER_WAIT_MS })
   await expect(page.getByRole('heading', { name: 'Your diagrams', exact: true })).toHaveCount(0)
 
   await copyTemplate(page, 'Order system')
   const id = openDiagramId(page)
-  await expect.poll(() => readFile(page, `${id}.diagram.json`)).toContain('"name": "Order system"')
+  await expect
+    .poll(() => readFile(page, `${id}.diagram.json`), { timeout: FOLDER_WAIT_MS })
+    .toContain('"name": "Order system"')
 
   const file = await readDiagramFile(page, id)
   await writeFile(page, `${id}.diagram.json`, JSON.stringify({ ...file, name: 'Changed in an editor' }))
-  await expect(page.getByLabel('Diagram name')).toHaveValue('Changed in an editor')
+  await expect(page.getByLabel('Diagram name')).toHaveValue('Changed in an editor', { timeout: FOLDER_WAIT_MS })
 
   await page.goto('/')
   await page.getByRole('button', { name: 'Close folder' }).click()
-  await expect(page.getByText('used in this browser')).toBeVisible()
+  await expect(page.getByText('used in this browser')).toBeVisible({ timeout: FOLDER_WAIT_MS })
   await expect(page.getByRole('heading', { name: 'Your diagrams', exact: true })).toBeVisible()
   await expect(page.getByText('Changed in an editor')).toHaveCount(0)
 })
@@ -90,16 +95,18 @@ test('copies the open diagram into a folder from the agent button of the editor'
   await dialog.getByRole('button', { name: 'Open a folder and copy “Order system”' }).click()
 
   await expect(page.getByRole('dialog')).toContainText('.diagrams/README.md in the "project" folder', {
-    timeout: 20_000,
+    timeout: FOLDER_WAIT_MS,
   })
   expect(openDiagramId(page)).toBe(id)
   await expect(page.getByLabel('Diagram name')).toHaveValue('Order system')
   expect(await readFile(page, `${id}.diagram.json`)).toContain('"name": "Order system"')
 })
 
-test('finds a running desktop app, then opens on its tab, with the install steps before', async ({ page }) => {
-  const APP = 'http://127.0.0.1:27419/**'
+test('finds a desktop app on any agent port, then opens on its tab, with the install steps before', async ({
+  page,
+}) => {
   const appChecks: string[] = []
+  let answeringPort: number | null = null
   const desktopTab = async () => {
     await page.getByRole('button', { name: 'a folder of your project' }).click()
     const dialog = page.getByRole('dialog')
@@ -109,10 +116,12 @@ test('finds a running desktop app, then opens on its tab, with the install steps
     return dialog
   }
   page.on('request', (request) => {
-    if (request.url().startsWith('http://127.0.0.1:27419/')) appChecks.push(request.url())
+    if (isAgentUrl(new URL(request.url()))) appChecks.push(request.url())
   })
+  await page.route(isAgentUrl, (route) =>
+    Number(new URL(route.request().url()).port) === answeringPort ? route.fulfill({ status: 404 }) : route.abort(),
+  )
 
-  await page.route(APP, (route) => route.abort())
   await page.goto('/')
   let dialog = await desktopTab()
   await expect(dialog.getByText('1. Install the desktop app.')).toBeVisible()
@@ -120,10 +129,9 @@ test('finds a running desktop app, then opens on its tab, with the install steps
     'href',
     'diagrams://connect-agent',
   )
-  expect(new Set(appChecks)).toEqual(new Set(['http://127.0.0.1:27419/handoff']))
+  expect(new Set(appChecks)).toEqual(new Set(AGENT_PORTS.map((port) => `http://127.0.0.1:${port}/handoff`)))
 
-  await page.unroute(APP)
-  await page.route(APP, (route) => route.fulfill({ status: 404 }))
+  answeringPort = AGENT_PORTS[6]!
   await page.reload()
   appChecks.length = 0
   dialog = await desktopTab()
@@ -134,8 +142,7 @@ test('finds a running desktop app, then opens on its tab, with the install steps
     'diagrams://connect-agent',
   )
 
-  await page.unroute(APP)
-  await page.route(APP, (route) => route.abort())
+  answeringPort = null
   await page.reload()
   await page.getByRole('button', { name: 'a folder of your project' }).click()
   dialog = page.getByRole('dialog')
@@ -147,11 +154,13 @@ test('lets an agent call the tools and read the checks through the agent folder'
   await page.goto('/')
   await page.getByRole('button', { name: 'a folder of your project' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Open a folder' }).click()
-  await expect(page.getByRole('dialog')).toContainText('.diagrams/README.md in the "project" folder')
+  await expect(page.getByRole('dialog')).toContainText('.diagrams/README.md in the "project" folder', {
+    timeout: FOLDER_WAIT_MS,
+  })
   await page.keyboard.press('Escape')
-  await expect(page.getByText(`Saved as files in the folder ${FOLDER}`)).toBeVisible()
+  await expect(page.getByText(`Saved as files in the folder ${FOLDER}`)).toBeVisible({ timeout: FOLDER_WAIT_MS })
   await expect
-    .poll(() => readFile(page, '.diagrams/README.md'), { timeout: 20_000 })
+    .poll(() => readFile(page, '.diagrams/README.md'), { timeout: FOLDER_WAIT_MS })
     .toContain('# Diagrams in this folder')
   expect(await readFile(page, '.diagrams/icons.txt')).toContain('aws:')
   expect(await readFile(page, '.diagrams/skills/architecture/SKILL.md')).not.toBeNull()
@@ -161,7 +170,9 @@ test('lets an agent call the tools and read the checks through the agent folder'
     '.diagrams/calls/001-create.json',
     JSON.stringify({ tool: 'create_diagram', args: { name: 'Drawn by an agent', template: 'order-system' } }),
   )
-  await expect.poll(() => readFile(page, '.diagrams/results/001-create.json'), { timeout: 20_000 }).not.toBeNull()
+  await expect
+    .poll(() => readFile(page, '.diagrams/results/001-create.json'), { timeout: FOLDER_WAIT_MS })
+    .not.toBeNull()
   expect(JSON.parse((await readFile(page, '.diagrams/results/001-create.json'))!)).toMatchObject({
     tool: 'create_diagram',
     ok: true,

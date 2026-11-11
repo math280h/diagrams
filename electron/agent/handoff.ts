@@ -27,6 +27,11 @@ export function createHandoffCodes(options: { ttlMs: number; now?: () => number 
       codes.set(code, now() + options.ttlMs)
       return true
     },
+    /** Returns true if the code arrived and is not used or expired. */
+    has(code: string): boolean {
+      prune()
+      return codes.has(code)
+    },
     /** Uses a code. Returns false if the code is unknown, used or expired. */
     consume(code: string): boolean {
       prune()
@@ -53,7 +58,10 @@ function isJsonObject(text: string) {
   }
 }
 
-/** Adds the route that receives a diagram from the website: `POST /handoff/:code`. */
+/**
+ * Adds the routes of the handoff from the website. `GET /handoff/:code` answers `{ received }`, so that the website
+ * sends the diagram only to the app that received the code. `POST /handoff/:code` receives the diagram.
+ */
 export function mountHandoff(app: Hono, options: HandoffOptions) {
   const route = `${HANDOFF_PATH}/*`
   app.use(route, async (c, next) => {
@@ -66,11 +74,18 @@ export function mountHandoff(app: Hono, options: HandoffOptions) {
     route,
     cors({
       origin: (origin) => (options.origins().includes(origin) ? origin : null),
-      allowMethods: ['POST'],
+      allowMethods: ['GET', 'POST'],
       allowHeaders: ['Content-Type'],
       maxAge: PREFLIGHT_MAX_AGE_S,
     }),
   )
+  app.get(`${HANDOFF_PATH}/:code`, (c) => {
+    const origin = c.req.header('origin')
+    if (!origin || !options.origins().includes(origin)) {
+      return c.json({ message: 'This website may not send diagrams to the app.' }, 403)
+    }
+    return c.json({ received: options.codes.has(c.req.param('code')) })
+  })
   app.post(
     `${HANDOFF_PATH}/:code`,
     bodyLimit({

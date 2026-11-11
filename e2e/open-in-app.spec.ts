@@ -1,12 +1,6 @@
 import { devices, expect, test, type Page } from './fixtures'
-import {
-  AGENT_HOST,
-  AGENT_PORT,
-  DESKTOP_DOWNLOAD_URL,
-  LATEST_RELEASE_API_URL,
-  RELEASE_ASSET_URL_PREFIX,
-} from '@/desktop/constants'
-import { copyTemplate } from './helpers'
+import { DESKTOP_DOWNLOAD_URL, LATEST_RELEASE_API_URL, RELEASE_ASSET_URL_PREFIX } from '@/desktop/constants'
+import { copyTemplate, isAgentUrl } from './helpers'
 
 const RELEASE_ASSETS = [
   'Diagrams-9.9.9-win-x64.exe',
@@ -36,7 +30,7 @@ test('downloads the installer of the latest release for this system', async ({ p
 test('explains what to do when the desktop app does not answer', async ({ page }) => {
   await page.clock.install()
   await page.route(LATEST_RELEASE_API_URL, (route) => route.abort('connectionrefused'))
-  await page.route(`http://${AGENT_HOST}:${AGENT_PORT}/**`, (route) => route.abort('connectionrefused'))
+  await page.route(isAgentUrl, (route) => route.abort('connectionrefused'))
   await page.addInitScript(() => {
     HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
       if (!this.href.startsWith('diagrams:')) HTMLElement.prototype.click.call(this)

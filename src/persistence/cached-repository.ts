@@ -62,10 +62,23 @@ export function serializeDiagram(diagram: Diagram) {
   return `${rounded}\n`
 }
 
-/** Returns the content of a diagram file without the fields that change on a pan, a zoom, a measure or any save. */
+function withSortedKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withSortedKeys)
+  if (value === null || typeof value !== 'object') return value
+  return Object.fromEntries(
+    Object.keys(value)
+      .toSorted()
+      .map((key) => [key, withSortedKeys((value as Record<string, unknown>)[key])]),
+  )
+}
+
+/**
+ * Returns the content of a diagram file without the fields that change on a pan, a zoom, a measure or any save, with
+ * the keys in a fixed order: a diagram that the app parses again has its keys in the order of the schema.
+ */
 function lastingContent(text: string): string {
   const { viewport: _viewport, rev: _rev, updatedAt: _updatedAt, nodes, ...rest } = JSON.parse(text) as Diagram
-  return JSON.stringify({ ...rest, nodes: nodes.map(({ measured: _measured, ...node }) => node) })
+  return JSON.stringify(withSortedKeys({ ...rest, nodes: nodes.map(({ measured: _measured, ...node }) => node) }))
 }
 
 /**

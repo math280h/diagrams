@@ -33,6 +33,27 @@ describe('createHandoffCodes', () => {
   })
 })
 
+describe('GET /handoff/:code', () => {
+  it('tells the website whether this app received the code, without using it', async () => {
+    const { codes, app } = setup()
+    const ask = () => app.request(`/handoff/${CODE}`, { headers: { origin: ORIGIN } })
+    let response = await ask()
+    expect(await response.json()).toEqual({ received: false })
+    codes.add(CODE)
+    response = await ask()
+    expect(response.headers.get('access-control-allow-origin')).toBe(ORIGIN)
+    expect(await response.json()).toEqual({ received: true })
+    expect(codes.consume(CODE)).toBe(true)
+  })
+
+  it('refuses other websites', async () => {
+    const { codes, app } = setup()
+    codes.add(CODE)
+    const response = await app.request(`/handoff/${CODE}`, { headers: { origin: 'https://evil.example' } })
+    expect(response.status).toBe(403)
+  })
+})
+
 describe('POST /handoff/:code', () => {
   it('opens the diagram and brings the window to the front', async () => {
     const { codes, open, focus, post } = setup()

@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAgentHistory, useAgentStore } from '@/desktop/agent-store'
-import { CommandBlock } from '@/desktop/ConnectAgentDialog'
+import { CommandBlock } from '@/components/CommandBlock'
 import { DesktopDownloadLink } from '@/desktop/DesktopDownloadLink'
 import { CONNECT_AGENT_LINK } from '@/desktop/constants'
 import { findRunningApp, useKnowsDesktopApp } from '@/desktop/open-in-app'

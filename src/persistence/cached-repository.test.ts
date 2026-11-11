@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createDiagram } from '@/model/defaults'
+import { createDiagram, createFlow } from '@/model/defaults'
 import type { Diagram } from '@/model/schema'
 import { createCachedRepository, serializeDiagram } from './cached-repository'
 import type { RepositoryEvent, StorageLocation } from './repository'
@@ -144,5 +144,23 @@ describe('createCachedRepository', () => {
     repository.save({ ...first, name: 'Renamed' })
     await repository.settled()
     expect(sink.write).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not write a file of a picked folder again when only the order of its keys changes', async () => {
+    const flow = createFlow('Place an order')
+    const stepBuilt = { target: { kind: 'node' as const, id: 'n_1' }, caption: 'Pay', id: 's_1' }
+    const first = diagram('Order system', {
+      id: 'd_order',
+      flows: [{ ...flow, steps: [stepBuilt] }] as Diagram['flows'],
+    })
+    const { repository, sink } = setup([{ id: 'd_order', text: serializeDiagram(first) }], {
+      kind: 'picked-folder',
+      name: 'docs',
+    })
+    const stepParsed = { id: 's_1', target: { id: 'n_1', kind: 'node' as const }, caption: 'Pay' }
+    const parsedFlows = [{ ...flow, steps: [stepParsed] }] as Diagram['flows']
+    repository.save({ ...first, rev: first.rev + 1, flows: parsedFlows })
+    await repository.settled()
+    expect(sink.write).not.toHaveBeenCalled()
   })
 })

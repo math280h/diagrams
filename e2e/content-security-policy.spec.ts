@@ -4,14 +4,8 @@ import os from 'node:os'
 import path from 'node:path'
 import { expect, test, type Page } from './fixtures'
 import { build, preview, type PreviewServer } from 'vite'
-import {
-  AGENT_HOST,
-  AGENT_PORT,
-  LATEST_RELEASE_API_URL,
-  RELEASE_ASSET_URL_PREFIX,
-  RELEASES_API_URL,
-} from '@/desktop/constants'
-import { copyTemplate } from './helpers'
+import { AGENT_PORTS, LATEST_RELEASE_API_URL, RELEASE_ASSET_URL_PREFIX, RELEASES_API_URL } from '@/desktop/constants'
+import { copyTemplate, isAgentUrl } from './helpers'
 
 const BUILD_TIMEOUT_MS = 180_000
 
@@ -82,7 +76,7 @@ test('puts the policy in the page, and the library loads the latest release unde
   await page.goto(siteUrl)
   await expect(page.locator('meta[http-equiv="Content-Security-Policy"]')).toHaveAttribute(
     'content',
-    /script-src 'self';.*connect-src 'self' data: blob: https:\/\/api\.github\.com http:\/\/127\.0\.0\.1:27419/,
+    /script-src 'self';.*connect-src 'self' data: blob: https:\/\/api\.github\.com http:\/\/127\.0\.0\.1:27419 .*http:\/\/127\.0\.0\.1:27428/,
   )
   await expect(page.getByRole('link', { name: /^Download for (Windows|macOS|Linux)$/ })).toHaveAttribute(
     'href',
@@ -154,7 +148,7 @@ test('imports a Mermaid flowchart and exports a GIF under the policy', async ({ 
 test('makes a share link and reaches the desktop app under the policy', async ({ page }) => {
   const violations = await trackViolations(page)
   const handoffs: string[] = []
-  await page.route(`http://${AGENT_HOST}:${AGENT_PORT}/**`, (route) => {
+  await page.route(isAgentUrl, (route) => {
     handoffs.push(route.request().url())
     return route.abort('connectionrefused')
   })
@@ -173,6 +167,6 @@ test('makes a share link and reaches the desktop app under the policy', async ({
 
   await page.getByRole('button', { name: 'Export' }).click()
   await page.getByRole('menuitem', { name: 'Open in desktop app' }).click()
-  await expect.poll(() => handoffs.length).toBeGreaterThan(0)
+  await expect.poll(() => new Set(handoffs.map((url) => Number(new URL(url).port))).size).toBe(AGENT_PORTS.length)
   expect(violations).toEqual([])
 })

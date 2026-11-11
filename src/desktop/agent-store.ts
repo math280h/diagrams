@@ -1,15 +1,33 @@
+import { toast } from 'sonner'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { desktopApi, isDesktop } from './bridge'
+import { isAgentProblem } from './agent-problem'
 import type { AgentInfo } from './contract'
 import { canOpenInApp } from './open-in-app'
 
 interface AgentStore {
   info: AgentInfo | null
   dialogOpen: boolean
+  /** True while the problem dialog of the agent server shows. */
+  problemOpen: boolean
 }
 
-export const useAgentStore = create<AgentStore>(() => ({ info: null, dialogOpen: false }))
+export const useAgentStore = create<AgentStore>(() => ({ info: null, dialogOpen: false, problemOpen: false }))
+
+/** Returns the notice that agents connect on a new port, because another program used the kept one. */
+export function movedPortNotice(info: AgentInfo): string | null {
+  if (info.movedFrom === null || info.state !== 'running') return null
+  return `Port ${info.movedFrom} was in use, so agents now connect on port ${info.port}. If you set up an agent before, run the setup again.`
+}
+
+function setAgentInfo(info: AgentInfo) {
+  const previous = useAgentStore.getState().info
+  const notice = movedPortNotice(info)
+  const agentsUsedBefore = useAgentHistory.getState().lastCallAt !== null
+  if (notice && previous && !movedPortNotice(previous) && agentsUsedBefore) toast.info(notice, { duration: Infinity })
+  useAgentStore.setState(isAgentProblem(info) ? { info } : { info, problemOpen: false })
+}
 
 interface AgentHistory {
   /** The time of the last agent tool call in milliseconds since the epoch, or `null` before the first call. */
@@ -45,19 +63,24 @@ export function useAgentIntroVisible() {
 
 /** Returns true while the agent server cannot take connections. */
 export function useAgentProblem() {
-  return useAgentStore((store) => store.info?.state === 'port-in-use' || store.info?.state === 'failed')
+  return useAgentStore((store) => isAgentProblem(store.info))
 }
 
 export function openConnectAgent() {
   useAgentStore.setState({ dialogOpen: true })
 }
 
+/** Shows the problem dialog of the agent server. It closes when the problem ends. */
+export function openAgentProblem() {
+  useAgentStore.setState({ problemOpen: true })
+}
+
 /** Loads the agent server status from the main process and follows its changes. */
 export function watchAgentInfo(): () => void {
   const desktop = desktopApi()
   if (!desktop) return () => undefined
-  void desktop.request('agent.info', null).then((info) => useAgentStore.setState({ info }))
-  return desktop.on('agent.info', (info) => useAgentStore.setState({ info }))
+  void desktop.request('agent.info', null).then(setAgentInfo)
+  return desktop.on('agent.info', setAgentInfo)
 }
 
 export async function resetAgentToken() {
