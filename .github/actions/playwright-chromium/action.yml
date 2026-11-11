@@ -1,5 +1,7 @@
 name: Install Chromium for Playwright
-description: Installs the Chromium of the Playwright version in the lockfile, from the cache when it holds that version.
+description: >-
+  Installs the Chromium of the Playwright version in the lockfile, from the cache when it holds that version. On Linux,
+  it also installs the system libraries of Chromium, from the cache when it holds them for the runner image.
 
 runs:
   using: composite
@@ -17,8 +19,36 @@ runs:
     - name: Download Chromium
       if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
-      run: pnpm exec playwright install --with-deps chromium
-    - name: Install the system libraries of Chromium
-      if: steps.cache.outputs.cache-hit == 'true' && runner.os == 'Linux'
+      run: pnpm exec playwright install ${{ runner.os != 'Linux' && '--with-deps' || '' }} chromium
+    - name: Read the runner image
+      if: runner.os == 'Linux'
+      id: image
       shell: bash
-      run: pnpm exec playwright install-deps chromium
+      run: echo "image=$ImageOS-$ImageVersion" >> "$GITHUB_OUTPUT"
+    - name: Restore the system libraries of Chromium
+      if: runner.os == 'Linux'
+      id: libraries
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/playwright-libraries/*.deb
+        key: playwright-libraries-${{ steps.image.outputs.image }}-${{ runner.arch }}-${{ steps.version.outputs.version }}
+    - name: Install the system libraries of Chromium from the cache
+      if: steps.libraries.outputs.cache-hit == 'true'
+      shell: bash
+      run: |
+        sudo DEBIAN_FRONTEND=noninteractive dpkg --install ~/.cache/playwright-libraries/*.deb
+        pnpm exec playwright install-deps --dry-run chromium
+    - name: Download and install the system libraries of Chromium
+      if: runner.os == 'Linux' && steps.libraries.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        APT_CONFIG_FILE: /etc/apt/apt.conf.d/99playwright-libraries
+        ARCHIVES: /var/cache/playwright-libraries
+      run: |
+        sudo mkdir -p "$ARCHIVES"
+        printf 'Dir::Cache::Archives "%s/";\nAPT::Keep-Downloaded-Packages "true";\n' "$ARCHIVES" \
+          | sudo tee "$APT_CONFIG_FILE" > /dev/null
+        pnpm exec playwright install-deps chromium
+        sudo rm "$APT_CONFIG_FILE"
+        mkdir -p ~/.cache/playwright-libraries
+        find "$ARCHIVES" -maxdepth 1 -name '*.deb' -exec cp -t ~/.cache/playwright-libraries {} +
