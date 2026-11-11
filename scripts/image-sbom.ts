@@ -53,7 +53,7 @@ export function pinnedImages(dockerfile: string): PinnedImage[] {
 }
 
 function ociPurl(name: string, repository: string, tag: string, digest?: string): string {
-  const version = digest ? `@${digest.replace(':', '%3A')}` : ''
+  const version = digest ? `@${encodeURIComponent(digest)}` : ''
   return `pkg:oci/${name}${version}?repository_url=${repository}&tag=${tag}`
 }
 
