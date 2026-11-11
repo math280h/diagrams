@@ -22,11 +22,10 @@ updates:
     commit-message:
       prefix: build
       include: scope
-    ignore:
-      - dependency-name: ghcr.io/pnpm/pnpm
     groups:
       images:
         patterns: ['*']
+        exclude-patterns: ['pnpm/pnpm']
 
   - package-ecosystem: npm
     directory: /

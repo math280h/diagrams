@@ -1031,6 +1031,9 @@ repository. A value that the build cannot use stops the build.
 - The final stage is distroless with static-web-server, a static binary. It has no shell and runs as `nonroot`.
 - The Node.js image has no corepack, so the build copies pnpm from the official pnpm image.
   `scripts/dockerfile.test.ts` keeps its version equal to `packageManager`.
+  - Dependabot bumps the pnpm image in a separate pull request, outside the `images` group. Dependabot cannot bump
+    `packageManager`, so add that change to the same pull request. Thus a failed pnpm bump does not block the other
+    images.
 - The static-web-server configuration file overrides the `SERVER_*` variables. Thus the image sets the options as
   variables, and `docker/sws.toml` holds only the headers.
 - The image holds the licence texts of static-web-server, from the release tag, with a checksum.
@@ -1457,8 +1460,12 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
     installer and uninstaller with 7-Zip.
   - Each job uploads its installers as the workflow artifact `installers-<runner>`. GitHub keeps them for 7 days. A
     reviewer can install the app from the installers of a pull request before the merge.
-- `.github/actions/playwright-chromium` caches Chromium by Playwright version. Linux still installs the system
-  libraries, which a cache cannot hold.
+- `.github/actions/playwright-chromium` caches Chromium by Playwright version.
+  - On Linux, it also caches the `.deb` files of the system libraries of Chromium, by runner image and Playwright
+    version. A cache hit installs them with `dpkg` and does not use the Ubuntu mirrors, so a mirror outage does not
+    stop CI. The key holds the image version, because the packages of an earlier image can downgrade those of a later
+    image.
+  - After a cache hit, `playwright install-deps --dry-run` fails the step when a library is missing.
 - `.github/actions/electron` caches the Electron downloads by Electron version and installs the binary, with three
   tries. The `electron` package has no install script: it downloads the binary when a process first loads it, also in
   the unit tests.
