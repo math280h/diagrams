@@ -36,7 +36,7 @@ Also:
 - **Tidy up.** Lay out the whole diagram in one go. Pinned nodes stay where you put them.
 - **Walkthroughs.** Introduction and conclusion steps that show the whole path of a flow.
 - **Text description.** Every diagram described in words, for screen readers and alt text.
-- **High contrast.** A canvas with stronger text and outlines. It can follow your system setting.
+- **Themes.** Eight themes, high contrast themes that follow your system, and theme files of your own.
 - **README images.** A dark and a light image, and a snippet that shows the one for the reader's theme.
 - **Mermaid.** Import and export Mermaid flowcharts, and copy a flow as a sequence diagram.
 - **Version history.** Restore an earlier version. Each change an agent makes gets its own version.
@@ -115,8 +115,9 @@ Diagrams --render docs/orders.diagram.json --out docs/orders.png
 Diagrams --render docs/orders.diagram.json --out docs/checkout.mp4 --flow "Place an order"
 ```
 
-The extension of `--out` gives the format: `.png`, `.svg`, `.gif`, `.mp4` or `.webm`. `--theme dark|light`,
-`--flow <name or id>`, `--step <number>` (with `--flow` and an image) and `--max-size <pixels>` change the output.
+The extension of `--out` gives the format: `.png`, `.svg`, `.gif`, `.mp4` or `.webm`. `--theme <theme>` (a built-in
+theme such as `dark` or `blueprint`, or a `.theme.json` file), `--flow <name or id>`, `--step <number>` (with `--flow`
+and an image) and `--max-size <pixels>` change the output.
 `Diagrams --render` without arguments prints the options. The command exits with 0 after it writes the file, 1 when the
 render fails and 2 for a wrong command line.
 

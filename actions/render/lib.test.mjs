@@ -6,6 +6,7 @@ import {
   imageUrl,
   parseNameStatus,
   parsePatterns,
+  parseThemes,
   pathspecs,
   renderOptions,
   splitCommand,
@@ -24,6 +25,13 @@ describe('render action', () => {
   it('puts the image next to the diagram file', () => {
     expect(imagePath('docs/orders.diagram.json', 'png')).toBe('docs/orders.png')
     expect(imagePath('orders.JSON', 'svg')).toBe('orders.svg')
+  })
+
+  it('names the image after the theme when the action renders several themes', () => {
+    expect(parseThemes(' dark, light\nthemes/brand.theme.json ')).toEqual(['dark', 'light', 'themes/brand.theme.json'])
+    expect(parseThemes('')).toEqual([])
+    expect(imagePath('docs/orders.diagram.json', 'png', 'dark')).toBe('docs/orders.dark.png')
+    expect(imagePath('docs/orders.diagram.json', 'svg', 'themes/brand.theme.json')).toBe('docs/orders.brand.svg')
   })
 
   it('passes only the options that are set to the app', () => {

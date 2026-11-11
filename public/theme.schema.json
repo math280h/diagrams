@@ -1,0 +1,362 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60,
+      "description": "The name of the theme in the theme menus."
+    },
+    "base": {
+      "type": "string",
+      "enum": ["dark", "light"],
+      "description": "The built-in theme that gives each colour that this theme leaves out. It also sets light or dark."
+    },
+    "contrast": {
+      "description": "high for a theme with 7:1 for text and 4.5:1 for lines. The app can use it when the system asks for more contrast.",
+      "type": "string",
+      "enum": ["standard", "high"]
+    },
+    "app": {
+      "description": "The colours of the app around the canvas. Each is the CSS variable --<name>.",
+      "type": "object",
+      "properties": {
+        "background": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "foreground": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "card": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "card-foreground": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "popover": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "popover-foreground": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "primary": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "primary-hover": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "primary-foreground": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "secondary": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "secondary-foreground": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "muted": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "muted-foreground": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "faint": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "accent": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "accent-foreground": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "destructive": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "border": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "input": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "focus": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "panel": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "panel-border": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "raised": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "flow": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "flow-ink": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "ok": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "info": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "warn": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        }
+      }
+    },
+    "canvas": {
+      "description": "The colours of the canvas. Each is the CSS variable --dg-<name>. hue-fill and hue-line are percents, the dim values are opacities from 0 to 1.",
+      "type": "object",
+      "properties": {
+        "zone-orange": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "zone-yellow": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "zone-green": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "zone-teal": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "zone-blue": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "zone-pink": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "zone-red": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "ground": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "chrome": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "grid": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "grid-active": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "grid-line": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "grid-line-active": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "panel": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "panel-active": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "raised": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "line": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "line-dim": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "line-strong": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "minimap-node": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "minimap-mask": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "text": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "muted": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "faint": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "edge": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "edge-strong": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "particle": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "select": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "flow": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "flow-ink": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "ok": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "warn": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "error": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "wire-http": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "wire-rpc": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "wire-data": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "wire-messaging": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "wire-text-http": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "wire-text-rpc": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "wire-text-data": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "wire-text-messaging": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "wire-ink": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "hue-fill": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "hue-line": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "dim-explore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "dim-threats": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "dim-art": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "window": {
+      "description": "The colours of the desktop window: controls and symbols for the window buttons on Windows and Linux, border for the active window border on Windows.",
+      "type": "object",
+      "properties": {
+        "controls": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}$"
+        },
+        "symbols": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}$"
+        },
+        "border": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}$"
+        }
+      }
+    }
+  },
+  "required": ["name", "base"],
+  "description": "A colour theme of Diagrams."
+}

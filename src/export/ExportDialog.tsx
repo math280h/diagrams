@@ -1,8 +1,9 @@
 import { Copy, Download, Loader2, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { useCanvasTheme } from '@/canvas/canvas-theme'
 import { useReducedMotion } from '@/lib/motion'
+import { useActiveTheme } from '@/themes/active'
+import { allThemes, findTheme, useThemeStore } from '@/themes/store'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -39,7 +40,8 @@ import { TextExport } from './TextExport'
 import { usePainted } from './use-painted'
 import { ExportAbortedError, recordStage, type VideoFormat } from './video'
 
-type ThemeChoice = 'canvas' | 'dark' | 'light'
+/** The theme choice of an export for the theme that the app shows. */
+const AS_SHOWN = 'shown'
 
 const MAIN_PATH = 'main'
 type Frame = '16:9' | '1:1' | '9:16'
@@ -71,18 +73,38 @@ const FORMAT_NAMES: Record<'png' | 'svg' | VideoFormat, string> = {
   gif: 'GIF',
 }
 
-function useStageContent(themeChoice: ThemeChoice, grid: boolean, selectionOnly = false) {
+function useStageContent(themeChoice: string, grid: boolean, selectionOnly = false) {
   const nodes = useDoc((state) => state.nodes)
   const edges = useDoc((state) => state.edges)
   const theme = useDoc((state) => state.theme)
-  const canvasTheme = useCanvasTheme(theme.mode)
+  const active = useActiveTheme()
+  const files = useThemeStore((state) => state.files)
   const shown = useMemo(() => (selectionOnly ? detachedSelection() : { nodes, edges }), [selectionOnly, nodes, edges])
   return {
     nodes: useMemo(() => shown.nodes.map((node) => ({ ...node, selected: false, dragging: false })), [shown]),
     edges: useMemo(() => shown.edges.map((edge) => ({ ...edge, selected: false })), [shown]),
     theme: useMemo(() => (grid ? theme : { ...theme, background: 'none' as const }), [theme, grid]),
-    resolvedTheme: themeChoice === 'canvas' ? canvasTheme : themeChoice,
+    colorTheme: themeChoice === AS_SHOWN ? active : (findTheme(themeChoice, files) ?? active),
   }
+}
+
+function ExportThemeChoice({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const active = useActiveTheme()
+  const themes = allThemes(useThemeStore((state) => state.files))
+  const options = (base: 'light' | 'dark') =>
+    themes.filter((theme) => theme.base === base).map((theme) => ({ value: theme.id, label: theme.name }))
+  return (
+    <Choice
+      label="Export theme"
+      value={value}
+      onChange={onChange}
+      groups={[
+        { label: 'On screen', options: [{ value: AS_SHOWN, label: `As shown (${active.name})` }] },
+        { label: 'Light themes', options: options('light') },
+        { label: 'Dark themes', options: options('dark') },
+      ]}
+    />
+  )
 }
 
 function previewFailed(error: unknown) {
@@ -121,7 +143,7 @@ function ImageExport({ onClose }: { onClose: () => void }) {
   const [format, setFormat] = useState<'png' | 'svg'>('png')
   const [scale, setScale] = useState(2)
   const [background, setBackground] = useState<'theme' | 'transparent'>('theme')
-  const [themeChoice, setThemeChoice] = useState<ThemeChoice>('canvas')
+  const [themeChoice, setThemeChoice] = useState(AS_SHOWN)
   const [padding, setPadding] = useState(64)
   const [grid, setGrid] = useState(false)
   const [preview, setPreview] = useState<{ url: string; bytes: number; scale: number } | null>(null)
@@ -135,14 +157,14 @@ function ImageExport({ onClose }: { onClose: () => void }) {
   const content = useStageContent(themeChoice, grid, selectionOnly)
   const bounds = useMemo(() => diagramBounds(content.nodes), [content.nodes])
   const transparent = background === 'transparent'
-  const stageKey = `${themeChoice}|${padding}|${transparent}|${grid}|${selectionOnly}`
+  const stageKey = `${content.colorTheme.id}|${padding}|${transparent}|${grid}|${selectionOnly}`
   const width = Math.ceil(bounds.width + padding * 2)
   const height = Math.ceil(bounds.height + padding * 2)
   const previewScale = Math.min(
     MAX_PREVIEW_SCALE,
     Math.min(PREVIEW_BOX_PX.width / width, PREVIEW_BOX_PX.height / height) * window.devicePixelRatio,
   )
-  const { nodes, edges, theme, resolvedTheme } = content
+  const { nodes, edges, theme, colorTheme } = content
   const spec = useMemo<StageSpec | null>(
     () =>
       painted
@@ -152,13 +174,13 @@ function ImageExport({ onClose }: { onClose: () => void }) {
             nodes,
             edges,
             theme,
-            resolvedTheme,
+            colorTheme,
             transparent,
             viewport: { x: padding - bounds.x, y: padding - bounds.y, zoom: 1 },
             flows: [],
           }
         : null,
-    [painted, width, height, nodes, edges, theme, resolvedTheme, transparent, padding, bounds.x, bounds.y],
+    [painted, width, height, nodes, edges, theme, colorTheme, transparent, padding, bounds.x, bounds.y],
   )
   const session = useStageSession(spec)
 
@@ -288,15 +310,7 @@ function ImageExport({ onClose }: { onClose: () => void }) {
             </Field>
           )}
           <Field label="Theme">
-            <Segmented
-              value={themeChoice}
-              onChange={setThemeChoice}
-              options={[
-                { value: 'canvas', label: 'As shown' },
-                { value: 'dark', label: 'Dark' },
-                { value: 'light', label: 'Light' },
-              ]}
-            />
+            <ExportThemeChoice value={themeChoice} onChange={setThemeChoice} />
           </Field>
           <Field label="Background">
             <Segmented
@@ -374,7 +388,7 @@ function VideoExport({ onClose }: { onClose: () => void }) {
   const [videoFps, setVideoFps] = useState<(typeof VIDEO_FRAME_RATES)[number]>('30')
   const [gifFps, setGifFps] = useState<(typeof GIF_FRAME_RATES)[number]>('20')
   const [ambientSeconds, setAmbientSeconds] = useState(6)
-  const [themeChoice, setThemeChoice] = useState<ThemeChoice>('canvas')
+  const [themeChoice, setThemeChoice] = useState(AS_SHOWN)
   const [grid, setGrid] = useState(false)
   const [progress, setProgress] = useState<number | null>(null)
   const [captured, setCaptured] = useState<{ key: string; frames: { timeMs: number; url: string }[] } | null>(null)
@@ -393,8 +407,8 @@ function VideoExport({ onClose }: { onClose: () => void }) {
   )
   const paths = flow ? choosablePaths(flow).filter((path) => path.steps.length > 0) : []
   const durationMs = timeline ? timeline.durationMs + FLOW_END_HOLD_MS : ambientSeconds * 1000
-  const stageKey = `${frame}|${themeChoice}|${grid}`
-  const { nodes, edges, theme, resolvedTheme } = content
+  const stageKey = `${frame}|${content.colorTheme.id}|${grid}`
+  const { nodes, edges, theme, colorTheme } = content
   const spec = useMemo<StageSpec | null>(
     () =>
       painted
@@ -403,7 +417,7 @@ function VideoExport({ onClose }: { onClose: () => void }) {
             nodes,
             edges,
             theme,
-            resolvedTheme,
+            colorTheme,
             transparent: false,
             viewport: { x: 0, y: 0, zoom: 1 },
             flows,
@@ -411,7 +425,7 @@ function VideoExport({ onClose }: { onClose: () => void }) {
             ...(flow ? { flow: { flow, pathId } } : {}),
           }
         : null,
-    [painted, size, nodes, edges, theme, resolvedTheme, flows, flow, pathId],
+    [painted, size, nodes, edges, theme, colorTheme, flows, flow, pathId],
   )
   const session = useStageSession(spec)
 
@@ -565,15 +579,7 @@ function VideoExport({ onClose }: { onClose: () => void }) {
             )}
           </Field>
           <Field label="Theme">
-            <Segmented
-              value={themeChoice}
-              onChange={setThemeChoice}
-              options={[
-                { value: 'canvas', label: 'As shown' },
-                { value: 'dark', label: 'Dark' },
-                { value: 'light', label: 'Light' },
-              ]}
-            />
+            <ExportThemeChoice value={themeChoice} onChange={setThemeChoice} />
           </Field>
           <SwitchField label="Show the grid" checked={grid} onChange={setGrid} />
           {!flow && (

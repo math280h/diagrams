@@ -2,6 +2,7 @@ import { layoutWarnings } from '@/agent/compact'
 import { ToolError } from '@/agent/errors'
 import { createResolver, resolveFlow, resolvePath } from '@/agent/resolve'
 import { pathSteps } from '@/model/flow'
+import { allThemes, findTheme } from '@/themes/store'
 import { diagramContent, stepRangeHint, targetDiagramId, type ToolHandler } from './common'
 import { withWarnings } from '@/agent/warnings'
 
@@ -20,6 +21,11 @@ export const renderImage: ToolHandler<'render_image'> = async (input, ctx) => {
     throw new ToolError('Give a flow together with step or path.')
   }
   const path = flow && input.path !== undefined ? resolvePath(flow, input.path) : undefined
+  const theme = input.theme === undefined ? undefined : findTheme(input.theme)
+  if (input.theme !== undefined && !theme) {
+    const ids = allThemes().map((candidate) => candidate.id)
+    throw new ToolError(`The app has no theme "${input.theme}". Its themes: ${ids.join(', ')}.`)
+  }
   const steps = flow ? pathSteps(flow, path?.id ?? null).length : 0
   if (flow && input.step !== undefined && input.step >= steps) {
     const owner = path ? `The path "${path.name}" of the flow "${flow.name}"` : `The flow "${flow.name}"`
@@ -31,7 +37,7 @@ export const renderImage: ToolHandler<'render_image'> = async (input, ctx) => {
     flowId: flow?.id,
     pathId: path?.id,
     step: input.step,
-    theme: input.theme,
+    theme,
     maxSizePx: input.maxSizePx ?? DEFAULT_MAX_SIZE_PX,
   })
   const warnings = layoutWarnings(content.nodes)

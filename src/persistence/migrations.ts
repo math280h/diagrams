@@ -187,6 +187,13 @@ function toVersion18(raw: Record<string, unknown>): Record<string, unknown> {
   return raw
 }
 
+/** Version 19 removes `mode` from the theme: the colours come from the theme of the reader. */
+function toVersion19(raw: Record<string, unknown>): Record<string, unknown> {
+  if (typeof raw.theme !== 'object' || raw.theme === null) return raw
+  const { mode: _mode, ...theme } = raw.theme as Record<string, unknown>
+  return { ...raw, theme }
+}
+
 /** The migration at index `n` converts a diagram from version `n + 1` to version `n + 2`. */
 const MIGRATIONS: Migration[] = [
   toVersion2,
@@ -206,6 +213,7 @@ const MIGRATIONS: Migration[] = [
   toVersion16,
   toVersion17,
   toVersion18,
+  toVersion19,
 ]
 
 /**
@@ -215,6 +223,7 @@ const MIGRATIONS: Migration[] = [
  */
 export const REWRITTEN_FIELDS: Readonly<Record<number, readonly string[]>> = {
   8: ['nodes[].data.accent', 'edges[].data.accent', 'flows[].token.accent', 'nodes[].data.tone'],
+  19: ['theme.mode'],
 }
 
 export class DiagramFormatError extends Error {}

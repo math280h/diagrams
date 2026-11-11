@@ -72,7 +72,7 @@ describe('describeChange', () => {
       copy.nodes = copy.nodes.filter((node) => node.id !== db)
       copy.edges = []
       copy.name = 'Store'
-      copy.theme.mode = 'light'
+      copy.theme.fonts = 'plex'
     })
     expect(describeChange(diagram, after)).toBe(
       'Removed Orders DB and a connection. Renamed the diagram to “Store”. Changed the style.',

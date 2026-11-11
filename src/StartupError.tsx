@@ -35,7 +35,7 @@ export function StartupError({ message }: { message: string }) {
         </div>
       </div>
       <ProblemDialog />
-      <Toaster theme={theme} position="top-center" />
+      <Toaster theme={theme.base} position="top-center" />
     </>
   )
 }

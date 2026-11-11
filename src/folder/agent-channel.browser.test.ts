@@ -65,6 +65,7 @@ beforeEach(async () => {
       listeners.add(listener)
       return () => listeners.delete(listener)
     },
+    onThemes: () => () => undefined,
     onProblem: () => () => undefined,
     stop: () => undefined,
   }

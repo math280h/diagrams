@@ -1,4 +1,5 @@
 import { DIAGRAM_FILE_SUFFIX } from '@/desktop/constants'
+import { THEME_FILE_SUFFIX, THEMES_FOLDER } from '@/themes/tokens'
 import { AGENT_FOLDER, CALLS_FOLDER, CALL_SUFFIX } from './agent-paths'
 
 export type FolderWatchRequest =
@@ -8,6 +9,7 @@ export type FolderWatchRequest =
 export type FolderWatchReply =
   | { kind: 'files'; names: string[] }
   | { kind: 'calls'; names: string[] }
+  | { kind: 'themes' }
   | { kind: 'error'; message: string }
 
 interface WorkerScope {
@@ -20,6 +22,7 @@ let folder: FileSystemDirectoryHandle | null = null
 let intervalMs = 1000
 let watchCalls = false
 let stamps = new Map<string, string>()
+let themeStamps = new Map<string, string>()
 
 async function fileStamps(directory: FileSystemDirectoryHandle, suffix: string) {
   const found = new Map<string, string>()
@@ -41,12 +44,26 @@ async function callNames(root: FileSystemDirectoryHandle): Promise<string[]> {
   }
 }
 
+async function themeFileStamps(root: FileSystemDirectoryHandle) {
+  try {
+    return await fileStamps(await root.getDirectoryHandle(THEMES_FOLDER), THEME_FILE_SUFFIX)
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'NotFoundError') return new Map<string, string>()
+    throw error
+  }
+}
+
 async function scan(root: FileSystemDirectoryHandle) {
   const next = await fileStamps(root, DIAGRAM_FILE_SUFFIX)
   const names = [...next].filter(([name, stamp]) => stamps.get(name) !== stamp).map(([name]) => name)
   for (const name of stamps.keys()) if (!next.has(name)) names.push(name)
   stamps = next
   if (names.length > 0) scope.postMessage({ kind: 'files', names }, [])
+  const nextThemes = await themeFileStamps(root)
+  const themesChanged =
+    nextThemes.size !== themeStamps.size || [...nextThemes].some(([name, stamp]) => themeStamps.get(name) !== stamp)
+  themeStamps = nextThemes
+  if (themesChanged) scope.postMessage({ kind: 'themes' }, [])
   if (watchCalls) {
     const calls = await callNames(root)
     if (calls.length > 0) scope.postMessage({ kind: 'calls', names: calls }, [])
@@ -72,5 +89,6 @@ scope.onmessage = ({ data }) => {
   intervalMs = data.intervalMs
   watchCalls = data.calls
   stamps = new Map()
+  themeStamps = new Map()
   void tick(data.folder)
 }

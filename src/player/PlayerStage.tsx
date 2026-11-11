@@ -13,7 +13,7 @@ import {
   Waypoints,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { useCanvasTheme } from '@/canvas/canvas-theme'
+import { useActiveTheme } from '@/themes/active'
 import { useLocalNodes } from '@/canvas/use-local-nodes'
 import { DiagramCanvas } from '@/canvas/DiagramCanvas'
 import { CAPTION_HEIGHT_PX } from '@/canvas/FlowOverlay'
@@ -181,7 +181,7 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
   const flow = diagram.flows.find((candidate) => candidate.id === flowId) ?? diagram.flows[0]
   const [pathChoice, setPathChoice] = useState<{ flowId: string; pathId: string | null } | null>(null)
   const pathId = flow && pathChoice?.flowId === flow.id ? (findPath(flow, pathChoice.pathId)?.id ?? null) : null
-  const resolvedTheme = useCanvasTheme(diagram.theme.mode)
+  const colorTheme = useActiveTheme()
   const { fitBounds, getInternalNode } = useReactFlow()
   const [leaving, setLeaving] = useState(false)
   const explore = useExplore(nodes, edges, TOP_BAR_HEIGHT_PX)
@@ -301,7 +301,7 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
           exploring={exploring}
           onNodeClick={explore.onNodeClick}
           theme={{ ...diagram.theme, background: 'none' }}
-          resolvedTheme={resolvedTheme}
+          colorTheme={colorTheme}
           editable={false}
           details
           onOpenDiagram={onOpenDiagram ? openDiagram : undefined}

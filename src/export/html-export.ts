@@ -3,6 +3,9 @@ import { BUNDLED_ICON_NAMES } from '@/canvas/icon-cache'
 import { iconSourceOf, loadIconSet, type IconEntry, type IconSourceId } from '@/canvas/icons/library'
 import type { Diagram } from '@/model/schema'
 import { PLAYER_FILES } from '@/standalone/files'
+import { currentThemeForBase } from '@/themes/active'
+import type { Theme } from '@/themes/schema'
+import type { ThemeBase } from '@/themes/tokens'
 import type { PageIcons } from '@/standalone/page-data'
 import { fontFaceRule, pageHtml } from './html-page'
 import { pageFontFamilies, type FontFamily } from './page-fonts'
@@ -92,8 +95,16 @@ function fontLicenses(families: readonly FontFamily[]): string {
     .join('\n\n')
 }
 
-/** Makes an HTML page that plays the diagram and its flows with no network connection and no other files. */
-export async function exportHtmlPage(diagram: Diagram): Promise<Blob> {
+/**
+ * Makes an HTML page that plays the diagram and its flows with no network connection and no other files.
+ *
+ * @param themes - The theme for each light or dark setting of the reader. The default is the theme that the app shows
+ *   for each.
+ */
+export async function exportHtmlPage(
+  diagram: Diagram,
+  themes: Record<ThemeBase, Theme> = { light: currentThemeForBase('light'), dark: currentThemeForBase('dark') },
+): Promise<Blob> {
   const families = pageFontFamilies(diagram.theme.fonts)
   const [script, style, playerLicenses, icons, fonts] = await Promise.all([
     fetchText(PLAYER_FILES.script),
@@ -105,6 +116,7 @@ export async function exportHtmlPage(diagram: Diagram): Promise<Blob> {
   const html = pageHtml({
     diagram,
     icons,
+    themes,
     script,
     style,
     fontCss: fonts,

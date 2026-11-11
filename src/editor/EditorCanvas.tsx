@@ -9,7 +9,7 @@ import {
 import { Minimap, MINIMAP_MIN_NODES } from '@/canvas/Minimap'
 import { useSettings } from '@/store/settings-store'
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
-import { useCanvasTheme } from '@/canvas/canvas-theme'
+import { useActiveTheme } from '@/themes/active'
 import { DiagramCanvas } from '@/canvas/DiagramCanvas'
 import { useDiagramDescription } from '@/export/use-description'
 import { dataCrossings } from '@/model/threats'
@@ -67,7 +67,7 @@ export function EditorCanvas() {
   const theme = useDoc((state) => state.theme)
   const [initialViewport] = useState(() => useDoc.getState().viewport)
   const [narrow] = useState(() => window.innerWidth < NARROW_SCREEN_PX)
-  const resolvedTheme = useCanvasTheme(theme.mode)
+  const colorTheme = useActiveTheme()
   const description = useDiagramDescription()
   const sensitiveView = useUi((state) => state.sensitiveView)
   const showMinimap = useSettings((state) => state.showMinimap)
@@ -179,7 +179,7 @@ export function EditorCanvas() {
           nodes={nodes}
           edges={edges}
           theme={theme}
-          resolvedTheme={resolvedTheme}
+          colorTheme={colorTheme}
           editable={!previewing}
           levelOfDetail
           onOpenDiagram={openDiagram}

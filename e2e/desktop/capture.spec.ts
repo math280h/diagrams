@@ -8,6 +8,7 @@ import { compileFlow } from '@/engine/flow/compile'
 import { diagramBounds } from '@/export/bounds'
 import { DIAGRAM_VERSION, type Diagram } from '@/model/schema'
 import { fromDiagram } from '@/persistence/serialize'
+import { builtInTheme } from '@/themes/built-in'
 import { copyTemplate } from '../helpers'
 import { callTool, expect, test } from './fixtures'
 
@@ -49,7 +50,7 @@ function flowStage() {
     nodes,
     edges,
     theme: diagram.theme,
-    resolvedTheme: 'dark' as const,
+    colorTheme: builtInTheme('dark')!,
     transparent: false,
     viewport: { x: 0, y: 0, zoom: 1 },
     flows: diagram.flows,
@@ -74,7 +75,7 @@ function sampleStage() {
     nodes,
     edges,
     theme: { ...diagram.theme, background: 'none' as const },
-    resolvedTheme: 'light' as const,
+    colorTheme: builtInTheme('light')!,
     viewport: { x: PADDING_PX - bounds.x, y: PADDING_PX - bounds.y, zoom: 1 },
     transparent: false,
     flows: [],

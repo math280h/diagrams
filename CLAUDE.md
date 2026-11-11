@@ -68,8 +68,10 @@ the JSDoc tag rules.
   not put per-frame values in React state.
 - Every visual of a flow is a pure function of time (`evaluateFlow`). Keep it that way: the video
   export depends on it.
-- Canvas colours are CSS variables under `.dg-canvas[data-theme]` in `src/styles/canvas.css`.
-  Node styles must not use `backdrop-filter`.
+- Canvas colours are CSS variables under `.dg-canvas[data-base]` in `src/styles/canvas.css` (the
+  Light and Dark bases). Other themes are files in `src/themes/built-in` that only replace these
+  variables, so a new colour needs a variable in both bases and in `src/themes/tokens.ts`. Node
+  styles must not use `backdrop-filter`.
 - UI primitives come from shadcn (Base UI) in `src/components/ui`.
 - Write user-facing text in sentence case and plain words.
 - `electron/` never touches the DOM, and the renderer never imports `electron`. Every `src` module

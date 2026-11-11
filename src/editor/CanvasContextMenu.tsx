@@ -36,7 +36,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
-import { swatchColor } from '@/canvas/canvas-theme'
+import { canvasThemeAttributes, swatchColor } from '@/canvas/canvas-theme'
 import { COLOR_NAMES, COLORS } from '@/model/colors'
 import { takesColor } from '@/model/types'
 import {
@@ -51,7 +51,7 @@ import {
   ungroupSelection,
 } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
-import { useHighContrast, useResolvedAppTheme } from '@/store/settings-store'
+import { useActiveTheme } from '@/themes/active'
 import { setUi, useUi } from '@/store/ui-store'
 import { flushPendingSave } from '@/store/document'
 import { useLibrary } from '@/store/library-store'
@@ -201,8 +201,7 @@ export function CanvasContextMenu({ target, children }: { target: ContextTarget;
 }
 
 function ColorMenu() {
-  const theme = useResolvedAppTheme()
-  const highContrast = useHighContrast()
+  const theme = useActiveTheme()
   const nodes = useDoc(useShallow((state) => state.nodes.filter((node) => node.selected).filter(takesColor)))
   if (nodes.length === 0) return null
   const colors = new Set(nodes.map((node) => node.data.color))
@@ -211,11 +210,7 @@ function ColorMenu() {
       <ContextMenuSubTrigger>
         <Palette /> Colour
       </ContextMenuSubTrigger>
-      <ContextMenuSubContent
-        className="dg-zones w-36 shadow-lg"
-        data-theme={theme}
-        data-contrast={highContrast ? 'more' : undefined}
-      >
+      <ContextMenuSubContent className="dg-zones w-36 shadow-lg" {...canvasThemeAttributes(theme)}>
         <ContextMenuRadioGroup
           value={colors.size === 1 ? nodes[0]!.data.color : null}
           onValueChange={(value) => {

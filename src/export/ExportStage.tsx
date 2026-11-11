@@ -9,6 +9,7 @@ import { useEngine } from '@/engine/hooks'
 import { Engine } from '@/engine/engine'
 import type { DiagramTheme } from '@/model/schema'
 import type { DiagramEdge, DiagramNode } from '@/model/types'
+import type { Theme } from '@/themes/schema'
 
 export interface StageHandle {
   root: HTMLDivElement
@@ -23,7 +24,7 @@ export interface ExportStageProps {
   nodes: DiagramNode[]
   edges: DiagramEdge[]
   theme: DiagramTheme
-  resolvedTheme: 'dark' | 'light'
+  colorTheme: Theme
   viewport: Viewport
   transparent: boolean
   onReady: (stage: StageHandle) => void
@@ -33,7 +34,7 @@ function StageInner({
   nodes,
   edges,
   theme,
-  resolvedTheme,
+  colorTheme,
   viewport,
   transparent,
   onReady,
@@ -64,7 +65,7 @@ function StageInner({
       onNodesChange={onNodesChange}
       edges={edges}
       theme={transparent ? { ...theme, background: 'none' } : theme}
-      resolvedTheme={resolvedTheme}
+      colorTheme={colorTheme}
       editable={false}
       exportMode
       defaultViewport={viewport}

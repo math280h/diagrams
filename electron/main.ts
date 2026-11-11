@@ -45,6 +45,7 @@ import { createGitHubAuth, GITHUB_SIGN_IN_FILE, secretFile, type GitHubAuth } fr
 import { createDiagramFiles } from './storage/diagram-files'
 import { committedText } from './storage/git'
 import { createLinkedFiles, isLinkedId } from './storage/linked-files'
+import { createThemeFiles, watchThemeFolder } from './storage/theme-files'
 import { watchDiagramFolder, watchLinkedFiles } from './storage/watcher'
 import { checkUpdateRepository, repositoryFeed } from './update-repository'
 import { createUpdates, updatePolicy, type UpdatePolicy } from './updates'
@@ -55,7 +56,7 @@ import {
   focusWindow,
   prepareQuit,
   rendererOrigin,
-  setTitleBarColors,
+  setWindowColors,
   setWindowHooks,
   windowHidden,
 } from './window'
@@ -171,6 +172,10 @@ async function start() {
     void rpc.call('app.connectAgent', null, { timeoutMs: AGENT_SETUP_OPEN_TIMEOUT_MS }).catch(() => undefined)
   }
   const watcher = watchDiagramFolder(files, (change) => rpc.emit('files.changed', change))
+  const themes = createThemeFiles(files.folder)
+  const stopThemeWatcher = watchThemeFolder(themes, () => {
+    void themes.list().then((sources) => rpc.emit('themes.changed', sources))
+  })
   const linked = createLinkedFiles(path.join(userData, 'linked-files.json'))
   const linkedWatcher = watchLinkedFiles(linked, (change) => rpc.emit('files.changed', change))
   const linkedPath = (id: string) => {
@@ -349,8 +354,17 @@ async function start() {
         publish({ token })
         return agent
       },
-      'window.setTitleBarColors': async (colors) => {
-        setTitleBarColors(colors)
+      'window.setColors': async (colors) => {
+        setWindowColors(colors)
+        return null
+      },
+      'themes.list': () => themes.list(),
+      'themes.write': async (source) => {
+        await themes.write(source)
+        return null
+      },
+      'themes.reveal': async () => {
+        await shell.openPath(await themes.ensureFolder())
         return null
       },
       'app.settings': async () => publicSettings(settings.get()),
@@ -422,6 +436,7 @@ async function start() {
     updates.stop()
     watcher.stop()
     linkedWatcher.stop()
+    stopThemeWatcher()
     clearTimeout(retry)
     void server.stop()
   })

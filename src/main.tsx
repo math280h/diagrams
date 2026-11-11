@@ -19,6 +19,7 @@ import { registerServiceWorker } from './install/register-service-worker'
 import { bootstrapStorage } from './persistence/bootstrap'
 import { router } from './router'
 import { StartupError } from './StartupError'
+import { startThemeFiles } from './themes/sources'
 
 async function startApp() {
   if (!isDesktop()) {
@@ -32,6 +33,7 @@ async function startApp() {
   } catch (error) {
     storageError = errorMessage(error)
   }
+  await startThemeFiles()
   if (isDesktop()) (await import('./desktop/runtime')).startDesktopRuntime(storageError)
 
   createRoot(document.getElementById('root')!).render(

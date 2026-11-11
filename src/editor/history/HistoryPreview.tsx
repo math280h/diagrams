@@ -2,7 +2,7 @@ import { ReactFlowProvider, useReactFlow, type Viewport } from '@xyflow/react'
 import { GitCommitHorizontal, History } from 'lucide-react'
 import { toast } from 'sonner'
 import { useEffect, useMemo, useState } from 'react'
-import { useCanvasTheme } from '@/canvas/canvas-theme'
+import { useActiveTheme } from '@/themes/active'
 import { useLocalNodes } from '@/canvas/use-local-nodes'
 import { DiagramCanvas } from '@/canvas/DiagramCanvas'
 import { Button } from '@/components/ui/button'
@@ -21,14 +21,14 @@ import { restoreVersion } from './restore'
 function VersionCanvas({ diagram, viewport }: { diagram: Diagram; viewport: Viewport }) {
   const initial = useMemo(() => fromDiagram(diagram), [diagram])
   const [nodes, onNodesChange] = useLocalNodes(initial.nodes)
-  const resolvedTheme = useCanvasTheme(diagram.theme.mode)
+  const colorTheme = useActiveTheme()
 
   return (
     <DiagramCanvas
       nodes={nodes}
       edges={initial.edges}
       theme={diagram.theme}
-      resolvedTheme={resolvedTheme}
+      colorTheme={colorTheme}
       editable={false}
       showCaption={false}
       defaultViewport={viewport}

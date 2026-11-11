@@ -8,6 +8,13 @@ import { registerIconSet } from '@/canvas/icons/library'
 import { errorMessage } from '@/lib/error-message'
 import { migrate } from '@/persistence/migrations'
 import { useSettings } from '@/store/settings-store'
+import { activeTheme } from '@/themes/active'
+import { applyAppTheme } from '@/themes/apply'
+import { DEFAULT_THEME_IDS } from '@/themes/built-in'
+import { themeFileSchema, themeOfFile, type Theme } from '@/themes/schema'
+import { useThemeStore } from '@/themes/store'
+import { addThemeStyles } from '@/themes/styles'
+import { THEME_BASES, type ThemeBase } from '@/themes/tokens'
 import { PAGE_DATA_IDS, type PageIcons } from './page-data'
 import { StandalonePlayer } from './StandalonePlayer'
 
@@ -16,16 +23,31 @@ function readJson(id: string): unknown {
   return text ? JSON.parse(text) : null
 }
 
-function followSystemTheme() {
-  const query = window.matchMedia('(prefers-color-scheme: dark)')
-  const apply = () => {
-    const theme = query.matches ? 'dark' : 'light'
-    document.documentElement.classList.toggle('dark', theme === 'dark')
-    document.documentElement.style.colorScheme = theme
-    useSettings.setState({ theme })
-  }
+function pageTheme(value: unknown): Theme | null {
+  if (typeof value !== 'object' || value === null) return null
+  const { id, ...file } = value as { id?: unknown }
+  const parsed = themeFileSchema.safeParse(file)
+  return typeof id === 'string' && parsed.success ? themeOfFile(id, parsed.data) : null
+}
+
+/** Shows the themes of the page, the light or the dark one as the system setting of the reader is. */
+function followPageThemes() {
+  const data = (readJson(PAGE_DATA_IDS.themes) ?? {}) as Partial<Record<ThemeBase, unknown>>
+  const themes = THEME_BASES.flatMap((base) => {
+    const theme = pageTheme(data[base])
+    return theme && theme.base === base ? [theme] : []
+  })
+  addThemeStyles(themes)
+  useThemeStore.setState({ files: themes.map((theme) => ({ name: theme.id, theme, problem: null, unknown: [] })) })
+  const idOf = (base: ThemeBase) => themes.find((theme) => theme.base === base)?.id ?? DEFAULT_THEME_IDS[base]
+  useSettings.setState({
+    themeMode: 'system',
+    themes: { light: idOf('light'), dark: idOf('dark') },
+    contrastThemes: { light: null, dark: null },
+  })
+  const apply = () => applyAppTheme(activeTheme())
   apply()
-  query.addEventListener('change', apply)
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', apply)
 }
 
 function registerIcons(icons: PageIcons | null): Promise<void> {
@@ -38,7 +60,7 @@ function registerIcons(icons: PageIcons | null): Promise<void> {
 }
 
 const root = createRoot(document.getElementById('root')!)
-followSystemTheme()
+followPageThemes()
 try {
   const diagram = migrate(readJson(PAGE_DATA_IDS.diagram))
   void registerIcons(readJson(PAGE_DATA_IDS.icons) as PageIcons | null).then(() =>

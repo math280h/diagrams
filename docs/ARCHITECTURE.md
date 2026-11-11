@@ -143,6 +143,7 @@ The visual system is in `DESIGN.md` at the repository root.
   - 16: theme `routeAround`, default off (off); optional hand-drawn edge `bends`.
   - 17, optional: `noReply` on edges; `concurrent` on paths (side paths).
   - 18, optional: `delayMs` on flow steps and on their `parallel` targets.
+  - 19: no theme `mode` (removed: the colour theme of each reader colours the canvas).
 - Groups are boundaries. `kind` points into `src/model/boundaries.ts`: AWS, Azure, Google Cloud, Kubernetes, general
   and custom kinds.
   - Each kind has a family (scope, logical, location, zone, network, subnet, security, runtime) that sets the line
@@ -150,15 +151,14 @@ The visual system is in `DESIGN.md` at the repository root.
   - Canvas label: kind, name, detail (such as an account id or address range).
   - The boundary palette has no walkthrough blue; `boundaryColors` turns it off.
   - A boundary from the insert menu wraps the selected nodes.
-- Black and white with one signal colour. App chrome and default canvas: Host Grotesk at 400 and 500, Fragment Mono for
-  values that people copy.
-- Signal blue is only the walkthrough colour, the focus ring and the app mark token. No other palette has a saturated
-  blue.
-- High contrast is a viewer setting, because the need belongs to the reader. `contrast` (settings store): `system`
-  (follows `prefers-contrast: more`), `standard` or `high`.
-  - `DiagramCanvas` sets `data-contrast="more"`; `src/styles/canvas.css` replaces the colour tokens under it. Export
-    stages do not set it, so a file looks the same to all readers.
-  - Text 7:1, lines 4.5:1; `src/styles/contrast.browser.test.ts` checks the token pairs.
+- The default Light and Dark themes: black and white with one signal colour. App chrome and default canvas: Host
+  Grotesk at 400 and 500, Fragment Mono for values that people copy. Other themes can use other colours (see
+  "Themes").
+- In the default themes, signal blue is only the walkthrough colour, the focus ring and the app mark token. No other
+  palette has a saturated blue. Each other theme has its own signal colour, and it moves a status colour of the same
+  hue to another hue.
+- High contrast is a mark on a theme (`contrast: high`): text 7:1, lines 4.5:1. The built-in Light high contrast and
+  Dark high contrast themes have it. A theme without the mark has no high contrast form.
 - Nodes separate from the ground by fill; the outline is a quiet edge. Outlines alone put all elements on one plane.
 - New edges: right angles with rounded corners (`smooth`); Bezier curves look like default React Flow edges.
   `routeAround` takes `smooth` and `step` edges around the nodes (see "Routing on the canvas").
@@ -328,7 +328,8 @@ Icon names are Lucide names (`database`) or prefixed set icons: `aws:`, `azure:`
 - Set files are separate assets (`?url` imports), fetched on first use, outside the main bundle.
 - Cloud icons are `<img>` data URLs with their own colours and gradient ids. The terms forbid changed artwork, so an
   idle flow node fades them with `opacity`, not a colour filter. Logos are single paths in `currentColor`.
-- AWS general icons have a dark variant that CSS selects by the canvas theme, or the app theme outside it.
+- AWS general icons have a dark variant that CSS selects by the base of the canvas theme (`data-base`), or by the app
+  theme outside the canvas.
 - Boundary kinds use provider group icons: AWS account, region, VPC, subnets; Azure subscription, resource group,
   virtual network; Kubernetes cluster.
 - The insert menu searches the sets from two characters and inserts a card with product name, icon and card form.
@@ -351,7 +352,8 @@ src/
   model/        zod schema (version 6), boundary kinds, protocols, defaults, presets, graph and rect helpers
   store/        doc store, actions, undo history, version history, persistence hook, UI and settings stores
   persistence/  localStorage repository, version store (IndexedDB), serialize, migrations, library actions
-  canvas/       React Flow canvas, canvas theme, node and edge components, icon sets and cache, flow overlay
+  canvas/       React Flow canvas, node and edge components, icon sets and cache, flow overlay
+  themes/       colour themes: built-in theme files, theme file format, theme choice, stylesheet, contrast check
   engine/       clock, path sampler, traffic, flow compile/evaluate, camera, engine, React glue
   editor/       editor page, insert menu, properties panel, flow panel and timeline, version history, menus, shortcuts
   export/       export stage, capture, image and video/GIF export dialog
@@ -366,7 +368,7 @@ src/
   templates/    starter diagrams
   components/   shadcn (Base UI) primitives in ui/
   lib/          small shared helpers: errors, queues, idle mount, reduced motion
-  styles/       canvas CSS and its theme variables
+  styles/       canvas CSS and the colour variables of the default themes
 e2e/            Playwright tests for the website, and for the desktop app in e2e/desktop
 scripts/        icon catalog and build (icons/), app icon, README image, desktop dev runner, third-party licence and release notes plugins, release signing
 build/          app icon sources and renders
@@ -378,11 +380,29 @@ A `Diagram` holds nodes (`card`, `shape`, `text`, `group`), edges (`flow`), flow
 
 - Web: `dg:diagram:<id>` per diagram, plus `dg:index`.
 - Desktop: `Documents/Diagrams/<id>.diagram.json`.
+- Theme files of the user: `themes/<name>.theme.json` in the diagrams folder (see "Themes").
 - `rev` detects edits from another tab or program.
 - `repository()` returns the store of the build; callers do not know which.
 
 A `Flow` is an ordered list of steps (node or edge, caption, duration, camera mode) plus optional keyframe tracks
 (camera, opacity, traffic). The app computes the timeline from the steps and never stores it.
+
+### Themes
+
+A colour theme is a setting of the reader. A diagram has no colours, so each reader sees it in their own theme, and an
+export uses the theme of the person who exports.
+
+- A theme (`src/themes/schema.ts`) has a `base` (`dark` or `light`) and colours for the app, the canvas and the desktop
+  window. A colour that a theme does not give comes from the base rules in `src/index.css` and
+  `src/styles/canvas.css`, because the theme rules (`src/themes/stylesheet.ts`) only replace variables.
+- The stylesheet accepts only hex colours and numbers, so a theme file cannot add other CSS.
+- The theme files of the user are in `themes/` of the diagrams folder. The desktop app and the website with an open
+  folder read the same files. A browser without a folder keeps imported files in `localStorage`.
+- `public/theme-boot.js` applies the last theme before the app script loads, so the first frame has its colours.
+- The desktop window takes its button, border and background colours from the theme and keeps them for the next start.
+  macOS draws its own window buttons.
+- `src/styles/contrast.browser.test.ts` checks the colour pairs of each built-in theme. The app does the same check on
+  each theme file of the user and shows the pairs below their contrast.
 
 ### Parallel steps and paths
 
@@ -1394,6 +1414,8 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
 
 - `electron/render-args.ts` reads the options before the single-instance lock, so a render runs next to an open app.
   Exit codes: 2 (usage) for bad arguments, 1 (message) for a failed render.
+- `--theme` takes a built-in theme or a `.theme.json` file. Without it, the render has no app settings, so it uses the
+  Light or the Dark theme, as the system is.
 - `electron/render-cli.ts` opens a hidden window on the empty page `#/render`, with background throttling off, and
   calls `render.file` (`src/export/render-file.ts`). PNG images and video frames come from the capture window.
 - The window gets no diagram files, agent server, updates or file writes. The macOS dock icon hides.
@@ -1426,8 +1448,8 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
 - `.github/workflows/display-previews.yml` runs the action for a pull request from this repository that changes drawing
   code, templates or dependencies. It builds the app of both commits. The base commit is the first parent of the merge
   commit, not `pull_request.base.sha`, which stays old when `main` moves. `scripts/template-files.mjs` of each commit
-  writes each template as a dark and a light diagram file in `.diagram-previews/` and `base/.diagram-previews/`. Template
-  changes then show. A template gets new random ids at each build, so the script numbers the ids in order. Particle
+  writes each template as a diagram file in `.diagram-previews/` and `base/.diagram-previews/`, and the action renders
+  each file in the Dark and the Light theme (`theme: dark light`). Template changes then show. A template gets new random ids at each build, so the script numbers the ids in order. Particle
   times depend on a hash of the edge id, so the script sets the times to 0.
 - App screens show what an export does not draw. `scripts/app-screens.mjs` of each commit serves its web build and
   takes them with Playwright in both themes:
@@ -1440,9 +1462,11 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
   Reduced motion and no CSS animations keep the screens still. Library screens show the whole page, after every card
   preview frames its diagram.
 
-- `e2e/accessibility-scan.spec.ts` runs axe (`@axe-core/playwright`, WCAG 2.2 A and AA) in both themes.
+- `e2e/accessibility-scan.spec.ts` runs axe (`@axe-core/playwright`, WCAG 2.2 A and AA) in the Light and the Dark
+  theme.
   - Scope: library, template page, editor (selection, flow panel), command and insert menus, shortcut sheet, image
     export, minimap, Present with Explore, phone library and editor.
+  - Each other built-in theme: editor with a selection, and the app settings.
   - A violation fails the run.
   - The scan leaves out what Explore dims (text at 16 %): WCAG 1.4.3 excludes inactive parts.
   - Every node has the `group` role.

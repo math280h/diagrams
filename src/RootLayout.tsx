@@ -28,7 +28,7 @@ export function RootLayout() {
         </>
       )}
       <ProblemDialog />
-      <Toaster theme={theme} position="top-center" offset={64} />
+      <Toaster theme={theme.base} position="top-center" offset={64} />
     </TooltipProvider>
   )
 }

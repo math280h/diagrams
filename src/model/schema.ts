@@ -1,7 +1,7 @@
 import { z } from '@/lib/zod'
 import { COLORS } from './colors'
 
-export const DIAGRAM_VERSION = 18
+export const DIAGRAM_VERSION = 19
 
 const colorSchema = z.enum(COLORS)
 
@@ -377,8 +377,6 @@ export type Flow = z.infer<typeof flowSchema>
 
 export const FONT_PAIRS = ['host', 'atkinson', 'inter', 'plex'] as const
 export const themeSchema = z.object({
-  /** With `auto`, the canvas uses the theme of the application. */
-  mode: z.enum(['auto', 'dark', 'light']),
   fonts: z.enum(FONT_PAIRS),
   background: z.enum(['dots', 'grid', 'none']),
   snap: z.boolean(),

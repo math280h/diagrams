@@ -1,13 +1,47 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { app, screen, type BrowserWindow } from 'electron'
+import { HEX_COLOR_PATTERN } from '@/desktop/constants'
+import type { WindowColors } from '@/desktop/contract'
 import { parseWindowState, restorableBounds, type WindowState } from './window-bounds'
 
 const STATE_FILE = 'window-state.json'
+const COLORS_FILE = 'window-colors.json'
 const SAVE_DELAY_MS = 400
+const SCHEMES: ReadonlySet<unknown> = new Set(['system', 'dark', 'light'])
 
 function statePath() {
   return path.join(app.getPath('userData'), STATE_FILE)
+}
+
+function colorsPath() {
+  return path.join(app.getPath('userData'), COLORS_FILE)
+}
+
+function isColor(value: unknown): value is string {
+  return typeof value === 'string' && HEX_COLOR_PATTERN.test(value)
+}
+
+/** Returns the window colours of the last theme, or `null` before the first theme. */
+export function loadWindowColors(): WindowColors | null {
+  try {
+    const value = JSON.parse(readFileSync(colorsPath(), 'utf8')) as Partial<WindowColors>
+    const { controls, symbols, background, border, scheme } = value
+    if (!isColor(controls) || !isColor(symbols) || !isColor(background) || !SCHEMES.has(scheme)) return null
+    return { controls, symbols, background, border: isColor(border) ? border : null, scheme: scheme! }
+  } catch {
+    return null
+  }
+}
+
+/** Keeps the window colours of the theme for the next start, so that the window opens in the colours of the theme. */
+export function saveWindowColors(colors: WindowColors) {
+  try {
+    mkdirSync(path.dirname(colorsPath()), { recursive: true })
+    writeFileSync(colorsPath(), JSON.stringify(colors))
+  } catch {
+    return
+  }
 }
 
 /** Reads the last window state. Bounds on a screen that is not connected now become `null`. */

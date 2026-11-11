@@ -1,6 +1,6 @@
 import { ReactFlowProvider } from '@xyflow/react'
 import { useEffect, useMemo } from 'react'
-import { useCanvasTheme } from '@/canvas/canvas-theme'
+import { useActiveTheme } from '@/themes/active'
 import { useLocalNodes } from '@/canvas/use-local-nodes'
 import { DiagramCanvas } from '@/canvas/DiagramCanvas'
 import { CAPTION_HEIGHT_PX } from '@/canvas/FlowOverlay'
@@ -49,7 +49,7 @@ function PreviewCanvas({
   const reducedMotion = useReducedMotion()
   const initial = useMemo(() => fromDiagram(diagram), [diagram])
   const [nodes, onNodesChange] = useLocalNodes(initial.nodes)
-  const resolvedTheme = useCanvasTheme(diagram.theme.mode)
+  const colorTheme = useActiveTheme()
   const flow = diagram.flows[0]
   const framed = useReadableFraming({
     edges: initial.edges,
@@ -85,7 +85,7 @@ function PreviewCanvas({
         nodes={nodes}
         edges={initial.edges}
         theme={{ ...diagram.theme, background: 'none' }}
-        resolvedTheme={resolvedTheme}
+        colorTheme={colorTheme}
         editable={false}
         showCaption={showCaption}
         threats={threats}

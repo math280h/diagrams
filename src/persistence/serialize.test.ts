@@ -159,6 +159,14 @@ describe('migrate', () => {
     ])
   })
 
+  it('drops the colour mode of version 18 themes, because the theme of the reader sets the colours', () => {
+    const diagram = createDiagram()
+    const v18 = { ...diagram, version: 18, theme: { ...diagram.theme, mode: 'dark' } }
+    const migrated = migrate(JSON.parse(JSON.stringify(v18)))
+    expect(migrated.theme).toEqual(diagram.theme)
+    expect(migrated.theme).not.toHaveProperty('mode')
+  })
+
   it('keeps the layout routes of version 15 edges, and does not route them around nodes', () => {
     const edge = createEdge('a', 'b', { label: 'SQL' })
     const route = [

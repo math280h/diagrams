@@ -1,7 +1,10 @@
 import { useEffect } from 'react'
 import { create } from 'zustand'
+import type { ThemeMode } from '@/store/settings-store'
+import type { Theme } from '@/themes/schema'
 import { desktopApi } from './bridge'
 import { HEX_COLOR_PATTERN } from './constants'
+import type { WindowColors } from './contract'
 
 const MOUSE_BACK = 3
 const MOUSE_FORWARD = 4
@@ -69,13 +72,33 @@ export function useDesktopChrome() {
   }, [desktop])
 }
 
-/** Colours the window buttons like the header. Call it after the theme of the page changes. */
-export function syncTitleBarColors() {
+const ALPHA_HEX_COLOR = /^#[\da-f]{8}$/i
+
+function opaqueColor(color: string): string {
+  return ALPHA_HEX_COLOR.test(color) ? color.slice(0, 7) : color
+}
+
+/**
+ * Returns the colours of the desktop window for a theme. Without window colours, the window buttons take the colours of
+ * the header.
+ *
+ * @param read - Returns the value of an app colour variable such as `--panel`.
+ * @returns The colours, or `null` if a colour is not a hex colour.
+ */
+export function windowColorsOf(theme: Theme, mode: ThemeMode, read: (name: string) => string): WindowColors | null {
+  const colors = {
+    controls: theme.window.controls ?? opaqueColor(read('--panel')),
+    symbols: theme.window.symbols ?? opaqueColor(read('--foreground')),
+    background: opaqueColor(read('--background')),
+  }
+  if (!Object.values(colors).every((color) => HEX_COLOR_PATTERN.test(color))) return null
+  return { ...colors, border: theme.window.border ?? null, scheme: mode === 'system' ? 'system' : theme.base }
+}
+
+/** Gives the desktop window the colours of the theme. Call it after the page has the colours of the theme. */
+export function syncWindowColors(theme: Theme, mode: ThemeMode) {
   const desktop = desktopApi()
   if (!desktop) return
-  const color = cssColor('--panel')
-  const symbolColor = cssColor('--foreground')
-  if (HEX_COLOR_PATTERN.test(color) && HEX_COLOR_PATTERN.test(symbolColor)) {
-    void desktop.request('window.setTitleBarColors', { color, symbolColor })
-  }
+  const colors = windowColorsOf(theme, mode, cssColor)
+  if (colors) void desktop.request('window.setColors', colors)
 }

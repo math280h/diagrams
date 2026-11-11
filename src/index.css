@@ -47,7 +47,8 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-:root {
+:root,
+[data-app-base='light'] {
   --radius: 0.5rem;
   --background: #ffffff;
   --foreground: #0a0a0a;
@@ -80,7 +81,8 @@
   --warn: #a16100;
 }
 
-.dark {
+.dark,
+[data-app-base='dark'] {
   --background: #000000;
   --foreground: #fafafa;
   --card: #0a0a0a;
@@ -351,13 +353,13 @@
 }
 .dg-art[data-variant='dark'],
 .dark .dg-art[data-variant='light'],
-.dg-canvas[data-theme='dark'] .dg-art[data-variant='light'],
-.dg-canvas[data-theme='light'] .dg-art[data-variant='dark'] {
+.dg-canvas[data-base='dark'] .dg-art[data-variant='light'],
+.dg-canvas[data-base='light'] .dg-art[data-variant='dark'] {
   display: none;
 }
 .dark .dg-art[data-variant='dark'],
-.dg-canvas[data-theme='dark'] .dg-art[data-variant='dark'],
-.dg-canvas[data-theme='light'] .dg-art[data-variant='light'] {
+.dg-canvas[data-base='dark'] .dg-art[data-variant='dark'],
+.dg-canvas[data-base='light'] .dg-art[data-variant='light'] {
   display: inline-block;
 }
 

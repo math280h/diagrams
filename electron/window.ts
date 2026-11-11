@@ -1,7 +1,8 @@
 import { app, BrowserWindow, Menu, nativeTheme, shell, type WebContents } from 'electron'
+import type { WindowColors } from '@/desktop/contract'
 import { APP_ORIGIN, originOf } from './app-protocol'
 import { APP_NAME, devServerUrl, iconPath, preloadPath } from './paths'
-import { loadWindowState, trackWindowState } from './window-state'
+import { loadWindowColors, loadWindowState, saveWindowColors, trackWindowState } from './window-state'
 
 const DARK_GROUND = '#000000'
 const LIGHT_GROUND = '#ffffff'
@@ -59,6 +60,14 @@ export function rendererOrigin() {
 export function createMainWindow(): BrowserWindow {
   if (process.platform !== 'darwin' && !devServerUrl()) Menu.setApplicationMenu(null)
   const state = loadWindowState()
+  const colors = loadWindowColors()
+  if (colors) nativeTheme.themeSource = colors.scheme
+  const dark = nativeTheme.shouldUseDarkColors
+  const titleBar = colors
+    ? { color: colors.controls, symbolColor: colors.symbols }
+    : dark
+      ? DARK_TITLE_BAR
+      : LIGHT_TITLE_BAR
   const icon = iconPath()
   const window = new BrowserWindow({
     ...(state.bounds ?? DEFAULT_SIZE),
@@ -69,16 +78,12 @@ export function createMainWindow(): BrowserWindow {
     title: APP_NAME,
     ...(icon && { icon }),
     autoHideMenuBar: true,
-    backgroundColor: nativeTheme.shouldUseDarkColors ? DARK_GROUND : LIGHT_GROUND,
+    backgroundColor: colors?.background ?? (dark ? DARK_GROUND : LIGHT_GROUND),
     titleBarStyle: 'hidden',
     ...(process.platform === 'darwin'
       ? { titleBarOverlay: true, trafficLightPosition: MAC_TRAFFIC_LIGHTS }
-      : {
-          titleBarOverlay: {
-            ...(nativeTheme.shouldUseDarkColors ? DARK_TITLE_BAR : LIGHT_TITLE_BAR),
-            height: TITLE_BAR_HEIGHT_PX,
-          },
-        }),
+      : { titleBarOverlay: { ...titleBar, height: TITLE_BAR_HEIGHT_PX } }),
+    ...(process.platform === 'win32' && colors?.border ? { accentColor: colors.border } : {}),
     webPreferences: {
       preload: preloadPath(),
       contextIsolation: true,
@@ -158,8 +163,18 @@ export function focusWindow() {
   return window
 }
 
-/** Sets the colours of the window buttons on Windows and Linux. macOS draws its own buttons. */
-export function setTitleBarColors(colors: { color: string; symbolColor: string }) {
-  if (process.platform === 'darwin') return
-  currentWindow()?.setTitleBarOverlay({ ...colors, height: TITLE_BAR_HEIGHT_PX })
+/**
+ * Gives the window the colours of the theme and keeps them for the next start. macOS draws its own window buttons,
+ * and only Windows colours the window border.
+ */
+export function setWindowColors(colors: WindowColors) {
+  nativeTheme.themeSource = colors.scheme
+  saveWindowColors(colors)
+  const window = currentWindow()
+  if (!window) return
+  window.setBackgroundColor(colors.background)
+  if (process.platform !== 'darwin') {
+    window.setTitleBarOverlay({ color: colors.controls, symbolColor: colors.symbols, height: TITLE_BAR_HEIGHT_PX })
+  }
+  if (process.platform === 'win32') window.setAccentColor(colors.border)
 }

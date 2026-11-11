@@ -5,7 +5,6 @@ import { useMemo, useState } from 'react'
 import {
   BookOpen,
   Bot,
-  Contrast,
   CopyPlus,
   Download,
   FileCode,
@@ -25,6 +24,7 @@ import {
   LayoutGrid,
   LayoutList,
   Maximize,
+  Monitor,
   Moon,
   Pin,
   Play,
@@ -72,7 +72,10 @@ import {
 import { useDoc } from '@/store/doc-store'
 import { currentDiagram, flushPendingSave } from '@/store/document'
 import { redo, undo } from '@/store/history'
-import { useHighContrast, useSettings } from '@/store/settings-store'
+import { useSettings } from '@/store/settings-store'
+import { showTheme } from '@/themes/active'
+import { allThemes, useThemeStore } from '@/themes/store'
+import { ThemeSwatch } from '@/themes/ThemeSwatch'
 import { setUi, useUi } from '@/store/ui-store'
 import { tidyUp } from './layout-command'
 import { presetNodeAt } from './preset-node'
@@ -95,9 +98,8 @@ export function CommandMenu() {
   const navigate = useNavigate()
   const { screenToFlowPosition, fitView } = useReactFlow()
   const fit = useFitToScreen()
-  const setTheme = useSettings((state) => state.setTheme)
-  const setContrast = useSettings((state) => state.setContrast)
-  const highContrast = useHighContrast()
+  const setThemeMode = useSettings((state) => state.setThemeMode)
+  const themeFiles = useThemeStore((state) => state.files)
   const [search, setSearch] = useState('')
   const nodes = useDoc((state) => state.nodes)
   const targets = useMemo(
@@ -297,15 +299,20 @@ export function CommandMenu() {
               </CommandItem>
             </>
           )}
-          <CommandItem onSelect={run(() => setTheme('dark'))}>
-            <Moon /> Dark theme
+          <CommandItem onSelect={run(() => setThemeMode('dark'))}>
+            <Moon /> Dark mode
           </CommandItem>
-          <CommandItem onSelect={run(() => setTheme('light'))}>
-            <Sun /> Light theme
+          <CommandItem onSelect={run(() => setThemeMode('light'))}>
+            <Sun /> Light mode
           </CommandItem>
-          <CommandItem onSelect={run(() => setContrast(highContrast ? 'standard' : 'high'))}>
-            <Contrast /> {highContrast ? 'Standard contrast canvas' : 'High contrast canvas'}
+          <CommandItem onSelect={run(() => setThemeMode('system'))}>
+            <Monitor /> Light or dark mode from the system
           </CommandItem>
+          {allThemes(themeFiles).map((theme) => (
+            <CommandItem key={theme.id} value={`Theme ${theme.name}`} onSelect={run(() => showTheme(theme))}>
+              <ThemeSwatch theme={theme} /> {theme.name} theme
+            </CommandItem>
+          ))}
           <CommandItem onSelect={run(() => setUi({ shortcutsOpen: true }))}>
             <Keyboard /> Keyboard shortcuts <CommandShortcut>?</CommandShortcut>
           </CommandItem>

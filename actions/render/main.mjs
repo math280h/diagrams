@@ -18,6 +18,7 @@ import {
   imageUrl,
   parseNameStatus,
   parsePatterns,
+  parseThemes,
   pathspecs,
   renderOptions,
   splitCommand,
@@ -39,7 +40,7 @@ const env = process.env
 const inputs = {
   patterns: parsePatterns(env.INPUT_FILES || DEFAULT_PATTERN),
   format: env.INPUT_FORMAT || 'png',
-  theme: env.INPUT_THEME ?? '',
+  themes: parseThemes(env.INPUT_THEME ?? ''),
   maxSize: env.INPUT_MAX_SIZE ?? '',
   mode: env.INPUT_MODE || 'auto',
   publish: env.INPUT_PUBLISH !== 'false',
@@ -53,6 +54,15 @@ const inputs = {
   token: env.INPUT_TOKEN ?? '',
 }
 const temp = env.RUNNER_TEMP || path.resolve('.diagrams-render')
+const severalThemes = inputs.themes.length > 1
+const renderThemes = inputs.themes.length > 0 ? inputs.themes : ['']
+
+/** Returns each diagram file once for each theme, and the name of the diagram in the summary and the comment. */
+function renderJobs(files) {
+  return files.flatMap((file) =>
+    renderThemes.map((theme) => ({ file, theme, label: severalThemes ? `${file} (${theme})` : file })),
+  )
+}
 
 class ActionError extends Error {}
 
@@ -129,14 +139,13 @@ function withDisplay(command) {
   return [...prefix, ...command, ...flags]
 }
 
-function render(command, input, output) {
+function render(command, input, output, theme) {
   mkdirSync(path.dirname(output), { recursive: true })
   const [program, ...args] = command
-  const result = run(
-    program,
-    [...args, ...renderOptions({ input, output, theme: inputs.theme, maxSize: inputs.maxSize })],
-    { allowFailure: true, timeout: RENDER_TIMEOUT_MS },
-  )
+  const result = run(program, [...args, ...renderOptions({ input, output, theme, maxSize: inputs.maxSize })], {
+    allowFailure: true,
+    timeout: RENDER_TIMEOUT_MS,
+  })
   if (result.status === 0) return
   const reason = result.signal
     ? `The app did not finish within ${RENDER_TIMEOUT_MS / 60_000} minutes. Use a Diagrams release with the command-line render.`
@@ -153,9 +162,9 @@ function diagramFiles({ untracked = false, cwd } = {}) {
 function writeImages(command) {
   const files = diagramFiles()
   if (files.length === 0) console.log('No tracked file matches the files input.')
-  const images = files.map((file) => {
-    const image = imagePath(file, inputs.format)
-    render(command, file, image)
+  const images = renderJobs(files).map(({ file, theme }) => {
+    const image = imagePath(file, inputs.format, severalThemes ? theme : undefined)
+    render(command, file, image, theme)
     console.log(`Rendered ${file} to ${image}.`)
     return image
   })
@@ -372,39 +381,41 @@ function compareApps(command, baseCommand) {
   const previews = path.join(temp, 'diagram-previews')
   setOutput('previews', [previews])
   const entries = []
-  files.forEach((file, index) => {
+  const jobs = renderJobs(files)
+  const removedJobs = renderJobs(removed)
+  jobs.forEach(({ file, theme, label }, index) => {
     const after = `${index + 1}/after.${inputs.format}`
     const before = `${index + 1}/before.${inputs.format}`
-    render(command, file, path.join(previews, after))
+    render(command, file, path.join(previews, after), theme)
     if (!baseFiles.includes(file)) {
-      console.log(`New diagram: ${file}`)
-      entries.push({ file, after })
+      console.log(`New diagram: ${label}`)
+      entries.push({ file: label, after })
       return
     }
     try {
-      render(baseCommand, baseFile(file), path.join(previews, before))
+      render(baseCommand, baseFile(file), path.join(previews, before), theme)
     } catch (error) {
       if (!(error instanceof ActionError)) throw error
-      console.log(`::warning::The base app could not render ${file}. ${error.message}`)
-      entries.push({ file, after, beforeNote: 'The base app cannot open it' })
+      console.log(`::warning::The base app could not render ${label}. ${error.message}`)
+      entries.push({ file: label, after, beforeNote: 'The base app cannot open it' })
       return
     }
     const same = readFileSync(path.join(previews, before)).equals(readFileSync(path.join(previews, after)))
-    console.log(`${same ? 'Same image' : 'Different image'}: ${file}`)
-    if (!same) entries.push({ file, before, after })
+    console.log(`${same ? 'Same image' : 'Different image'}: ${label}`)
+    if (!same) entries.push({ file: label, before, after })
   })
-  removed.forEach((file, index) => {
-    const before = `${files.length + index + 1}/before.${inputs.format}`
+  removedJobs.forEach(({ file, theme, label }, index) => {
+    const before = `${jobs.length + index + 1}/before.${inputs.format}`
     try {
-      render(baseCommand, baseFile(file), path.join(previews, before))
-      console.log(`Removed diagram: ${file}`)
-      entries.push({ file, before })
+      render(baseCommand, baseFile(file), path.join(previews, before), theme)
+      console.log(`Removed diagram: ${label}`)
+      entries.push({ file: label, before })
     } catch (error) {
       if (!(error instanceof ActionError)) throw error
-      console.log(`::warning::The base app could not render the removed diagram ${file}. ${error.message}`)
+      console.log(`::warning::The base app could not render the removed diagram ${label}. ${error.message}`)
     }
   })
-  const total = files.length + removed.length
+  const total = jobs.length + removedJobs.length
   const screens = compareScreens(previews, total + 1)
   entries.push(...screens.entries)
   summary(
@@ -440,21 +451,23 @@ function compareImages(command) {
     console.log('The pull request changes no diagram.')
     return
   }
-  const entries = changes.map(({ kind, file }, index) => {
+  const kinds = new Map(changes.map(({ kind, file }) => [file, kind]))
+  const entries = renderJobs(changes.map(({ file }) => file)).map(({ file, theme, label }, index) => {
+    const kind = kinds.get(file)
     const folder = `${index + 1}`
-    const entry = { file }
+    const entry = { file: label }
     if (kind !== 'added') {
       const before = path.join(temp, 'diagram-before', folder, path.basename(file))
       mkdirSync(path.dirname(before), { recursive: true })
       writeFileSync(before, run('git', ['show', `${base}:${file}`]).stdout)
       entry.before = `${folder}/before.${inputs.format}`
-      render(command, before, path.join(previews, entry.before))
+      render(command, before, path.join(previews, entry.before), theme)
     }
     if (kind !== 'removed') {
       entry.after = `${folder}/after.${inputs.format}`
-      render(command, file, path.join(previews, entry.after))
+      render(command, file, path.join(previews, entry.after), theme)
     }
-    console.log(`Rendered ${file} (${kind}).`)
+    console.log(`Rendered ${label} (${kind}).`)
     return entry
   })
   summary(['### Changed diagrams', '', ...changes.map(({ kind, file }) => `- \`${file}\` (${kind})`)].join('\n'))

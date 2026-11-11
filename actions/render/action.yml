@@ -12,7 +12,10 @@ inputs:
     description: The image format, png or svg.
     default: png
   theme:
-    description: dark or light. Without it, each diagram uses its own theme.
+    description: >-
+      The themes, separated by spaces: built-in themes such as light, dark or blueprint, or .theme.json files. With more
+      than one theme, each diagram gets an image for each theme, named after the theme, for example orders.dark.png.
+      Without it, the light or the dark theme, as the system of the runner is.
     default: ''
   max-size:
     description: The longest side of an image, in pixels. Without it, an image is at most 2048 pixels.
