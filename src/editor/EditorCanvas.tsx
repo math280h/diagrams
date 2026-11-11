@@ -160,7 +160,7 @@ export function EditorCanvas() {
   }
 
   const onSelectionChange = useCallback(({ nodes: selectedNodes }: OnSelectionChangeParams) => {
-    if (selectedNodes.length > 0) useUi.setState({ selectedStepId: null })
+    if (selectedNodes.length > 0) useUi.setState({ selectedStepIds: [] })
   }, [])
 
   return (

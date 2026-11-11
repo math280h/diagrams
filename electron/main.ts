@@ -6,10 +6,12 @@ import {
   AGENT_ENDPOINT,
   AGENT_HOST,
   AGENT_PORT,
+  AGENT_PORTS,
   CLAUDE_MARKETPLACE_FOLDER,
   DEEP_LINK_SCHEME,
   DEV_ORIGINS,
   DIAGRAM_FILE_SUFFIX,
+  FIRST_DEV_AGENT_PORT,
   HANDOFF_TTL_MS,
   PREVIEW_APP_LABEL,
   WEBSITE_ORIGIN,
@@ -17,9 +19,11 @@ import {
 import type { AgentInfo } from '@/desktop/contract'
 import { createHandoffCodes, mountHandoff } from './agent/handoff'
 import { marketplaceFiles, writeMarketplace } from './agent/marketplace'
-import { createAgentServer, startAgentServer } from './agent/server'
+import { loadAgentPort, nextFreeAgentPort, saveAgentPort } from './agent/port'
+import { createAgentServer, portIsFree, startAgentServer } from './agent/server'
 import { buildInstructions, bundledPluginConfig, bundledSkillFiles, loadSkills, registerSkills } from './agent/skills'
 import { createToken, loadToken } from './agent/token'
+import { appAbout } from './about'
 import { registerAppScheme, serveRenderer } from './app-protocol'
 import { APP_SETTINGS_FILE, createAppSettings, publicSettings } from './app-settings'
 import { createBackground } from './background'
@@ -52,6 +56,10 @@ const FLUSH_TIMEOUT_MS = 3000
 const AGENT_CALL_LIMIT_MS = 10 * 60_000
 const HANDOFF_OPEN_TIMEOUT_MS = 20_000
 const AGENT_SETUP_OPEN_TIMEOUT_MS = 20_000
+const PORT_RETRY_MS = 2000
+/** How long the app waits for its kept agent port, for example while an app that quits still holds it. */
+const PORT_GRACE_MS = 10_000
+const ALL_PORTS_TAKEN = `Other programs use all the agent ports, ${AGENT_PORTS[0]} to ${AGENT_PORTS.at(-1)}. Agents can connect when one is free.`
 const ALLOWED_PERMISSIONS: ReadonlySet<string> = new Set(['clipboard-sanitized-write', 'fullscreen'])
 
 configurePaths()
@@ -62,9 +70,15 @@ const pendingLinks: string[] = []
 let ready = false
 let openAgentSetup: () => void = () => undefined
 
-function agentPort() {
-  const port = Number(process.env.DIAGRAMS_AGENT_PORT ?? AGENT_PORT)
-  return Number.isInteger(port) && port > 0 && port < 65_536 ? port : AGENT_PORT
+function portFromEnvironment(): number | null {
+  const value = process.env.DIAGRAMS_AGENT_PORT
+  if (value === undefined) return null
+  const port = Number(value)
+  return Number.isInteger(port) && port > 0 && port < 65_536 ? port : null
+}
+
+function agentUrl(port: number) {
+  return `http://${AGENT_HOST}:${port}${AGENT_ENDPOINT}`
 }
 
 function handoffOrigins(): readonly string[] {
@@ -140,7 +154,9 @@ async function start() {
     background?.hideDock()
     if (!settings.get().backgroundNoticeShown && background?.notify()) settings.update({ backgroundNoticeShown: true })
   })
-  const port = agentPort()
+  let port =
+    portFromEnvironment() ??
+    (await loadAgentPort(userData, app.isPackaged ? AGENT_PORT : FIRST_DEV_AGENT_PORT, portIsFree))
   const files = createDiagramFiles(diagramsFolder(), { trash: (file) => shell.trashItem(file) })
   const rpc = createRendererRpc()
   openAgentSetup = () => {
@@ -159,10 +175,11 @@ async function start() {
   let agent: AgentInfo = {
     state: 'starting',
     port,
-    url: `http://${AGENT_HOST}:${port}${AGENT_ENDPOINT}`,
+    url: agentUrl(port),
     token,
     message: null,
     marketplacePath: null,
+    movedFrom: null,
   }
   const publish = (patch: Partial<AgentInfo>) => {
     agent = { ...agent, ...patch }
@@ -176,24 +193,68 @@ async function start() {
     emit: (info) => rpc.emit('update.info', info),
   })
 
-  const server = createAgentServer({
-    version: app.getVersion(),
-    port,
-    instructions: buildInstructions(skills),
-    token: () => token,
-    callTool: (tool, args, signal) => {
-      if (!currentWindow()) createMainWindow()
-      return rpc.call('agent.call', { tool, args }, { timeoutMs: AGENT_CALL_LIMIT_MS, signal })
-    },
-    extend: (mcp) => registerSkills(mcp, skills),
-    routes: (routes) =>
-      mountHandoff(routes, {
-        codes,
-        origins: handoffOrigins,
-        open: (text) => rpc.call('handoff.open', { text }, { timeoutMs: HANDOFF_OPEN_TIMEOUT_MS }),
-        focus: () => focusWindow(),
-      }),
-  })
+  const createServer = (serverPort: number) =>
+    createAgentServer({
+      version: app.getVersion(),
+      port: serverPort,
+      instructions: buildInstructions(skills),
+      token: () => token,
+      callTool: (tool, args, signal) => {
+        if (!currentWindow()) createMainWindow()
+        return rpc.call('agent.call', { tool, args }, { timeoutMs: AGENT_CALL_LIMIT_MS, signal })
+      },
+      extend: (mcp) => registerSkills(mcp, skills),
+      routes: (routes) =>
+        mountHandoff(routes, {
+          codes,
+          origins: handoffOrigins,
+          open: (text) => rpc.call('handoff.open', { text }, { timeoutMs: HANDOFF_OPEN_TIMEOUT_MS }),
+          focus: () => focusWindow(),
+        }),
+    })
+  let server = createServer(port)
+  let retry: NodeJS.Timeout | undefined
+  let takenSince: number | null = null
+  const moveToFreePort = async () => {
+    const next = await nextFreeAgentPort(port, portIsFree)
+    if (next === null) return false
+    const from = port
+    await server.stop().catch(() => undefined)
+    port = next
+    saveAgentPort(userData, port)
+    server = createServer(port)
+    publish({ state: 'starting', port, url: agentUrl(port), message: null, movedFrom: from })
+    void writePlugin()
+    return true
+  }
+  const startServer = async (): Promise<void> => {
+    clearTimeout(retry)
+    const result = await startAgentServer(server, port)
+    if (result.state !== 'port-in-use') {
+      takenSince = null
+      publish(result)
+      return
+    }
+    takenSince ??= Date.now()
+    if (Date.now() - takenSince >= PORT_GRACE_MS) {
+      if (await moveToFreePort()) {
+        takenSince = null
+        return startServer()
+      }
+      publish({ ...result, message: ALL_PORTS_TAKEN })
+    } else {
+      publish({ ...result, message: `${result.message} The app moves to a free port in a few seconds.` })
+    }
+    retry = setTimeout(() => void startServer(), PORT_RETRY_MS)
+  }
+
+  const marketplaceFolder = path.join(userData, CLAUDE_MARKETPLACE_FOLDER)
+  const plugin = bundledPluginConfig()
+  const writePlugin = () =>
+    writeMarketplace(marketplaceFolder, marketplaceFiles({ version: app.getVersion(), port, ...plugin, skills })).then(
+      () => publish({ marketplacePath: marketplaceFolder }),
+      () => undefined,
+    )
 
   const capture = createCaptureService()
   registerIpc(
@@ -248,6 +309,7 @@ async function start() {
         await shell.openPath(files.folder)
         return null
       },
+      'app.about': async () => appAbout(),
       'agent.info': async () => agent,
       'agent.resetToken': async () => {
         token = createToken(userData)
@@ -299,6 +361,7 @@ async function start() {
     updates.stop()
     watcher.stop()
     linkedWatcher.stop()
+    clearTimeout(retry)
     void server.stop()
   })
 
@@ -307,17 +370,9 @@ async function start() {
   ready = true
   for (const url of pendingLinks.splice(0)) openLink(url)
 
-  const marketplaceFolder = path.join(userData, CLAUDE_MARKETPLACE_FOLDER)
-  const plugin = bundledPluginConfig()
-  void writeMarketplace(
-    marketplaceFolder,
-    marketplaceFiles({ version: app.getVersion(), port, ...plugin, skills }),
-  ).then(
-    () => publish({ marketplacePath: marketplaceFolder }),
-    () => undefined,
-  )
+  void writePlugin()
   void updates.check()
-  publish(await startAgentServer(server, port))
+  await startServer()
 }
 
 function readRenderArgs(): RenderArgs | null | 'invalid' {

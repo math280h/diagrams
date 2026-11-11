@@ -7,6 +7,7 @@ import { redo, undo } from '@/store/history'
 import { setUi, useUi } from '@/store/ui-store'
 import { useVersions } from '@/store/versions'
 import { copySelection, cutSelection, paste } from './clipboard'
+import { deleteSelectedSteps, selectAllSteps } from './flow/step-selection'
 import { openInsertAtPointer } from './insert'
 import { useFitToScreen } from './fit'
 
@@ -58,10 +59,16 @@ export function useEditorShortcuts(engine: Engine) {
       }
       if (mod && key === 'a') {
         event.preventDefault()
-        selectAll()
+        if (event.target instanceof Element && event.target.closest('[data-step-list]')) selectAllSteps()
+        else selectAll()
         return
       }
       if (mod) return
+
+      if ((event.key === 'Delete' || event.key === 'Backspace') && deleteSelectedSteps()) {
+        event.preventDefault()
+        return
+      }
 
       if (event.altKey && event.shiftKey && event.code === 'KeyC') {
         event.preventDefault()

@@ -243,11 +243,12 @@
   &[data-state='skipped'] .dg-log-event {
     color: color-mix(in oklab, currentColor 30%, var(--muted-foreground));
   }
-}
-
-@utility dg-log-row-selected {
-  outline: 1px dashed var(--foreground);
-  outline-offset: -1px;
+  &[data-selected] {
+    background: color-mix(in oklab, var(--flow) 12%, transparent);
+  }
+  &[data-selected]:hover {
+    background: color-mix(in oklab, var(--flow) 18%, transparent);
+  }
 }
 
 .dg-release-notes {

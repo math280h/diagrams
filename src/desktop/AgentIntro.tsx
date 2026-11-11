@@ -1,7 +1,13 @@
 import { Button } from '@/components/ui/button'
 import { canFollowFolder, canOpenFolder } from '@/folder/support'
 import { IntroStrip } from '@/library/IntroStrip'
-import { hideAgentIntro, openConnectAgent, useAgentIntroVisible, useAgentProblem } from './agent-store'
+import {
+  hideAgentIntro,
+  openAgentProblem,
+  openConnectAgent,
+  useAgentIntroVisible,
+  useAgentProblem,
+} from './agent-store'
 import { isDesktop } from './bridge'
 import { DesktopDownloadLink } from './DesktopDownloadLink'
 
@@ -11,7 +17,18 @@ function DesktopAction() {
   const problem = useAgentProblem()
   return (
     <>
-      {problem && <span className="text-[13px] text-destructive">Agents cannot connect</span>}
+      {problem && (
+        <span className="flex flex-col text-[13px] leading-5">
+          <span className="text-destructive">Agents cannot connect</span>
+          <button
+            type="button"
+            onClick={openAgentProblem}
+            className="self-start text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            More details…
+          </button>
+        </span>
+      )}
       <Button variant="secondary" onClick={openConnectAgent}>
         Connect an agent
       </Button>

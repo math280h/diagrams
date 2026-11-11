@@ -22,7 +22,8 @@ interface UiState {
   activePathId: string | null
   flowPanelOpen: boolean
   flowView: FlowView
-  selectedStepId: string | null
+  /** The selected steps of the active flow, in the order of selection. A Shift-click range starts at the last one. */
+  selectedStepIds: string[]
   recording: boolean
   commandOpen: boolean
   exportOpen: ExportKind | null
@@ -40,7 +41,7 @@ export const useUi = create<UiState>(() => ({
   activePathId: null,
   flowPanelOpen: false,
   flowView: 'steps',
-  selectedStepId: null,
+  selectedStepIds: [],
   recording: false,
   commandOpen: false,
   exportOpen: null,
