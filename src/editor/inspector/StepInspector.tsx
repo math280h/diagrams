@@ -1,5 +1,7 @@
 import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react'
+import { Fragment, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { edgeTravel, restingNodes, type EdgeEnds } from '@/engine/flow/compile'
 import { findSegment } from '@/engine/flow/sides'
@@ -7,7 +9,7 @@ import { usePlaybackState } from '@/engine/hooks'
 import { findStep, overviewName, removeStep } from '@/model/flow'
 import { nodeTitle } from '@/model/labels'
 import { payloadJson } from '@/model/payload'
-import type { Flow, Step, Target } from '@/model/schema'
+import { MAX_LANE_DELAY_MS, type Flow, type Step, type Target } from '@/model/schema'
 import { updateFlow } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
 import { setUi } from '@/store/ui-store'
@@ -45,6 +47,50 @@ function StepBody({ flow, step }: { flow: Flow; step: Step }) {
 
 function sameTarget(a: Target, b: Target) {
   return a.kind === b.kind && a.id === b.id
+}
+
+function secondsText(delayMs: number): string {
+  return delayMs > 0 ? String(delayMs / 1000) : ''
+}
+
+function parseDelayMs(text: string): number | undefined {
+  const seconds = Number.parseFloat(text.replace(',', '.'))
+  if (Number.isNaN(seconds)) return undefined
+  const delayMs = Math.round(Math.min(MAX_LANE_DELAY_MS / 1000, Math.max(0, seconds)) * 1000)
+  return delayMs > 0 ? delayMs : undefined
+}
+
+function DelayInput({
+  name,
+  delayMs,
+  onChange,
+}: {
+  name: string
+  delayMs: number
+  onChange: (delayMs: number | undefined) => void
+}) {
+  const [draft, setDraft] = useState<string | null>(null)
+  return (
+    <div className="flex items-center justify-between gap-2 pl-3 text-xs text-muted-foreground">
+      <span>Arrives after</span>
+      <span className="flex items-center gap-1.5">
+        <Input
+          aria-label={`${name} arrives after, in seconds`}
+          inputMode="decimal"
+          spellCheck={false}
+          placeholder="0"
+          value={draft ?? secondsText(delayMs)}
+          onChange={(event) => {
+            setDraft(event.target.value)
+            onChange(parseDelayMs(event.target.value))
+          }}
+          onBlur={() => setDraft(null)}
+          className="h-7 w-16 px-2 py-0 text-right font-mono text-xs md:text-xs dark:bg-transparent"
+        />
+        s
+      </span>
+    </div>
+  )
 }
 
 function ParallelTargets({ flow, step }: { flow: Flow; step: Step }) {
@@ -91,14 +137,42 @@ function ParallelTargets({ flow, step }: { flow: Flow; step: Step }) {
       const place = findStep(draft, step.id)
       if (!place) return
       const rest = (place.step.parallel ?? []).filter((candidate) => !sameTarget(candidate, target))
-      const next = on ? [...rest, target] : rest
+      const next = on ? [...rest, { kind: target.kind, id: target.id }] : rest
       if (next.length > 0) place.step.parallel = next
-      else delete place.step.parallel
+      else {
+        delete place.step.parallel
+        delete place.step.delayMs
+      }
     })
+  const setDelay = (target: Target | null, delayMs: number | undefined) =>
+    updateFlow(
+      flow.id,
+      (draft) => {
+        const place = findStep(draft, step.id)
+        const owner = target
+          ? place?.step.parallel?.find((candidate) => sameTarget(candidate, target))
+          : (place?.step ?? null)
+        if (!owner) return
+        if (delayMs === undefined) delete owner.delayMs
+        else owner.delayMs = delayMs
+      },
+      `delay:${step.id}:${target ? `${target.kind}:${target.id}` : 'main'}`,
+    )
+  const main = step.target.kind === 'flow' ? null : step.target
+  const showsDelays = (step.parallel?.length ?? 0) > 0 || (step.delayMs ?? 0) > 0
 
   return (
     <div className="space-y-1.5">
       <span className="text-xs text-muted-foreground">At the same time</span>
+      {main && showsDelays && (
+        <>
+          <p className="text-xs text-muted-foreground">
+            A token with a delay waits on its node. The next step starts when the last token arrives.
+          </p>
+          <p className="truncate text-xs text-muted-foreground">{label(main)}</p>
+          <DelayInput name={label(main)} delayMs={step.delayMs ?? 0} onChange={(delayMs) => setDelay(null, delayMs)} />
+        </>
+      )}
       {options.length === 0 ? (
         <p className="text-xs text-muted-foreground">
           {step.target.kind === 'edge'
@@ -106,14 +180,21 @@ function ParallelTargets({ flow, step }: { flow: Flow; step: Step }) {
             : 'While you record, Shift-click a node to reach it at the same time as this one.'}
         </p>
       ) : (
-        options.map((target) => (
-          <SwitchField
-            key={`${target.kind}:${target.id}`}
-            label={label(target)}
-            checked={step.parallel?.some((candidate) => sameTarget(candidate, target)) ?? false}
-            onChange={(on) => toggle(target, on)}
-          />
-        ))
+        options.map((target) => {
+          const chosen = step.parallel?.find((candidate) => sameTarget(candidate, target))
+          return (
+            <Fragment key={`${target.kind}:${target.id}`}>
+              <SwitchField label={label(target)} checked={chosen !== undefined} onChange={(on) => toggle(target, on)} />
+              {chosen && (
+                <DelayInput
+                  name={label(target)}
+                  delayMs={chosen.delayMs ?? 0}
+                  onChange={(delayMs) => setDelay(target, delayMs)}
+                />
+              )}
+            </Fragment>
+          )
+        })
       )}
     </div>
   )
@@ -220,7 +301,7 @@ export function StepInspector({ flow, step }: { flow: Flow; step: Step }) {
         </Field>
       )}
       {step.target.kind === 'edge' && <StepBody flow={flow} step={step} />}
-      {!overview && <ParallelTargets flow={flow} step={step} />}
+      {!overview && <ParallelTargets key={step.id} flow={flow} step={step} />}
       {!overview && (
         <Field label="Level">
           <Segmented

@@ -1,5 +1,5 @@
 import { compileFlow, type TimelineSegment } from '@/engine/flow/compile'
-import { lanesText, type LaneName } from '@/model/flow'
+import { delayText, laneShortName, lanesText, type LaneName } from '@/model/flow'
 import { readingOrder } from '@/model/graph'
 import { boundaryTitle, nodeLabel, nodeTitle } from '@/model/labels'
 import type { CardData, CardForm, Flow, LogLevel, ShapeKind } from '@/model/schema'
@@ -108,9 +108,17 @@ function stepText(
   if (step.target.kind === 'flow') return `The whole flow${step.caption ? ` — ${oneLine(step.caption)}` : ''}`
   const mainEdge = step.target.kind === 'edge' ? edgeById.get(step.target.id) : undefined
   const event = oneLine(step.event || (mainEdge?.data?.label ?? ''))
+  const delays = segment.lanes.flatMap((lane, index) =>
+    lane.delayMs > 0
+      ? [
+          `${laneShortName(names, index)} ${lane.target.kind === 'edge' ? 'arrives' : 'ends'} ${delayText(lane.delayMs)} later`,
+        ]
+      : [],
+  )
   const facts = [
     step.latencyMs === null ? '' : `${step.latencyMs} ms`,
     step.level === 'info' ? '' : LEVEL_NAMES[step.level],
+    ...delays,
   ].filter(Boolean)
   const caption = oneLine(step.caption)
   return [

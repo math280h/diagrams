@@ -190,6 +190,47 @@ describe('side paths and edges with no reply', () => {
     )
   })
 
+  it('writes the replies of a step in the order that they arrive', () => {
+    const b = new DiagramBuilder()
+    const app = b.card(0, 0, { title: 'App' })
+    const one = b.card(300, 0, { title: 'Service 1' })
+    const two = b.card(300, 200, { title: 'Service 2' })
+    const toOne = b.edge(app, one, { label: 'GET' })
+    const toTwo = b.edge(app, two, { label: 'GET' })
+    b.flow('Replies', [
+      { ...edgeStep(toOne), parallel: [{ kind: 'edge', id: toTwo }] },
+      {
+        ...edgeStep(toOne, 'Service 1 is slow.', 1000, 'follow', 1, { event: '200' }),
+        delayMs: 2000,
+        parallel: [{ kind: 'edge', id: toTwo, delayMs: 500 }],
+      },
+      nodeStep(app, '', 1200, 'follow', 1, { event: 'done' }),
+    ])
+    const diagram = b.build('Replies')
+    const content = fromDiagram(diagram)
+    const flow = diagram.flows[0]!
+    expect(
+      flowSequence(flow, content).rows.map((row) => [row.number, row.lane, row.arrival, row.delayMs, row.caption]),
+    ).toEqual([
+      ['1', 0, 0, 0, ''],
+      ['1', 1, 1, 0, ''],
+      ['2', 1, 0, 500, ''],
+      ['2', 0, 1, 2000, 'Service 1 is slow.'],
+      ['3', 0, 0, 0, ''],
+    ])
+    expect(flowToMermaidSequence(flow, content)).toContain(
+      [
+        '    par',
+        '        service_2-->>app: 200',
+        '    and',
+        '        service_1-->>app: 200',
+        '        Note over service_1,app: Service 1 is slow.',
+        '    end',
+        '    Note over app: done',
+      ].join('\n'),
+    )
+  })
+
   it('writes the side steps without a par block when no main step comes after the start', () => {
     const { content, flow } = fanOutWithWorker()
     const last = { ...flow, paths: flow.paths!.map((path) => ({ ...path, fromStep: flow.steps.at(-1)!.id })) }

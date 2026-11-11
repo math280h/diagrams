@@ -1,7 +1,7 @@
 import { z } from '@/lib/zod'
 import { COLORS } from './colors'
 
-export const DIAGRAM_VERSION = 17
+export const DIAGRAM_VERSION = 18
 
 const colorSchema = z.enum(COLORS)
 
@@ -244,6 +244,17 @@ export type StepTarget = z.infer<typeof stepTargetSchema>
 export const LOG_LEVELS = ['info', 'warn', 'error'] as const
 export type LogLevel = (typeof LOG_LEVELS)[number]
 
+export const MAX_LANE_DELAY_MS = 60_000
+
+const laneDelaySchema = z.number().min(0).max(MAX_LANE_DELAY_MS)
+
+/** A parallel target of a step. */
+export const parallelTargetSchema = targetSchema.extend({
+  /** The time that the token of the target waits on its start node before it moves. See {@link Step.delayMs}. */
+  delayMs: laneDelaySchema.optional(),
+})
+export type ParallelTarget = z.infer<typeof parallelTargetSchema>
+
 export const stepSchema = z.object({
   id: z.string(),
   target: stepTargetSchema,
@@ -257,7 +268,12 @@ export const stepSchema = z.object({
   camera: z.enum(['follow', 'fit', 'hold']),
   zoom: z.number().min(0.1).max(4),
   /** Other nodes or edges that the step reaches at the same time as `target`. Each one gets its own token. */
-  parallel: z.array(targetSchema).optional(),
+  parallel: z.array(parallelTargetSchema).optional(),
+  /**
+   * The time that the token of `target` waits on its start node before it moves. Each token moves for `durationMs`,
+   * and the step ends when the last token arrives.
+   */
+  delayMs: laneDelaySchema.optional(),
 })
 export type Step = z.infer<typeof stepSchema>
 

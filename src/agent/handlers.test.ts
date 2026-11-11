@@ -594,6 +594,58 @@ describe('agent tools', () => {
     ])
   })
 
+  it('lets the replies of a fan-out arrive one after the other', async () => {
+    await call('create_diagram', { name: 'Calls' })
+    await call('add_elements', {
+      nodes: [
+        { ref: 'a', label: 'App' },
+        { ref: 'o', label: 'Orders' },
+        { ref: 'p', label: 'Payments' },
+      ],
+      edges: [
+        { from: 'a', to: 'o' },
+        { from: 'a', to: 'p' },
+      ],
+    })
+    const result = await call('add_flow', {
+      name: 'Checkout',
+      steps: [
+        { target: 'App' },
+        { target: 'Orders', parallel: ['Payments'] },
+        { target: 'App -> Orders', delayMs: 500, parallel: [{ target: 'App -> Payments', delayMs: 2000 }] },
+        { target: 'App' },
+      ],
+    })
+    expect(result).toMatchObject({ steps: 5 })
+    const { nodes, edges, flows } = useDoc.getState()
+    const orders = nodeByLabel('Orders').id
+    const payments = nodeByLabel('Payments').id
+    const toPayments = edges.find((edge) => edge.target === payments)!.id
+    const join = flows[0]!.steps[3]!
+    expect(join).toMatchObject({ delayMs: 500, parallel: [{ kind: 'edge', id: toPayments, delayMs: 2000 }] })
+    const segment = compileFlow(flows[0]!, new Set(nodes.map((node) => node.id)), edges).segments[3]!
+    expect(segment.lanes.map((lane) => [lane.fromNode, lane.delayMs])).toEqual([
+      [orders, 500],
+      [payments, 2000],
+    ])
+    expect(segment.endMs - segment.startMs).toBe(join.durationMs + 2000)
+
+    const diagram = (await call('get_diagram', { detail: 'full' })) as { flows: { steps: Record<string, unknown>[] }[] }
+    expect(diagram.flows[0]!.steps[3]).toMatchObject({ delayMs: 500, parallel: [{ edge: toPayments, delayMs: 2000 }] })
+    expect(diagram.flows[0]!.steps[1]).not.toHaveProperty('delayMs')
+    expect(diagram.flows[0]!.steps[1]!.parallel).toEqual([{ edge: toPayments }])
+
+    await call('update_flow', {
+      flow: 'Checkout',
+      steps: { update: [{ index: 3, delayMs: 0, parallel: ['App -> Payments'] }] },
+    })
+    expect(useDoc.getState().flows[0]!.steps[3]).toMatchObject({
+      delayMs: 0,
+      parallel: [{ kind: 'edge', id: toPayments }],
+    })
+    expect(useDoc.getState().flows[0]!.steps[3]!.parallel![0]).not.toHaveProperty('delayMs')
+  })
+
   it('plays work without a reply in a side path at the same time as the main steps', async () => {
     await call('create_diagram', { name: 'Orders' })
     await call('add_elements', {

@@ -189,10 +189,35 @@ describe('migrate', () => {
     const flow = { ...createFlow('Checkout'), steps: [step], paths: [path] }
     const v16 = { ...createDiagram(), version: 16, edges: [edge], flows: [flow] }
     const migrated = migrate(JSON.parse(JSON.stringify(v16)))
-    expect(migrated.version).toBe(17)
+    expect(migrated.version).toBe(DIAGRAM_VERSION)
     expect(migrated.edges[0]!.data).not.toHaveProperty('noReply')
     expect(migrated.edges[0]!.data).toEqual(edge.data)
     expect(migrated.flows[0]!.paths).toEqual([path])
+  })
+
+  it('reads version 17 diagrams as they are: the tokens of a step move at the same time', () => {
+    const [toFirst, toSecond] = [createEdge('app', 'one', { noReply: true }), createEdge('app', 'two')]
+    const step = {
+      id: 's1',
+      target: { kind: 'edge', id: toFirst.id },
+      caption: '',
+      durationMs: 1000,
+      camera: 'follow',
+      zoom: 1,
+      event: '',
+      latencyMs: null,
+      level: 'info',
+      parallel: [{ kind: 'edge', id: toSecond.id }],
+    }
+    const side = { id: 'p1', name: 'Worker', fromStep: 's1', steps: [], rejoinStep: null, concurrent: true }
+    const flow = { ...createFlow('Checkout'), steps: [step], paths: [side] }
+    const v17 = { ...createDiagram(), version: 17, edges: [toFirst, toSecond], flows: [flow] }
+    const migrated = migrate(JSON.parse(JSON.stringify(v17)))
+    expect(migrated.version).toBe(18)
+    expect(migrated.edges.map((edge) => edge.data)).toEqual([toFirst.data, toSecond.data])
+    expect(migrated.flows[0]!.steps).toEqual([step])
+    expect(migrated.flows[0]!.steps[0]).not.toHaveProperty('delayMs')
+    expect(migrated.flows[0]!.paths).toEqual([side])
   })
 
   it('turns off the step numbers of version 14 flows', () => {

@@ -182,6 +182,11 @@ function toVersion17(raw: Record<string, unknown>): Record<string, unknown> {
   return raw
 }
 
+/** Version 18 adds the optional `delayMs` to flow steps and to their parallel targets, so earlier data needs no change. */
+function toVersion18(raw: Record<string, unknown>): Record<string, unknown> {
+  return raw
+}
+
 /** The migration at index `n` converts a diagram from version `n + 1` to version `n + 2`. */
 const MIGRATIONS: Migration[] = [
   toVersion2,
@@ -200,6 +205,7 @@ const MIGRATIONS: Migration[] = [
   toVersion15,
   toVersion16,
   toVersion17,
+  toVersion18,
 ]
 
 /**

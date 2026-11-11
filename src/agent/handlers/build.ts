@@ -27,6 +27,7 @@ import type {
   EdgeData,
   GroupData,
   NodeDetails,
+  ParallelTarget,
   Payload,
   PayloadField,
   ShapeData,
@@ -407,10 +408,19 @@ export function applyStepInput(step: Step, input: Partial<StepInput>): Step {
   return { ...step, ...definedFields(fields) }
 }
 
-function withParallel(step: Step, targets: readonly Target[]): Step {
+function withParallel(step: Step, targets: readonly ParallelTarget[]): Step {
   const parallel = targets.filter((target) => target.kind !== step.target.kind || target.id !== step.target.id)
   return parallel.length > 0 ? { ...step, parallel } : step
 }
+
+/** Resolves a parallel target of agent input: a reference, or a reference with a delay. */
+export function parallelTarget(reference: ParallelInput, resolver: Resolver): ParallelTarget {
+  if (typeof reference === 'string') return resolver.target(reference)
+  const target = resolver.target(reference.target)
+  return reference.delayMs === undefined ? target : { ...target, delayMs: reference.delayMs }
+}
+
+type ParallelInput = NonNullable<StepInput['parallel']>[number]
 
 /**
  * Makes flow steps from agent input.
@@ -454,14 +464,15 @@ export function buildSteps(
     }
     if (!input.target) throw new ToolError('A step needs a target, or overview: true.')
     const target = resolver.target(input.target)
-    const parallel = (input.parallel ?? []).map((reference) => resolver.target(reference))
+    const parallel = (input.parallel ?? []).map((reference) => parallelTarget(reference, resolver))
     if (target.kind === 'node' && connect && tokenAt) {
       const from = nearestToken([tokenAt, ...resting], target.id, edges)?.from ?? tokenAt
       const nodes = [target, ...parallel].filter((candidate) => candidate.kind === 'node')
       const routes = nodes.map((node) => (node.id === from ? [] : findEdgePath(from, node.id, edges, { token: true })))
       routes.forEach((route, index) => {
         if (route === null) {
-          const name = index === 0 ? input.target : input.parallel?.[index - 1]
+          const reference = index === 0 ? input.target : input.parallel?.[index - 1]
+          const name = typeof reference === 'object' ? reference.target : reference
           warnings.push(`No edges connect the previous node to "${name}", so the token jumps there.`)
         }
       })

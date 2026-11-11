@@ -1,12 +1,13 @@
 import type { Engine } from '../engine'
-import { segmentIndexAt, type TimelineSegment } from './compile'
+import { laneWindow, segmentIndexAt, type TimelineSegment } from './compile'
 
-/** The point in an edge step where a paused flow shows it, as a share of the step time. */
+/** The point in an edge step where a paused flow shows it, as a share of the travel time of the main token. */
 const EDGE_STEP_MOMENT = 0.6
 
 function stepMoment(segment: TimelineSegment): number {
   if (segment.target.kind === 'node') return segment.startMs + 1
-  return segment.startMs + (segment.endMs - segment.startMs) * EDGE_STEP_MOMENT
+  const travel = laneWindow(segment, segment)
+  return travel.startMs + (travel.endMs - travel.startMs) * EDGE_STEP_MOMENT
 }
 
 /** Pauses the flow and moves the playhead to the next or the previous step. An edge step shows its token on the way. */

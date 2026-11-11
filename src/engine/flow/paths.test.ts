@@ -44,8 +44,8 @@ describe('parallel targets', () => {
   it('gives each target of a step its own lane in travel order', () => {
     const timeline = compileFlow(flowWith(fanOut), nodeIds, edges)
     expect(timeline.segments[1]!.lanes).toEqual([
-      { target: { kind: 'edge', id: 'ab' }, reversed: false, fromNode: 'a', toNode: 'b' },
-      { target: { kind: 'edge', id: 'ac' }, reversed: false, fromNode: 'a', toNode: 'c' },
+      { target: { kind: 'edge', id: 'ab' }, delayMs: 0, reversed: false, fromNode: 'a', toNode: 'b' },
+      { target: { kind: 'edge', id: 'ac' }, delayMs: 0, reversed: false, fromNode: 'a', toNode: 'c' },
     ])
     expect(timeline.segments[2]!.lanes.map((lane) => lane.toNode)).toEqual(['b', 'c'])
   })

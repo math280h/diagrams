@@ -37,6 +37,12 @@ describe('flowStateKey', () => {
     expect(flowStateKey(frame(2, [['node:a', 0.5]]), true)).not.toBe(flowStateKey(frame(2, [['node:a', 0.6]]), true))
   })
 
+  it('changes when a waiting token of the step starts to move', () => {
+    const waiting = { ...frame(2), activeNodes: new Set(['two']), activeEdges: new Set(['toOne']) }
+    const moving = { ...frame(2), activeEdges: new Set(['toOne', 'toTwo']) }
+    expect(flowStateKey(waiting, true)).not.toBe(flowStateKey(moving, true))
+  })
+
   it('changes when a side path moves to its next step during one main step', () => {
     expect(flowStateKey(frame(2, [], [0]), true)).not.toBe(flowStateKey(frame(2, [], [1]), true))
     expect(flowStateKey(frame(2, [], [-1, 0]), true)).not.toBe(flowStateKey(frame(2, [], [0, 0]), true))

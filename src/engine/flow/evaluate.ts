@@ -3,7 +3,7 @@ import type { XY } from '@/model/schema'
 import { blendCameras, type Camera, type Rect, type ViewSize } from '@/engine/camera'
 import { clamp01, easeInOutCubic, easeInOutSine, lerp } from '@/engine/easing'
 import { pointAt, type ArcTable } from '@/engine/path-sampler'
-import { segmentIndexAt, type Lane, type Timeline, type TimelineSegment } from './compile'
+import { laneWindow, segmentIndexAt, type Lane, type Timeline, type TimelineSegment } from './compile'
 import { followCameraAt } from './follow-camera'
 import { framedCameraAt, overviewCamera, type FramedCamera } from './framing'
 import { allSegments, cameraTimeline, sideIndexAt, sideView } from './sides'
@@ -227,7 +227,14 @@ function sideExit(timeline: Timeline, segment: TimelineSegment, node: string | n
   return null
 }
 
-function nodeSegmentEnds(timeline: Timeline, index: number, laneIndex: number, geometry: FlowGeometry) {
+/** The way of a token over a node: from the end of the edge that enters it, over the top, to the next edge. */
+interface NodePass {
+  rect: Rect | null
+  entry: XY | null
+  exit: XY | null
+}
+
+function nodeSegmentEnds(timeline: Timeline, index: number, laneIndex: number, geometry: FlowGeometry): NodePass {
   const segment = timeline.segments[index]!
   const lane = segment.lanes[laneIndex]!
   const entry = linkedEdge(timeline.segments[index - 1], lane.toNode, 'toNode', laneIndex)
@@ -241,9 +248,53 @@ function nodeSegmentEnds(timeline: Timeline, index: number, laneIndex: number, g
   }
 }
 
+function nodePassPoint({ rect, entry, exit }: NodePass, progress: number): XY | null {
+  if (!rect) return null
+  const topCenter = { x: rect.x + rect.width / 2, y: rect.y }
+  const start = entry ? [entry, ...pathToTop(rect, entry)] : [topCenter]
+  const end = exit ? [...pathToTop(rect, exit).reverse(), exit] : []
+  return pointOnPolyline([...start, ...end], easeInOutCubic(progress))
+}
+
+function nodePassLift({ entry, exit }: NodePass, progress: number): number {
+  const rise = entry ? clamp01(progress / LIFT_SHARE) : 1
+  const fall = exit ? clamp01((1 - progress) / LIFT_SHARE) : 1
+  return easeInOutSine(Math.min(rise, fall))
+}
+
+/**
+ * Returns the token of an edge lane while it waits to move, or `null` when it does not wait at the time. The token
+ * goes over its start node from the end of the previous edge that ends there. With no such edge, it rests at the edge
+ * start.
+ */
+function edgeWait(
+  timeline: Timeline,
+  index: number,
+  laneIndex: number,
+  timeMs: number,
+  geometry: FlowGeometry,
+): { point: XY | null; lift: number } | null {
+  const segment = timeline.segments[index]!
+  const lane = segment.lanes[laneIndex]!
+  if (lane.delayMs === 0 || timeMs >= laneWindow(segment, lane).startMs) return null
+  const exit = edgeEnd(lane, geometry, 'start')
+  const entryLane = linkedEdge(timeline.segments[index - 1], lane.fromNode, 'toNode', -1)
+  const entry = entryLane ? edgeEnd(entryLane, geometry, 'end') : null
+  const rect = lane.fromNode ? geometry.nodeRect(lane.fromNode) : null
+  if (!entry || !rect) return { point: exit ?? nodeAnchor(lane.fromNode, geometry), lift: 0 }
+  const pass = { rect, entry, exit }
+  const progress = clamp01((timeMs - segment.startMs) / lane.delayMs)
+  return { point: nodePassPoint(pass, progress), lift: nodePassLift(pass, progress) }
+}
+
+function laneProgress(segment: TimelineSegment, lane: Lane, timeMs: number): number {
+  const window = laneWindow(segment, lane)
+  return clamp01((timeMs - window.startMs) / Math.max(1, window.endMs - window.startMs))
+}
+
 function edgeBridge(timeline: Timeline, index: number, laneIndex: number, geometry: FlowGeometry): XY[] | null {
   const lane = timeline.segments[index]!.lanes[laneIndex]!
-  if (!lane.fromNode) return null
+  if (!lane.fromNode || lane.delayMs > 0) return null
   const previous = timeline.segments[index - 1]?.lanes.find(
     (candidate) => candidate.target.kind === 'edge' && candidate.toNode === lane.fromNode,
   )
@@ -271,8 +322,7 @@ function edgeTravel(
   const lane = segment.lanes[laneIndex]!
   const table = geometry.edgeTable(lane.target.id)
   if (!table || table.lengthPx === 0) return null
-  const span = Math.max(1, segment.endMs - segment.startMs)
-  const progress = easeInOutSine(clamp01((timeMs - segment.startMs) / span))
+  const progress = easeInOutSine(laneProgress(segment, lane, timeMs))
   const bridge = edgeBridge(timeline, index, laneIndex, geometry)
   let along = progress
   if (bridge) {
@@ -288,7 +338,7 @@ function edgeTravel(
  * Returns the token location for a segment at the time.
  *
  * During a node step, the token moves along the top edge of the node. It moves from the end of the previous edge to
- * the start of the next edge.
+ * the start of the next edge. An edge token with a delay goes over its start node in the same way while it waits.
  */
 export function tokenAt(
   timeline: Timeline,
@@ -300,19 +350,14 @@ export function tokenAt(
   const segment = timeline.segments[index]
   const lane = segment?.lanes[laneIndex]
   if (!segment || !lane) return null
-  const span = Math.max(1, segment.endMs - segment.startMs)
-  const progress = clamp01((timeMs - segment.startMs) / span)
 
   if (lane.target.kind === 'edge') {
+    const wait = edgeWait(timeline, index, laneIndex, timeMs, geometry)
+    if (wait) return wait.point
     return edgeTravel(timeline, index, laneIndex, timeMs, geometry)?.point ?? nodeAnchor(lane.toNode, geometry)
   }
 
-  const { rect, entry, exit } = nodeSegmentEnds(timeline, index, laneIndex, geometry)
-  if (!rect) return null
-  const topCenter = { x: rect.x + rect.width / 2, y: rect.y }
-  const start = entry ? [entry, ...pathToTop(rect, entry)] : [topCenter]
-  const end = exit ? [...pathToTop(rect, exit).reverse(), exit] : []
-  return pointOnPolyline([...start, ...end], easeInOutCubic(progress))
+  return nodePassPoint(nodeSegmentEnds(timeline, index, laneIndex, geometry), laneProgress(segment, lane, timeMs))
 }
 
 /** Returns the visibility of the token label at the time. See {@link FlowFrame.tokenLabel}. */
@@ -326,6 +371,8 @@ export function tokenLabelAt(
   const lane = timeline.segments[index]?.lanes[laneIndex]
   if (!lane) return 0
   if (lane.target.kind === 'node') return tokenLiftAt(timeline, index, timeMs, geometry, laneIndex)
+  const wait = edgeWait(timeline, index, laneIndex, timeMs, geometry)
+  if (wait) return wait.lift
   const table = geometry.edgeTable(lane.target.id)
   const travel = edgeTravel(timeline, index, laneIndex, timeMs, geometry)
   if (!table || !travel || travel.edgeShare === null) return 0
@@ -343,13 +390,11 @@ export function tokenLiftAt(
 ): number {
   const segment = timeline.segments[index]
   const lane = segment?.lanes[laneIndex]
-  if (!segment || !lane || lane.target.kind === 'edge') return 0
-  const { entry, exit } = nodeSegmentEnds(timeline, index, laneIndex, geometry)
-  const span = Math.max(1, segment.endMs - segment.startMs)
-  const progress = clamp01((timeMs - segment.startMs) / span)
-  const rise = entry ? clamp01(progress / LIFT_SHARE) : 1
-  const fall = exit ? clamp01((1 - progress) / LIFT_SHARE) : 1
-  return easeInOutSine(Math.min(rise, fall))
+  if (!segment || !lane) return 0
+  if (lane.target.kind === 'edge') {
+    return edgeWait(timeline, index, laneIndex, timeMs, geometry)?.lift ?? 0
+  }
+  return nodePassLift(nodeSegmentEnds(timeline, index, laneIndex, geometry), laneProgress(segment, lane, timeMs))
 }
 
 function cameraAt(
@@ -391,11 +436,14 @@ function cameraAt(
   return { camera: blendCameras(stepCamera, firstCamera, easeInOutCubic(clamp01(lead)), view), opacity: 1 }
 }
 
-function markReached(frame: FlowFrame, segments: readonly TimelineSegment[], index: number) {
+function markReached(frame: FlowFrame, segments: readonly TimelineSegment[], index: number, timeMs: number) {
   for (let i = 0; i <= index && i < segments.length; i++) {
     const current = i === index
-    for (const lane of segments[i]!.lanes) {
-      if (lane.target.kind === 'node') {
+    const segment = segments[i]!
+    for (const lane of segment.lanes) {
+      if (current && lane.target.kind === 'edge' && timeMs < laneWindow(segment, lane).startMs) {
+        if (lane.fromNode) frame.activeNodes.add(lane.fromNode)
+      } else if (lane.target.kind === 'node') {
         ;(current ? frame.activeNodes : frame.visitedNodes).add(lane.target.id)
       } else {
         ;(current ? frame.activeEdges : frame.visitedEdges).add(lane.target.id)
@@ -456,13 +504,13 @@ export function evaluateFlow(
     trafficScale: new Map(),
   }
 
-  markReached(frame, timeline.segments, index)
+  markReached(frame, timeline.segments, index, timeMs)
   pushTokens(frame, timeline, index, 1, timeMs, geometry)
   timeline.sides.forEach((side, track) => {
     const at = sideIndexAt(timeline, side, timeMs)
     frame.sideIndices.push(at)
     if (at < 0) return
-    markReached(frame, side.segments, at)
+    markReached(frame, side.segments, at, timeMs)
     if (at < side.segments.length)
       pushTokens(frame, sideView(timeline, side), at + 1, 0, timeMs, geometry, { track, index: at + 1 })
   })

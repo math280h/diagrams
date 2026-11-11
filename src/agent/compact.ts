@@ -159,7 +159,15 @@ function compactSteps(steps: readonly Step[]) {
   return steps.map((step, index) => ({
     index,
     ...(step.target.kind === 'flow' ? { overview: true } : { [step.target.kind]: step.target.id }),
-    ...(step.parallel?.length ? { parallel: step.parallel.map((target) => ({ [target.kind]: target.id })) } : {}),
+    ...(step.parallel?.length
+      ? {
+          parallel: step.parallel.map((target) => ({
+            [target.kind]: target.id,
+            ...(target.delayMs ? { delayMs: target.delayMs } : {}),
+          })),
+        }
+      : {}),
+    ...(step.delayMs ? { delayMs: step.delayMs } : {}),
     ...(step.caption ? { caption: step.caption } : {}),
     ...(step.event ? { event: step.event } : {}),
     ...(step.latencyMs !== null ? { latencyMs: step.latencyMs } : {}),

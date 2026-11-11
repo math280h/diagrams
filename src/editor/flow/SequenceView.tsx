@@ -9,7 +9,7 @@ import { useDoc } from '@/store/doc-store'
 import { useUi } from '@/store/ui-store'
 import { useSegmentIndex } from '@/engine/hooks'
 import { markOnCanvas } from './hooks'
-import { findPath, stepTargets } from '@/model/flow'
+import { delayText, findPath, stepTargets } from '@/model/flow'
 import { selectClickedStep } from './step-selection'
 
 const COLUMN_PX = 168
@@ -178,7 +178,7 @@ export function SequenceView({ flow }: { flow: Flow }) {
               data-state={state}
               data-level={row.level}
               aria-current={state === 'active' ? 'step' : undefined}
-              aria-label={`Step ${row.number}${side ? ` of ${side.path.name}` : ''}${row.lanes > 1 ? `, ${row.lane + 1} of ${row.lanes} at the same time` : ''}: ${
+              aria-label={`Step ${row.number}${side ? ` of ${side.path.name}` : ''}${row.lanes > 1 ? `, ${row.arrival + 1} of ${row.lanes} at the same time` : ''}${row.delayMs > 0 ? `, ${delayText(row.delayMs)} later` : ''}: ${
                 row.kind === 'message'
                   ? `${sequence.participants[row.from]!.title} to ${sequence.participants[row.to]!.title}`
                   : sequence.participants[row.over]!.title

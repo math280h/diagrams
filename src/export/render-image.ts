@@ -1,7 +1,7 @@
 import { currentCanvasTheme } from '@/canvas/canvas-theme'
 import type { DiagramContent } from '@/agent/compact'
 import type { RenderedImage, RenderOptions } from '@/agent/context'
-import { compileFlow } from '@/engine/flow/compile'
+import { compileFlow, laneWindow } from '@/engine/flow/compile'
 import { diagramBounds } from './bounds'
 import { openStageSession } from './stage-session'
 import { recordStage, type VideoFormat } from './video'
@@ -17,7 +17,7 @@ const GIF_FPS = 20
 const NO_FLOW_RECORDING_MS = 6000
 const LAST_FRAME_HOLD_MS = 800
 const FLOW_FIT_PADDING = 0.12
-/** The point in a step at which the image shows it, as a share of the step time. */
+/** The point in a step at which the image shows it, as a share of the travel time of the main token. */
 const STEP_MOMENT = 0.6
 
 export function blobToBase64(blob: Blob): Promise<string> {
@@ -57,7 +57,8 @@ export async function renderDiagramImage(
     const timeline = compileFlow(flow, new Set(nodes.map((node) => node.id)), edges, pathId)
     const stepId = options.step !== undefined ? pathSteps(flow, pathId)[options.step]?.id : undefined
     const segment = timeline.segments.find((candidate) => candidate.step.id === stepId)
-    timeMs = segment ? segment.startMs + (segment.endMs - segment.startMs) * STEP_MOMENT : 0
+    const travel = segment ? laneWindow(segment, segment) : null
+    timeMs = travel ? travel.startMs + (travel.endMs - travel.startMs) * STEP_MOMENT : 0
   }
 
   const session = await openStageSession(

@@ -20,6 +20,10 @@ interface SequenceRowBase {
   number: string
   /** The index of the target in the step: 0 for the main target, then the parallel targets. */
   lane: number
+  /** The index of the row among the rows of its step, in the order that the tokens arrive. */
+  arrival: number
+  /** The time that the token waits before it moves. */
+  delayMs: number
   /** The number of targets of the step. */
   lanes: number
   /** The event of the step, or the edge label for an edge step without an event. */
@@ -80,6 +84,7 @@ function sequenceBuilder(flow: Flow, content: Content) {
     number: string,
     lane: Lane,
     laneIndex: number,
+    arrival: number,
   ): SequenceRow => {
     const { step } = segment
     const base = {
@@ -88,6 +93,8 @@ function sequenceBuilder(flow: Flow, content: Content) {
       track,
       number,
       lane: laneIndex,
+      arrival,
+      delayMs: lane.delayMs,
       lanes: segment.lanes.length,
       latencyMs: step.latencyMs,
       level: step.level,
@@ -107,7 +114,10 @@ function sequenceBuilder(flow: Flow, content: Content) {
     }
   }
   const segmentRows = ({ segment, track, number }: TrackSegment) =>
-    segment.lanes.map((lane, index) => laneRow(segment, track, number, lane, index))
+    segment.lanes
+      .map((lane, index) => ({ lane, index }))
+      .toSorted((a, b) => a.lane.delayMs - b.lane.delayMs)
+      .map(({ lane, index }, arrival) => laneRow(segment, track, number, lane, index, arrival))
 
   return {
     participants,
@@ -138,8 +148,9 @@ function sideSegments(timeline: Timeline): TrackSegment[] {
  * Returns a flow as a sequence of messages between the nodes that it reaches.
  *
  * The rows follow the timeline of the flow, so a step without its node or edge is not in them. A step with parallel
- * targets gives one row for each target, the main target first. The rows of a side path go between the main rows by
- * start time, before a main row that starts at the same time.
+ * targets gives one row for each target in the order that the tokens arrive, the main target first among tokens that
+ * arrive together. The rows of a side path go between the main rows by start time, before a main row that starts at
+ * the same time.
  *
  * @param pathId - The path of the flow, or `null` for the main steps.
  */
@@ -221,7 +232,8 @@ function stepLines(rows: readonly SequenceRow[], ids: readonly string[], depth: 
  *
  * A call is a solid arrow and a response a dashed arrow; a call to an edge that never replies is an async arrow, and a
  * step with the `error` level ends in a cross. A step on a node is a note over it. The latency follows the event, and
- * a caption is a note over the step. A step with parallel targets is a `par` block. Paths are `alt` blocks after the
+ * a caption is a note over the step. A step with parallel targets is a `par` block, with its targets in the order that
+ * the tokens arrive. Paths are `alt` blocks after the
  * step where they start: the first section holds the main steps, and each path a section with its steps and the main
  * steps from where it rejoins. Side paths are `par` blocks after the step where they start: the first section holds
  * the later main steps, and each side path a section with its steps.
@@ -230,9 +242,11 @@ export function flowToMermaidSequence(flow: Flow, content: Content): string {
   const builder = sequenceBuilder(flow, content)
   const rowsByStep = new Map<string, SequenceRow[]>()
   const collect = (rows: readonly SequenceRow[], only?: ReadonlySet<string>) => {
+    let previousId: string | null = null
     for (const row of rows) {
       if (only && !only.has(row.step.id)) continue
-      if (!rowsByStep.has(row.step.id) || row.lane === 0) rowsByStep.set(row.step.id, [])
+      if (row.step.id !== previousId) rowsByStep.set(row.step.id, [])
+      previousId = row.step.id
       rowsByStep.get(row.step.id)!.push(row)
     }
   }
