@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { app, BrowserWindow } from 'electron'
 import type { AgentInfo, UpdateInfo } from '@/desktop/contract'
+import { appAbout } from './about'
 import { APP_ORIGIN, serveRenderer } from './app-protocol'
 import { createCaptureService } from './capture'
 import { registerIpc, type MainHandlers } from './ipc'
@@ -27,6 +28,7 @@ const AGENT_OFF: AgentInfo = {
   token: '',
   message: UNAVAILABLE,
   marketplacePath: null,
+  movedFrom: null,
 }
 
 const UPDATES_OFF: UpdateInfo = {
@@ -89,6 +91,7 @@ export async function runRender(args: RenderArgs): Promise<number> {
       'files.saveAs': refuse,
       'files.show': refuse,
       'files.committed': refuse,
+      'app.about': async () => appAbout(),
       'agent.info': async () => AGENT_OFF,
       'agent.resetToken': refuse,
       'window.setTitleBarColors': async () => null,

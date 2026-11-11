@@ -1,37 +1,17 @@
-import { Copy } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { CommandBlock } from '@/components/CommandBlock'
+import { MoreDetails } from '@/components/MoreDetails'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { relativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { resetAgentToken, useAgentHistory, useAgentStore } from './agent-store'
+import { AGENT_PROBLEM_KEY, agentProblem, isAgentProblem } from './agent-problem'
+import { showProblem } from '@/store/problem-store'
+import { movedPortNotice, resetAgentToken, useAgentHistory, useAgentStore } from './agent-store'
 import { CLAUDE_MARKETPLACE_NAME, CLAUDE_PLUGIN_NAME, CLAUDE_PLUGIN_TOKEN_KEY } from './constants'
 import type { AgentInfo } from './contract'
-
-function copy(text: string) {
-  void navigator.clipboard.writeText(text).then(
-    () => toast.success('Copied'),
-    () => toast.error('Could not copy. Select the text and copy it.'),
-  )
-}
-
-function CommandBlock({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="space-y-1.5">
-      <p className="text-[13px] text-muted-foreground">{label}</p>
-      <div className="flex items-start gap-2 rounded-lg border bg-muted/40 py-2 pr-1.5 pl-3">
-        <code className="min-w-0 flex-1 font-mono text-xs leading-5 break-all whitespace-pre-wrap select-all [font-variant-ligatures:none]">
-          {value}
-        </code>
-        <Button variant="ghost" size="icon-xs" aria-label={`Copy: ${label}`} onClick={() => copy(value)}>
-          <Copy />
-        </Button>
-      </div>
-    </div>
-  )
-}
 
 function statusText(info: AgentInfo | null, lastCallAt: number | null) {
   if (!info || info.state === 'starting') return { tone: 'muted', text: 'Starting the agent server…' }
@@ -132,6 +112,7 @@ function TokenReset() {
 /** Shows how to connect Claude Code or another MCP client to this app. */
 export function ConnectAgentDialog() {
   const { info, dialogOpen } = useAgentStore()
+  const movedNotice = info && movedPortNotice(info)
   return (
     <Dialog open={dialogOpen} onOpenChange={(open) => useAgentStore.setState({ dialogOpen: open })}>
       <DialogContent className="sm:max-w-xl">
@@ -144,6 +125,13 @@ export function ConnectAgentDialog() {
           </DialogDescription>
         </DialogHeader>
         <Status info={info} />
+        {isAgentProblem(info) && (
+          <MoreDetails
+            className="-mt-2 self-start pl-3.5"
+            onClick={() => showProblem(agentProblem(info), { key: AGENT_PROBLEM_KEY })}
+          />
+        )}
+        {movedNotice && <p className="-mt-2 pl-3.5 text-[13px] leading-5 text-muted-foreground">{movedNotice}</p>}
         {info && (
           <Tabs defaultValue="plugin">
             <TabsList>
@@ -160,7 +148,10 @@ export function ConnectAgentDialog() {
         )}
         <div className="space-y-2 border-t pt-4 text-[13px] text-muted-foreground">
           <p>Set up one of the two, not both. With both, Claude Code connects to the app twice.</p>
-          <p>Anyone with the access token can read and change your diagrams. Keep it private.</p>
+          <p>
+            The app takes connections only from this computer. A program here with the access token can read and change
+            your diagrams, so keep the token private.
+          </p>
           <TokenReset />
         </div>
       </DialogContent>

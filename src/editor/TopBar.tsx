@@ -45,6 +45,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { AgentButton } from '@/desktop/AgentButton'
 import { canOpenInApp, openInApp } from '@/desktop/open-in-app'
 import { TitleBarNav } from '@/desktop/TitleBarNav'
+import { repository } from '@/persistence/active-repository'
 import { exportDiagramJson } from '@/persistence/library-actions'
 import { setName } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
@@ -55,8 +56,7 @@ import { useVersions } from '@/store/versions'
 import { SettingsPanel } from './inspector/DiagramInspector'
 import { openInsertAtCenter } from './insert'
 import { IS_MAC, KEYS } from '@/lib/shortcut-keys'
-import { toast } from 'sonner'
-import { errorMessage } from '@/lib/error-message'
+import { reportError } from '@/store/problem-store'
 import { isDesktop } from '@/desktop/bridge'
 import { saveDiagramAsFile, showDiagramFile } from '@/desktop/linked-files'
 import { useLibrary } from '@/store/library-store'
@@ -143,13 +143,31 @@ function LinkedFileMark({ id }: { id: string | null }) {
   )
 }
 
+function ReadOnlyFolderMark() {
+  if (repository().location.kind !== 'followed-folder') return null
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <span className="shrink-0 rounded-md border border-dashed px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground" />
+        }
+      >
+        Read only
+      </TooltipTrigger>
+      <TooltipContent className="max-w-64">
+        This browser cannot save to the folder. Your changes here stay in this tab until you reload.
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
 async function saveAsFile(navigateTo: (id: string) => void) {
   flushPendingSave()
   try {
     const id = await saveDiagramAsFile(currentDiagram())
     if (id) navigateTo(id)
   } catch (error) {
-    toast.error('The file could not be saved.', { description: errorMessage(error) })
+    reportError('The file could not be saved.', error)
   }
 }
 
@@ -224,6 +242,7 @@ export function TopBar() {
       <div inert={previewing} className="flex min-w-0 items-center gap-1 max-sm:flex-1 inert:opacity-50">
         <NameField />
         <LinkedFileMark id={id} />
+        <ReadOnlyFolderMark />
         <div className="flex items-center gap-1 max-sm:hidden">
           <Separator orientation="vertical" className="mx-1 h-5 data-vertical:self-center" />
           <IconButton label="Undo" shortcut={KEYS.undo} onClick={undo} disabled={!canUndo}>
@@ -246,7 +265,7 @@ export function TopBar() {
       </div>
 
       <div className="ml-auto flex items-center gap-1">
-        <AgentButton />
+        <AgentButton shortLabel />
         <div inert={previewing} className="hidden items-center gap-1 sm:flex inert:opacity-50">
           <IconButton label="Command menu" shortcut={KEYS.commandMenu} onClick={() => setUi({ commandOpen: true })}>
             {IS_MAC ? <Command /> : <Search />}

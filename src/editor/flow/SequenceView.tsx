@@ -2,14 +2,14 @@ import { Waypoints } from 'lucide-react'
 import { useEffect, useMemo, useRef } from 'react'
 import { useEngine } from '@/engine/hooks'
 import { flowSequence, type SequenceRow } from '@/export/sequence'
-import { cn } from '@/lib/utils'
 import type { Flow } from '@/model/schema'
 import { selectOnly } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
-import { setUi, useUi } from '@/store/ui-store'
+import { useUi } from '@/store/ui-store'
 import { useSegmentIndex } from '@/engine/hooks'
 import { markOnCanvas } from './hooks'
 import { findPath, stepTargets } from '@/model/flow'
+import { selectClickedStep } from './step-selection'
 
 const COLUMN_PX = 168
 const ROW_PX = 32
@@ -90,7 +90,7 @@ export function SequenceView({ flow }: { flow: Flow }) {
   const engine = useEngine()
   const nodes = useDoc((state) => state.nodes)
   const edges = useDoc((state) => state.edges)
-  const selectedStepId = useUi((state) => state.selectedStepId)
+  const selectedStepIds = useUi((state) => state.selectedStepIds)
   const pathId =
     findPath(
       flow,
@@ -101,6 +101,7 @@ export function SequenceView({ flow }: { flow: Flow }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const width = sequence.participants.length * COLUMN_PX
   const pathStepIds = new Set(findPath(flow, pathId)?.steps.map((step) => step.id))
+  const order = [...new Set(sequence.rows.map((row) => row.step.id))]
 
   useEffect(() => {
     const scroller = scrollRef.current
@@ -121,7 +122,13 @@ export function SequenceView({ flow }: { flow: Flow }) {
   }
 
   return (
-    <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-auto" aria-label="Sequence" role="region">
+    <div
+      ref={scrollRef}
+      data-step-list
+      className="relative min-h-0 flex-1 overflow-auto select-none"
+      aria-label="Sequence"
+      role="region"
+    >
       <div className="relative" style={{ width, minWidth: '100%' }}>
         <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0" style={{ width }}>
           {sequence.participants.map((participant, index) => (
@@ -150,6 +157,7 @@ export function SequenceView({ flow }: { flow: Flow }) {
         </div>
         {sequence.rows.map((row) => {
           const state = row.segmentIndex < current ? 'done' : row.segmentIndex === current ? 'active' : 'pending'
+          const selected = selectedStepIds.includes(row.step.id)
           return (
             <button
               key={`${row.step.id}:${row.lane}`}
@@ -164,21 +172,18 @@ export function SequenceView({ flow }: { flow: Flow }) {
                 row.kind === 'message'
                   ? `${sequence.participants[row.from]!.title} to ${sequence.participants[row.to]!.title}`
                   : sequence.participants[row.over]!.title
-              }${row.text ? `, ${row.text}` : ''}, ${state}`}
+              }${row.text ? `, ${row.text}` : ''}${selected ? ', selected' : ''}, ${state}`}
               title={rowTitle(row)}
-              onClick={() => {
-                selectOnly([])
-                setUi({ selectedStepId: row.step.id })
+              onClick={(event) => {
+                if (!selectClickedStep(event, row.step.id, order)) return
                 engine.playback.seek((engine.playback.timeline?.segments[row.segmentIndex]?.startMs ?? 0) + 1)
               }}
               onPointerEnter={() => markOnCanvas(stepTargets(row.step))}
               onPointerLeave={() => markOnCanvas([])}
               onFocus={() => markOnCanvas(stepTargets(row.step))}
               onBlur={() => markOnCanvas([])}
-              className={cn(
-                'dg-log-row dg-seq-row relative block w-full',
-                selectedStepId === row.step.id && 'dg-log-row-selected',
-              )}
+              data-selected={selected || undefined}
+              className="dg-log-row dg-seq-row relative block w-full"
               style={{ height: ROW_PX, width }}
             >
               {row.kind === 'message' ? <Message row={row} rowWidth={width} /> : <Note row={row} rowWidth={width} />}

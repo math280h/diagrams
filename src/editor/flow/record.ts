@@ -102,7 +102,7 @@ export function appendNodeToFlow(nodeId: string) {
     createStep({ kind: 'node', id: nodeId }),
   ]
   editSteps(current, (list) => void list.splice(insertIndex(list), 0, ...steps))
-  useUi.setState({ selectedStepId: steps.at(-1)!.id })
+  useUi.setState({ selectedStepIds: [steps.at(-1)!.id] })
 }
 
 export function appendTargetToFlow(target: Target) {
@@ -110,7 +110,7 @@ export function appendTargetToFlow(target: Target) {
   if (!current) return
   const step = createStep(target)
   editSteps(current, (list) => void list.splice(insertIndex(list), 0, step))
-  useUi.setState({ selectedStepId: step.id })
+  useUi.setState({ selectedStepIds: [step.id] })
 }
 
 function addParallel(step: Step, target: Target) {
@@ -145,5 +145,5 @@ export function appendParallelNode(nodeId: string) {
     if (edgeId && edgeDraft) addParallel(edgeDraft, { kind: 'edge', id: edgeId })
     if (lastDraft?.target.kind === 'node') addParallel(lastDraft, { kind: 'node', id: nodeId })
   })
-  useUi.setState({ selectedStepId: last.id })
+  useUi.setState({ selectedStepIds: [last.id] })
 }

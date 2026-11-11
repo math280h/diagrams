@@ -62,16 +62,31 @@ export function serializeDiagram(diagram: Diagram) {
   return `${rounded}\n`
 }
 
-/** Returns the content of a diagram file without the fields that change on a pan, a zoom, a measure or any save. */
+function withSortedKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withSortedKeys)
+  if (value === null || typeof value !== 'object') return value
+  return Object.fromEntries(
+    Object.keys(value)
+      .toSorted()
+      .map((key) => [key, withSortedKeys((value as Record<string, unknown>)[key])]),
+  )
+}
+
+/**
+ * Returns the content of a diagram file without the fields that change on a pan, a zoom, a measure or any save, with
+ * the keys in a fixed order: a diagram that the app parses again has its keys in the order of the schema.
+ */
 function lastingContent(text: string): string {
   const { viewport: _viewport, rev: _rev, updatedAt: _updatedAt, nodes, ...rest } = JSON.parse(text) as Diagram
-  return JSON.stringify({ ...rest, nodes: nodes.map(({ measured: _measured, ...node }) => node) })
+  return JSON.stringify(withSortedKeys({ ...rest, nodes: nodes.map(({ measured: _measured, ...node }) => node) }))
 }
 
 /**
  * Creates a repository that keeps every diagram in memory and writes changes through to a sink.
  *
  * Reads are synchronous. The id of a diagram is its file name, so a copied file never saves under the id inside it.
+ * A linked file and a file in a picked folder are project files: a save that changes only the viewport, the save
+ * counter, the time or measured sizes does not write them.
  */
 export function createCachedRepository(options: {
   location: StorageLocation
@@ -118,8 +133,8 @@ export function createCachedRepository(options: {
       const current = entries.get(diagram.id)
       const path = current?.meta.path
       entries.set(diagram.id, { text, meta: { ...diagramMeta(diagram), ...(path ? { path } : {}) } })
-      const unchanged =
-        path !== undefined && current !== undefined && lastingContent(current.text) === lastingContent(text)
+      const projectFile = path !== undefined || options.location.kind === 'picked-folder'
+      const unchanged = projectFile && current !== undefined && lastingContent(current.text) === lastingContent(text)
       track(diagram.id, unchanged ? Promise.resolve() : options.sink.write({ id: diagram.id, text }), 'save')
       return { ok: true }
     },

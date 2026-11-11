@@ -345,6 +345,7 @@ src/
   main.tsx, router.tsx, RootLayout.tsx   start-up, routes, app chrome, route and start-up errors
   agent/        agent tool definitions, handlers, references, placement, compact diagram form
   desktop/      IPC contract and bridge, title bar, agent and handoff dialogs, desktop runtime
+  folder/       folder storage on the website, its file watcher worker and the agent folder
   model/        zod schema (version 6), boundary kinds, protocols, defaults, presets, graph and rect helpers
   store/        doc store, actions, undo history, version history, persistence hook, UI and settings stores
   persistence/  localStorage repository, version store (IndexedDB), serialize, migrations, library actions
@@ -696,6 +697,12 @@ Edge labels, ports and the flow token render through `EdgeLabelPortal` and `View
 `EdgeLabelRenderer` and `ViewportPortal` run `querySelector` in a store selector per labelled edge on each pan and zoom
 frame.
 
+### Problems
+
+Failures go through `src/store/problem-store.ts`: `reportError` shows a toast with "More details", and `showProblem`
+opens the one problem dialog with the details to copy into a bug report. A problem shown with a key, such as the agent
+server state, changes or closes when its source calls `updateProblem`.
+
 ### Undo
 
 History stores immutable document snapshots (immer shares unchanged parts).
@@ -953,6 +960,60 @@ WebWorker library).
   - a new version while online;
   - the clean-up after an update.
 
+### Folder on the website
+
+In Chrome and Edge, the website can keep the diagrams in a folder that the user picks (`src/folder`). An agent such as
+Claude Code then works on the diagrams through files in that folder. The user installs nothing and runs no command.
+
+- `showDirectoryPicker` gives a folder handle. IndexedDB keeps the handle, so the folder opens again after a reload.
+  After a browser restart, the browser can ask for the permission again: the library then offers "Open it again".
+- Opening or closing a folder reloads the page. `bootstrapStorage` opens the folder before the app renders, with the
+  cached repository of the desktop app. The diagrams in the browser stay, and show again after "Close folder".
+- Files: `<id>.diagram.json` in the folder, as on the desktop (`src/persistence/diagram-file-name.ts`). Chrome has no
+  trash, so a delete moves a copy to `.diagrams/deleted/<id> <time>.diagram.json` (out of git) and removes the file.
+  A delete through an agent call is then not final either.
+- A worker scans the folder every 750 ms: file names, sizes and change times. Chrome slows the timers of a hidden page
+  to one call a minute, but not the timers of a worker. The page reads a changed file and compares it with the last
+  text that the app read or wrote.
+- Before a write, the app reads the file. If it differs from that last text, the app does not write it, and loads the
+  change from outside. So the app never writes over an agent change that came between two scans. The app version
+  stays in the version history.
+- A save that changes only the viewport, the save counter or measured sizes does not write a file of the folder, as
+  for linked files on the desktop.
+- The open diagram loads a change from outside at once, unless a change of the user waits for its save. Then it offers
+  "Load newer", as before.
+
+The agent folder `.diagrams` (`src/folder/agent-channel.ts`), when "Let agents use this folder" is on:
+
+- At each open, the website writes the tool list with JSON Schema inputs, the diagram format as JSON Schema, the icon
+  list, the skills and a guide (`README.md`, written last). A `.gitignore` keeps `calls`, `results`, `status` and
+  `deleted` out of git.
+- Tool calls: the agent writes `calls/<name>.json` with a tool and its arguments. The worker reports the file. The
+  page removes it, runs the tool with `runAgentTool` as the MCP server does, and writes `results/<name>.json` and the
+  images of the result as PNG files. Calls run one at a time in file name order. A file that is not JSON gets three
+  scans to finish its write.
+- Access: a program that can write `calls` can also change the diagram files of the folder, and the tools act only on
+  those diagrams and on the open tab. So the call files give no new access, and the website asks no confirmation, as
+  the MCP server of the desktop app. A call that does not name a tool of `tool-definitions.ts` gets an error result,
+  and nothing runs.
+- After a change from outside, the website writes `status/<id>.md` with the output of `lint_diagram`, and
+  `status/<id>.png` from `render_image`. An agent that changes a file directly sees the result.
+- The user gives Claude Code one line for its `CLAUDE.md` that names the guide. The agent button shows the tool runs on
+  the website too.
+
+Firefox and Safari have no folder picker. There, the website can show a folder only to read
+(`src/folder/followed-folder.ts`):
+
+- A file input with `webkitdirectory` gives the files of the folder. Firefox reads such a file from the disk at each
+  read, so a read once a second shows a change. The list of files stays as it was at the pick: a new file shows after
+  the user picks the folder again.
+- `switchRepository` replaces the repository without a reload, after the app goes to the library. The repository
+  keeps changes in the tab and writes nothing. A badge in the editor and a note in the library say so. A reload ends
+  it.
+- When the browser cannot read a picked file again, the diagram stays and the library asks for a new pick.
+- There is no agent folder. The setup offers two downloads: a guide for direct file changes (the rules, an example
+  file and the JSON Schema) and the icon list. It also gives the line for `CLAUDE.md`.
+
 ## Desktop app
 
 The React app in Electron, plus file storage, agent control, the website handoff and GitHub Releases updates.
@@ -1070,8 +1131,12 @@ with snapdom, because Chromium gives only pixels.
 
 ### Agent tools
 
-- The MCP server runs in main on `127.0.0.1:27419`. Calls go to the renderer for the ELK worker, Mermaid import, icon
+- The MCP server runs in main on `127.0.0.1`. Calls go to the renderer for the ELK worker, Mermaid import, icon
   catalogue and rendering.
+- Each app keeps one port of 27419 to 27428 (`agent-port` in the user data), so that several apps can run at once:
+  two users, or a development build next to an installed app. The agent setup holds the port, so an app waits 10 s for
+  a kept port that another program uses (an app that quits can still hold it). Then it moves to a free port, keeps it
+  and tells the user to run the setup again.
 - Main and the renderer share `src/agent/tool-definitions.ts` (no DOM code). A tool without a handler fails the type
   check.
 - `runAgentTool` runs calls one at a time in the renderer and owns their time limits:
@@ -1205,8 +1270,13 @@ with snapdom, because Chromium gives only pixels.
 ### Handoff from the website
 
 "Open in desktop app" opens `diagrams://receive?code=...`, which starts the app or reaches the running one. The
-website then posts the diagram to the loopback server, with retries for 15 seconds. Chrome asks once before a website
-reaches local devices.
+website asks each agent port which app received the code, and posts the diagram only to that app, with retries for 15
+seconds. An app on the first port without this check is an older app, which checks the code when it takes the diagram.
+Chrome asks once before a website reaches local devices.
+
+A website cannot ask whether an app is installed. The Desktop app tab asks each agent port whether an app runs.
+The website records that answer or a handoff (`dg:desktop-app-seen`) and then offers `diagrams://connect-agent`
+before the download. That link opens the app at "Connect an agent", because only the app shows its access token.
 
 The agent card and "Open in desktop app" show only on a computer. `deviceKind` (`src/lib/device.ts`) returns
 `computer`, `tablet` or `phone`:
@@ -1372,14 +1442,16 @@ those texts.
 | `api.github.com`, the latest release              | On a computer, once: while the agent introduction shows, and in "Could not open the app" | No diagram. Picks the installer for the system.                             |
 | `api.github.com`, release notes                   | Build time. At run time only on the dev server, or when the build could not load them    | No diagram                                                                  |
 | `github.com` releases, through `electron-updater` | Desktop app: at start, every 6 hours, "Check for updates"                                | No diagram. A random install id.                                            |
-| `127.0.0.1:27419` handoff                         | "Open in desktop app"                                                                    | The diagram, loopback interface only                                        |
-| `127.0.0.1:27419/mcp`                             | While the desktop app runs and an agent calls it                                         | Diagrams and images, to the connected agent                                 |
+| `127.0.0.1:27419-27428` handoff code check        | "Open in desktop app"                                                                    | The handoff code only, loopback interface only                              |
+| `127.0.0.1:27419-27428` handoff                   | "Open in desktop app", to the app that received the code                                 | The diagram, loopback interface only                                        |
+| `127.0.0.1:27419-27428`, is the app running       | The Desktop app tab of "Connect an agent" opens                                          | No data, loopback interface only                                            |
+| `127.0.0.1:27419-27428/mcp`                       | While the desktop app runs and an agent calls it                                         | Diagrams and images, to the connected agent                                 |
 
 - Share links carry the diagram in the fragment, which a browser never sends. Links and exports use no network.
 - The desktop renderer connects only to `'self'`, `data:` and `blob:`. `https:` links open in the system browser.
 - `src/content-security-policy.ts` holds the renderer policy. `electron/app-protocol.ts` sends it as a header. The
   website build puts it in a meta element at the start of the page (`scripts/content-security-policy.ts`), with
-  `connect-src` for `api.github.com` and `127.0.0.1:27419` from the table. A meta element cannot set
+  `connect-src` for `api.github.com` and the agent ports from the table. A meta element cannot set
   `frame-ancestors`, so other sites can show the website in a frame, unless the host sets `frame-ancestors` in a
   header.
 - zod tests for eval when it creates an object schema, and the policy reports that test as a violation. App code

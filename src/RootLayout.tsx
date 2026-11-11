@@ -1,9 +1,11 @@
 import { Outlet } from '@tanstack/react-router'
+import { ProblemDialog } from '@/components/ProblemDialog'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { isDesktop } from '@/desktop/bridge'
 import { ConnectAgentDialog } from '@/desktop/ConnectAgentDialog'
 import { OpenInAppDialog } from '@/desktop/OpenInAppDialog'
+import { FolderAgentDialog } from '@/folder/FolderAgentDialog'
 import { useAppChrome } from './use-app-chrome'
 
 export function RootLayout() {
@@ -13,7 +15,15 @@ export function RootLayout() {
     <TooltipProvider delay={350}>
       {isDesktop() && <div className="dg-drag-strip" aria-hidden />}
       <Outlet />
-      {isDesktop() ? <ConnectAgentDialog /> : <OpenInAppDialog />}
+      {isDesktop() ? (
+        <ConnectAgentDialog />
+      ) : (
+        <>
+          <OpenInAppDialog />
+          <FolderAgentDialog />
+        </>
+      )}
+      <ProblemDialog />
       <Toaster theme={theme} position="top-center" offset={64} />
     </TooltipProvider>
   )

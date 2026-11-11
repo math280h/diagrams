@@ -1,5 +1,5 @@
 import { toast } from 'sonner'
-import { errorMessage } from '@/lib/error-message'
+import { reportError } from '@/store/problem-store'
 import { desktopApi } from './bridge'
 import { REPOSITORY_URL } from './constants'
 import type { UpdateInfo } from './contract'
@@ -56,7 +56,7 @@ export async function checkForUpdates() {
   try {
     info = await desktop.request('update.check', null)
   } catch (error) {
-    toast.error('Could not check for updates', { description: errorMessage(error) })
+    reportError('Could not check for updates', error)
     return
   }
   switch (info.state) {
@@ -75,7 +75,9 @@ export async function checkForUpdates() {
       })
       return
     case 'failed':
-      toast.error('Could not check for updates', { description: info.message ?? undefined })
+      reportError('Could not check for updates', info.message ?? 'The update check failed.', {
+        facts: [`Update state: ${info.state}`, `Version: ${info.currentVersion}`],
+      })
       return
     case 'idle':
       toast.success(`You have the latest version, ${info.currentVersion}`)

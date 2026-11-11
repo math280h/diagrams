@@ -1,13 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createDiagram } from '@/model/defaults'
 import type { Diagram } from '@/model/schema'
-import { RANDOM_KEY_PATTERN } from './constants'
+import { AGENT_PORT, AGENT_PORTS, RANDOM_KEY_PATTERN } from './constants'
 import {
   canOpenInApp,
   closeOpenInApp,
+  findRunningApp,
   forgetOpenedInApp,
   openInApp,
   retryOpenInApp,
+  useDesktopAppSeen,
   useHandoff,
   useOpenedInApp,
 } from './open-in-app'
@@ -21,12 +23,25 @@ const IPHONE =
 
 type Answer = { status: number; body?: unknown } | 'offline' | 'hang'
 
+const OLDER_APP_ON_FIRST_PORT = (port: number): Answer => (port === AGENT_PORT ? { status: 404 } : 'offline')
+
 let links: string[]
+/** The answers to the diagram posts, in order. */
 let answers: Answer[]
+/** The answer of each port to the question whether its app received the code. */
+let codeCheck: (port: number) => Answer
 let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>
 
 function codeOf(link: string) {
   return new URL(link).searchParams.get('code')!
+}
+
+function portOf(url: unknown) {
+  return Number(new URL(String(url)).port)
+}
+
+function posts() {
+  return fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')
 }
 
 function answer(next: Answer, init: RequestInit | undefined): Promise<Response> {
@@ -62,10 +77,14 @@ beforeEach(() => {
   vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
     links.push(this.href)
   })
-  fetchMock = vi.fn<typeof fetch>((_url, init) => answer(answers.shift() ?? 'offline', init))
+  codeCheck = OLDER_APP_ON_FIRST_PORT
+  fetchMock = vi.fn<typeof fetch>((url, init) =>
+    answer(init?.method === 'POST' ? (answers.shift() ?? 'offline') : codeCheck(portOf(url)), init),
+  )
   vi.spyOn(window, 'fetch').mockImplementation(fetchMock)
   closeOpenInApp()
   useOpenedInApp.setState({ opened: {} })
+  useDesktopAppSeen.setState({ seenAt: null })
 })
 
 afterEach(() => {
@@ -74,6 +93,7 @@ afterEach(() => {
   vi.restoreAllMocks()
   delete window.desktop
   localStorage.removeItem('dg:opened-in-app')
+  localStorage.removeItem('dg:desktop-app-seen')
 })
 
 describe('canOpenInApp', () => {
@@ -100,14 +120,15 @@ describe('openInApp', () => {
     expect(code).toMatch(RANDOM_KEY_PATTERN)
 
     await settle()
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(posts()).toHaveLength(1)
     expect(useHandoff.getState().status).toBe('opening')
     await settle(RETRY_INTERVAL_MS)
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(posts()).toHaveLength(2)
     expect(useHandoff.getState()).toEqual({ status: 'opened', name: 'Shop' })
     expect(useOpenedInApp.getState().opened).toEqual({ [diagram.id]: Date.now() })
+    expect(useDesktopAppSeen.getState().seenAt).toBe(Date.now())
 
-    const [url, init] = fetchMock.mock.calls[1]!
+    const [url, init] = posts()[1]!
     expect(url).toBe(`http://127.0.0.1:27419/handoff/${code}`)
     expect(init).toMatchObject({ method: 'POST', headers: { 'content-type': 'application/json' } })
     expect(JSON.parse(init!.body as string)).toEqual(diagram)
@@ -151,7 +172,37 @@ describe('openInApp', () => {
       reason: 'unreachable',
       message: 'Could not reach the Diagrams app.',
     })
-    expect(fetchMock).toHaveBeenCalledTimes(RETRY_MS / RETRY_INTERVAL_MS)
+    expect(posts()).toHaveLength(RETRY_MS / RETRY_INTERVAL_MS)
+  })
+
+  it('asks each port which app received the code, and sends the diagram only to that app', async () => {
+    const ours = AGENT_PORTS[2]!
+    let arrived = false
+    codeCheck = (port) => {
+      if (port === AGENT_PORT) return { status: 200, body: { received: false } }
+      if (port === ours) return { status: 200, body: { received: arrived } }
+      return 'offline'
+    }
+    answers = [{ status: 200, body: { diagramId: 'd_new', name: 'Shop' } }]
+    openInApp(shop)
+    await settle()
+    expect(posts()).toHaveLength(0)
+    const checkedPorts = fetchMock.mock.calls.map(([url]) => portOf(url))
+    expect(checkedPorts).toEqual([...AGENT_PORTS])
+    expect(fetchMock.mock.calls.every(([, init]) => init?.body === undefined)).toBe(true)
+
+    arrived = true
+    await settle(RETRY_INTERVAL_MS)
+    expect(posts().map(([url]) => portOf(url))).toEqual([ours])
+    expect(useHandoff.getState()).toEqual({ status: 'opened', name: 'Shop' })
+  })
+
+  it('never sends the diagram to an app that did not receive the code', async () => {
+    codeCheck = (port) => (port === AGENT_PORT ? { status: 200, body: { received: false } } : 'offline')
+    openInApp(shop)
+    await settle(RETRY_MS)
+    expect(posts()).toHaveLength(0)
+    expect(useHandoff.getState()).toMatchObject({ status: 'failed', reason: 'unreachable' })
   })
 
   it('sends the same diagram again with a new code on retry', async () => {
@@ -179,7 +230,7 @@ describe('openInApp', () => {
     expect(useHandoff.getState().status).toBe('idle')
     await settle(RETRY_MS)
     expect(useHandoff.getState().status).toBe('idle')
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(posts()).toHaveLength(1)
     retryOpenInApp()
     expect(links).toHaveLength(1)
   })
@@ -210,7 +261,7 @@ describe('openInApp', () => {
     expect(useHandoff.getState()).toMatchObject({ status: 'opened', name: 'Second' })
   })
 
-  it('forgets that a diagram opened in the app', async () => {
+  it('forgets that a diagram opened in the app, but not that this browser used the app', async () => {
     answers = [{ status: 200, body: {} }]
     const diagram = shop()
     openInApp(() => diagram)
@@ -218,5 +269,36 @@ describe('openInApp', () => {
     expect(Object.keys(useOpenedInApp.getState().opened)).toEqual([diagram.id])
     forgetOpenedInApp(diagram.id)
     expect(useOpenedInApp.getState().opened).toEqual({})
+    expect(useDesktopAppSeen.getState().seenAt).toBe(Date.now())
+  })
+
+  it('does not count a handoff that the app did not take as a use of the app', async () => {
+    answers = [{ status: 403, body: { message: 'This website may not send diagrams.' } }]
+    openInApp(() => shop())
+    await settle()
+    expect(useHandoff.getState().status).toBe('failed')
+    expect(useDesktopAppSeen.getState().seenAt).toBeNull()
+  })
+})
+
+describe('findRunningApp', () => {
+  it('asks each agent port, and records the app when a server answers, without data', async () => {
+    const theirs = AGENT_PORTS[4]!
+    codeCheck = (port) => (port === theirs ? { status: 404 } : 'offline')
+    await expect(findRunningApp()).resolves.toBe(true)
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(
+      AGENT_PORTS.map((port) => `http://127.0.0.1:${port}/handoff`),
+    )
+    for (const [, init] of fetchMock.mock.calls) {
+      expect(init).toMatchObject({ mode: 'no-cors' })
+      expect(init?.body).toBeUndefined()
+    }
+    expect(useDesktopAppSeen.getState().seenAt).toBe(Date.now())
+  })
+
+  it('finds no app when nothing answers on any agent port', async () => {
+    codeCheck = () => 'offline'
+    await expect(findRunningApp()).resolves.toBe(false)
+    expect(useDesktopAppSeen.getState().seenAt).toBeNull()
   })
 })

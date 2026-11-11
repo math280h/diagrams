@@ -1,13 +1,22 @@
 export const AGENT_HOST = '127.0.0.1'
+/** The first port of the agent server. Older apps use only this port. */
 export const AGENT_PORT = 27419
+const AGENT_PORT_COUNT = 10
+/** The ports that an app can keep for its agent server, so that several apps can run at once. */
+export const AGENT_PORTS: readonly number[] = Array.from({ length: AGENT_PORT_COUNT }, (_, index) => AGENT_PORT + index)
+/** The port where an app without a package starts to look, so that it does not take the port of an installed app. */
+export const FIRST_DEV_AGENT_PORT = AGENT_PORT + AGENT_PORT_COUNT / 2
 export const AGENT_ENDPOINT = '/mcp'
 
 export const DEEP_LINK_SCHEME = 'diagrams'
+/** The deep link that opens the desktop app at "Connect an agent". An app without it only opens its window. */
+export const CONNECT_AGENT_LINK = `${DEEP_LINK_SCHEME}://connect-agent`
 /** The route of the hidden window that renders export stages for the native capture. */
 export const CAPTURE_HASH = '#/capture'
 export const WEBSITE_ORIGIN = 'https://draw.thias.dev'
 export const DEV_ORIGINS = ['http://127.0.0.1:5173', 'http://localhost:5173']
 export const REPOSITORY_URL = 'https://github.com/math280h/diagrams'
+export const BUG_REPORT_URL = `${REPOSITORY_URL}/issues/new?template=bug_report.yml`
 /** GitHub redirects this address to the newest published release that is not a pre-release. */
 export const DESKTOP_DOWNLOAD_URL = `${REPOSITORY_URL}/releases/latest`
 export const REPOSITORY_API_URL = 'https://api.github.com/repos/math280h/diagrams'

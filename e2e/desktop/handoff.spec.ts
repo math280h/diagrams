@@ -1,15 +1,23 @@
 import { existsSync, readdirSync } from 'node:fs'
 import path from 'node:path'
-import { AGENT_PORT } from '@/desktop/constants'
-import { copyTemplate } from '../helpers'
+import { AGENT_PORTS, CONNECT_AGENT_LINK } from '@/desktop/constants'
+import { copyTemplate, isAgentUrl } from '../helpers'
 import { agentUrl, expect, test } from './fixtures'
 
-const WEBSITE_AGENT_URL = agentUrl(AGENT_PORT)
+const WEBSITE_AGENT_URL = agentUrl(AGENT_PORTS[3]!)
 
-test('the website hands a diagram to the running app', async ({ page, window, dirs, agentPort, launchWithArgs }) => {
+test('the website finds the app that received its code on any agent port and hands it the diagram', async ({
+  page,
+  window,
+  dirs,
+  agentPort,
+  launchWithArgs,
+}) => {
   await expect(window.getByRole('button', { name: 'New diagram' })).toBeVisible()
-  await page.route(`${WEBSITE_AGENT_URL}/**`, (route) =>
-    route.continue({ url: route.request().url().replace(WEBSITE_AGENT_URL, agentUrl(agentPort)) }),
+  await page.route(isAgentUrl, (route) =>
+    route.request().url().startsWith(WEBSITE_AGENT_URL)
+      ? route.continue({ url: route.request().url().replace(WEBSITE_AGENT_URL, agentUrl(agentPort)) })
+      : route.abort('connectionrefused'),
   )
   await page.exposeFunction('openDeepLink', (url: string) => launchWithArgs([url]))
   await page.addInitScript(() => {
@@ -33,4 +41,11 @@ test('the website hands a diagram to the running app', async ({ page, window, di
   const id = decodeURIComponent(window.url().split('#/d/')[1] ?? '')
   expect(existsSync(path.join(dirs.data, `${id}.diagram.json`))).toBe(true)
   expect(readdirSync(dirs.data)).toHaveLength(1)
+})
+
+test('opens the agent setup from the link of the website', async ({ window, launchWithArgs }) => {
+  await expect(window.getByRole('button', { name: 'New diagram' })).toBeVisible()
+  await launchWithArgs([CONNECT_AGENT_LINK])
+  await expect(window.getByRole('dialog', { name: 'Connect an agent' })).toBeVisible()
+  await expect(window.getByRole('dialog')).toContainText('claude plugin install')
 })

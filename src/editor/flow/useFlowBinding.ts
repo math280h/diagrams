@@ -22,7 +22,7 @@ export function useFlowBinding() {
     if (!open) return
     const current = useUi.getState().activeFlowId
     if (!current || !flows.some((flow) => flow.id === current)) {
-      useUi.setState({ activeFlowId: flows[0]?.id ?? null, activePathId: null, selectedStepId: null })
+      useUi.setState({ activeFlowId: flows[0]?.id ?? null, activePathId: null, selectedStepIds: [] })
     }
   }, [open, flows])
 

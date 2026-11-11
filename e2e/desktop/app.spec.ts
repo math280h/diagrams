@@ -75,6 +75,11 @@ test('explains a diagrams folder that it cannot open, and answers agents at once
     const window = await app.firstWindow()
     await expect(window.getByRole('alert')).toContainText('could not open your diagrams folder', { timeout: 30_000 })
     await expect(window.getByRole('button', { name: 'Try again' })).toBeVisible()
+    await window.getByRole('button', { name: 'More details…' }).click()
+    const problem = window.getByRole('dialog', { name: 'The app could not open your diagrams folder' })
+    await expect(problem.locator('code')).toContainText('Storage: diagrams folder')
+    await expect(problem.getByRole('link', { name: 'Report a problem' })).toBeVisible()
+    await window.keyboard.press('Escape')
 
     const token = readFileSync(path.join(dirs.userData, 'agent-token'), 'utf8').trim()
     await expect

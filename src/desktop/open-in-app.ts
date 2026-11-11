@@ -6,6 +6,7 @@ import { isDesktop } from './bridge'
 import {
   AGENT_HOST,
   AGENT_PORT,
+  AGENT_PORTS,
   DEEP_LINK_SCHEME,
   HANDOFF_PATH,
   HANDOFF_RETRY_INTERVAL_MS,
@@ -30,6 +31,8 @@ function newHandoffCode(): string {
     .replace(/=+$/, '')
 }
 
+const APP_CHECK_TIMEOUT_MS = 2000
+
 /** Opens the deep link that starts the desktop app. Call it inside a click handler. */
 function launchDeepLink(code: string) {
   const link = document.createElement('a')
@@ -47,34 +50,73 @@ function wait(ms: number, signal: AbortSignal) {
   })
 }
 
+function handoffUrl(port: number, code: string) {
+  return `http://${AGENT_HOST}:${port}${HANDOFF_PATH}/${code}`
+}
+
+/** Asks the app on a port whether it received the code. An app without this check answers 404. */
+async function codeAnswer(
+  port: number,
+  code: string,
+  signal: AbortSignal,
+): Promise<'received' | 'not-received' | 'no-check' | null> {
+  try {
+    const response = await fetch(handoffUrl(port, code), { signal })
+    if (!response.ok) return 'no-check'
+    const data = (await response.json()) as { received?: unknown }
+    return data.received === true ? 'received' : 'not-received'
+  } catch {
+    return null
+  }
+}
+
 /**
- * Sends a diagram to the desktop app. It tries again while the app starts and has not received the code yet.
+ * Returns the port of the app that received the code, or `null` while no app has it. An app on the first port without
+ * the code check counts as the receiver, because older apps listen only there and check the code when they take the
+ * diagram.
+ */
+async function portWithCode(code: string, signal: AbortSignal): Promise<number | null> {
+  const answers = await Promise.all(AGENT_PORTS.map((port) => codeAnswer(port, code, signal)))
+  const index = answers.indexOf('received')
+  if (index >= 0) return AGENT_PORTS[index]!
+  return answers[0] === 'no-check' ? AGENT_PORT : null
+}
+
+/**
+ * Sends a diagram to the desktop app that received the code. It tries again while the app starts and has not received
+ * the code yet. Other apps on this computer, for example of another user, get no diagram.
  *
  * @returns The new diagram in the app, or why the app did not take it.
  */
 async function sendToApp(diagram: Diagram, code: string, signal: AbortSignal): Promise<HandoffResult> {
-  const url = `http://${AGENT_HOST}:${AGENT_PORT}${HANDOFF_PATH}/${code}`
   const body = JSON.stringify(diagram)
   const deadline = Date.now() + HANDOFF_RETRY_MS
   while (Date.now() < deadline && !signal.aborted) {
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body,
-        signal,
-      })
-      const data = (await response.json().catch(() => ({}))) as { diagramId?: string; name?: string; message?: string }
-      if (response.ok) return { ok: true, diagramId: data.diagramId ?? '', name: data.name ?? diagram.name }
-      if (response.status !== 404) {
-        return {
-          ok: false,
-          reason: 'refused',
-          message: data.message ?? `The app answered with status ${response.status}.`,
+    const port = await portWithCode(code, signal)
+    if (port !== null) {
+      try {
+        const response = await fetch(handoffUrl(port, code), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body,
+          signal,
+        })
+        const data = (await response.json().catch(() => ({}))) as {
+          diagramId?: string
+          name?: string
+          message?: string
         }
+        if (response.ok) return { ok: true, diagramId: data.diagramId ?? '', name: data.name ?? diagram.name }
+        if (response.status !== 404) {
+          return {
+            ok: false,
+            reason: 'refused',
+            message: data.message ?? `The app answered with status ${response.status}.`,
+          }
+        }
+      } catch {
+        if (signal.aborted) break
       }
-    } catch {
-      if (signal.aborted) break
     }
     await wait(HANDOFF_RETRY_INTERVAL_MS, signal)
   }
@@ -88,6 +130,55 @@ export const useOpenedInApp = create<{ opened: Record<string, number> }>()(
 export function forgetOpenedInApp(id: string) {
   const { [id]: _removed, ...rest } = useOpenedInApp.getState().opened
   useOpenedInApp.setState({ opened: rest })
+}
+
+interface DesktopAppSeen {
+  /**
+   * The last time that the desktop app took a diagram from this browser or answered it, in milliseconds since the
+   * epoch, or `null`.
+   */
+  seenAt: number | null
+}
+
+export const useDesktopAppSeen = create<DesktopAppSeen>()(
+  persist((): DesktopAppSeen => ({ seenAt: null }), {
+    name: 'dg:desktop-app-seen',
+    storage: createJSONStorage(() => localStorage),
+  }),
+)
+
+/**
+ * Returns true if the desktop app took a diagram from this browser or answered it before. The app is then probably on
+ * this computer.
+ */
+export function useKnowsDesktopApp() {
+  const seen = useDesktopAppSeen((state) => state.seenAt !== null)
+  const opened = useOpenedInApp((state) => Object.keys(state.opened).length > 0)
+  return seen || opened
+}
+
+/**
+ * Asks the loopback server of the desktop app whether the app runs on this computer, and records a positive answer.
+ * The request sends no data.
+ *
+ * @returns True if a server answered on one of the agent ports.
+ */
+export async function findRunningApp(): Promise<boolean> {
+  try {
+    // A `no-cors` request resolves with any answer of the server, and rejects when nothing listens.
+    await Promise.any(
+      AGENT_PORTS.map((port) =>
+        fetch(`http://${AGENT_HOST}:${port}${HANDOFF_PATH}`, {
+          mode: 'no-cors',
+          signal: AbortSignal.timeout(APP_CHECK_TIMEOUT_MS),
+        }),
+      ),
+    )
+  } catch {
+    return false
+  }
+  useDesktopAppSeen.setState({ seenAt: Date.now() })
+  return true
 }
 
 type HandoffState =
@@ -120,6 +211,7 @@ export function openInApp(getDiagram: () => Diagram) {
     if (result.ok) {
       lastRequest = null
       useOpenedInApp.setState((state) => ({ opened: { ...state.opened, [diagram.id]: Date.now() } }))
+      useDesktopAppSeen.setState({ seenAt: Date.now() })
       useHandoff.setState({ status: 'opened', name: diagram.name }, true)
     } else {
       useHandoff.setState(
