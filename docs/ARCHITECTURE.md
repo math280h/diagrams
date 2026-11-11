@@ -1436,8 +1436,12 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
     installer and uninstaller with 7-Zip.
   - Each job uploads its installers as the workflow artifact `installers-<runner>`. GitHub keeps them for 7 days. A
     reviewer can install the app from the installers of a pull request before the merge.
-- `.github/actions/playwright-chromium` caches Chromium by Playwright version. Linux still installs the system
-  libraries, which a cache cannot hold.
+- `.github/actions/playwright-chromium` caches Chromium by Playwright version.
+  - On Linux, it also caches the `.deb` files of the system libraries of Chromium, by runner image and Playwright
+    version. A cache hit installs them with `dpkg` and does not use the Ubuntu mirrors, so a mirror outage does not
+    stop CI. The key holds the image version, because the packages of an earlier image can downgrade those of a later
+    image.
+  - After a cache hit, `playwright install-deps --dry-run` fails the step when a library is missing.
 - `.github/actions/electron` caches the Electron downloads by Electron version and installs the binary, with three
   tries. The `electron` package has no install script: it downloads the binary when a process first loads it, also in
   the unit tests.
