@@ -923,7 +923,8 @@ The Share link tab makes a link with the whole diagram, to play with no account,
   Order system, with its text, below an eighth of that limit.
 - The data is in the fragment, which browsers never send to the site. The shared page decodes, migrates and plays it
   in `PlayerStage`. Save a copy stores it as a new diagram.
-- The desktop app links to `WEBSITE_ORIGIN`. The website links to its own address, so preview shares preview links.
+- The desktop app links to the share website of its settings. The website links to its own address, so preview shares
+  preview links.
 
 ### Installable website
 
@@ -1014,10 +1015,17 @@ Firefox and Safari have no folder picker. There, the website can show a folder o
 - There is no agent folder. The setup offers two downloads: a guide for direct file changes (the rules, an example
   file and the JSON Schema) and the icon list. It also gives the line for `CLAUDE.md`.
 
+### Build options
+
+`readBuildConfig` (`src/desktop/build-config.ts`) reads the `DIAGRAMS_*` variables of a build, and Vite puts the
+result into the bundles as `BUILD`. The options give a self-hosted copy its own website address and release
+repository. A value that the build cannot use stops the build.
+
 ### Docker image
 
 `Dockerfile` builds the website image that `.github/workflows/docker-image.yml` publishes for each release.
 
+- The build stage takes `DIAGRAMS_WEBSITE` and `DIAGRAMS_REPOSITORY` as build arguments.
 - The build stage runs on the platform of the build computer, because `dist/` is the same for each platform. The final
   stage has no `RUN` step, so the arm64 image needs no emulation.
 - The final stage is distroless with static-web-server, a static binary. It has no shell and runs as `nonroot`.
@@ -1218,8 +1226,8 @@ agent call opens the window again, because the tools run in the renderer. A sett
 
 - `/mcp`: only the loopback host name, no browser Origin, and the bearer token from the user data folder. "Connect an
   agent" shows and can reset the token.
-- `/handoff/:code`: only the website origin (and the dev server in development), and a deep-link code from the last
-  60 seconds, once.
+- `/handoff/:code`: only a website in the app settings (and the dev server in development), and a deep-link code from
+  the last 60 seconds, once. The code check answers other websites with `allowed: false` and takes no diagram from them.
 - Renderer permissions: clipboard writes and full screen only. Handed-over diagrams always become new diagrams.
 
 ### Packaging and updates
@@ -1295,6 +1303,24 @@ agent call opens the window again, because the tools run in the renderer. A sett
   - Build from source, or no `app-update.yml`: none.
   - `main` builds from `preview-<run>` pre-releases (`x.y.z-preview.n`): none. electron-updater cannot compare these
     tags and offers pre-releases to any pre-release version, so beta and alpha apps skip them too.
+- `DIAGRAMS_REPOSITORY` sets `publish` in `electron-builder.ts`, and thus `app-update.yml`. The release workflows set it
+  to the repository that they run in, so a fork updates from its own releases.
+  - With `DIAGRAMS_REPOSITORY_EDITABLE=1`, the user can set another repository. The app first checks that its newest
+    release has the update file of the system. Without the option, the build can update only from its repository.
+  - The updater keeps the feed of `app-update.yml` until the repository or the token changes (`setFeedURL`).
+- `DIAGRAMS_GITHUB_APP` names a GitHub App for a private repository. The user signs in with the device flow
+  (`electron/github-auth.ts`), which needs no client secret, also for the renewal.
+  - `desktop:build` stops if GitHub does not start a device flow for the client ID (`scripts/github-app.ts`), so a
+    build cannot ship a wrong client ID or an app without the device flow. Without a GitHub token, the build cannot
+    check that the app is installed on the repository.
+  - Before each check, `repositoryFeed` reads the repository with the token, else without a token. The app asks for a
+    sign-in only if GitHub hides the repository without a token, so a public repository needs none. Without a token it
+    reads the releases feed: the API permits only 60 requests an hour from one address.
+  - Before a check, the app renews an access token that expires within 5 minutes. Each renewal replaces the refresh
+    token, so the app writes the new tokens before it uses them.
+  - `safeStorage` encrypts the tokens. On Linux with the `basic_text` key, the app keeps them only in memory.
+  - The token goes to `setFeedURL` as `token`. With `private: true`, electron-updater reads `GH_TOKEN` from the
+    environment first.
 - Website download button: the latest release's installer (GitHub API) for the visitor's system (client hints, then
   user agent). Safari and Firefox report Apple silicon Macs as Intel, so a Mac without the architecture hint, other
   systems and failed lookups get the release page. It links only this repository's release files.
@@ -1313,6 +1339,10 @@ agent call opens the window again, because the tools run in the renderer. A sett
 website asks each agent port which app received the code, and posts the diagram only to that app, with retries for 15
 seconds. An app on the first port without this check is an older app, which checks the code when it takes the diagram.
 Chrome asks once before a website reaches local devices.
+
+The app takes diagrams only from the websites in its settings, because a website cannot make the app trust it. At the
+first start of a build, the app adds the website of the build once and opens share links on it. A website that the
+user removes stays removed.
 
 A website cannot ask whether an app is installed. The Desktop app tab asks each agent port whether an app runs.
 The website records that answer or a handoff (`dg:desktop-app-seen`) and then offers `diagrams://connect-agent`
@@ -1487,7 +1517,10 @@ those texts.
 | The website files, from its host                  | A visit; a feature that loads its code or an icon set                                    | Fixed paths. Hash routing keeps diagram ids and share data out of requests. |
 | `api.github.com`, the latest release              | On a computer, once: while the agent introduction shows, and in "Could not open the app" | No diagram. Picks the installer for the system.                             |
 | `api.github.com`, release notes                   | Build time. At run time only on the dev server, or when the build could not load them    | No diagram                                                                  |
-| `github.com` releases, through `electron-updater` | Desktop app: at start, every 6 hours, "Check for updates"                                | No diagram. A random install id.                                            |
+| `github.com` releases, through `electron-updater` | Desktop app: at start, every 6 hours, "Check for updates"                                | No diagram. A random install id. The GitHub token for a private repository. |
+| `github.com/login`, GitHub sign-in                | A build with a GitHub App: sign-in, and the renewal of the sign-in before a check        | No diagram. The client ID and the GitHub tokens.                            |
+| `api.github.com`, newest release of a repository  | A build with an editable update source: the user saves another repository                | No diagram. The GitHub token for a private repository.                      |
+| Repository access, `github.com` or the API        | A build with a GitHub App: before each check. An editable update source: on save         | No diagram. The GitHub token after a sign-in.                               |
 | `127.0.0.1:27419-27428` handoff code check        | "Open in desktop app"                                                                    | The handoff code only, loopback interface only                              |
 | `127.0.0.1:27419-27428` handoff                   | "Open in desktop app", to the app that received the code                                 | The diagram, loopback interface only                                        |
 | `127.0.0.1:27419-27428`, is the app running       | The Desktop app tab of "Connect an agent" opens                                          | No data, loopback interface only                                            |

@@ -1,6 +1,7 @@
 import { AGENT_INSTRUCTIONS, AGENT_RULES } from '@/agent/instructions'
 import { bundledSkillFiles, loadSkills, SKILL_FILE, type Skill } from '@/agent/skills'
 import { TOOL_DEFINITIONS, TOOL_NAMES } from '@/agent/tool-definitions'
+import { BUILD } from '@/desktop/build-config'
 import { DIAGRAM_FILE_SUFFIX } from '@/desktop/constants'
 import { downloadBlob } from '@/lib/download'
 import { z } from '@/lib/zod'
@@ -24,6 +25,10 @@ import { writeText } from './folder-files'
 
 const JSON_SCHEMA_OPTIONS = { io: 'input', unrepresentable: 'any' } as const
 const IGNORED_FOLDERS = [CALLS_FOLDER, RESULTS_FOLDER, STATUS_FOLDER, DELETED_FOLDER]
+
+function websiteAddress() {
+  return typeof location === 'undefined' ? BUILD.website : location.origin
+}
 
 function jsonText(value: unknown) {
   return `${JSON.stringify(value, null, 2)}\n`
@@ -55,7 +60,7 @@ export function guideText(skills: readonly Skill[]): string {
   const skillList = skills.map((skill) => `- ${at(SKILLS_FOLDER, skill.name, SKILL_FILE)}: ${skill.description}`)
   return `# Diagrams in this folder
 
-The \`*${DIAGRAM_FILE_SUFFIX}\` files in this folder are diagrams of the Diagrams website (https://draw.thias.dev). A browser tab of the website has this folder open. It shows each change at once, and the user can change the same diagrams there.
+The \`*${DIAGRAM_FILE_SUFFIX}\` files in this folder are diagrams of the Diagrams website (${websiteAddress()}). A browser tab of the website has this folder open. It shows each change at once, and the user can change the same diagrams there.
 
 The website writes the files in \`${AGENT_FOLDER}\` each time it opens the folder. Do not change them, apart from the files in ${at(CALLS_FOLDER)}.
 
@@ -151,7 +156,7 @@ export async function writeGuideFiles(agentFolder: FileSystemDirectoryHandle) {
 export function fileGuideText(example: Diagram): string {
   return `# Diagrams in this folder
 
-The \`*${DIAGRAM_FILE_SUFFIX}\` files in this folder are diagrams of the Diagrams website (https://draw.thias.dev). A browser tab shows them, and shows each change to a file at once. The tab can only read the folder, so there are no tool calls and no status files: change the files directly.
+The \`*${DIAGRAM_FILE_SUFFIX}\` files in this folder are diagrams of the Diagrams website (${websiteAddress()}). A browser tab shows them, and shows each change to a file at once. The tab can only read the folder, so there are no tool calls and no status files: change the files directly.
 
 The tab sees a new file only after the user chooses the folder again. When you add a file, tell the user to do that.
 

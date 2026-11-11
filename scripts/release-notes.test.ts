@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { RELEASES_API_URL, REPOSITORY_API_URL } from '../src/desktop/constants.ts'
+import { releaseLinks } from '../src/desktop/build-config.ts'
 import { fetchReleaseNotes, fetchUnreleased, newestReleaseTag } from './release-notes.ts'
+
+const LINKS = releaseLinks('acme/diagrams')
 
 describe('release notes at build time', () => {
   it('asks for HTML notes and keeps the fields that the page reads', async () => {
@@ -19,9 +21,9 @@ describe('release notes at build time', () => {
         },
       ]),
     )
-    const notes = await fetchReleaseNotes(fetchImpl)
+    const notes = await fetchReleaseNotes(LINKS, fetchImpl)
     const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit]
-    expect(url).toBe(RELEASES_API_URL)
+    expect(url).toBe('https://api.github.com/repos/acme/diagrams/releases?per_page=30')
     expect(init.headers).toEqual({ Accept: 'application/vnd.github.html+json' })
     expect(notes).toEqual([
       {
@@ -39,7 +41,7 @@ describe('release notes at build time', () => {
 
   it('fails on an error answer', async () => {
     const fetchImpl = vi.fn(async () => Response.json({ message: 'API rate limit exceeded' }, { status: 403 }))
-    await expect(fetchReleaseNotes(fetchImpl)).rejects.toThrow('GitHub answered with status 403.')
+    await expect(fetchReleaseNotes(LINKS, fetchImpl)).rejects.toThrow('GitHub answered with status 403.')
   })
 
   it('finds the newest published release, a pre-release too, but not the build of main', () => {
@@ -70,7 +72,7 @@ describe('release notes at build time', () => {
         ],
       }),
     )
-    expect(await fetchUnreleased('v0.1.4', fetchImpl)).toEqual({
+    expect(await fetchUnreleased(LINKS, 'v0.1.4', fetchImpl)).toEqual({
       base: 'v0.1.4',
       changes: [
         {
@@ -93,6 +95,8 @@ describe('release notes at build time', () => {
         },
       ],
     })
-    expect((fetchImpl.mock.calls[0] as unknown as [string])[0]).toBe(`${REPOSITORY_API_URL}/compare/v0.1.4...main`)
+    expect((fetchImpl.mock.calls[0] as unknown as [string])[0]).toBe(
+      'https://api.github.com/repos/acme/diagrams/compare/v0.1.4...main',
+    )
   })
 })

@@ -10,12 +10,15 @@ import {
   LayoutGrid,
   Pause,
   Play,
+  Settings,
   StretchHorizontal,
   StretchVertical,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { isDesktop } from '@/desktop/bridge'
+import { openDesktopSettings } from '@/desktop/settings-dialog'
 import { takesColor, type DiagramNode } from '@/model/types'
 import {
   alignSelection,
@@ -219,6 +222,11 @@ function AppSettings() {
       <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => setUi({ shortcutsOpen: true })}>
         <Keyboard /> Keyboard shortcuts
       </Button>
+      {isDesktop() && (
+        <Button variant="ghost" size="sm" className="w-full justify-start" onClick={openDesktopSettings}>
+          <Settings /> Websites and updates
+        </Button>
+      )}
     </Section>
   )
 }

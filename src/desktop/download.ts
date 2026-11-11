@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { DESKTOP_DOWNLOAD_URL, LATEST_RELEASE_API_URL, RELEASE_ASSET_URL_PREFIX } from './constants'
+import { BUILD_RELEASES } from './build-config'
 
 const LOOKUP_TIMEOUT_MS = 5000
 
@@ -61,7 +61,7 @@ export function systemFor({ platform, architecture, userAgent }: BrowserSystem):
 /** Returns the download URL of the installer for the system in the release assets, or `null`. */
 export function installerUrl(assets: readonly ReleaseAsset[], system: DesktopSystem): string | null {
   const asset = assets.find((candidate) => INSTALLER_NAMES[system].test(candidate.name))
-  return asset?.browser_download_url.startsWith(RELEASE_ASSET_URL_PREFIX) ? asset.browser_download_url : null
+  return asset?.browser_download_url.startsWith(BUILD_RELEASES.assetPrefix) ? asset.browser_download_url : null
 }
 
 async function browserSystem(): Promise<BrowserSystem> {
@@ -80,11 +80,11 @@ async function browserSystem(): Promise<BrowserSystem> {
 }
 
 async function lookUpDownload(): Promise<DesktopDownload> {
-  const fallback: DesktopDownload = { url: DESKTOP_DOWNLOAD_URL, system: null }
+  const fallback: DesktopDownload = { url: BUILD_RELEASES.latestRelease, system: null }
   try {
     const system = systemFor(await browserSystem())
     if (!system) return fallback
-    const response = await fetch(LATEST_RELEASE_API_URL, {
+    const response = await fetch(BUILD_RELEASES.latestReleaseApi, {
       headers: { Accept: 'application/vnd.github+json' },
       signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS),
     })
@@ -104,7 +104,7 @@ let lookup: Promise<DesktopDownload> | null = null
  * fails, the result is the release page.
  */
 export function useDesktopDownload(): DesktopDownload {
-  const [download, setDownload] = useState<DesktopDownload>({ url: DESKTOP_DOWNLOAD_URL, system: null })
+  const [download, setDownload] = useState<DesktopDownload>({ url: BUILD_RELEASES.latestRelease, system: null })
   useEffect(() => {
     let active = true
     lookup ??= lookUpDownload()

@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
-import { REPOSITORY_URL, WEBSITE_ORIGIN } from '../src/desktop/constants.ts'
+import { OFFICIAL_WEBSITE } from '../src/desktop/build-config.ts'
+import { REPOSITORY_URL } from '../src/desktop/constants.ts'
 import type { Component } from './sbom-components.ts'
 import {
   type Bom,
@@ -134,7 +135,7 @@ export function imageSbom(bom: Bom, image: WebsiteImage): Bom {
       description: 'The Diagrams website, served by static-web-server on a distroless base.',
       externalReferences: [
         { type: 'vcs', url: REPOSITORY_URL },
-        { type: 'website', url: WEBSITE_ORIGIN },
+        { type: 'website', url: OFFICIAL_WEBSITE },
         { type: 'issue-tracker', url: `${REPOSITORY_URL}/issues` },
       ],
     },

@@ -10,6 +10,9 @@ permissions:
 concurrency:
   group: release-${{ github.ref }}
 
+env:
+  DIAGRAMS_REPOSITORY: ${{ github.repository }}
+
 jobs:
   draft:
     name: Create the draft release

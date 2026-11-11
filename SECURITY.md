@@ -115,9 +115,9 @@ These parts handle data from outside the app:
 
 - **The agent server of the desktop app.** It listens on `127.0.0.1:27419` only. `/mcp` needs the bearer token from
   "Connect an agent", accepts only a `Host` of `127.0.0.1` or `localhost`, and refuses requests that a web page sends.
-- **The handoff from the website.** `/handoff/:code` accepts a diagram only from the website origin, only with a
-  single-use code from a `diagrams://` link that is at most 60 seconds old, and at most 8 MiB. A handed-over diagram
-  always becomes a new diagram.
+- **The handoff from the website.** `/handoff/:code` accepts a diagram only from a website in the app settings
+  (draw.thias.dev at first), only with a single-use code from a `diagrams://` link that is at most 60 seconds old, and
+  at most 8 MiB. A handed-over diagram always becomes a new diagram.
 - **The `diagrams://` link** that the operating system passes to the desktop app.
 - **Diagram files**: JSON import, Mermaid import, and the files in `Documents/Diagrams` that other programs can change.
 - **The renderer of the desktop app**, which runs with context isolation and the Chromium sandbox.

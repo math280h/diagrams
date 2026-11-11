@@ -1,20 +1,34 @@
 import { EventEmitter } from 'node:events'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { UpdateInfo } from '@/desktop/contract'
-import { createUpdates, updatePolicy, type UpdatePolicy, type Updater } from './updates'
+import { createUpdates, updatePolicy, type UpdateFeed, type UpdatePolicy, type Updater } from './updates'
 
 class FakeUpdater extends EventEmitter implements Updater {
   autoDownload = false
   autoInstallOnAppQuit = false
+  setFeedURL = vi.fn()
   checkForUpdates = vi.fn(async (): Promise<unknown> => null)
   quitAndInstall = vi.fn()
 }
 
 const INSTALL: UpdatePolicy = { kind: 'install', onQuit: true }
+const BUILD_REPOSITORY = 'math280h/diagrams'
 
-function setup(policy: UpdatePolicy = INSTALL, updater: FakeUpdater | null = new FakeUpdater()) {
+function setup(
+  policy: UpdatePolicy = INSTALL,
+  updater: FakeUpdater | null = new FakeUpdater(),
+  feed: () => Promise<UpdateFeed | 'sign-in'> = async () => ({ repository: BUILD_REPOSITORY, token: null }),
+) {
   const emitted: UpdateInfo[] = []
-  const updates = createUpdates({ updater, policy, currentVersion: '0.1.0', emit: (info) => emitted.push(info) })
+  const updates = createUpdates({
+    updater,
+    policy,
+    currentVersion: '0.1.0',
+    buildRepository: BUILD_REPOSITORY,
+    repository: BUILD_REPOSITORY,
+    feed,
+    emit: (info) => emitted.push(info),
+  })
   return { updater, updates, emitted }
 }
 
@@ -126,6 +140,50 @@ describe('createUpdates', () => {
     updates.stop()
   })
 
+  it('keeps the feed of the build file, and sets a feed only when the repository or the token changes', async () => {
+    let feed: UpdateFeed = { repository: BUILD_REPOSITORY, token: null }
+    const { updater, updates } = setup(INSTALL, new FakeUpdater(), async () => feed)
+    await updates.check()
+    expect(updater!.setFeedURL).not.toHaveBeenCalled()
+    feed = { repository: 'acme/diagrams', token: 'token-1' }
+    await updates.check()
+    await updates.check()
+    expect(updater!.setFeedURL).toHaveBeenCalledOnce()
+    expect(updater!.setFeedURL).toHaveBeenLastCalledWith({
+      provider: 'github',
+      owner: 'acme',
+      repo: 'diagrams',
+      token: 'token-1',
+    })
+    feed = { repository: BUILD_REPOSITORY, token: null }
+    await updates.check()
+    expect(updater!.setFeedURL).toHaveBeenLastCalledWith({ provider: 'github', owner: 'math280h', repo: 'diagrams' })
+    expect(updater!.checkForUpdates).toHaveBeenCalledTimes(4)
+    updates.stop()
+  })
+
+  it('waits for a GitHub sign-in without a check, and reports a failed renewal', async () => {
+    let feed: () => Promise<UpdateFeed | 'sign-in'> = async () => 'sign-in'
+    const { updater, updates } = setup(INSTALL, new FakeUpdater(), () => feed())
+    expect(await updates.check()).toMatchObject({ state: 'sign-in', version: null })
+    expect(updater!.checkForUpdates).not.toHaveBeenCalled()
+    feed = async () => {
+      throw new Error('Could not reach GitHub to renew the sign-in.')
+    }
+    expect(await updates.check()).toMatchObject({
+      state: 'failed',
+      message: 'Could not reach GitHub to renew the sign-in.',
+    })
+    updates.stop()
+  })
+
+  it('shows another repository of updates, also in a build that does not update itself', () => {
+    const { updates, emitted } = setup({ kind: 'none' })
+    expect(updates.info().repository).toBe(BUILD_REPOSITORY)
+    expect(updates.setRepository('acme/diagrams').repository).toBe('acme/diagrams')
+    expect(emitted.at(-1)?.repository).toBe('acme/diagrams')
+  })
+
   it('checks again after each interval', async () => {
     vi.useFakeTimers()
     const updater = new FakeUpdater()
@@ -133,6 +191,9 @@ describe('createUpdates', () => {
       updater,
       policy: INSTALL,
       currentVersion: '0.1.0',
+      buildRepository: BUILD_REPOSITORY,
+      repository: BUILD_REPOSITORY,
+      feed: async () => ({ repository: BUILD_REPOSITORY, token: null }),
       emit: () => undefined,
       intervalMs: 1000,
     })

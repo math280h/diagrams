@@ -1,5 +1,6 @@
 import type { Plugin } from 'vite'
-import { PREVIEW_APP_TAG_PATTERN, RELEASES_API_URL, REPOSITORY_API_URL } from '../src/desktop/constants.ts'
+import type { ReleaseLinks } from '../src/desktop/build-config.ts'
+import { PREVIEW_APP_TAG_PATTERN } from '../src/desktop/constants.ts'
 import type { UnreleasedChange, UnreleasedChanges } from '../src/releases/unreleased.ts'
 import { headerDescription } from './conventional-commits.ts'
 
@@ -29,8 +30,8 @@ function messageOf(error: unknown): string {
  *
  * @throws Error If GitHub does not answer, or does not answer with a list.
  */
-export async function fetchReleaseNotes(fetchImpl: typeof fetch = fetch): Promise<unknown[]> {
-  const data = await getJson(RELEASES_API_URL, 'application/vnd.github.html+json', fetchImpl)
+export async function fetchReleaseNotes(links: ReleaseLinks, fetchImpl: typeof fetch = fetch): Promise<unknown[]> {
+  const data = await getJson(links.releasesApi, 'application/vnd.github.html+json', fetchImpl)
   if (!Array.isArray(data)) throw new Error('GitHub did not answer with a list of releases.')
   return data.map((release: Record<string, unknown>) => ({
     ...Object.fromEntries(KEPT_FIELDS.map((field) => [field, release[field]])),
@@ -62,9 +63,13 @@ export function newestReleaseTag(releases: unknown[]): string | null {
  *
  * @throws Error If GitHub does not answer, or does not answer with a comparison.
  */
-export async function fetchUnreleased(base: string, fetchImpl: typeof fetch = fetch): Promise<UnreleasedChanges> {
+export async function fetchUnreleased(
+  links: ReleaseLinks,
+  base: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<UnreleasedChanges> {
   const data = (await getJson(
-    `${REPOSITORY_API_URL}/compare/${encodeURIComponent(base)}...main`,
+    `${links.api}/compare/${encodeURIComponent(base)}...main`,
     'application/vnd.github+json',
     fetchImpl,
   )) as { commits?: unknown }
@@ -86,14 +91,14 @@ export async function fetchUnreleased(base: string, fetchImpl: typeof fetch = fe
   return { base, changes: changes.toReversed() }
 }
 
-async function moduleSource(preview: boolean, warn: (message: string) => void): Promise<string> {
-  const releases = await fetchReleaseNotes().catch((error: unknown) => {
+async function moduleSource(links: ReleaseLinks, preview: boolean, warn: (message: string) => void): Promise<string> {
+  const releases = await fetchReleaseNotes(links).catch((error: unknown) => {
     warn(`The build has no release notes. ${messageOf(error)}`)
     return null
   })
   const base = preview && releases ? newestReleaseTag(releases) : null
   const unreleased = base
-    ? await fetchUnreleased(base).catch((error: unknown) => {
+    ? await fetchUnreleased(links, base).catch((error: unknown) => {
         warn(`The build has no changes after ${base}. ${messageOf(error)}`)
         return null
       })
@@ -102,12 +107,12 @@ async function moduleSource(preview: boolean, warn: (message: string) => void): 
 }
 
 /**
- * Creates a Vite plugin that puts the GitHub release notes into the `virtual:release-notes` module.
+ * Creates a Vite plugin that puts the GitHub release notes of a repository into the `virtual:release-notes` module.
  *
  * A build loads them once. With `VITE_RELEASE_CHANNEL=preview`, it also loads the commits on `main` after the newest
  * release. The module holds `null` on the dev server, and in place of what a build cannot load.
  */
-export function releaseNotes(): Plugin {
+export function releaseNotes(links: ReleaseLinks): Plugin {
   let isBuild = false
   let preview = false
   let source: Promise<string> | null = null
@@ -123,7 +128,7 @@ export function releaseNotes(): Plugin {
     load(id) {
       if (id !== RESOLVED_ID) return null
       if (!isBuild) return 'export default null\nexport const unreleased = null\n'
-      source ??= moduleSource(preview, (message) => this.warn(message))
+      source ??= moduleSource(links, preview, (message) => this.warn(message))
       return source
     },
   }

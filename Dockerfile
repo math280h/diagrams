@@ -13,6 +13,8 @@ RUN --mount=type=cache,id=s/e3f64b02-d3db-4aa3-afd2-acf19f1d664f-/root/.local/sh
     pnpm install --frozen-lockfile
 COPY . .
 ARG VITE_RELEASE_CHANNEL
+ARG DIAGRAMS_WEBSITE=
+ARG DIAGRAMS_REPOSITORY=
 RUN pnpm build
 
 FROM build AS sbom-build

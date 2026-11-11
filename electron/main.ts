@@ -14,9 +14,9 @@ import {
   FIRST_DEV_AGENT_PORT,
   HANDOFF_TTL_MS,
   PREVIEW_APP_LABEL,
-  WEBSITE_ORIGIN,
 } from '@/desktop/constants'
-import type { AgentInfo } from '@/desktop/contract'
+import { BUILD, repositoryName } from '@/desktop/build-config'
+import type { AgentInfo, GitHubSignIn } from '@/desktop/contract'
 import { createHandoffCodes, mountHandoff } from './agent/handoff'
 import { marketplaceFiles, writeMarketplace } from './agent/marketplace'
 import { loadAgentPort, nextFreeAgentPort, saveAgentPort } from './agent/port'
@@ -25,7 +25,14 @@ import { buildInstructions, bundledPluginConfig, bundledSkillFiles, loadSkills, 
 import { createToken, loadToken } from './agent/token'
 import { appAbout } from './about'
 import { registerAppScheme, serveRenderer } from './app-protocol'
-import { APP_SETTINGS_FILE, createAppSettings, publicSettings } from './app-settings'
+import {
+  addWebsite,
+  APP_SETTINGS_FILE,
+  createAppSettings,
+  publicSettings,
+  removeWebsite,
+  setShareWebsite,
+} from './app-settings'
 import { createBackground } from './background'
 import { findDeepLink, isConnectAgentLink, parseReceiveLink } from './deep-link'
 import { createCaptureService } from './capture'
@@ -34,10 +41,12 @@ import { configurePaths, diagramsFolder, iconPath, rendererFolder } from './path
 import { parseRenderArgs, RENDER_USAGE, RenderUsageError, type RenderArgs } from './render-args'
 import { isolateRender, runRender } from './render-cli'
 import { createRendererRpc } from './renderer-rpc'
+import { createGitHubAuth, GITHUB_SIGN_IN_FILE, secretFile, type GitHubAuth } from './github-auth'
 import { createDiagramFiles } from './storage/diagram-files'
 import { committedText } from './storage/git'
 import { createLinkedFiles, isLinkedId } from './storage/linked-files'
 import { watchDiagramFolder, watchLinkedFiles } from './storage/watcher'
+import { checkUpdateRepository, repositoryFeed } from './update-repository'
 import { createUpdates, updatePolicy, type UpdatePolicy } from './updates'
 import { layoutGraphviz } from './graphviz'
 import {
@@ -79,10 +88,6 @@ function portFromEnvironment(): number | null {
 
 function agentUrl(port: number) {
   return `http://${AGENT_HOST}:${port}${AGENT_ENDPOINT}`
-}
-
-function handoffOrigins(): readonly string[] {
-  return app.isPackaged ? [WEBSITE_ORIGIN] : [WEBSITE_ORIGIN, ...DEV_ORIGINS]
 }
 
 function registerProtocolClient() {
@@ -143,7 +148,10 @@ async function start() {
   if (windowHidden) app.dock?.hide()
   else if (icon && process.platform === 'darwin') app.dock?.setIcon(icon)
   const userData = app.getPath('userData')
-  const settings = createAppSettings(path.join(userData, APP_SETTINGS_FILE))
+  const settings = createAppSettings(path.join(userData, APP_SETTINGS_FILE), BUILD.website)
+  const handoffOrigins = (): readonly string[] =>
+    app.isPackaged ? settings.get().websites : [...settings.get().websites, ...DEV_ORIGINS]
+  const updateRepository = () => (BUILD.repositoryEditable && settings.get().updateRepository) || BUILD.repository
   const background = windowHidden ? null : createBackground({ open: () => focusWindow(), quit: () => app.quit() })
   background?.follow(settings.get().keepRunning)
   app.on('window-all-closed', () => {
@@ -185,11 +193,36 @@ async function start() {
     agent = { ...agent, ...patch }
     rpc.emit('agent.info', agent)
   }
+  let signedIn = false
+  const github: GitHubAuth | null = BUILD.githubApp
+    ? createGitHubAuth({
+        clientId: BUILD.githubApp,
+        store: secretFile(path.join(userData, GITHUB_SIGN_IN_FILE)),
+        emit: (info) => {
+          rpc.emit('github.info', info)
+          const wasSignedIn = signedIn
+          signedIn = info.state === 'signed-in'
+          if (signedIn !== wasSignedIn) void updates.check()
+        },
+      })
+    : null
+  signedIn = github?.info().state === 'signed-in'
+  const noGitHub = (): never => {
+    throw new Error('This build has no GitHub sign-in.')
+  }
+  const accessToken = github && (() => github.accessToken())
+  const updateFeed = async () => {
+    const repository = updateRepository()
+    return accessToken ? repositoryFeed(repository, { accessToken }) : { repository, token: null }
+  }
   const policy = currentUpdatePolicy()
   const updates = createUpdates({
     updater: policy.kind === 'none' ? null : electronUpdater.autoUpdater,
     policy,
     currentVersion: app.getVersion(),
+    buildRepository: BUILD.repository,
+    repository: updateRepository(),
+    feed: updateFeed,
     emit: (info) => rpc.emit('update.info', info),
   })
 
@@ -325,6 +358,12 @@ async function start() {
         background?.follow(keepRunning)
         return publicSettings(settings.update({ keepRunning }))
       },
+      'app.addWebsite': async ({ website }) =>
+        publicSettings(settings.update((current) => addWebsite(current, website))),
+      'app.removeWebsite': async ({ website }) =>
+        publicSettings(settings.update((current) => removeWebsite(current, website))),
+      'app.setShareWebsite': async ({ website }) =>
+        publicSettings(settings.update((current) => setShareWebsite(current, website))),
       'app.quit': async () => {
         setImmediate(() => app.quit())
         return null
@@ -338,6 +377,28 @@ async function start() {
         updates.install()
         return null
       },
+      'update.setRepository': async ({ repository }) => {
+        if (!BUILD.repositoryEditable) throw new Error('This build gets its updates from one repository only.')
+        const name = repository === null ? BUILD.repository : repositoryName(repository)
+        if (name === null) throw new Error('Enter a GitHub repository as owner/name.')
+        if (name !== BUILD.repository) {
+          const feed = await repositoryFeed(name, { accessToken })
+          if (feed === 'sign-in') {
+            throw new Error(
+              `GitHub has no public repository ${name}. For a private repository, sign in to GitHub first.`,
+            )
+          }
+          await checkUpdateRepository(name, { token: feed.token, platform: process.platform })
+        }
+        settings.update({ updateRepository: name === BUILD.repository ? null : name })
+        const info = updates.setRepository(name)
+        void updates.check()
+        return info
+      },
+      'github.info': async (): Promise<GitHubSignIn> => github?.info() ?? noGitHub(),
+      'github.signIn': async () => (github ?? noGitHub()).signIn(),
+      'github.cancelSignIn': async () => (github ?? noGitHub()).cancelSignIn(),
+      'github.signOut': async () => (github ?? noGitHub()).signOut(),
     },
     rendererOrigin,
   )

@@ -1,4 +1,4 @@
-import { WEBSITE_ORIGIN } from '@/desktop/constants'
+import { BUILD } from '@/desktop/build-config'
 import { expect, test } from './fixtures'
 
 test('gives link previews the page title, the description and an image at its stated size', async ({ page }) => {
@@ -6,10 +6,10 @@ test('gives link previews the page title, the description and an image at its st
   const meta = (key: string) => page.locator(`meta[property="${key}"], meta[name="${key}"]`).getAttribute('content')
   expect(await meta('og:title')).toBe(await page.title())
   expect(await meta('og:description')).toBe(await meta('description'))
-  expect(await meta('og:url')).toBe(`${WEBSITE_ORIGIN}/`)
+  expect(await meta('og:url')).toBe(`${BUILD.website}/`)
 
   const image = new URL((await meta('og:image'))!)
-  expect(image.origin).toBe(WEBSITE_ORIGIN)
+  expect(image.origin).toBe(BUILD.website)
   const size = await page.evaluate(async (path) => {
     const element = new Image()
     element.src = path

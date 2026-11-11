@@ -69,11 +69,13 @@ jobs:
           annotations: ${{ steps.meta.outputs.annotations }}
           provenance: mode=max
           sbom: true
+          build-args: DIAGRAMS_REPOSITORY=${{ github.repository }}
       - name: Write the SBOM of the image
         env:
           VERSION: ${{ steps.meta.outputs.version }}
         run: |
-          docker buildx build --target sbom --build-arg "VERSION=$VERSION" --output "type=local,dest=$RUNNER_TEMP/sbom" .
+          docker buildx build --target sbom --build-arg "VERSION=$VERSION" --build-arg "DIAGRAMS_REPOSITORY=$GITHUB_REPOSITORY" \
+            --output "type=local,dest=$RUNNER_TEMP/sbom" .
       - name: Attest the build provenance of the image
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:

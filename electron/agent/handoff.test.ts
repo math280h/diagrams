@@ -38,19 +38,43 @@ describe('GET /handoff/:code', () => {
     const { codes, app } = setup()
     const ask = () => app.request(`/handoff/${CODE}`, { headers: { origin: ORIGIN } })
     let response = await ask()
-    expect(await response.json()).toEqual({ received: false })
+    expect(await response.json()).toEqual({ received: false, allowed: true })
     codes.add(CODE)
     response = await ask()
     expect(response.headers.get('access-control-allow-origin')).toBe(ORIGIN)
-    expect(await response.json()).toEqual({ received: true })
+    expect(await response.json()).toEqual({ received: true, allowed: true })
     expect(codes.consume(CODE)).toBe(true)
   })
 
-  it('refuses other websites', async () => {
+  it('tells another website that it may not send diagrams, so that the website can tell the user', async () => {
     const { codes, app } = setup()
     codes.add(CODE)
     const response = await app.request(`/handoff/${CODE}`, { headers: { origin: 'https://evil.example' } })
-    expect(response.status).toBe(403)
+    expect(response.headers.get('access-control-allow-origin')).toBe('https://evil.example')
+    expect(await response.json()).toEqual({ received: true, allowed: false })
+    expect(codes.has(CODE)).toBe(true)
+  })
+
+  it('refuses a request without a website', async () => {
+    const { codes, app } = setup()
+    codes.add(CODE)
+    expect((await app.request(`/handoff/${CODE}`)).status).toBe(403)
+  })
+
+  it('reads the websites at each request, so that a change in the settings counts at once', async () => {
+    let origins = [ORIGIN]
+    const app = new Hono()
+    const codes = createHandoffCodes({ ttlMs: 1000 })
+    mountHandoff(app, { codes, origins: () => origins, open: vi.fn(), focus: vi.fn() })
+    const ask = async () =>
+      (await (
+        await app.request(`/handoff/${CODE}`, { headers: { origin: 'https://diagrams.example.com' } })
+      ).json()) as {
+        allowed: boolean
+      }
+    expect((await ask()).allowed).toBe(false)
+    origins = [ORIGIN, 'https://diagrams.example.com']
+    expect((await ask()).allowed).toBe(true)
   })
 })
 
@@ -65,10 +89,14 @@ describe('POST /handoff/:code', () => {
     expect(focus).toHaveBeenCalled()
   })
 
-  it('refuses other websites', async () => {
-    const { codes, post } = setup()
+  it('refuses other websites, and keeps the code', async () => {
+    const { codes, open, post } = setup()
     codes.add(CODE)
-    expect((await post('{}', { origin: 'https://evil.example' })).status).toBe(403)
+    const response = await post('{}', { origin: 'https://evil.example' })
+    expect(response.status).toBe(403)
+    expect(response.headers.get('access-control-allow-origin')).toBeNull()
+    expect(open).not.toHaveBeenCalled()
+    expect(codes.has(CODE)).toBe(true)
   })
 
   it('answers 404 for a code that has not arrived yet, so the website tries again', async () => {
@@ -118,5 +146,10 @@ describe('POST /handoff/:code', () => {
       headers: { origin: 'https://evil.example', 'access-control-request-method': 'POST' },
     })
     expect(denied.headers.get('access-control-allow-origin')).toBeNull()
+    const question = await app.request(`/handoff/${CODE}`, {
+      method: 'OPTIONS',
+      headers: { origin: 'https://evil.example', 'access-control-request-method': 'GET' },
+    })
+    expect(question.headers.get('access-control-allow-origin')).toBe('https://evil.example')
   })
 })

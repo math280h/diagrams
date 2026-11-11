@@ -32,13 +32,27 @@ export interface AgentInfo {
 
 /**
  * The state of app updates. `unsupported` means a build that does not update itself, such as a build from source.
- * `available` means a new version that the user must download. `ready` means a downloaded update waits for a restart.
+ * `sign-in` means a build that gets its updates from a private repository, while the user is not signed in to
+ * GitHub. `available` means a new version that the user must download. `ready` means a downloaded update waits for a
+ * restart.
  */
-export type UpdateState = 'unsupported' | 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'failed'
+export type UpdateState =
+  | 'unsupported'
+  | 'idle'
+  | 'checking'
+  | 'sign-in'
+  | 'available'
+  | 'downloading'
+  | 'ready'
+  | 'failed'
 
 export interface AppSettings {
   /** If true, the app and its agent server keep running after the window closes, until the user quits. */
   keepRunning: boolean
+  /** The origins of the websites that may send diagrams to the app. The list is never empty. */
+  websites: string[]
+  /** The origin of the website that share links open on. It is one of `websites`. */
+  shareWebsite: string
 }
 
 export interface UpdateInfo {
@@ -48,8 +62,19 @@ export interface UpdateInfo {
   version: string | null
   /** True if a downloaded update installs when the app quits. */
   installsOnQuit: boolean
+  /** The GitHub repository of the updates, as `owner/name`. */
+  repository: string
   message: string | null
 }
+
+/**
+ * The GitHub sign-in of a build with a GitHub App. `waiting` means that GitHub waits for the user to enter `userCode`
+ * at `verificationUri`. `kept` is false when the system has no keychain, so the sign-in ends when the app quits.
+ */
+export type GitHubSignIn =
+  | { state: 'signed-out'; message: string | null }
+  | { state: 'waiting'; userCode: string; verificationUri: string }
+  | { state: 'signed-in'; kept: boolean }
 
 export type ToolContent = { type: 'text'; text: string } | { type: 'image'; mimeType: 'image/png'; data: string }
 
@@ -110,6 +135,11 @@ export interface MainRequests {
   'window.setTitleBarColors': { input: { color: string; symbolColor: string }; output: null }
   'app.settings': { input: null; output: AppSettings }
   'app.setKeepRunning': { input: { keepRunning: boolean }; output: AppSettings }
+  /** Adds a website to the websites that may send diagrams. The input is an address that the user typed. */
+  'app.addWebsite': { input: { website: string }; output: AppSettings }
+  /** Removes a website. The last website stays. */
+  'app.removeWebsite': { input: { website: string }; output: AppSettings }
+  'app.setShareWebsite': { input: { website: string }; output: AppSettings }
   /** Quits the app after the window saves the open diagram. */
   'app.quit': { input: null; output: null }
   'update.info': { input: null; output: UpdateInfo }
@@ -117,6 +147,16 @@ export interface MainRequests {
   'update.check': { input: null; output: UpdateInfo }
   /** Quits the app, installs the downloaded update and starts the app again. */
   'update.install': { input: null; output: null }
+  /**
+   * Sets the GitHub repository of updates in a build that allows it, after a check that the repository has a release
+   * with an update for this system. `null` sets the repository of the build.
+   */
+  'update.setRepository': { input: { repository: string | null }; output: UpdateInfo }
+  'github.info': { input: null; output: GitHubSignIn }
+  /** Starts the GitHub sign-in. The result has the code that the user enters on GitHub. */
+  'github.signIn': { input: null; output: GitHubSignIn }
+  'github.cancelSignIn': { input: null; output: GitHubSignIn }
+  'github.signOut': { input: null; output: GitHubSignIn }
   /** Lays out a DOT text with a Graphviz engine and returns the `plain` output. */
   'layout.graphviz': { input: { dot: string; engine: GraphvizEngine }; output: { plain: string } }
   /**
@@ -166,6 +206,7 @@ export interface MainEvents {
   /** False while the window is minimized or hidden. */
   'window.visibility': { visible: boolean }
   'update.info': UpdateInfo
+  'github.info': GitHubSignIn
 }
 
 export const IPC_CHANNELS = {

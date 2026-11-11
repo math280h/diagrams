@@ -197,6 +197,24 @@ describe('openInApp', () => {
     expect(useHandoff.getState()).toEqual({ status: 'opened', name: 'Shop' })
   })
 
+  it('tells the user to add this website when the app that received the code does not take diagrams from it', async () => {
+    const ours = AGENT_PORTS[1]!
+    codeCheck = (port) => {
+      if (port === AGENT_PORT) return { status: 200, body: { received: false, allowed: true } }
+      if (port === ours) return { status: 200, body: { received: true, allowed: false } }
+      return 'offline'
+    }
+    openInApp(shop)
+    await settle()
+    expect(posts()).toHaveLength(0)
+    expect(useHandoff.getState()).toEqual({
+      status: 'failed',
+      name: 'Shop',
+      reason: 'refused',
+      message: `The app takes diagrams only from the websites in its settings. Add ${window.location.origin} under Websites in the app settings, then try again.`,
+    })
+  })
+
   it('never sends the diagram to an app that did not receive the code', async () => {
     codeCheck = (port) => (port === AGENT_PORT ? { status: 200, body: { received: false } } : 'offline')
     openInApp(shop)

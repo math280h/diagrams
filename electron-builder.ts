@@ -1,9 +1,11 @@
 import type { Configuration } from 'electron-builder'
 import { windowsSigner } from './scripts/windows-signing.ts'
+import { readBuildConfig } from './src/desktop/build-config.ts'
 
 const env = process.env
 const hasMacCertificate = Boolean(env.CSC_LINK || env.CSC_NAME)
 const windowsSigning = windowsSigner(env)
+const [releaseOwner, releaseRepo] = readBuildConfig(env).repository.split('/') as [string, string]
 
 const config: Configuration = {
   appId: 'dev.thias.diagrams',
@@ -30,7 +32,7 @@ const config: Configuration = {
     onlyLoadAppFromAsar: true,
     grantFileProtocolExtraPrivileges: false,
   },
-  publish: { provider: 'github', owner: 'math280h', repo: 'diagrams', releaseType: 'draft' },
+  publish: { provider: 'github', owner: releaseOwner, repo: releaseRepo, releaseType: 'draft' },
   mac: {
     target: [
       { target: 'dmg', arch: ['arm64', 'x64'] },

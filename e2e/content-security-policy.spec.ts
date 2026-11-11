@@ -4,7 +4,8 @@ import os from 'node:os'
 import path from 'node:path'
 import { expect, test, type Page } from './fixtures'
 import { build, preview, type PreviewServer } from 'vite'
-import { AGENT_PORTS, LATEST_RELEASE_API_URL, RELEASE_ASSET_URL_PREFIX, RELEASES_API_URL } from '@/desktop/constants'
+import { BUILD_RELEASES } from '@/desktop/build-config'
+import { AGENT_PORTS } from '@/desktop/constants'
 import { copyTemplate, isAgentUrl } from './helpers'
 
 const BUILD_TIMEOUT_MS = 180_000
@@ -62,9 +63,9 @@ async function trackViolations(page: Page): Promise<string[]> {
 
 async function serveLatestRelease(page: Page) {
   const name = 'Diagrams-9.9.9-win-x64.exe'
-  await page.route(LATEST_RELEASE_API_URL, (route) =>
+  await page.route(BUILD_RELEASES.latestReleaseApi, (route) =>
     route.fulfill({
-      json: { assets: [{ name, browser_download_url: `${RELEASE_ASSET_URL_PREFIX}v9.9.9/${name}` }] },
+      json: { assets: [{ name, browser_download_url: `${BUILD_RELEASES.assetPrefix}v9.9.9/${name}` }] },
       headers: { 'access-control-allow-origin': '*' },
     }),
   )
@@ -82,7 +83,7 @@ test('puts the policy in the page, and the library loads the latest release unde
     'href',
     //releases/download/v9.9.9//,
   )
-  await page.route(RELEASES_API_URL, (route) =>
+  await page.route(BUILD_RELEASES.releasesApi, (route) =>
     route.fulfill({
       json: [{ tag_name: 'v9.9.9', name: 'v9.9.9', published_at: '2026-10-28T09:00:00Z', body_html: '<p>Notes</p>' }],
       headers: { 'access-control-allow-origin': '*' },

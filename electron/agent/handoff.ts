@@ -58,9 +58,12 @@ function isJsonObject(text: string) {
   }
 }
 
+const NOT_ALLOWED = 'This website may not send diagrams to the app. Add it under Websites in the app settings.'
+
 /**
- * Adds the routes of the handoff from the website. `GET /handoff/:code` answers `{ received }`, so that the website
- * sends the diagram only to the app that received the code. `POST /handoff/:code` receives the diagram.
+ * Adds the routes of the handoff from the website. `GET /handoff/:code` answers `{ received, allowed }` to each
+ * website, so that the website sends the diagram only to the app that received the code, and can tell the user when
+ * that app does not take diagrams from it. `POST /handoff/:code` receives the diagram, only from an allowed website.
  */
 export function mountHandoff(app: Hono, options: HandoffOptions) {
   const route = `${HANDOFF_PATH}/*`
@@ -73,7 +76,10 @@ export function mountHandoff(app: Hono, options: HandoffOptions) {
   app.use(
     route,
     cors({
-      origin: (origin) => (options.origins().includes(origin) ? origin : null),
+      origin: (origin, c) => {
+        const method = c.req.method === 'OPTIONS' ? c.req.header('access-control-request-method') : c.req.method
+        return method === 'GET' || options.origins().includes(origin) ? origin : null
+      },
       allowMethods: ['GET', 'POST'],
       allowHeaders: ['Content-Type'],
       maxAge: PREFLIGHT_MAX_AGE_S,
@@ -81,10 +87,8 @@ export function mountHandoff(app: Hono, options: HandoffOptions) {
   )
   app.get(`${HANDOFF_PATH}/:code`, (c) => {
     const origin = c.req.header('origin')
-    if (!origin || !options.origins().includes(origin)) {
-      return c.json({ message: 'This website may not send diagrams to the app.' }, 403)
-    }
-    return c.json({ received: options.codes.has(c.req.param('code')) })
+    if (!origin) return c.json({ message: NOT_ALLOWED }, 403)
+    return c.json({ received: options.codes.has(c.req.param('code')), allowed: options.origins().includes(origin) })
   })
   app.post(
     `${HANDOFF_PATH}/:code`,
@@ -94,9 +98,7 @@ export function mountHandoff(app: Hono, options: HandoffOptions) {
     }),
     async (c) => {
       const origin = c.req.header('origin')
-      if (!origin || !options.origins().includes(origin)) {
-        return c.json({ message: 'This website may not send diagrams to the app.' }, 403)
-      }
+      if (!origin || !options.origins().includes(origin)) return c.json({ message: NOT_ALLOWED }, 403)
       if (!c.req.header('content-type')?.startsWith('application/json')) {
         return c.json({ message: 'Send the diagram as JSON.' }, 415)
       }
