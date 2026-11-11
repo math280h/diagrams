@@ -1035,7 +1035,8 @@ The React app in Electron, plus file storage, agent control, the website handoff
 - A fixed 44 px drag strip tops every page, also without a header. Interactive elements and dialogs do not drag.
 - Back and forward: app buttons, Alt with arrow keys (Command with brackets on macOS), mouse side buttons (no browser
   buttons).
-- `pnpm app-icon` renders `build/icon.svg` to `build/icon.png` (1024 px) and `build/icon.ico` (16 to 256 px).
+- `pnpm app-icon` renders `build/icon.svg` to `build/icon.png` (1024 px), `build/icon.ico` (16 to 256 px) and the
+  macOS menu bar icon `build/trayTemplate.png`.
   - Unpackaged app: shows the icon on the window and macOS dock (Electron otherwise shows its own).
   - Packaged app: uses the executable or bundle icon.
 - The window restores position, size and maximized state on a connected screen, shrunk to fit if the saved one is gone.
@@ -1127,7 +1128,12 @@ with snapdom, because Chromium gives only pixels.
 - On close, the window saves the open diagram and waits for queued writes. A crashed renderer delays the close by at
   most 3 seconds (the save limit includes the renderer start).
 - Electron cancels a quit when a window prevents its close, so the window quits again after the save. The agent server
-  and folder watcher stop on `will-quit`; on macOS they continue after a window closes without a quit.
+  and folder watcher stop on `will-quit`.
+
+### Background
+
+The app continues to run in the background after its window closes, so agents can use it without an open window. An
+agent call opens the window again, because the tools run in the renderer. A setting turns this off.
 
 ### Agent tools
 

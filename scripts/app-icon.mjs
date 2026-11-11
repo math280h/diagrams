@@ -12,6 +12,15 @@ const MASKABLE_SIZE = 512
 const APPLE_TOUCH_SIZE = 180
 // A maskable icon and an Apple touch icon fill the whole square. The system cuts the shape.
 const fullBleedSvg = svg.replace(/<rect [^>]*\/>/, '<rect width="24" height="24" fill="#0a0a0a"/>')
+// macOS draws a menu bar template image from its alpha channel only, in the colour of the menu bar text.
+const TRAY_TEMPLATE_SIZE = 18
+const cutLine = svg.match(/<path [^>]*\/>/)[0].replace(/ stroke="[^"]*"/, ' stroke="black"')
+const cutDot = svg.match(/<circle [^>]*\/>/)[0].replace(/fill="[^"]*"/, 'fill="black"')
+const square = svg
+  .match(/<rect [^>]*\/>/)[0]
+  .replace(/ stroke="[^"]*" stroke-width="[^"]*"/, '')
+  .replace(/fill="[^"]*"/, 'fill="black" mask="url(#cut)"')
+const traySvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><mask id="cut"><rect width="24" height="24" fill="white"/>${cutLine}${cutDot}</mask>${square}</svg>`
 
 async function render(page, size, source = svg) {
   await page.setViewportSize({ width: size, height: size })
@@ -54,9 +63,11 @@ try {
     writeFileSync(path.join(webIconFolder, `icon-${size}.png`), await render(page, size))
   writeFileSync(path.join(webIconFolder, 'icon-maskable.png'), await render(page, MASKABLE_SIZE, fullBleedSvg))
   writeFileSync(path.join(webIconFolder, 'apple-touch-icon.png'), await render(page, APPLE_TOUCH_SIZE, fullBleedSvg))
+  writeFileSync(path.join(buildFolder, 'trayTemplate.png'), await render(page, TRAY_TEMPLATE_SIZE, traySvg))
+  writeFileSync(path.join(buildFolder, 'trayTemplate@2x.png'), await render(page, TRAY_TEMPLATE_SIZE * 2, traySvg))
 } finally {
   await browser.close()
 }
 console.log(
-  `Wrote build/icon.png (${PNG_SIZE} px), build/icon.ico (${ICO_SIZES.join(', ')} px) and the web app icons in public/icons.`,
+  `Wrote build/icon.png (${PNG_SIZE} px), build/icon.ico (${ICO_SIZES.join(', ')} px), the macOS menu bar icon in build and the web app icons in public/icons.`,
 )

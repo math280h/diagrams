@@ -37,6 +37,10 @@ const config: Configuration = {
       { target: 'zip', arch: ['arm64', 'x64'] },
     ],
     category: 'public.app-category.developer-tools',
+    extraResources: [
+      { from: 'build/trayTemplate.png', to: 'trayTemplate.png' },
+      { from: 'build/trayTemplate@2x.png', to: 'trayTemplate@2x.png' },
+    ],
     ...(hasMacCertificate ? { hardenedRuntime: true } : { identity: '-', hardenedRuntime: false, notarize: false }),
   },
   win: {

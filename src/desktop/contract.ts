@@ -36,6 +36,11 @@ export interface AgentInfo {
  */
 export type UpdateState = 'unsupported' | 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'failed'
 
+export interface AppSettings {
+  /** If true, the app and its agent server keep running after the window closes, until the user quits. */
+  keepRunning: boolean
+}
+
 export interface UpdateInfo {
   state: UpdateState
   currentVersion: string
@@ -103,6 +108,10 @@ export interface MainRequests {
   'agent.info': { input: null; output: AgentInfo }
   'agent.resetToken': { input: null; output: AgentInfo }
   'window.setTitleBarColors': { input: { color: string; symbolColor: string }; output: null }
+  'app.settings': { input: null; output: AppSettings }
+  'app.setKeepRunning': { input: { keepRunning: boolean }; output: AppSettings }
+  /** Quits the app after the window saves the open diagram. */
+  'app.quit': { input: null; output: null }
   'update.info': { input: null; output: UpdateInfo }
   /** Checks for an update and resolves when the check ends. A build that installs updates starts the download. */
   'update.check': { input: null; output: UpdateInfo }
