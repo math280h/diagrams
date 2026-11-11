@@ -1,3 +1,4 @@
+import { choosablePaths, sidePaths } from '@/model/flow'
 import { nodeLabel } from '@/model/labels'
 import type { Flow, FlowPath, Target } from '@/model/schema'
 import type { DiagramEdge, DiagramNode } from '@/model/types'
@@ -102,23 +103,30 @@ export function createResolver(
   return { node, edge, target }
 }
 
-/** Finds a flow by id or by name. */
 /**
- * Finds a path of a flow by its id or its name.
+ * Finds a path of a flow by its id or its name. A side path is not a path that a viewer chooses.
  *
- * @throws ToolError If no path or more than one path matches.
+ * @throws ToolError If no path or more than one path matches, or if the reference names a side path.
  */
 export function resolvePath(flow: Flow, reference: string): FlowPath {
-  const paths = flow.paths ?? []
-  const direct = paths.find((path) => path.id === reference)
-  if (direct) return direct
-  const matches = paths.filter((path) => normalize(path.name) === normalize(reference))
+  const matching = (paths: readonly FlowPath[]) => {
+    const direct = paths.find((path) => path.id === reference)
+    return direct ? [direct] : paths.filter((path) => normalize(path.name) === normalize(reference))
+  }
+  const paths = choosablePaths(flow)
+  const matches = matching(paths)
   if (matches.length === 1) return matches[0]!
   const list = paths.map((path) => `"${path.name}" (${path.id})`).join(', ') || 'none'
   if (matches.length > 1) throw new ToolError(`"${reference}" matches ${matches.length} paths: ${list}. Use an id.`)
+  if (matching(sidePaths(flow)).length > 0) {
+    throw new ToolError(
+      `"${reference}" is a side path of the flow "${flow.name}". Side paths always play with the main steps, so leave out path to see it. Paths: ${list}.`,
+    )
+  }
   throw new ToolError(`The flow "${flow.name}" has no path "${reference}". Paths: ${list}.`)
 }
 
+/** Finds a flow by id or by name. */
 export function resolveFlow(flows: readonly Flow[], reference: string): Flow {
   const direct = flows.find((flow) => flow.id === reference)
   if (direct) return direct

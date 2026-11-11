@@ -4,6 +4,7 @@ import { lanesText, overviewName, type LaneName } from '@/model/flow'
 import { nodeName } from '@/model/labels'
 import { stepBody } from '@/model/payload'
 import type { EdgeData } from '@/model/schema'
+import type { Caption } from '@/engine/engine'
 import { useCaption, useEngine, usePlaybackState } from '@/engine/hooks'
 import type { DiagramEdge, DiagramNode } from '@/model/types'
 import { Icon } from './icon'
@@ -54,14 +55,17 @@ export function FlowCaption() {
   if (!caption) return null
   const body = caption.bodies && edgeId ? stepBody(edgeData, caption.reversed) : ''
 
-  const lanes = caption.lanes.flatMap(({ target, reversed }): LaneName[] => {
-    if (target.kind === 'node') return [{ kind: 'node', from: nodeTitle(getNode(target.id)), to: '' }]
-    const edge = getEdge(target.id)
-    if (!edge) return []
-    const from = nodeTitle(getNode(reversed ? edge.target : edge.source))
-    return [{ kind: 'edge', from, to: nodeTitle(getNode(reversed ? edge.source : edge.target)) }]
-  })
-  const element = caption.target.kind === 'flow' ? overviewName(caption.index, caption.total) : lanesText(lanes)
+  const elementOf = (lanes: Caption['lanes']) =>
+    lanesText(
+      lanes.flatMap(({ target, reversed }): LaneName[] => {
+        if (target.kind === 'node') return [{ kind: 'node', from: nodeTitle(getNode(target.id)), to: '' }]
+        const edge = getEdge(target.id)
+        if (!edge) return []
+        const from = nodeTitle(getNode(reversed ? edge.target : edge.source))
+        return [{ kind: 'edge', from, to: nodeTitle(getNode(reversed ? edge.source : edge.target)) }]
+      }),
+    )
+  const element = caption.target.kind === 'flow' ? overviewName(caption.index, caption.total) : elementOf(caption.lanes)
   const event = caption.event || (caption.target.kind === 'edge' ? (getEdge(caption.target.id)?.data?.label ?? '') : '')
 
   return (
@@ -77,6 +81,17 @@ export function FlowCaption() {
       )}
       {body && <span className="dg-caption-body dg-mono">{body}</span>}
       {caption.text && <span className="dg-caption-text">{caption.text}</span>}
+      {caption.sides.map((side) => {
+        const main = side.lanes[0]?.target
+        const sideEvent = side.event || (main?.kind === 'edge' ? (getEdge(main.id)?.data?.label ?? '') : '')
+        return (
+          <span key={side.track} className="dg-caption-side">
+            <span className="dg-mono">{side.number}</span> {side.name}: {elementOf(side.lanes)}
+            {sideEvent && <span className="dg-mono"> {sideEvent}</span>}
+            {side.text && ` — ${side.text}`}
+          </span>
+        )
+      })}
     </div>
   )
 }

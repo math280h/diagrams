@@ -594,6 +594,68 @@ describe('agent tools', () => {
     ])
   })
 
+  it('plays work without a reply in a side path at the same time as the main steps', async () => {
+    await call('create_diagram', { name: 'Orders' })
+    await call('add_elements', {
+      nodes: [
+        { ref: 'a', label: 'App' },
+        { ref: 'o', label: 'Orders' },
+        { ref: 'e', label: 'Emails', form: 'queue' },
+        { ref: 'm', label: 'Mailer' },
+      ],
+      edges: [
+        { from: 'a', to: 'o' },
+        { from: 'a', to: 'e', noReply: true },
+        { from: 'e', to: 'm' },
+      ],
+    })
+    await call('update_elements', { edges: [{ edge: 'Emails -> Mailer', noReply: true }] })
+    const result = await call('add_flow', {
+      name: 'Checkout',
+      steps: [{ target: 'App' }, { target: 'Orders', parallel: ['Emails'] }, { target: 'App' }],
+      paths: [{ name: 'Send the email', from: 2, concurrent: true, steps: [{ target: 'Mailer' }] }],
+    })
+    expect(result).toMatchObject({ steps: 5, paths: 1 })
+    const { nodes, edges, flows } = useDoc.getState()
+    const flow = flows[0]!
+    expect(flow.steps[3]!.parallel).toBeUndefined()
+    expect(flow.paths![0]).toMatchObject({
+      name: 'Send the email',
+      fromStep: flow.steps[2]!.id,
+      rejoinStep: null,
+      concurrent: true,
+    })
+    const timeline = compileFlow(flow, new Set(nodes.map((node) => node.id)), edges)
+    const label = (id: string | null) => nodeLabel(nodes.find((candidate) => candidate.id === id)!)
+    const text = (segments: typeof timeline.segments) =>
+      segments.map((segment) =>
+        segment.lanes.map((lane) => `${label(lane.fromNode)} → ${label(lane.toNode)}`).join(', '),
+      )
+    expect(text(timeline.segments).slice(3)).toEqual(['Orders → App', 'App → App'])
+    expect(text(timeline.sides[0]!.segments)).toEqual(['Emails → Mailer', 'Mailer → Mailer'])
+
+    const diagram = (await call('get_diagram', { detail: 'full' })) as {
+      edges: Record<string, unknown>[]
+      flows: Record<string, unknown>[]
+    }
+    expect(diagram.edges.filter((edge) => edge.noReply).length).toBe(2)
+    expect(diagram.flows[0]).toMatchObject({ paths: [{ name: 'Send the email', from: 2, concurrent: true }] })
+    expect((diagram.flows[0]!.paths as Record<string, unknown>[])[0]).not.toHaveProperty('rejoin')
+
+    await expect(call('render_image', { flow: 'Checkout', path: 'Send the email' })).rejects.toThrow(
+      '"Send the email" is a side path of the flow "Checkout". Side paths always play with the main steps',
+    )
+    await expect(
+      call('update_flow', {
+        flow: 'Checkout',
+        paths: [{ name: 'Back', from: 2, concurrent: true, rejoin: 4, steps: [{ target: 'Mailer' }] }],
+      }),
+    ).rejects.toThrow('The side path "Back" cannot rejoin')
+    await call('update_elements', { edges: [{ edge: 'Emails -> Mailer', noReply: false }] })
+    const emails = nodeByLabel('Emails').id
+    expect(useDoc.getState().edges.find((edge) => edge.source === emails)!.data!.noReply).toBe(false)
+  })
+
   it('makes a new diagram from a trace, with the trace as its flow', async () => {
     const result = await call('import_trace', { trace: sampleTrace() })
     expect(open).toBe(result.diagramId)

@@ -151,6 +151,7 @@ function compactEdge(edge: DiagramEdge, full: boolean) {
     ...(data?.markerStart === 'arrow' ? { bidirectional: true } : {}),
     ...(data?.request ? { request: compactPayload(data.request, full) } : {}),
     ...(data?.response ? { response: compactPayload(data.response, full) } : {}),
+    ...(data?.noReply ? { noReply: true } : {}),
   }
 }
 
@@ -195,7 +196,8 @@ function compactFlow(flow: Flow, full: boolean) {
             id: path.id,
             name: path.name,
             from: mainIndex(path.fromStep),
-            ...(path.rejoinStep !== null ? { rejoin: mainIndex(path.rejoinStep) } : {}),
+            ...(path.concurrent ? { concurrent: true } : {}),
+            ...(path.rejoinStep !== null && !path.concurrent ? { rejoin: mainIndex(path.rejoinStep) } : {}),
             steps: compactSteps(path.steps),
           })),
         }

@@ -1,5 +1,5 @@
 import type { MouseEvent } from 'react'
-import { pathSteps, removeStep } from '@/model/flow'
+import { pathSteps, removeStep, sidePaths } from '@/model/flow'
 import { selectOnly, updateFlow } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
 import { setUi, useUi } from '@/store/ui-store'
@@ -53,13 +53,16 @@ export function useSelectedStepId(): string | null {
   return useUi((state) => (state.selectedStepIds.length === 1 ? state.selectedStepIds[0]! : null))
 }
 
-/** Selects every step that the active flow plays on the active path. */
+/** Selects every step that the active flow plays on the active path, and the steps of the side paths that play. */
 export function selectAllSteps() {
   const { activeFlowId, activePathId } = useUi.getState()
   const flow = useDoc.getState().flows.find((candidate) => candidate.id === activeFlowId)
   if (!flow) return
+  const steps = pathSteps(flow, activePathId)
+  const played = new Set(steps.map((step) => step.id))
+  const sides = sidePaths(flow).filter((path) => played.has(path.fromStep))
   selectOnly([])
-  setUi({ selectedStepIds: pathSteps(flow, activePathId).map((step) => step.id) })
+  setUi({ selectedStepIds: [...steps, ...sides.flatMap((path) => path.steps)].map((step) => step.id) })
 }
 
 /**

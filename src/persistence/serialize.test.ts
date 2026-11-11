@@ -172,6 +172,29 @@ describe('migrate', () => {
     expect(migrated.edges[0]!.data?.route).toEqual(route)
   })
 
+  it('reads version 16 diagrams as they are: edges reply and paths take the place of the main steps', () => {
+    const edge = createEdge('a', 'b', { label: 'HTTPS' })
+    const step = {
+      id: 's1',
+      target: { kind: 'edge', id: edge.id },
+      caption: '',
+      durationMs: 1000,
+      camera: 'follow',
+      zoom: 1,
+      event: '',
+      latencyMs: null,
+      level: 'info',
+    }
+    const path = { id: 'p1', name: 'Declined', fromStep: 's1', steps: [{ ...step, id: 's2' }], rejoinStep: null }
+    const flow = { ...createFlow('Checkout'), steps: [step], paths: [path] }
+    const v16 = { ...createDiagram(), version: 16, edges: [edge], flows: [flow] }
+    const migrated = migrate(JSON.parse(JSON.stringify(v16)))
+    expect(migrated.version).toBe(17)
+    expect(migrated.edges[0]!.data).not.toHaveProperty('noReply')
+    expect(migrated.edges[0]!.data).toEqual(edge.data)
+    expect(migrated.flows[0]!.paths).toEqual([path])
+  })
+
   it('turns off the step numbers of version 14 flows', () => {
     const { stepNumbers: _numbers, ...flow } = createFlow('Checkout')
     const v14 = { ...createDiagram(), version: 14, flows: [flow] }

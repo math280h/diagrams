@@ -16,7 +16,7 @@ export const HEADLINE_FEATURES: readonly HeadlineFeature[] = [
     id: 'flows',
     title: 'Follow a request step by step',
     summary:
-      'Record the path of a request and caption each step. Play it and the camera follows. Steps can fan out and join again, or branch. A flow also reads as a log or a sequence diagram.',
+      'Record the path of a request and caption each step. Play it and the camera follows. Steps can fan out and join again, branch, or go on at the same time in a side path. A flow also reads as a log or a sequence diagram.',
   },
   {
     id: 'traces',

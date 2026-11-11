@@ -1,5 +1,6 @@
 import type { DiagramContent } from '@/agent/compact'
 import type { RenderRequest } from '@/desktop/contract'
+import { choosablePaths, sidePaths } from '@/model/flow'
 import { migrate } from '@/persistence/migrations'
 import { fromDiagram } from '@/persistence/serialize'
 import { renderDiagramImage, renderDiagramVideo } from './render-image'
@@ -12,7 +13,7 @@ export class RenderRequestError extends Error {}
  * Renders a diagram file as an image, a video or a GIF.
  *
  * @throws RenderRequestError If the file is not a diagram, the diagram is empty, or it has no flow or no path with the
- *   name or the id.
+ *   name or the id. A side path is not a path for this request.
  */
 export async function renderDiagramFile(request: RenderRequest): Promise<Blob> {
   let content: DiagramContent
@@ -39,10 +40,18 @@ export async function renderDiagramFile(request: RenderRequest): Promise<Blob> {
     }
     flowId = flow.id
     if (request.path !== undefined) {
-      const path = flow.paths?.find((candidate) => candidate.id === request.path || candidate.name === request.path)
+      const paths = choosablePaths(flow)
+      const path = paths.find((candidate) => candidate.id === request.path || candidate.name === request.path)
       if (!path) {
-        const names = (flow.paths ?? []).map((candidate) => `"${candidate.name}"`).join(', ') || 'none'
-        throw new RenderRequestError(`The flow "${flow.name}" has no path "${request.path}". Its paths: ${names}.`)
+        const names = paths.map((candidate) => `"${candidate.name}"`).join(', ') || 'none'
+        const side = sidePaths(flow).some(
+          (candidate) => candidate.id === request.path || candidate.name === request.path,
+        )
+        throw new RenderRequestError(
+          side
+            ? `"${request.path}" is a side path. Side paths always play with the main steps, so leave out --path. Its paths: ${names}.`
+            : `The flow "${flow.name}" has no path "${request.path}". Its paths: ${names}.`,
+        )
       }
       pathId = path.id
     }

@@ -3,6 +3,7 @@ import { blendCameras, fitCamera, unionRects, type Camera, type Rect, type ViewS
 import { clamp01, easeInOutCubic, easeInOutSine, lerp } from '@/engine/easing'
 import { segmentIndexAt, type Timeline, type TimelineSegment } from './compile'
 import type { FlowGeometry } from './evaluate'
+import { allSegments } from './sides'
 
 const OVERVIEW_PADDING_PX = 96
 const OVERVIEW_PADDING_SHARE = 0.12
@@ -73,10 +74,10 @@ export function segmentRect(segment: TimelineSegment, geometry: FlowGeometry, ar
   return unionRects(rects)
 }
 
-/** Returns the rectangle around all the nodes that the steps of the timeline reach. */
+/** Returns the rectangle around all the nodes that the steps of the timeline and of its side paths reach. */
 export function pathRect(timeline: Timeline, geometry: FlowGeometry): Rect | null {
   return unionRects(
-    timeline.segments.flatMap((segment) => {
+    allSegments(timeline).flatMap((segment) => {
       const rect = segmentRect(segment, geometry)
       return rect ? [rect] : []
     }),

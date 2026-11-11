@@ -53,6 +53,11 @@ function buildPaths(steps: readonly Step[], inputs: readonly PathInput[], contex
       )
     }
     let rejoinStep: string | null = null
+    if (input.rejoin !== undefined && input.concurrent) {
+      throw new ToolError(
+        `The side path "${input.name}" cannot rejoin: it plays at the same time as the main steps and ends on its own. Leave out rejoin, or leave out concurrent for a path that takes the place of the main steps.`,
+      )
+    }
     if (input.rejoin !== undefined) {
       const rejoin = steps[input.rejoin]
       if (!rejoin || input.rejoin <= input.from) {
@@ -63,12 +68,23 @@ function buildPaths(steps: readonly Step[], inputs: readonly PathInput[], contex
       rejoinStep = rejoin.id
     }
     const start = timeline.segments.find((segment) => segment.step.id === from.id)
+    const concurrent = input.concurrent === true
+    const built = buildSteps(
+      input.steps,
+      context.resolver,
+      context.edges,
+      context.connect,
+      context.warnings,
+      start,
+      concurrent,
+    )
     return {
       id: newId('p'),
       name: input.name,
       fromStep: from.id,
       rejoinStep,
-      steps: buildSteps(input.steps, context.resolver, context.edges, context.connect, context.warnings, start),
+      steps: built,
+      ...(concurrent ? { concurrent: true } : {}),
     }
   })
 }

@@ -6,6 +6,7 @@ import { pointAt, type ArcTable } from '@/engine/path-sampler'
 import { segmentIndexAt, type Lane, type Timeline, type TimelineSegment } from './compile'
 import { followCameraAt } from './follow-camera'
 import { framedCameraAt, overviewCamera, type FramedCamera } from './framing'
+import { allSegments, cameraTimeline, sideIndexAt, sideView } from './sides'
 import { firstKeyframeMs, sampleCameraTrack, sampleValueTrack } from './tracks'
 
 export interface FlowGeometry {
@@ -19,13 +20,18 @@ export interface FlowGeometry {
 
 export type ElementKey = `node:${string}` | `edge:${string}`
 
-/** The token of a parallel target. See {@link FlowFrame.token}. */
+/** The token of a parallel target or of a side step. See {@link FlowFrame.token}. */
 export interface ParallelToken {
-  /** The index of the lane in the segment, from 1. */
+  /** The index of the lane in the segment: from 1 for a main step, from 0 for a side step. */
   lane: number
   point: XY
   lift: number
   label: number
+  /**
+   * For the token of a side step: the index of its side path in {@link Timeline.sides}, and the index of the step in
+   * the {@link sideView} of the side path.
+   */
+  side?: { track: number; index: number }
 }
 
 export interface FlowFrame {
@@ -44,8 +50,10 @@ export interface FlowFrame {
    * {@link FlowFrame.tokenLift}.
    */
   tokenLabel: number
-  /** The tokens of the parallel targets of the step. */
+  /** The tokens of the parallel targets of the step, then the tokens of the side steps. */
   parallelTokens: ParallelToken[]
+  /** For each side path of {@link Timeline.sides}, the result of {@link sideIndexAt}. */
+  sideIndices: number[]
   activeNodes: Set<string>
   activeEdges: Set<string>
   visitedNodes: Set<string>
@@ -210,10 +218,22 @@ function pointOnPolyline(points: XY[], u: number): XY {
   return points[points.length - 1]!
 }
 
+function sideExit(timeline: Timeline, segment: TimelineSegment, node: string | null): Lane | null {
+  for (const side of timeline.sides) {
+    if (side.from !== segment) continue
+    const exit = linkedEdge(side.segments[0], node, 'fromNode', -1)
+    if (exit) return exit
+  }
+  return null
+}
+
 function nodeSegmentEnds(timeline: Timeline, index: number, laneIndex: number, geometry: FlowGeometry) {
-  const lane = timeline.segments[index]!.lanes[laneIndex]!
+  const segment = timeline.segments[index]!
+  const lane = segment.lanes[laneIndex]!
   const entry = linkedEdge(timeline.segments[index - 1], lane.toNode, 'toNode', laneIndex)
-  const exit = linkedEdge(timeline.segments[index + 1], lane.toNode, 'fromNode', laneIndex)
+  const exit =
+    linkedEdge(timeline.segments[index + 1], lane.toNode, 'fromNode', laneIndex) ??
+    sideExit(timeline, segment, lane.toNode)
   return {
     rect: lane.toNode ? geometry.nodeRect(lane.toNode) : null,
     entry: entry ? edgeEnd(entry, geometry, 'end') : null,
@@ -340,18 +360,19 @@ function cameraAt(
   reducedMotion: boolean,
 ): FramedCamera {
   const { cameraStyle, cameraMotion } = timeline.flow
+  const pieces = cameraTimeline(timeline)
   const framed: FramedCamera =
     cameraStyle === 'frame'
-      ? framedCameraAt(timeline, timeMs, geometry, view, cameraMotion, reducedMotion)
+      ? framedCameraAt(pieces, timeMs, geometry, view, cameraMotion, reducedMotion)
       : {
           camera:
             cameraStyle === 'follow'
               ? followCameraAt(
-                  timeline,
+                  pieces,
                   timeMs,
                   geometry,
                   view,
-                  (index, atMs) => tokenAt(timeline, index, atMs, geometry),
+                  (index, atMs) => tokenAt(timeline, pieces.segments[index]?.index ?? index, atMs, geometry),
                   reducedMotion,
                 )
               : overviewCamera(geometry, view),
@@ -370,6 +391,43 @@ function cameraAt(
   return { camera: blendCameras(stepCamera, firstCamera, easeInOutCubic(clamp01(lead)), view), opacity: 1 }
 }
 
+function markReached(frame: FlowFrame, segments: readonly TimelineSegment[], index: number) {
+  for (let i = 0; i <= index && i < segments.length; i++) {
+    const current = i === index
+    for (const lane of segments[i]!.lanes) {
+      if (lane.target.kind === 'node') {
+        ;(current ? frame.activeNodes : frame.visitedNodes).add(lane.target.id)
+      } else {
+        ;(current ? frame.activeEdges : frame.visitedEdges).add(lane.target.id)
+        if (lane.fromNode) frame.visitedNodes.add(lane.fromNode)
+      }
+    }
+  }
+}
+
+function pushTokens(
+  frame: FlowFrame,
+  timeline: Timeline,
+  index: number,
+  firstLane: number,
+  timeMs: number,
+  geometry: FlowGeometry,
+  side?: ParallelToken['side'],
+) {
+  const lanes = timeline.segments[index]?.lanes.length ?? 0
+  for (let lane = firstLane; lane < lanes; lane++) {
+    const point = tokenAt(timeline, index, timeMs, geometry, lane)
+    if (!point) continue
+    frame.parallelTokens.push({
+      lane,
+      point,
+      lift: tokenLiftAt(timeline, index, timeMs, geometry, lane),
+      label: tokenLabelAt(timeline, index, timeMs, geometry, lane),
+      ...(side ? { side } : {}),
+    })
+  }
+}
+
 /** Computes the full flow state at the time. The result depends only on the arguments. */
 export function evaluateFlow(
   timeline: Timeline,
@@ -386,6 +444,7 @@ export function evaluateFlow(
     tokenLift: index >= 0 ? tokenLiftAt(timeline, index, timeMs, geometry) : 0,
     tokenLabel: index >= 0 ? tokenLabelAt(timeline, index, timeMs, geometry) : 0,
     parallelTokens: [],
+    sideIndices: [],
     activeNodes: new Set(),
     activeEdges: new Set(),
     visitedNodes: new Set(),
@@ -397,32 +456,18 @@ export function evaluateFlow(
     trafficScale: new Map(),
   }
 
-  for (let i = 0; i <= index; i++) {
-    const segment = timeline.segments[i]!
-    const current = i === index
-    for (const lane of segment.lanes) {
-      if (lane.target.kind === 'node') {
-        ;(current ? frame.activeNodes : frame.visitedNodes).add(lane.target.id)
-      } else {
-        ;(current ? frame.activeEdges : frame.visitedEdges).add(lane.target.id)
-        if (lane.fromNode) frame.visitedNodes.add(lane.fromNode)
-      }
-    }
-  }
-
-  const lanes = timeline.segments[index]?.lanes.length ?? 0
-  for (let lane = 1; lane < lanes; lane++) {
-    const point = tokenAt(timeline, index, timeMs, geometry, lane)
-    if (!point) continue
-    frame.parallelTokens.push({
-      lane,
-      point,
-      lift: tokenLiftAt(timeline, index, timeMs, geometry, lane),
-      label: tokenLabelAt(timeline, index, timeMs, geometry, lane),
-    })
-  }
+  markReached(frame, timeline.segments, index)
+  pushTokens(frame, timeline, index, 1, timeMs, geometry)
+  timeline.sides.forEach((side, track) => {
+    const at = sideIndexAt(timeline, side, timeMs)
+    frame.sideIndices.push(at)
+    if (at < 0) return
+    markReached(frame, side.segments, at)
+    if (at < side.segments.length)
+      pushTokens(frame, sideView(timeline, side), at + 1, 0, timeMs, geometry, { track, index: at + 1 })
+  })
   if (timeline.segments[index]?.target.kind === 'flow') {
-    for (const segment of timeline.segments) {
+    for (const segment of allSegments(timeline)) {
       for (const lane of segment.lanes) {
         if (lane.target.kind === 'edge') frame.activeEdges.add(lane.target.id)
         for (const id of [lane.fromNode, lane.toNode]) if (id) frame.activeNodes.add(id)

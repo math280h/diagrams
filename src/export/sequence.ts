@@ -1,4 +1,5 @@
-import { compileFlow, type Lane, type Timeline } from '@/engine/flow/compile'
+import { compileFlow, type Lane, type Timeline, type TimelineSegment } from '@/engine/flow/compile'
+import { choosablePaths, sidePaths } from '@/model/flow'
 import { nodeTitle } from '@/model/labels'
 import { stepBody } from '@/model/payload'
 import type { Flow, FlowPath, LogLevel, Step } from '@/model/schema'
@@ -11,8 +12,12 @@ export interface SequenceParticipant {
 
 interface SequenceRowBase {
   step: Step
-  /** The index of the step in the timeline of the flow. */
+  /** The index of the step in the segments of its track: the main track, or the side path `track`. */
   segmentIndex: number
+  /** The index of the side path of the step in {@link Timeline.sides}, or `null` for a step of the main track. */
+  track: number | null
+  /** The step number, for example `4`, or `3.1` for the first step of a side path after step 3. */
+  number: string
   /** The index of the target in the step: 0 for the main target, then the parallel targets. */
   lane: number
   /** The number of targets of the step. */
@@ -31,6 +36,8 @@ export interface SequenceMessage extends SequenceRowBase {
   to: number
   /** True if the token moves back along the edge, as for a response. */
   reply: boolean
+  /** True if the edge never replies. */
+  noReply: boolean
   /** The body that the log line shows for this step, as compact JSON, or an empty string. */
   body: string
 }
@@ -67,12 +74,21 @@ function sequenceBuilder(flow: Flow, content: Content) {
     return index
   }
 
-  const laneRow = (step: Step, segmentIndex: number, lane: Lane, laneIndex: number, lanes: number): SequenceRow => {
+  const laneRow = (
+    segment: TimelineSegment,
+    track: number | null,
+    number: string,
+    lane: Lane,
+    laneIndex: number,
+  ): SequenceRow => {
+    const { step } = segment
     const base = {
       step,
-      segmentIndex,
+      segmentIndex: segment.index,
+      track,
+      number,
       lane: laneIndex,
-      lanes,
+      lanes: segment.lanes.length,
       latencyMs: step.latencyMs,
       level: step.level,
       caption: laneIndex === 0 ? step.caption : '',
@@ -85,33 +101,55 @@ function sequenceBuilder(flow: Flow, content: Content) {
       from: column(lane.fromNode!),
       to: column(lane.toNode!),
       reply: lane.reversed,
+      noReply: edge?.data?.noReply === true,
       text: step.event || (edge?.data?.label ?? ''),
       body: flow.bodies ? stepBody(edge?.data, lane.reversed) : '',
     }
   }
+  const segmentRows = ({ segment, track, number }: TrackSegment) =>
+    segment.lanes.map((lane, index) => laneRow(segment, track, number, lane, index))
 
   return {
     participants,
     timeline: (pathId: string | null) => compileFlow(flow, new Set(nodeById.keys()), content.edges, pathId),
-    rows: (timeline: Timeline): SequenceRow[] =>
-      timeline.segments.flatMap((segment) =>
-        segment.lanes.map((lane, index) => laneRow(segment.step, segment.index, lane, index, segment.lanes.length)),
-      ),
+    rows: (timeline: Timeline): SequenceRow[] => mainSegments(timeline).flatMap(segmentRows),
+    sideRows: (timeline: Timeline): SequenceRow[] => sideSegments(timeline).flatMap(segmentRows),
+    segmentRows,
   }
+}
+
+interface TrackSegment {
+  segment: TimelineSegment
+  track: number | null
+  number: string
+}
+
+function mainSegments(timeline: Timeline): TrackSegment[] {
+  return timeline.segments.map((segment) => ({ segment, track: null, number: String(segment.index + 1) }))
+}
+
+function sideSegments(timeline: Timeline): TrackSegment[] {
+  return timeline.sides.flatMap((side, track) =>
+    side.segments.map((segment) => ({ segment, track, number: `${side.from.index + 1}.${segment.index + 1}` })),
+  )
 }
 
 /**
  * Returns a flow as a sequence of messages between the nodes that it reaches.
  *
  * The rows follow the timeline of the flow, so a step without its node or edge is not in them. A step with parallel
- * targets gives one row for each target, the main target first.
+ * targets gives one row for each target, the main target first. The rows of a side path go between the main rows by
+ * start time, before a main row that starts at the same time.
  *
  * @param pathId - The path of the flow, or `null` for the main steps.
  */
 export function flowSequence(flow: Flow, content: Content, pathId: string | null = null): FlowSequence {
   const builder = sequenceBuilder(flow, content)
-  const rows = builder.rows(builder.timeline(pathId))
-  return { participants: builder.participants, rows }
+  const timeline = builder.timeline(pathId)
+  const ordered = [...sideSegments(timeline), ...mainSegments(timeline)].toSorted(
+    (a, b) => a.segment.startMs - b.segment.startMs,
+  )
+  return { participants: builder.participants, rows: ordered.flatMap(builder.segmentRows) }
 }
 
 // Mermaid reads `;` as the end of a statement, `#` as the start of an entity, and `<` and `>` as HTML.
@@ -155,7 +193,7 @@ function rowLines(row: SequenceRow, ids: readonly string[], indent: string): str
     const text = [withLatency(row.text, row.latencyMs), row.caption].map(mermaidText).filter(Boolean).join('<br/>')
     return text ? [`${indent}Note over ${ids[row.over]}: ${text}`] : []
   }
-  const arrow = `${row.reply ? '--' : '-'}${row.level === 'error' ? 'x' : '>>'}`
+  const arrow = `${row.reply ? '--' : '-'}${row.level === 'error' ? 'x' : row.noReply ? ')' : '>>'}`
   const lines = [
     `${indent}${ids[row.from]}${arrow}${ids[row.to]}: ${mermaidText(withLatency(row.text, row.latencyMs))}`,
   ]
@@ -181,10 +219,12 @@ function stepLines(rows: readonly SequenceRow[], ids: readonly string[], depth: 
 /**
  * Writes a flow as a Mermaid sequence diagram.
  *
- * A call is a solid arrow and a response a dashed arrow; a step with the `error` level ends in a cross. A step on a node
- * is a note over it. The latency follows the event, and a caption is a note over the step. A step with parallel targets
- * is a `par` block. Paths are `alt` blocks after the step where they start: the first section holds the main steps,
- * and each path a section with its steps and the main steps from where it rejoins.
+ * A call is a solid arrow and a response a dashed arrow; a call to an edge that never replies is an async arrow, and a
+ * step with the `error` level ends in a cross. A step on a node is a note over it. The latency follows the event, and
+ * a caption is a note over the step. A step with parallel targets is a `par` block. Paths are `alt` blocks after the
+ * step where they start: the first section holds the main steps, and each path a section with its steps and the main
+ * steps from where it rejoins. Side paths are `par` blocks after the step where they start: the first section holds
+ * the later main steps, and each side path a section with its steps.
  */
 export function flowToMermaidSequence(flow: Flow, content: Content): string {
   const builder = sequenceBuilder(flow, content)
@@ -196,12 +236,15 @@ export function flowToMermaidSequence(flow: Flow, content: Content): string {
       rowsByStep.get(row.step.id)!.push(row)
     }
   }
-  collect(builder.rows(builder.timeline(null)))
+  const main = builder.timeline(null)
+  collect(builder.rows(main))
+  collect(builder.sideRows(main))
   const mainIndex = new Map(flow.steps.map((step, index) => [step.id, index]))
-  const paths = (flow.paths ?? []).filter((path) => path.steps.length > 0 && mainIndex.has(path.fromStep))
+  const paths = choosablePaths(flow).filter((path) => path.steps.length > 0 && mainIndex.has(path.fromStep))
   for (const path of paths) {
     collect(builder.rows(builder.timeline(path.id)), new Set(path.steps.map((step) => step.id)))
   }
+  const sides = sidePaths(flow).filter((path) => path.steps.length > 0 && mainIndex.has(path.fromStep))
   const rejoinIndex = (path: FlowPath) => {
     const index = path.rejoinStep === null ? undefined : mainIndex.get(path.rejoinStep)
     return index !== undefined && index > mainIndex.get(path.fromStep)! ? index : null
@@ -209,33 +252,57 @@ export function flowToMermaidSequence(flow: Flow, content: Content): string {
 
   const ids = participantIds(builder.participants)
   const body: string[] = []
-  const emitSteps = (steps: readonly Step[], depth: number) => {
-    for (const step of steps) body.push(...stepLines(rowsByStep.get(step.id) ?? [], ids, depth))
+  const stepsLines = (steps: readonly Step[], depth: number) =>
+    steps.flatMap((step) => stepLines(rowsByStep.get(step.id) ?? [], ids, depth))
+  const emitSteps = (steps: readonly Step[], depth: number) => void body.push(...stepsLines(steps, depth))
+  const capture = (emit: () => void): string[] => {
+    const start = body.length
+    emit()
+    return body.splice(start)
   }
   const emitMain = (start: number, end: number, depth: number) => {
     let index = start
     while (index < end) {
-      const step = flow.steps[index]!
-      emitSteps([step], depth)
-      const group = paths.filter((path) => path.fromStep === step.id)
-      if (group.length === 0) {
-        index++
-        continue
-      }
-      const rejoins = group.map(rejoinIndex)
-      const rangeEnd = rejoins.includes(null) ? end : Math.min(end, Math.max(...(rejoins as number[])))
-      const indent = INDENT.repeat(depth)
-      body.push(`${indent}alt Main path`)
-      emitMain(index + 1, rangeEnd, depth + 1)
-      group.forEach((path, position) => {
-        body.push(`${indent}else ${mermaidText(path.name) || 'Path'}`)
-        emitSteps(path.steps, depth + 1)
-        const rejoin = rejoins[position]
-        if (rejoin !== null && rejoin !== undefined) emitMain(rejoin, rangeEnd, depth + 1)
-      })
-      body.push(`${indent}end`)
-      index = rangeEnd
+      emitSteps([flow.steps[index]!], depth)
+      index = emitBranches(index, end, depth, true)
     }
+  }
+  const emitBranches = (index: number, end: number, depth: number, withSides: boolean): number => {
+    const step = flow.steps[index]!
+    const indent = INDENT.repeat(depth)
+    const parallel = withSides ? sides.filter((path) => path.fromStep === step.id) : []
+    if (parallel.length > 0) {
+      const mainLines = capture(() => emitMain(emitBranches(index, end, depth + 1, false), end, depth + 1))
+      const sections = [
+        { name: 'Main path', lines: mainLines },
+        ...parallel.map((path) => ({
+          name: mermaidText(path.name) || 'Side path',
+          lines: stepsLines(path.steps, depth + 1),
+        })),
+      ].filter((section) => section.lines.length > 0)
+      if (sections.length === 1) body.push(...sections[0]!.lines.map((line) => line.slice(INDENT.length)))
+      else {
+        sections.forEach((section, position) => {
+          body.push(`${indent}${position === 0 ? 'par' : 'and'} ${section.name}`, ...section.lines)
+        })
+        body.push(`${indent}end`)
+      }
+      return end
+    }
+    const group = paths.filter((path) => path.fromStep === step.id)
+    if (group.length === 0) return index + 1
+    const rejoins = group.map(rejoinIndex)
+    const rangeEnd = rejoins.includes(null) ? end : Math.min(end, Math.max(...(rejoins as number[])))
+    body.push(`${indent}alt Main path`)
+    emitMain(index + 1, rangeEnd, depth + 1)
+    group.forEach((path, position) => {
+      body.push(`${indent}else ${mermaidText(path.name) || 'Path'}`)
+      emitSteps(path.steps, depth + 1)
+      const rejoin = rejoins[position]
+      if (rejoin !== null && rejoin !== undefined) emitMain(rejoin, rangeEnd, depth + 1)
+    })
+    body.push(`${indent}end`)
+    return rangeEnd
   }
   emitMain(0, flow.steps.length, 1)
 

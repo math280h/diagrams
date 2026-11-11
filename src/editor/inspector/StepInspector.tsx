@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { edgeTravel, restingNodes, type EdgeEnds } from '@/engine/flow/compile'
+import { findSegment } from '@/engine/flow/sides'
 import { usePlaybackState } from '@/engine/hooks'
 import { findStep, overviewName, removeStep } from '@/model/flow'
 import { nodeTitle } from '@/model/labels'
@@ -18,7 +19,7 @@ import { Field, Section, Segmented, SliderField, SwitchField, TextInput } from '
 function StepBody({ flow, step }: { flow: Flow; step: Step }) {
   const playback = usePlaybackState()
   const edge = useDoc((state) => state.edges.find((candidate) => candidate.id === step.target.id))
-  const reversed = playback.timeline?.segments.find((segment) => segment.step.id === step.id)?.reversed ?? false
+  const reversed = (playback.timeline && findSegment(playback.timeline, step.id)?.segment.reversed) ?? false
   const part = reversed ? 'response' : 'request'
   const body = payloadJson(edge?.data?.[part], 2)
   const note = !flow.bodies
@@ -50,9 +51,10 @@ function ParallelTargets({ flow, step }: { flow: Flow; step: Step }) {
   const playback = usePlaybackState()
   const nodes = useDoc((state) => state.nodes)
   const edges = useDoc((state) => state.edges)
-  const segments = playback.timeline?.segments ?? []
-  const index = segments.findIndex((segment) => segment.step.id === step.id)
-  const segment = segments[index]
+  const found = playback.timeline ? findSegment(playback.timeline, step.id) : null
+  const segments = found?.view.segments ?? []
+  const index = found?.index ?? -1
+  const segment = found?.segment
   const before = index > 0 ? segments.slice(0, index).findLast((candidate) => candidate.lanes.length > 0) : undefined
   const resting = restingNodes(before?.lanes ?? [])
   const name = (id: string) => {

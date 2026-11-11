@@ -175,7 +175,7 @@ export function FlowEdge(props: EdgeProps<DiagramEdge>) {
   }, [engine, id, table, traffic, count])
 
   const requestFields = data.request?.fields.length ?? 0
-  const responseFields = data.response?.fields.length ?? 0
+  const responseFields = data.noReply ? 0 : (data.response?.fields.length ?? 0)
   const mark = bodyMark(requestFields, responseFields)
   const labelText = [data.label, mark].filter(Boolean).join(' ')
 

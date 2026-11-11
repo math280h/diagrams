@@ -195,11 +195,45 @@ describe('Engine flow state', () => {
         event: 'GET /ab',
         level: 'info',
         bodies: true,
+        sides: [],
       },
     ])
     engine.renderFlow(3500)
     expect(captions).toHaveLength(2)
     expect(captions[1]).toMatchObject({ index: 3, level: 'warn', event: 'GET /bc' })
+  })
+
+  it('places a token for a side step in its colour, and names the side step in the caption', () => {
+    const withSide = {
+      ...flow,
+      paths: [
+        {
+          id: 'p-side',
+          name: 'On its own',
+          fromStep: 'step-ab',
+          steps: [{ ...step({ kind: 'node', id: 'c' }, 'C works on its own'), id: 'side-c' }],
+          rejoinStep: null,
+          concurrent: true,
+        },
+      ],
+    }
+    engine.manual = true
+    engine.playback.load(flow.id, compileFlow(withSide, new Set(Object.keys(rects)), edgeEnds))
+    const frame = engine.renderFlow(2300)!
+    expect(frame.parallelTokens).toEqual([expect.objectContaining({ side: { track: 0, index: 1 } })])
+    expectAt(parallelToken()!, frame.parallelTokens[0]!.point)
+    expect(parallelToken()!.dataset.protocol).toBe('rpc')
+    expect(flowState('.react-flow__node[data-id="b"]')).toBe('active')
+    expect(flowState('.react-flow__node[data-id="c"]')).toBe('active')
+    expect(engine.getCaption()).toMatchObject({
+      index: 2,
+      text: 'B works',
+      sides: [{ track: 0, index: 0, number: '2.1', name: 'On its own', text: 'C works on its own' }],
+    })
+    engine.renderFlow(3500)
+    expect(engine.getCaption()!.sides).toEqual([])
+    expect(flowState('.react-flow__node[data-id="c"]')).toBe('visited')
+    expect(parallelToken()!.style.display).toBe('none')
   })
 
   it('removes all flow state when the flow unloads', () => {

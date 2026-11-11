@@ -126,6 +126,16 @@ export class DiagramBuilder {
     flow.paths = [...(flow.paths ?? []), path]
   }
 
+  /**
+   * Adds a side path to a flow. Its steps play at the same time as the main steps after the step `from`.
+   *
+   * @param from - The index of the main step after which the side path starts.
+   */
+  sidePath(flow: Flow, name: string, from: number, steps: Omit<Step, 'id'>[]) {
+    this.path(flow, name, from, steps)
+    flow.paths!.at(-1)!.concurrent = true
+  }
+
   build(name: string, patch: Partial<Diagram> = {}): Diagram {
     return {
       ...createDiagram(name),

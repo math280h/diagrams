@@ -7,6 +7,7 @@ import { EngineProvider } from '@/engine/context'
 import { useEngine } from '@/engine/hooks'
 import { ExportDialog } from '@/export/ExportDialog'
 import { ImportDialog } from '@/io/ImportDialog'
+import { findAnyPath } from '@/model/flow'
 import { TraceImportDialog } from './flow/TraceImportDialog'
 import { saveImported } from '@/persistence/library-actions'
 import { storageCopy } from '@/persistence/storage-copy'
@@ -40,14 +41,27 @@ function useAmbientMotion() {
 
 function RecordingHint() {
   const recording = useUi((state) => state.recording)
+  const side = useRecordedSidePath()
   if (!recording) return null
   return (
     <div className="dg-chrome pointer-events-none absolute top-3 left-1/2 z-10 -translate-x-1/2 px-3 py-1.5 text-xs">
       <span className="mr-2 inline-block size-2 rounded-full bg-destructive" />
-      Click the nodes in the order the flow reaches them. Shift-click to reach a node at the same time. Press Esc to
-      stop.
+      {side
+        ? `Click the nodes that the side path “${side}” reaches, while the main steps go on.`
+        : 'Click the nodes in the order the flow reaches them.'}{' '}
+      Shift-click to reach a node at the same time. Press Esc to stop.
     </div>
   )
+}
+
+function useRecordedSidePath(): string | null {
+  const activeFlowId = useUi((state) => state.activeFlowId)
+  const activePathId = useUi((state) => state.activePathId)
+  return useDoc((state) => {
+    const flow = state.flows.find((candidate) => candidate.id === activeFlowId)
+    const path = flow ? findAnyPath(flow, activePathId) : null
+    return path?.concurrent ? path.name : null
+  })
 }
 
 function EditorShell() {

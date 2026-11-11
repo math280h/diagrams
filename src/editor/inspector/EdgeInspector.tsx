@@ -218,7 +218,16 @@ export function EdgeInspector({ edges }: { edges: DiagramEdge[] }) {
       {single && (
         <>
           <PayloadSection key={`request:${first.id}`} edge={first} part="request" />
-          <PayloadSection key={`response:${first.id}`} edge={first} part="response" />
+          <Section title="Reply">
+            <SwitchField label="No reply" checked={data.noReply ?? false} onChange={(noReply) => set({ noReply })} />
+            {data.noReply && (
+              <p className="text-xs text-muted-foreground">
+                The target never replies, for example to an event or a message. A flow token does not come back along
+                this connection.
+              </p>
+            )}
+          </Section>
+          {!data.noReply && <PayloadSection key={`response:${first.id}`} edge={first} part="response" />}
           <SensitiveSummary edge={first} />
         </>
       )}

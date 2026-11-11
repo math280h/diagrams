@@ -209,6 +209,12 @@ const edgeFields = {
   response: payloadInput.describe(
     'The JSON body that the target sends back. A flow shows it while the token moves back along the edge. null removes it.',
   ),
+  noReply: z
+    .boolean()
+    .optional()
+    .describe(
+      'If true, the target never replies, for example a published event or a fire-and-forget call. A flow token never moves back along the edge, so the response body does not show.',
+    ),
 }
 
 const edgeInput = z.object({
@@ -261,15 +267,27 @@ const stepInput = z.object({
 })
 
 const pathInput = z.object({
-  name: z.string().describe('The path name, for example "Card declined".'),
+  name: z.string().describe('The path name, for example "Card declined" or "Send the email".'),
   from: z.number().int().min(0).describe('The index from 0 of the main step after which the path starts.'),
-  steps: z.array(stepInput).describe('The steps that the flow plays in place of the main steps after "from".'),
+  steps: z
+    .array(stepInput)
+    .describe(
+      'The steps that the flow plays in place of the main steps after "from", or at the same time as them for a side path.',
+    ),
   rejoin: z
     .number()
     .int()
     .min(0)
     .optional()
-    .describe('The index of a later main step where the flow continues after the path. Without it, the flow ends.'),
+    .describe(
+      'The index of a later main step where the flow continues after the path. Without it, the flow ends. A side path cannot rejoin.',
+    ),
+  concurrent: z
+    .boolean()
+    .optional()
+    .describe(
+      'If true, the path is a side path: its steps play at the same time as the main steps after "from", at their own pace, and it ends on its own. Use it for work that goes on without a reply, for example a worker that takes a message from a queue. Side paths always play.',
+    ),
 })
 
 const flowOptions = {
@@ -313,7 +331,7 @@ const flowPaths = z
   .array(pathInput)
   .optional()
   .describe(
-    'Alternate paths, for example an error path. The player and the exports play one path at a time. On update_flow, the list replaces all paths.',
+    'Alternate paths, for example an error path, and side paths (concurrent) that play at the same time as the main steps. The player and the exports play one alternate path at a time, and all side paths. On update_flow, the list replaces all paths.',
   )
 
 const flowRef = z.string().describe('The flow: its id or its name.')
@@ -605,7 +623,12 @@ export const TOOL_DEFINITIONS = {
         .optional()
         .describe('Show only the area around these nodes: ids, refs or unique labels.'),
       flow: flowRef.optional(),
-      path: z.string().optional().describe('With flow: the path to show, by name or id. Without it, the main steps.'),
+      path: z
+        .string()
+        .optional()
+        .describe(
+          'With flow: the alternate path to show, by name or id. Without it, the main steps. Side paths always show with the steps that they play beside.',
+        ),
       step: z
         .number()
         .int()

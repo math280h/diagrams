@@ -15,7 +15,7 @@ only on your computer, never on a server ([privacy](#privacy)).
 
 <!-- features:start -->
 
-- **Follow a request step by step.** Record the path of a request and caption each step. Play it and the camera follows. Steps can fan out and join again, or branch. A flow also reads as a log or a sequence diagram.
+- **Follow a request step by step.** Record the path of a request and caption each step. Play it and the camera follows. Steps can fan out and join again, branch, or go on at the same time in a side path. A flow also reads as a log or a sequence diagram.
 - **Replay a real trace.** Import an OpenTelemetry, Jaeger or Zipkin trace as a flow. Each step shows the real operation, its latency and its status.
 - **See where sensitive data goes.** Mark fields in request and response bodies as personal data or secrets. The Sensitive data view shows which connections carry them across a trust boundary.
 - **Ask an AI agent to draw.** Claude Code and other agents draw, animate and check diagrams while you watch: in the desktop app, or in Chrome and Edge through a folder of your project. They can start from Terraform, docker-compose or Kubernetes files.

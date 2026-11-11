@@ -33,9 +33,10 @@ export interface DataCrossing {
   boundaries: string[]
 }
 
-/** Returns the marked fields of the request body, then of the response body. */
+/** Returns the marked fields of the request body, then of the response body. An edge with no reply sends no response. */
 export function sensitiveFields(data: EdgeData | undefined): SensitiveField[] {
-  return (['request', 'response'] as const).flatMap((part) =>
+  const parts = data?.noReply ? (['request'] as const) : (['request', 'response'] as const)
+  return parts.flatMap((part) =>
     (data?.[part]?.fields ?? []).flatMap((field) =>
       field.sensitive ? [{ part, path: field.path.trim(), kind: field.sensitive }] : [],
     ),

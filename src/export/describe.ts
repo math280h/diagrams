@@ -91,7 +91,7 @@ function connectionText(edge: DiagramEdge, nameOf: (id: string) => string): stri
   const [from, to] = start && !end ? [edge.target, edge.source] : [edge.source, edge.target]
   const link = start && end ? '↔' : start || end ? '→' : '—'
   const label = oneLine(edge.data?.label ?? '')
-  return `${nameOf(from)} ${link} ${nameOf(to)}${label ? `: ${label}` : ''}`
+  return `${nameOf(from)} ${link} ${nameOf(to)}${label ? `: ${label}` : ''}${edge.data?.noReply ? ' (no reply)' : ''}`
 }
 
 function stepText(
@@ -128,7 +128,8 @@ function flowSections(
   edgeById: ReadonlyMap<string, DiagramEdge>,
 ): DescriptionSection[] {
   const nodeIds = new Set(content.nodes.map((node) => node.id))
-  const main = compileFlow(flow, nodeIds, content.edges, null).segments
+  const timeline = compileFlow(flow, nodeIds, content.edges, null)
+  const main = timeline.segments
   const mainNumber = (stepId: string | null) => main.findIndex((segment) => segment.step.id === stepId) + 1
   const sections: DescriptionSection[] = [
     {
@@ -139,10 +140,20 @@ function flowSections(
     },
   ]
   for (const path of flow.paths ?? []) {
+    const from = mainNumber(path.fromStep)
+    if (path.concurrent) {
+      const side = timeline.sides.find((candidate) => candidate.path.id === path.id)
+      sections.push({
+        title: `Side path “${path.name}” of “${flow.name}”, at the same time${from > 0 ? ` after step ${from}` : ''}`,
+        items: (side?.segments ?? []).map((segment) => stepText(segment, nameOf, edgeById)),
+        numbered: true,
+        end: 'The side path ends.',
+      })
+      continue
+    }
     const own = compileFlow(flow, nodeIds, content.edges, path.id).segments.filter(
       (segment) => segment.pathId === path.id,
     )
-    const from = mainNumber(path.fromStep)
     const rejoin = mainNumber(path.rejoinStep)
     sections.push({
       title: `Path “${path.name}” of “${flow.name}”${from > 0 ? `, after step ${from}` : ''}`,
@@ -161,7 +172,7 @@ function flowSections(
 
 /**
  * Describes a diagram in text: the text on the canvas, the boundaries with the parts in them, the parts, the
- * connections, and each flow and path as numbered steps.
+ * connections, and each flow, path and side path as numbered steps.
  *
  * The parts and the connections follow the reading order of the diagram. A text node that repeats the diagram name
  * is not in the notes.

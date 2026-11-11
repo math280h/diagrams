@@ -1,8 +1,9 @@
 import { toast } from 'sonner'
 import { compileFlow, restingNodes, type Timeline, type TimelineSegment } from '@/engine/flow/compile'
-import { findEdgePath, joinEdges } from '@/engine/route'
+import { findSegment } from '@/engine/flow/sides'
+import { findEdgePath, joinEdges, nearestToken } from '@/engine/route'
 import { newId } from '@/model/defaults'
-import { findPath } from '@/model/flow'
+import { findAnyPath, recordedSteps } from '@/model/flow'
 import type { Flow, Step, Target } from '@/model/schema'
 import { updateFlow } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
@@ -53,11 +54,11 @@ function recording(): Recording | null {
   const { flows, nodes, edges } = useDoc.getState()
   const flow = flows.find((candidate) => candidate.id === activeFlowId)
   if (!flow) return null
-  const path = findPath(flow, activePathId)
+  const path = findAnyPath(flow, activePathId)
   return {
     flowId: flow.id,
     pathId: path?.id ?? null,
-    steps: path ? path.steps : flow.steps,
+    steps: recordedSteps(flow, path?.id ?? null),
     timeline: compileFlow(flow, new Set(nodes.map((node) => node.id)), edges, path?.id ?? null),
   }
 }
@@ -71,33 +72,37 @@ function insertIndex(steps: Step[]): number {
 }
 
 function lastSegment({ steps, timeline, pathId }: Recording): TimelineSegment | undefined {
-  const lastId = lastMovingStep(steps)?.id ?? (pathId ? findPath(timeline.flow, pathId)?.fromStep : undefined)
+  const side = timeline.sides.find((candidate) => candidate.path.id === pathId)
+  if (side) return side.segments.findLast((segment) => segment.target.kind !== 'flow') ?? side.from
+  const lastId = lastMovingStep(steps)?.id ?? (pathId ? findAnyPath(timeline.flow, pathId)?.fromStep : undefined)
   return lastId ? timeline.segments.find((candidate) => candidate.step.id === lastId) : timeline.segments.at(-1)
 }
 
 function editSteps({ flowId, pathId }: Recording, recipe: (steps: Step[]) => void) {
-  updateFlow(flowId, (flow: Flow) => {
-    const path = findPath(flow, pathId)
-    recipe(path ? path.steps : flow.steps)
-  })
+  updateFlow(flowId, (flow: Flow) => recipe(recordedSteps(flow, pathId)))
 }
 
 /**
- * Adds steps that move the token from its last node to the node, along the shortest edge chain.
+ * Adds steps that move a token to the node, along the shortest edge chain. The token is the one with the shortest
+ * chain to the node, see {@link nearestToken}.
  *
  * If no chain exists, the function adds only a step for the node. Tokens that a parallel step left on other nodes
- * join the first edge step, see {@link joinEdges}. With an active path, the steps join the path.
+ * join the first edge step, see {@link joinEdges}. With an active path or side path, the steps join it. The first step
+ * of a side path does not take the tokens of the main steps with it.
  */
 export function appendNodeToFlow(nodeId: string) {
   const current = recording()
   if (!current) return
-  const last = lastSegment(current)
-  const from = last?.toNode ?? null
-  if (from === nodeId) return
   const { edges } = useDoc.getState()
-  const path = from ? findEdgePath(from, nodeId, edges) : []
+  const last = lastSegment(current)
+  const tokens = last?.toNode ? [last.toNode, ...restingNodes(last.lanes)] : []
+  const nearest = nearestToken(tokens, nodeId, edges)
+  const from = nearest?.from ?? last?.toNode ?? null
+  if (from === nodeId) return
+  const path = from ? (nearest?.route ?? null) : []
   if (from && path === null) toast.message('These nodes are not connected, so the token jumps between them.')
-  const joins = from && path ? joinEdges(from, path, restingNodes(last?.lanes ?? []), edges) : []
+  const sideStart = current.timeline.sides.some((side) => side.path.id === current.pathId && side.from === last)
+  const joins = from && path && !sideStart ? joinEdges(from, path, restingNodes(last?.lanes ?? []), edges) : []
   const steps = [
     ...(path ?? []).map((edgeId, index) => {
       const step = createStep({ kind: 'edge', id: edgeId })
@@ -136,12 +141,11 @@ export function appendParallelNode(nodeId: string) {
   const moving = current.steps.filter((step) => step.target.kind !== 'flow')
   const last = moving.at(-1)
   if (!last) return appendNodeToFlow(nodeId)
-  const segmentOf = (step: Step | undefined) =>
-    step ? current.timeline.segments.find((candidate) => candidate.step.id === step.id) : undefined
+  const segmentOf = (step: Step | undefined) => (step ? findSegment(current.timeline, step.id)?.segment : undefined)
   const { edges } = useDoc.getState()
   const edgeStep = last.target.kind === 'edge' ? last : moving.at(-2)
   const source = edgeStep?.target.kind === 'edge' ? segmentOf(edgeStep)?.fromNode : null
-  const route = source ? findEdgePath(source, nodeId, edges) : null
+  const route = source ? findEdgePath(source, nodeId, edges, { token: true }) : null
   const edgeId = route?.length === 1 ? route[0]! : null
   if (!edgeId) toast.message('No connection reaches this node from the same node, so its token starts on the node.')
   editSteps(current, (list) => {

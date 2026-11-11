@@ -25,7 +25,8 @@ function markPoint(segment: TimelineSegment, state: ReactFlowState, engine: Engi
 }
 
 /**
- * Numbers the previous, the current and the next step on the canvas, if the flow asks for it.
+ * Numbers the previous, the current and the next step on the canvas, if the flow asks for it. A side step that plays
+ * at the time gets a number such as `3.2`.
  *
  * Put this component in the viewport layer of the `ReactFlow` element.
  */
@@ -35,26 +36,35 @@ export function StepNumbers() {
   const timeline = engine.playback.timeline
   const marks = useStore((state) => {
     if (!caption || !timeline?.flow.stepNumbers) return ''
-    return [caption.index - 1, caption.index, caption.index + 1]
-      .flatMap((index) => {
-        const segment = timeline.segments[index]
+    const main = [caption.index - 1, caption.index, caption.index + 1].map((index) => ({
+      segment: timeline.segments[index],
+      label: String(index + 1),
+      current: index === caption.index,
+    }))
+    const sides = caption.sides.map((side) => ({
+      segment: timeline.sides[side.track]?.segments[side.index],
+      label: side.number,
+      current: true,
+    }))
+    return [...main, ...sides]
+      .flatMap(({ segment, label, current }) => {
         const point = segment ? markPoint(segment, state, engine) : null
-        return point ? [`${index}:${Math.round(point.x)}:${Math.round(point.y)}`] : []
+        return point ? [`${label}:${current ? 1 : 0}:${Math.round(point.x)}:${Math.round(point.y)}`] : []
       })
       .join('|')
   })
   if (!marks || !caption) return null
   return marks.split('|').map((mark) => {
-    const [index, x, y] = mark.split(':').map(Number) as [number, number, number]
+    const [label, current, x, y] = mark.split(':') as [string, string, string, string]
     return (
       <div
-        key={index}
+        key={label}
         aria-hidden
         className="dg-step-number dg-mono"
-        data-current={index === caption.index || undefined}
+        data-current={current === '1' || undefined}
         style={{ transform: `translate(${x}px, ${y}px)` }}
       >
-        {index + 1}
+        {label}
       </div>
     )
   })

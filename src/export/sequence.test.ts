@@ -124,3 +124,77 @@ describe('flowToMermaidSequence with parallel steps and paths', () => {
     )
   })
 })
+
+function fanOutWithWorker() {
+  const b = new DiagramBuilder()
+  const app = b.card(0, 0, { title: 'App' })
+  const one = b.card(300, 0, { title: 'Service 1' })
+  const two = b.card(300, 200, { title: 'Service 2' })
+  const queue = b.card(600, 200, { title: 'Queue' })
+  const worker = b.card(900, 200, { title: 'Worker' })
+  const toOne = b.edge(app, one, { label: 'GET' })
+  const toTwo = b.edge(app, two, { label: 'POST', noReply: true })
+  const toQueue = b.edge(two, queue, { label: 'publish', noReply: true })
+  const toWorker = b.edge(queue, worker, { label: 'consume', noReply: true })
+  const flow = b.flow('Order', [
+    nodeStep(app, ''),
+    { ...edgeStep(toOne), parallel: [{ kind: 'edge', id: toTwo }] },
+    edgeStep(toOne, '', 1200, 'follow', 1, { event: '200' }),
+    nodeStep(app, '', 1200, 'follow', 1, { event: 'done' }),
+  ])
+  b.sidePath(flow, 'Send the email', 1, [edgeStep(toQueue, '', 2000), edgeStep(toWorker, '', 2000)])
+  const diagram = b.build('Order')
+  return { diagram, content: fromDiagram(diagram), flow: diagram.flows[0]! }
+}
+
+describe('side paths and edges with no reply', () => {
+  it('puts the side rows between the main rows by start time, with their own numbers', () => {
+    const { content, flow } = fanOutWithWorker()
+    const rows = flowSequence(flow, content).rows
+    expect(rows.map((row) => [row.number, row.track, row.lane, row.kind === 'message' && row.noReply])).toEqual([
+      ['1', null, 0, false],
+      ['2', null, 0, false],
+      ['2', null, 1, true],
+      ['2.1', 0, 0, true],
+      ['3', null, 0, false],
+      ['4', null, 0, false],
+      ['2.2', 0, 0, true],
+    ])
+  })
+
+  it('writes a side path as a par block with the later main steps, and a call with no reply as an async arrow', () => {
+    const { content, flow } = fanOutWithWorker()
+    expect(flowToMermaidSequence(flow, content)).toBe(
+      [
+        'sequenceDiagram',
+        '    title Order',
+        '    participant app as App',
+        '    participant service_1 as Service 1',
+        '    participant service_2 as Service 2',
+        '    participant queue as Queue',
+        '    participant worker as Worker',
+        '    par',
+        '        app->>service_1: GET',
+        '    and',
+        '        app-)service_2: POST',
+        '    end',
+        '    par Main path',
+        '        service_1-->>app: 200',
+        '        Note over app: done',
+        '    and Send the email',
+        '        service_2-)queue: publish',
+        '        queue-)worker: consume',
+        '    end',
+        '',
+      ].join('\n'),
+    )
+  })
+
+  it('writes the side steps without a par block when no main step comes after the start', () => {
+    const { content, flow } = fanOutWithWorker()
+    const last = { ...flow, paths: flow.paths!.map((path) => ({ ...path, fromStep: flow.steps.at(-1)!.id })) }
+    const text = flowToMermaidSequence(last, content)
+    expect(text).not.toContain('par Main path')
+    expect(text).toContain('    Note over app: done\n    service_2-)queue: publish\n')
+  })
+})
