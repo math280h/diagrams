@@ -1,5 +1,5 @@
-import { findPath, pathSteps, sidePaths, stepTargets } from '@/model/flow'
-import type { Flow, FlowPath, Step, StepTarget, Target } from '@/model/schema'
+import { findPath, pathSteps, sidePaths, stepLanes, type StepLane } from '@/model/flow'
+import type { Flow, FlowPath, Step, StepTarget } from '@/model/schema'
 
 export interface EdgeEnds {
   id: string
@@ -8,9 +8,11 @@ export interface EdgeEnds {
   data?: { noReply?: boolean }
 }
 
-/** One token of a step: the main target, or one of the parallel targets. */
-export interface Lane {
-  target: Target
+/**
+ * One token of a step: the main target, or one of the parallel targets. The token waits `delayMs` on `fromNode`,
+ * then moves for the step duration, see {@link laneWindow}.
+ */
+export interface Lane extends StepLane {
   /** For an edge: true if the token moves from the edge target to the edge source. */
   reversed: boolean
   /** The node where the token is at the start of the segment. */
@@ -26,6 +28,7 @@ export interface TimelineSegment extends Omit<Lane, 'target'> {
   /** The index of the segment in its list: the main segments, or the segments of a side path. */
   index: number
   startMs: number
+  /** The time when the last token arrives: the step duration after the start, plus the longest lane delay. */
   endMs: number
   /**
    * The main target first, then the parallel targets that exist. The fields of the segment repeat the first lane. An
@@ -74,17 +77,23 @@ export function restingNodes(lanes: readonly Pick<Lane, 'toNode'>[]): Set<string
   return new Set(lanes.flatMap((candidate) => (candidate.toNode ? [candidate.toNode] : [])))
 }
 
+/** Returns the time when the token of a lane starts to move and the time when it arrives. */
+export function laneWindow(segment: Pick<TimelineSegment, 'startMs' | 'step'>, { delayMs }: Pick<Lane, 'delayMs'>) {
+  const startMs = segment.startMs + delayMs
+  return { startMs, endMs: startMs + segment.step.durationMs }
+}
+
 function lane(
-  target: Target,
+  { target, delayMs }: StepLane,
   nodeIds: ReadonlySet<string>,
   edgeById: ReadonlyMap<string, EdgeEnds>,
   lastNodes: ReadonlySet<string>,
 ): Lane | null {
   if (target.kind === 'node') {
-    return nodeIds.has(target.id) ? { target, reversed: false, fromNode: target.id, toNode: target.id } : null
+    return nodeIds.has(target.id) ? { target, delayMs, reversed: false, fromNode: target.id, toNode: target.id } : null
   }
   const edge = edgeById.get(target.id)
-  return edge ? { target, ...edgeTravel(edge, lastNodes) } : null
+  return edge ? { target, delayMs, ...edgeTravel(edge, lastNodes) } : null
 }
 
 interface TrackStart {
@@ -107,6 +116,7 @@ function compileSteps(
     if (step.target.kind === 'flow') {
       segments.push({
         target: step.target,
+        delayMs: 0,
         reversed: false,
         fromNode: null,
         toNode: null,
@@ -120,19 +130,12 @@ function compileSteps(
       cursor += step.durationMs
       continue
     }
-    const [main, ...parallel] = stepTargets(step).map((target) => lane(target, nodeIds, edgeById, lastNodes))
+    const [main, ...parallel] = stepLanes(step).map((target) => lane(target, nodeIds, edgeById, lastNodes))
     if (!main) continue
     const lanes = [main, ...parallel.filter((candidate): candidate is Lane => candidate !== null)]
-    segments.push({
-      ...main,
-      step,
-      index: segments.length,
-      startMs: cursor,
-      endMs: cursor + step.durationMs,
-      lanes,
-      pathId: pathOf(step),
-    })
-    cursor += step.durationMs
+    const endMs = cursor + step.durationMs + Math.max(...lanes.map((candidate) => candidate.delayMs))
+    segments.push({ ...main, step, index: segments.length, startMs: cursor, endMs, lanes, pathId: pathOf(step) })
+    cursor = endMs
     lastNodes = restingNodes(lanes)
   }
   return segments

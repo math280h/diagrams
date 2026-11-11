@@ -8,7 +8,7 @@ import { useDoc } from '@/store/doc-store'
 import { ToolError } from '@/agent/errors'
 import { createResolver, resolveFlow, type Resolver } from '@/agent/resolve'
 import type { PathInput, ToolInput } from '@/agent/tool-definitions'
-import { applyStepInput, buildSteps } from './build'
+import { applyStepInput, buildSteps, parallelTarget } from './build'
 import { commitEdit, json, openForEdit, stepRangeHint, type ToolHandler } from './common'
 import { withWarnings } from '@/agent/warnings'
 
@@ -147,7 +147,7 @@ export const updateFlowHandler: ToolHandler<'update_flow'> = async (input, ctx) 
       const next = applyStepInput(step, update)
       if (update.target !== undefined) next.target = resolver.target(update.target)
       if (update.parallel !== undefined) {
-        const parallel = update.parallel.map((reference) => resolver.target(reference))
+        const parallel = update.parallel.map((reference) => parallelTarget(reference, resolver))
         if (parallel.length > 0) next.parallel = parallel
         else delete next.parallel
       }

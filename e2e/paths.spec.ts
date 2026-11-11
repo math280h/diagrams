@@ -74,6 +74,68 @@ test('records the replies of a fan-out at the same time, and turns one off', asy
   await expect(page.getByRole('switch', { name: 'Fraud scoring → events.raw' })).not.toBeChecked()
 })
 
+async function tokenOn(page: Page, title: string) {
+  const box = (await card(page, title).boundingBox())!
+  const dots = await page.locator('[data-editor-canvas] .dg-token-dot:visible').all()
+  for (const dot of dots) {
+    const { x, y, width, height } = (await dot.boundingBox())!
+    const [centerX, centerY] = [x + width / 2, y + height / 2]
+    const margin = 12
+    if (
+      centerX >= box.x - margin &&
+      centerX <= box.x + box.width + margin &&
+      centerY >= box.y - margin &&
+      centerY <= box.y + box.height + margin
+    )
+      return true
+  }
+  return false
+}
+
+test('records replies that arrive one after the other, and goes on when the last one arrives', async ({ page }) => {
+  await page.clock.install()
+  await page.goto('/')
+  await copyTemplate(page, 'Event pipeline')
+  await page.getByRole('button', { name: 'Flows' }).click()
+  await page.getByRole('button', { name: 'An event arrives' }).click()
+  await page.getByRole('menuitem', { name: 'New flow' }).click()
+  await expect(page.getByRole('button', { name: 'Recording' })).toBeVisible()
+
+  await card(page, 'events.raw').click()
+  await card(page, 'Enricher').click()
+  await card(page, 'Fraud scoring').click({ modifiers: ['Shift'] })
+  await card(page, 'events.raw').click()
+  await expect(logRow(page, 4)).toContainText('Enricher, Fraud scoring → events.raw')
+  await page.keyboard.press('Escape')
+
+  await logRow(page, 4).click()
+  const delay = page.getByRole('textbox', { name: 'Fraud scoring → events.raw arrives after, in seconds' })
+  await delay.fill('2')
+  await delay.blur()
+  await expect(delay).toHaveValue('2')
+  await expect(page.getByRole('textbox', { name: 'Enricher → events.raw arrives after, in seconds' })).toHaveValue('')
+
+  await logRow(page, 4).click()
+  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1000)
+  await page.getByRole('button', { name: 'Play' }).click()
+  const active = page.locator('.dg-log-row[data-state="active"]')
+
+  await page.clock.runFor(1700)
+  await expect(active).toHaveText([/^4/])
+  await expect(page.locator('[data-editor-canvas] .dg-token-dot:visible')).toHaveCount(2)
+  expect(await tokenOn(page, 'events.raw')).toBe(true)
+  expect(await tokenOn(page, 'Fraud scoring')).toBe(true)
+  await expect(card(page, 'Fraud scoring')).toHaveAttribute('data-flow', 'active')
+
+  await page.clock.runFor(1000)
+  await expect(active).toHaveText([/^4/])
+  expect(await tokenOn(page, 'Fraud scoring')).toBe(false)
+  await expect(card(page, 'Fraud scoring')).toHaveAttribute('data-flow', 'visited')
+
+  await page.clock.runFor(800)
+  await expect(active).toHaveText([/^5/])
+})
+
 test('records a call with no reply in a fan-out, and a side path that plays at the same time', async ({ page }) => {
   await page.goto('/')
   await copyTemplate(page, 'Event pipeline')

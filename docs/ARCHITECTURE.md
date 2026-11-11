@@ -142,6 +142,7 @@ The visual system is in `DESIGN.md` at the repository root.
   - 15: overview steps (`target` of kind `flow`, empty id); `stepNumbers` on flows (off).
   - 16: theme `routeAround`, default off (off); optional hand-drawn edge `bends`.
   - 17, optional: `noReply` on edges; `concurrent` on paths (side paths).
+  - 18, optional: `delayMs` on flow steps and on their `parallel` targets.
 - Groups are boundaries. `kind` points into `src/model/boundaries.ts`: AWS, Azure, Google Cloud, Kubernetes, general
   and custom kinds.
   - Each kind has a family (scope, logical, location, zone, network, subnet, security, runtime) that sets the line
@@ -407,6 +408,12 @@ One flow shows fan-out and failure branches; there is no second kind of flow.
 - A click after a parallel step also moves the other tokens (`joinEdges`), so the replies to a fan-out arrive
   together. Each token node off the route with an edge to the first route node adds that edge to the first edge step.
   Agent steps with `connect` do the same.
+- **Lane delays.** `delayMs` on a step (main target) or on a parallel target makes its token wait, so replies can
+  arrive one after the other. Each lane moves for the step duration (`laneWindow`). The segment ends when the last
+  lane arrives, so the next step and the side paths wait for the slowest one.
+- A waiting edge token goes over its start node like a node step, and the node is active. Its edge is active from
+  the time that the token moves. An early token rests at its edge end until the segment ends. The sequence and Mermaid
+  show the lanes in the order that they arrive.
 - Parallel candidates (switches in step properties): other edges from or to the same node in the token direction, or
   nodes that the previous step's parallel edges reach. The direction comes from `edgeTravel`, as in `compileFlow`.
 - Log lines, the caption and the sequence name all lanes: `Kafka → Enricher, Fraud scoring`, or

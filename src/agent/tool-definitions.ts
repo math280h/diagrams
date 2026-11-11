@@ -9,6 +9,7 @@ import {
   EDGE_PROTOCOLS,
   FONT_PAIRS,
   LOG_LEVELS,
+  MAX_LANE_DELAY_MS,
   PAYLOAD_TYPES,
   SENSITIVE_KINDS,
   SHAPES,
@@ -230,6 +231,12 @@ const edgePatch = z.object({
   ...edgeFields,
 })
 
+const laneDelay = z
+  .number()
+  .min(0)
+  .max(MAX_LANE_DELAY_MS)
+  .describe('How long the token waits on its start node before it moves, in milliseconds.')
+
 const stepInput = z.object({
   target: z
     .string()
@@ -259,10 +266,23 @@ const stepInput = z.object({
     ),
   zoom: z.number().min(0.1).max(4).optional().describe('The largest camera zoom for the step.'),
   parallel: z
-    .array(z.string())
+    .array(
+      z.union([
+        z.string(),
+        z.object({
+          target: z.string().describe('The node or edge, as for the target of a step.'),
+          delayMs: laneDelay.optional(),
+        }),
+      ]),
+    )
     .optional()
     .describe(
-      'Other nodes or edges that the step reaches at the same time, each with its own token, for example all consumers of one event. With connect, a node step gets one edge step that reaches all its nodes at once, and the tokens of an earlier parallel step join on the first node of the connection if an edge leads there.',
+      'Other nodes or edges that the step reaches at the same time, each with its own token, for example all consumers of one event. With connect, a node step gets one edge step that reaches all its nodes at once, and the tokens of an earlier parallel step join on the first node of the connection if an edge leads there. Give { target, delayMs } for a token that arrives later.',
+    ),
+  delayMs: laneDelay
+    .optional()
+    .describe(
+      'How long the token of the target waits on its start node before it moves, in milliseconds. Use it with parallel, for example for replies that arrive one after the other: each token moves for durationMs, and the next step starts when the last one arrives.',
     ),
 })
 

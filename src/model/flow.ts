@@ -1,8 +1,28 @@
 import type { Flow, FlowPath, Step, Target } from './schema'
 
+export interface StepLane {
+  target: Target
+  /** The time that the token waits on its start node before it moves. */
+  delayMs: number
+}
+
+/** Returns the node or edge target of a step and its parallel targets with their delays, the main target first. */
+export function stepLanes(step: Step): StepLane[] {
+  if (step.target.kind === 'flow') return []
+  return [
+    { target: { kind: step.target.kind, id: step.target.id }, delayMs: step.delayMs ?? 0 },
+    ...(step.parallel ?? []).map(({ kind, id, delayMs }) => ({ target: { kind, id }, delayMs: delayMs ?? 0 })),
+  ]
+}
+
 /** Returns the node or edge target of a step and its parallel targets, the main target first. An overview step has none. */
 export function stepTargets(step: Step): Target[] {
-  return step.target.kind === 'flow' ? [] : [step.target, ...(step.parallel ?? [])]
+  return stepLanes(step).map((lane) => lane.target)
+}
+
+/** Returns a lane delay as text in seconds, for example `1.5 s`. */
+export function delayText(delayMs: number): string {
+  return `${Number((delayMs / 1000).toFixed(2))} s`
 }
 
 /** Returns true for a step that shows the whole flow. */
@@ -116,6 +136,16 @@ export function lanesText(lanes: readonly LaneName[]): string {
     return `${edges.map((lane) => lane.from).join(', ')} → ${edges[0]!.to}`
   }
   return lanes.map((lane) => (lane.kind === 'edge' ? `${lane.from} → ${lane.to}` : lane.from)).join(', ')
+}
+
+/** Returns the name of one lane as {@link lanesText} shows it: only the end that differs, when the lanes share one. */
+export function laneShortName(lanes: readonly LaneName[], index: number): string {
+  const lane = lanes[index]!
+  if (lane.kind === 'node') return lane.from
+  const edges = lanes.filter((candidate) => candidate.kind === 'edge')
+  if (edges.length === lanes.length && edges.every((candidate) => candidate.from === edges[0]!.from)) return lane.to
+  if (edges.length === lanes.length && edges.every((candidate) => candidate.to === edges[0]!.to)) return lane.from
+  return `${lane.from} → ${lane.to}`
 }
 
 /**

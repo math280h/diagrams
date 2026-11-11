@@ -114,6 +114,32 @@ describe('describeDiagram', () => {
     )
   })
 
+  it('names the tokens of a step that arrive later', () => {
+    const b = new DiagramBuilder()
+    const app = b.card(0, 0, { title: 'App' })
+    const one = b.card(300, 0, { title: 'Service 1' })
+    const two = b.card(300, 200, { title: 'Service 2' })
+    const toOne = b.edge(app, one, { label: 'GET' })
+    const toTwo = b.edge(app, two, { label: 'GET' })
+    b.flow('Replies', [
+      { ...edgeStep(toOne), parallel: [{ kind: 'edge', id: toTwo }] },
+      {
+        ...edgeStep(toOne, '', 1000, 'follow', 1, { event: '200', latencyMs: 40 }),
+        parallel: [{ kind: 'edge', id: toTwo, delayMs: 1500 }],
+      },
+      { ...nodeStep(app, ''), parallel: [{ kind: 'node', id: one, delayMs: 2000 }] },
+    ])
+    const diagram = b.build('Replies')
+    const text = descriptionText(describeDiagram({ ...fromDiagram(diagram), name: diagram.name, flows: diagram.flows }))
+    expect(text).toContain(
+      [
+        '1. App → Service 1, Service 2: GET',
+        '2. Service 1, Service 2 → App: 200 (40 ms, Service 2 arrives 1.5 s later)',
+        '3. App, Service 1 (Service 1 ends 2 s later)',
+      ].join('\n'),
+    )
+  })
+
   it('names an empty diagram', () => {
     expect(describeDiagram({ name: ' ', nodes: [], edges: [], flows: [] })).toEqual({
       name: 'Untitled diagram',
