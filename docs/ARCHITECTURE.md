@@ -201,6 +201,9 @@ The visual system is in `DESIGN.md` at the repository root.
 - A flow plays as a log: one line for each step (offset, element, event, latency, caption).
   - Warn and error levels colour the event. The line under the pointer marks its node or edge.
   - No latency column when no step has a latency (user flows).
+  - A double-click on an offset, or F2, changes when the step starts. A step stores a duration and no start, so the
+    step before it on its track takes the difference (`startChanges`). The later steps move, as on the timeline; with
+    Alt+Enter the step also takes the difference, so they stay.
   - Present and video exports show the current line in a bottom strip; engine insets keep the camera target clear of
     it.
 - Flow panel views: log, sequence, timeline. `SequenceView` draws a lifeline for each node the flow reaches, in that

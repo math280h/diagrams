@@ -245,6 +245,8 @@ export const LOG_LEVELS = ['info', 'warn', 'error'] as const
 export type LogLevel = (typeof LOG_LEVELS)[number]
 
 export const MAX_LANE_DELAY_MS = 60_000
+export const MIN_STEP_DURATION_MS = 100
+export const MAX_STEP_DURATION_MS = 60_000
 
 const laneDelaySchema = z.number().min(0).max(MAX_LANE_DELAY_MS)
 
@@ -264,7 +266,7 @@ export const stepSchema = z.object({
   /** The request time that the log line shows. The value `null` shows no time. */
   latencyMs: z.number().min(0).nullable(),
   level: z.enum(LOG_LEVELS),
-  durationMs: z.number().min(100).max(60_000),
+  durationMs: z.number().min(MIN_STEP_DURATION_MS).max(MAX_STEP_DURATION_MS),
   camera: z.enum(['follow', 'fit', 'hold']),
   zoom: z.number().min(0.1).max(4),
   /** Other nodes or edges that the step reaches at the same time as `target`. Each one gets its own token. */

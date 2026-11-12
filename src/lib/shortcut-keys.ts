@@ -29,6 +29,8 @@ export const KEYS = {
   fit: keyCombo('1', { shift: true }),
   playPause: 'Space',
   stopRecording: 'Esc',
+  changeStart: 'F2',
+  keepLaterSteps: keyCombo('Enter', { alt: true }),
   shortcuts: '?',
   previousStep: '←',
   nextStep: '→',
@@ -77,6 +79,8 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: IS_MAC ? '⌘ click' : 'Ctrl+click', label: 'Add a step to the selection, or remove it' },
       { keys: KEYS.selectAll, label: 'Select all steps, in the step list' },
       { keys: KEYS.delete, label: 'Delete the selected steps' },
+      { keys: `Double-click, ${KEYS.changeStart}`, label: 'Change when a step starts, in the log' },
+      { keys: KEYS.keepLaterSteps, label: 'Keep the later steps in place after a new start' },
     ],
   },
   {
