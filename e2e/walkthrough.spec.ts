@@ -95,7 +95,10 @@ test('changes the time of a step on the timeline, with or without moving the lat
 
 test('changes when a step starts in the log, with or without moving the later steps', async ({ page }) => {
   await openFlows(page)
-  const offset = (step: number) => rows(page).nth(step - 1).locator('span:nth-child(2)')
+  const offset = (step: number) =>
+    rows(page)
+      .nth(step - 1)
+      .locator('span:nth-child(2)')
   const starts = async () =>
     (await rows(page).locator('span:nth-child(2)').allTextContents())
       .slice(0, 4)
