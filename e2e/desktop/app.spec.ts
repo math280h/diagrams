@@ -188,6 +188,8 @@ test('colours the window buttons like the header, or with the window colours of 
       calls.push(options)
       setOverlay(options)
     }
+    // Electron has setAccentColor only on Windows.
+    if (typeof main.setAccentColor !== 'function') return
     const setAccent = main.setAccentColor.bind(main)
     main.setAccentColor = (color) => {
       borders.push(color)
