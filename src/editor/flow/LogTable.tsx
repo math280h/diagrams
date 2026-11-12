@@ -15,6 +15,7 @@ import { useSegmentIndex } from '@/engine/hooks'
 import { markOnCanvas } from './hooks'
 import { stepLine } from './names'
 import { parseTimeMs, startChanges } from './step-start'
+import { StepContextMenu } from './StepContextMenu'
 import { selectClickedStep } from './step-selection'
 
 const COLUMNS =
@@ -75,6 +76,7 @@ function StartInput({
       spellCheck={false}
       value={text}
       onFocus={(event) => event.currentTarget.select()}
+      onContextMenu={(event) => event.stopPropagation()}
       onChange={(event) => {
         setText(event.target.value)
         setInvalid(false)
@@ -231,7 +233,7 @@ export function LogTable({ flow }: { flow: Flow }) {
   }
 
   return (
-    <div ref={listRef} data-step-list className="relative min-h-0 flex-1 overflow-y-auto select-none">
+    <StepContextMenu ref={listRef} data-step-list className="relative min-h-0 flex-1 overflow-y-auto select-none">
       <div
         aria-hidden
         className={cn(
@@ -261,6 +263,7 @@ export function LogTable({ flow }: { flow: Flow }) {
           'data-level': step.level,
           'data-path': onPath || undefined,
           'data-selected': selected || undefined,
+          'data-step-id': step.id,
           onPointerEnter: () => markOnCanvas(stepTargets(step)),
           onPointerLeave: () => markOnCanvas([]),
           className: cn(
@@ -340,6 +343,6 @@ export function LogTable({ flow }: { flow: Flow }) {
           </button>
         )
       })}
-    </div>
+    </StepContextMenu>
   )
 }
