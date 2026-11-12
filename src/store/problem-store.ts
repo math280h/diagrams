@@ -1,6 +1,7 @@
 import { toast } from 'sonner'
 import { create } from 'zustand'
 import { errorProblem, type Problem } from '@/lib/problem-report'
+import { rememberProblem } from '@/reports/recent-problems'
 
 interface ProblemState {
   /** The problem that the problem dialog shows, or `null`. */
@@ -18,6 +19,7 @@ export const useProblemStore = create<ProblemState>(() => ({ problem: null, key:
  *   server. The source then calls {@link updateProblem} with the same key.
  */
 export function showProblem(problem: Problem, options: { key?: string } = {}) {
+  rememberProblem(problem)
   useProblemStore.setState({ problem, key: options.key ?? null })
 }
 
@@ -45,6 +47,7 @@ export function reportError(
   options: { description?: string; facts?: readonly string[]; id?: string; duration?: number } = {},
 ) {
   const problem = errorProblem(title, error, options.facts)
+  rememberProblem(problem)
   toast.error(title, {
     id: options.id,
     duration: options.duration,

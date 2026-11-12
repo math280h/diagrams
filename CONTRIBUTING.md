@@ -34,6 +34,7 @@ Open http://127.0.0.1:5173. For the desktop app, run `pnpm desktop:dev`.
 | Desktop build        | `pnpm desktop:build`                                          |
 | Desktop e2e          | `pnpm e2e:desktop` (build first)                              |
 | Desktop installer    | `pnpm desktop:package` (writes `release/`; publishes nothing) |
+| Report server        | `pnpm report-server:build`, then `pnpm report-server:start`   |
 | Icon sets            | `pnpm icons` (downloads the official icon packages)           |
 | App icon             | `pnpm app-icon` (renders `build/icon.png` and `icon.ico`)     |
 

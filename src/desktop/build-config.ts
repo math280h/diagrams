@@ -1,3 +1,5 @@
+import { isAgeRecipient } from '../reports/age-file.ts'
+
 /** The options of a build, from the `DIAGRAMS_*` environment variables at build time. */
 export interface BuildConfig {
   /** The origin of the website that the desktop app trusts at its first start, and of the link preview tags. */
@@ -8,6 +10,12 @@ export interface BuildConfig {
   repositoryEditable: boolean
   /** The client ID of the GitHub App for the GitHub sign-in of the desktop app, or `null` for no sign-in. */
   githubApp: string | null
+  reports: {
+    /** The base address of the report server, or `null` when the app sends no reports. */
+    url: string | null
+    /** The age recipients that each report is encrypted to. Without recipients, a report stays plain text. */
+    recipients: readonly string[]
+  }
 }
 
 export const OFFICIAL_WEBSITE = 'https://draw.thias.dev'
@@ -18,6 +26,7 @@ export const OFFICIAL_BUILD: BuildConfig = {
   repository: OFFICIAL_REPOSITORY,
   repositoryEditable: false,
   githubApp: null,
+  reports: { url: null, recipients: [] },
 }
 
 const LOOPBACK_HOSTS: ReadonlySet<string> = new Set(['localhost', '127.0.0.1', '[::1]'])
@@ -41,6 +50,18 @@ export function websiteOrigin(text: string): string | null {
   if (url.username || url.password || !url.hostname) return null
   if (url.protocol === 'https:') return url.origin
   return url.protocol === 'http:' && LOOPBACK_HOSTS.has(url.hostname) ? url.origin : null
+}
+
+/**
+ * Returns the base address of a report server without a final slash, or `null` if the app does not accept it. The app
+ * accepts `https://`, and `http://` only on this computer, without a user name, a query or a fragment.
+ */
+export function reportServerUrl(text: string): string | null {
+  const trimmed = text.trim()
+  if (!URL.canParse(trimmed)) return null
+  const url = new URL(trimmed)
+  if (url.search || url.hash || websiteOrigin(trimmed) !== url.origin) return null
+  return `${url.origin}${url.pathname.replace(/\/+$/, '')}`
 }
 
 /**
@@ -87,11 +108,27 @@ export function readBuildConfig(env: Record<string, string | undefined>): BuildC
   if (githubApp !== null && !GITHUB_APP_CLIENT_ID_PATTERN.test(githubApp)) {
     throw new Error(`DIAGRAMS_GITHUB_APP must be the client ID of a GitHub App, such as Iv23li…. It is "${githubApp}".`)
   }
+  const reportText = setValue(env, 'DIAGRAMS_REPORT_URL')
+  const reportUrl = reportText === null ? null : reportServerUrl(reportText)
+  if (reportText !== null && reportUrl === null) {
+    throw new Error(
+      `DIAGRAMS_REPORT_URL must be an https:// address without a query, or http:// on this computer. It is "${reportText}".`,
+    )
+  }
+  const recipients = (setValue(env, 'DIAGRAMS_REPORT_KEYS') ?? '').split(/[\s,]+/).filter((key) => key !== '')
+  const wrongKey = recipients.find((key) => !isAgeRecipient(key))
+  if (wrongKey !== undefined) {
+    throw new Error(`DIAGRAMS_REPORT_KEYS must hold age public keys that start with age1. One is "${wrongKey}".`)
+  }
+  if (reportUrl !== null && recipients.length === 0) {
+    throw new Error('DIAGRAMS_REPORT_URL needs DIAGRAMS_REPORT_KEYS, because the app sends only encrypted reports.')
+  }
   return {
     website,
     repository,
     repositoryEditable: editableText !== null && SWITCH_VALUES.has(editableText),
     githubApp,
+    reports: { url: reportUrl, recipients },
   }
 }
 

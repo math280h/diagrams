@@ -4,6 +4,7 @@ import { runAgentTool } from '@/agent/runtime'
 import { repository } from '@/persistence/active-repository'
 import { parseDiagramJson } from '@/persistence/library-actions'
 import { untilStored } from '@/persistence/until-stored'
+import { watchCrashes } from '@/reports/crashes'
 import { router } from '@/router'
 import { flushPendingSave } from '@/store/document'
 import { openConnectAgent, recordAgentCall, watchAgentInfo } from './agent-store'
@@ -24,6 +25,7 @@ export function startDesktopRuntime(storageError: string | null = null) {
   watchAgentInfo()
   watchUpdates()
   watchGitHubSignIn()
+  watchCrashes()
   loadAppSettings()
   const unavailable = `The app could not open the diagrams folder: ${storageError}`
   return serveMainRequests({

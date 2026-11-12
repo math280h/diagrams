@@ -5,7 +5,7 @@ import { _electron as electron, type ElectronApplication, type Page } from '@pla
 import { IPC_CHANNELS } from '@/desktop/contract'
 import { AGENT_ENDPOINT } from '@/desktop/constants'
 import { copyTemplate } from '../helpers'
-import { agentUrl, callTool, diagramFile, expect, test } from './fixtures'
+import { agentUrl, callTool, diagramFile, expect, test, untilExit } from './fixtures'
 
 /** The time for the agent server to start next to a startup error, on a slow test machine. */
 const AGENT_START_WAIT_MS = 20_000
@@ -45,14 +45,6 @@ test('shows a diagram file that another program adds to the folder', async ({ wi
   await expect(window.getByText('Added from outside')).toBeVisible({ timeout: 10_000 })
   expect(readdirSync(dirs.data).filter((name) => name.endsWith('.diagram.json'))).toHaveLength(1)
 })
-
-function untilExit(app: ElectronApplication) {
-  const exited = new Promise<void>((resolve) => app.process().once('exit', () => resolve()))
-  return Promise.race([
-    exited,
-    new Promise((_, reject) => setTimeout(() => reject(new Error('The app did not quit.')), 15_000)),
-  ])
-}
 
 async function closeWindow(app: ElectronApplication, window: Page) {
   await (await app.browserWindow(window)).evaluate((browserWindow) => browserWindow.close())
@@ -124,7 +116,8 @@ test('explains a diagrams folder that it cannot open, and answers agents at once
     await window.getByRole('button', { name: 'More details…' }).click()
     const problem = window.getByRole('dialog', { name: 'The app could not open your diagrams folder' })
     await expect(problem.locator('code')).toContainText('Storage: diagrams folder')
-    await expect(problem.getByRole('link', { name: 'Report a problem' })).toBeVisible()
+    await expect(problem.getByRole('link', { name: 'Open an issue on GitHub' })).toBeVisible()
+    await expect(problem.getByRole('button', { name: 'Report this problem' })).toBeVisible()
     await window.keyboard.press('Escape')
 
     const token = readFileSync(path.join(dirs.userData, 'agent-token'), 'utf8').trim()

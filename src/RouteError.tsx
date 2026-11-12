@@ -1,4 +1,6 @@
 import { Link, type ErrorComponentProps } from '@tanstack/react-router'
+import { useEffect, useMemo } from 'react'
+import { rememberProblem } from '@/reports/recent-problems'
 import { MoreDetails } from '@/components/MoreDetails'
 import { Button } from '@/components/ui/button'
 import { storageCopy } from '@/persistence/storage-copy'
@@ -29,12 +31,14 @@ function pageWithoutIds() {
 }
 
 export function RouteError({ error, reset }: ErrorComponentProps) {
+  const problem = useMemo(() => errorProblem(PAGE_ERROR, error, [`Page: ${pageWithoutIds()}`]), [error])
+  useEffect(() => rememberProblem(problem), [problem])
   return (
     <div className="grid h-full place-items-center p-6">
       <div className="max-w-md text-center">
         <p className="text-base font-medium">{PAGE_ERROR}</p>
         <p className="mt-1 font-mono text-xs break-words text-muted-foreground">{errorMessage(error)}</p>
-        <MoreDetails onClick={() => showProblem(errorProblem(PAGE_ERROR, error, [`Page: ${pageWithoutIds()}`]))} />
+        <MoreDetails onClick={() => showProblem(problem)} />
         <p className="mt-3 text-sm text-muted-foreground">{storageCopy().stillSaved}</p>
         <div className="mt-5 flex justify-center gap-2">
           <Button variant="outline" onClick={() => (reset ? reset() : window.location.reload())}>

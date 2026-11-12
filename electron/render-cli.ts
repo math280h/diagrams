@@ -116,6 +116,16 @@ export async function runRender(args: RenderArgs): Promise<number> {
       'github.cancelSignIn': refuse,
       'github.signOut': refuse,
       'layout.graphviz': refuse,
+      'reports.context': refuse,
+      'reports.crashes': async () => [],
+      'reports.markSeen': async () => [],
+      'reports.showDump': refuse,
+      'reports.deleteCrash': refuse,
+      'reports.send': refuse,
+      'reports.cancelSend': async () => null,
+      'reports.save': refuse,
+      'reports.sent': async () => [],
+      'reports.deleteSent': refuse,
     }
     registerIpc(handlers, rendererOrigin)
     serveRenderer(rendererFolder())

@@ -146,6 +146,9 @@ jobs:
           node-version-file: package.json
       - run: pnpm install --frozen-lockfile
       - run: pnpm desktop:build
+        env:
+          DIAGRAMS_REPORT_URL: ${{ vars.DIAGRAMS_REPORT_URL }}
+          DIAGRAMS_REPORT_KEYS: ${{ vars.DIAGRAMS_REPORT_KEYS }}
       - name: Prepare the Windows signing
         if: runner.os == 'Windows' && vars.WINDOWS_SIGNING_CERTIFICATE != ''
         uses: $/.github/actions/windows-signing

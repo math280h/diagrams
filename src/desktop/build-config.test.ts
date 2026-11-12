@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { OFFICIAL_BUILD, readBuildConfig, releaseLinks, repositoryName, websiteOrigin } from './build-config'
+import {
+  OFFICIAL_BUILD,
+  readBuildConfig,
+  releaseLinks,
+  reportServerUrl,
+  repositoryName,
+  websiteOrigin,
+} from './build-config'
+
+const KEY = 'age1qyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqs3290gq'
+const OTHER_KEY = 'age1zvkyg2lqzraa2lnjvqej32nkuu0ues2s82hzrye869xeexvn73equnujwj'
 
 describe('websiteOrigin', () => {
   it('returns the origin of an https address, with https for an address without a scheme', () => {
@@ -57,6 +67,7 @@ describe('readBuildConfig', () => {
       repository: 'Acme/diagrams',
       repositoryEditable: true,
       githubApp: 'Iv23liExample01',
+      reports: { url: null, recipients: [] },
     })
     expect(readBuildConfig({ DIAGRAMS_REPOSITORY_EDITABLE: '0' }).repositoryEditable).toBe(false)
   })
@@ -66,6 +77,50 @@ describe('readBuildConfig', () => {
     expect(() => readBuildConfig({ DIAGRAMS_REPOSITORY: 'diagrams' })).toThrow('DIAGRAMS_REPOSITORY')
     expect(() => readBuildConfig({ DIAGRAMS_REPOSITORY_EDITABLE: 'yes' })).toThrow('DIAGRAMS_REPOSITORY_EDITABLE')
     expect(() => readBuildConfig({ DIAGRAMS_GITHUB_APP: '123456' })).toThrow('client ID of a GitHub App')
+  })
+
+  it('reads the report server and its keys, with no server in the official build', () => {
+    expect(OFFICIAL_BUILD.reports).toEqual({ url: null, recipients: [] })
+    expect(
+      readBuildConfig({
+        DIAGRAMS_REPORT_URL: 'https://reports.example.com/v/',
+        DIAGRAMS_REPORT_KEYS: `${KEY}, ${OTHER_KEY}`,
+      }).reports,
+    ).toEqual({ url: 'https://reports.example.com/v', recipients: [KEY, OTHER_KEY] })
+    expect(readBuildConfig({ DIAGRAMS_REPORT_KEYS: KEY }).reports).toEqual({ url: null, recipients: [KEY] })
+  })
+
+  it('stops the build for a report server that it cannot use', () => {
+    expect(() =>
+      readBuildConfig({ DIAGRAMS_REPORT_URL: 'http://reports.example.com', DIAGRAMS_REPORT_KEYS: KEY }),
+    ).toThrow('DIAGRAMS_REPORT_URL must be')
+    expect(() => readBuildConfig({ DIAGRAMS_REPORT_URL: 'https://reports.example.com' })).toThrow(
+      'DIAGRAMS_REPORT_URL needs DIAGRAMS_REPORT_KEYS',
+    )
+    expect(() => readBuildConfig({ DIAGRAMS_REPORT_KEYS: 'AGE-SECRET-KEY-1ABC' })).toThrow(
+      'One is "AGE-SECRET-KEY-1ABC"',
+    )
+  })
+})
+
+describe('reportServerUrl', () => {
+  it('returns the base address without a final slash', () => {
+    expect(reportServerUrl(' https://Reports.Example.com/ ')).toBe('https://reports.example.com')
+    expect(reportServerUrl('https://example.com/reports/')).toBe('https://example.com/reports')
+    expect(reportServerUrl('http://127.0.0.1:8787')).toBe('http://127.0.0.1:8787')
+  })
+
+  it('refuses addresses with a query, a fragment, a user name or plain http on the network', () => {
+    for (const text of [
+      'https://reports.example.com/?a=1',
+      'https://reports.example.com/#a',
+      'https://user@reports.example.com',
+      'http://reports.example.com',
+      'reports.example.com',
+      'ftp://reports.example.com',
+    ]) {
+      expect(reportServerUrl(text)).toBeNull()
+    }
   })
 })
 

@@ -280,9 +280,94 @@ jobs:
         if: failure()
         run: docker logs website
 
+  report-server:
+    name: Report server image
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-26.04
+    env:
+      ORIGIN: https://diagrams.example
+      POW_SECRET: ci-proof-of-work-secret-of-32-characters
+      S3_KEY: reports-ci-key
+      S3_SECRET: reports-ci-secret-0123456789
+      S3_BUCKET: reports-ci
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the image
+        run: docker build --file report-server/Dockerfile --tag diagrams-report-server .
+      - name: Write the SBOM of the image
+        run: |
+          docker build --file report-server/Dockerfile --target sbom --output "type=local,dest=$RUNNER_TEMP/sbom" .
+          jq -e '[.components[].name] | index("nodejs26-debian13") and index("hono") and index("capjs-core")' \
+            "$RUNNER_TEMP/sbom/diagrams-report-server.cdx.json" > /dev/null
+      - uses: $/.github/actions/trivy
+      - name: Scan the image, its SBOM and the Dockerfile
+        env:
+          TRIVY_SEVERITY: HIGH,CRITICAL
+          TRIVY_IGNORE_UNFIXED: 'true'
+          TRIVY_EXIT_CODE: '1'
+          TRIVY_NO_PROGRESS: 'true'
+        run: |
+          trivy image --scanners vuln,secret diagrams-report-server
+          trivy sbom "$RUNNER_TEMP/sbom/diagrams-report-server.cdx.json"
+          trivy config --misconfig-scanners dockerfile report-server/Dockerfile
+      - name: Start an S3-compatible bucket
+        run: |
+          docker network create reports
+          jq -n --arg key "$S3_KEY" --arg secret "$S3_SECRET" \
+            '{identities: [{name: "ci", credentials: [{accessKey: $key, secretKey: $secret}], actions: ["Admin", "Read", "Write", "List"]}]}' \
+            > "$RUNNER_TEMP/s3.json"
+          docker run --detach --name bucket --network reports --publish 127.0.0.1:8333:8333 \
+            --volume "$RUNNER_TEMP/s3.json:/etc/seaweedfs/s3.json:ro" \
+            chrislusf/seaweedfs:4.53@sha256:ccad23e18639c8b98cee17e7100b95830a06077b56d8e5b006d6dcf8ec5e94a0 \
+            server -s3 -s3.config=/etc/seaweedfs/s3.json
+          curl -sS --retry 30 --retry-connrefused --retry-all-errors --retry-delay 1 -o /dev/null http://127.0.0.1:8333/
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: package.json
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      - name: Test the bucket store against the bucket
+        env:
+          S3_TEST_ENDPOINT: http://127.0.0.1:8333
+          S3_TEST_BUCKET: ${{ env.S3_BUCKET }}
+          S3_TEST_ACCESS_KEY_ID: ${{ env.S3_KEY }}
+          S3_TEST_SECRET_ACCESS_KEY: ${{ env.S3_SECRET }}
+        run: pnpm exec vitest run --project unit report-server/src/storage/s3-store.test.ts
+      - name: Run the report server with a folder and with the bucket
+        run: |
+          hardened=(--read-only --cap-drop ALL --security-opt no-new-privileges)
+          docker run --detach --name reports-fs --publish 127.0.0.1:8081:8080 "${hardened[@]}" \
+            --mount type=volume,dst=/data \
+            --env POW_PROVIDER=cap --env POW_SECRET --env ALLOWED_ORIGINS="$ORIGIN" diagrams-report-server
+          docker run --detach --name reports-s3 --network reports --publish 127.0.0.1:8082:8080 "${hardened[@]}" \
+            --env STORAGE=s3 --env S3_ENDPOINT=http://bucket:8333 --env S3_BUCKET --env S3_REGION=us-east-1 \
+            --env S3_PATH_STYLE=1 --env S3_ACCESS_KEY_ID="$S3_KEY" --env S3_SECRET_ACCESS_KEY="$S3_SECRET" \
+            --env POW_PROVIDER=altcha --env POW_SECRET --env ALLOWED_ORIGINS="$ORIGIN" diagrams-report-server
+          for port in 8081 8082; do
+            curl -fsS --retry 10 --retry-connrefused --retry-delay 1 -o /dev/null "http://127.0.0.1:$port/v1/health"
+          done
+      - name: Run the conformance tests against both servers
+        run: |
+          for port in 8081 8082; do
+            REPORT_SERVER_URL="http://127.0.0.1:$port" REPORT_SERVER_ORIGIN="$ORIGIN" \
+              pnpm exec vitest run --project unit report-server/src/conformance.test.ts
+          done
+      - name: Show the server logs
+        if: failure()
+        run: |
+          docker logs reports-fs || true
+          docker logs reports-s3 || true
+          docker logs bucket || true
+
   checks:
     name: All checks
-    needs: [changes, static, web, coverage, actions-lockfile, release-formats, docker, desktop]
+    needs: [changes, static, web, coverage, actions-lockfile, release-formats, docker, report-server, desktop]
     if: always()
     runs-on: ubuntu-26.04
     steps:

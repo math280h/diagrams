@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
-import { readFile, rename, rm, stat, unlink, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, rm, stat, unlink, writeFile } from 'node:fs/promises'
+import path from 'node:path'
 import type { FileChange } from '@/desktop/contract'
 
 /** Delays before each retry of a rename that another process blocks. */
@@ -24,6 +25,22 @@ async function withRetry<T>(work: () => Promise<T>): Promise<T> {
     }
   }
   return work()
+}
+
+/**
+ * Writes a whole file at once: to a temporary file next to it, then a rename. The rename tries again for a short time
+ * while another process locks the file.
+ */
+export async function writeFileAtomic(file: string, data: string | Uint8Array, mode = 0o600) {
+  await mkdir(path.dirname(file), { recursive: true })
+  const temp = `${file}.tmp-${randomBytes(4).toString('hex')}`
+  await writeFile(temp, data, { mode })
+  try {
+    await withRetry(() => rename(temp, file))
+  } catch (error) {
+    await rm(temp, { force: true })
+    throw error
+  }
 }
 
 type Operation = { kind: 'write'; text: string } | { kind: 'remove'; trash: boolean }

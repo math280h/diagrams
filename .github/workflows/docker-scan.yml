@@ -10,12 +10,20 @@ permissions:
 
 jobs:
   scan:
-    name: Scan the image of the newest release
+    name: Scan the ${{ matrix.name }} image of the newest release
     runs-on: ubuntu-26.04
     permissions:
       contents: read
       attestations: read
       security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: website
+            suffix: ''
+          - name: report server
+            suffix: -report-server
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -24,9 +32,10 @@ jobs:
         id: image
         env:
           GH_TOKEN: ${{ github.token }}
+          SUFFIX: ${{ matrix.suffix }}
         run: |
           tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)
-          ref="ghcr.io/${GITHUB_REPOSITORY,,}:${tag#v}"
+          ref="ghcr.io/${GITHUB_REPOSITORY,,}$SUFFIX:${tag#v}"
           if ! docker buildx imagetools inspect "$ref" > /dev/null 2>&1; then
             echo "::notice::The release $tag has no image."
             exit 0
@@ -62,10 +71,10 @@ jobs:
         uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           sarif_file: ${{ runner.temp }}/image.sarif
-          category: trivy-image
+          category: trivy-image${{ matrix.suffix }}
       - name: Upload the findings of the SBOM
         if: steps.image.outputs.ref
         uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           sarif_file: ${{ runner.temp }}/sbom.sarif
-          category: trivy-sbom
+          category: trivy-sbom${{ matrix.suffix }}

@@ -4,8 +4,11 @@ import { HEX_COLOR_PATTERN } from '@/desktop/constants'
 import { IPC_CHANNELS, type MainRequests } from '@/desktop/contract'
 import { MAX_PAGE_ZOOM } from '@/export/capture-plan'
 import { GRAPHVIZ_ENGINES } from '@/layout/types'
+import { MAX_REPORT_JSON_BYTES } from '@/reports/bundle'
+import { REPORT_ID } from '@/reports/protocol'
 import { MAX_THEME_FILE_BYTES, THEME_NAME_PATTERN } from '@/themes/tokens'
 import { originOf } from './app-protocol'
+import { CRASH_ID_PATTERN } from './reports/crash-store'
 
 export type MainHandlers = {
   [M in keyof MainRequests]: (input: MainRequests[M]['input']) => Promise<MainRequests[M]['output']>
@@ -24,6 +27,9 @@ const CAPTURE = z.object({
   scale: z.number().positive().max(MAX_PAGE_ZOOM),
   transparent: z.boolean(),
 })
+
+const CRASH_ID = z.string().regex(CRASH_ID_PATTERN)
+const REPORT_REQUEST = z.object({ json: z.string().max(MAX_REPORT_JSON_BYTES), dumpOf: CRASH_ID.nullable() })
 
 const INPUTS = {
   'files.list': z.null(),
@@ -71,6 +77,16 @@ const INPUTS = {
   'capture.image': CAPTURE,
   'capture.frame': CAPTURE,
   'capture.close': z.object({ sessionId: z.uuid() }),
+  'reports.context': z.null(),
+  'reports.crashes': z.null(),
+  'reports.markSeen': z.null(),
+  'reports.showDump': z.object({ id: CRASH_ID }),
+  'reports.deleteCrash': z.object({ id: CRASH_ID }),
+  'reports.send': REPORT_REQUEST,
+  'reports.cancelSend': z.null(),
+  'reports.save': REPORT_REQUEST,
+  'reports.sent': z.null(),
+  'reports.deleteSent': z.object({ id: z.string().regex(REPORT_ID) }),
 } satisfies { [M in keyof MainRequests]: z.ZodType<MainRequests[M]['input']> }
 
 function isRequest(method: unknown): method is keyof MainRequests {

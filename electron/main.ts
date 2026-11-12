@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
+import { homedir, hostname, userInfo } from 'node:os'
 import path from 'node:path'
 import { app, dialog, session, shell } from 'electron'
 import electronUpdater from 'electron-updater'
@@ -41,6 +42,7 @@ import { configurePaths, diagramsFolder, iconPath, rendererFolder } from './path
 import { parseRenderArgs, RENDER_USAGE, RenderUsageError, type RenderArgs } from './render-args'
 import { isolateRender, runRender } from './render-cli'
 import { createRendererRpc } from './renderer-rpc'
+import { setupReports, startCrashReporter } from './reports/setup'
 import { createGitHubAuth, GITHUB_SIGN_IN_FILE, secretFile, type GitHubAuth } from './github-auth'
 import { createDiagramFiles } from './storage/diagram-files'
 import { committedText } from './storage/git'
@@ -134,6 +136,16 @@ function currentUpdatePolicy(): UpdatePolicy {
     macSigned: manifest.macSigned === true,
     preview: app.getVersion().includes(`-${PREVIEW_APP_LABEL}.`),
   })
+}
+
+function systemNames(): string[] {
+  let user = ''
+  try {
+    user = userInfo().username
+  } catch {
+    user = ''
+  }
+  return [homedir(), hostname(), user]
 }
 
 function restrictPermissions() {
@@ -295,9 +307,16 @@ async function start() {
     )
 
   const capture = createCaptureService()
+  const reports = setupReports({
+    userData,
+    sensitive: () => [...systemNames(), files.folder, userData, app.getPath('temp'), token, ...codes.pending()],
+    emitCrashes: (crashes) => rpc.emit('reports.crashes', crashes),
+    saveDialogParent: currentWindow,
+  })
   registerIpc(
     {
       ...capture.handlers,
+      ...reports,
       'files.list': async () => {
         const [inFolder, outside] = await Promise.all([files.readAll(), linked.readAll()])
         linkedWatcher.sync()
@@ -474,6 +493,7 @@ if (renderArgs === 'invalid') {
       app.exit(code)
     })
 } else if (app.requestSingleInstanceLock()) {
+  startCrashReporter()
   registerProtocolClient()
   app.on('second-instance', (_event, argv) => {
     const link = findDeepLink(argv)

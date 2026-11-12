@@ -24,7 +24,13 @@ export default mergeConfig(
           test: {
             name: 'unit',
             environment: 'node',
-            include: ['src/**/*.test.ts', 'electron/**/*.test.ts', 'scripts/**/*.test.ts', 'actions/**/*.test.mjs'],
+            include: [
+              'src/**/*.test.ts',
+              'electron/**/*.test.ts',
+              'report-server/src/**/*.test.ts',
+              'scripts/**/*.test.ts',
+              'actions/**/*.test.mjs',
+            ],
             exclude: ['src/**/*.browser.test.ts'],
           },
         },

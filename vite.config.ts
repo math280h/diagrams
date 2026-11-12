@@ -54,7 +54,7 @@ export default defineConfig({
     releaseNotes(releaseLinks(build.repository)),
     websiteAddress(build.website),
     serviceWorker(),
-    contentSecurityPolicy(),
+    contentSecurityPolicy(build.reports.url),
   ],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },

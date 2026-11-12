@@ -18,6 +18,7 @@ describe('errorProblem', () => {
         'at exportImage (app://diagrams/assets/export-abc.js:12:34)',
         'at onClick (app://diagrams/assets/index-def.js:56:78)',
       ],
+      error: { name: 'TypeError', stack: error.stack },
     })
   })
 

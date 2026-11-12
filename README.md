@@ -56,6 +56,9 @@ Your diagrams stay on your computer. There is no account and no server that stor
 - **Exports made on your device.** Images, videos, GIFs and web pages render in your browser or in the desktop app, not
   on a server.
 - **No account.** There is nothing to sign up for.
+- **Problem reports only when you send them.** The app keeps errors and crashes on your device, where you can read
+  them. A report leaves your device only when you read it and send it. It holds no diagram, and the app encrypts it so
+  that only the maintainers can read it. A crash dump goes with it only when you turn that on.
 
 ## Desktop app
 
@@ -202,8 +205,7 @@ docker run -d -p 8080:8080 ghcr.io/math280h/diagrams
 
 The [image](https://github.com/math280h/diagrams/pkgs/container/diagrams) runs on `linux/amd64` and `linux/arm64`. It
 serves the site on port 8080, and `/health` answers while it runs. Put a proxy with HTTPS in front of it. The
-[`Dockerfile`](Dockerfile) builds the same image, with `DIAGRAMS_WEBSITE` and `DIAGRAMS_REPOSITORY` from the
-[build options](#build-options) as `--build-arg`.
+[`Dockerfile`](Dockerfile) builds the same image, with the [build options](#build-options) as `--build-arg`.
 
 ### Static files
 
@@ -217,7 +219,8 @@ static file server:
 
 ### Build options
 
-Set these variables for `pnpm build` or `pnpm desktop:package`. `docker build` takes only the first two.
+Set these variables for `pnpm build` or `pnpm desktop:package`. `docker build` takes all but
+`DIAGRAMS_REPOSITORY_EDITABLE` and `DIAGRAMS_GITHUB_APP`.
 
 | Variable                       | Default                  | Sets                                                                            |
 | ------------------------------ | ------------------------ | ------------------------------------------------------------------------------- |
@@ -225,6 +228,42 @@ Set these variables for `pnpm build` or `pnpm desktop:package`. `docker build` t
 | `DIAGRAMS_REPOSITORY`          | `math280h/diagrams`      | The GitHub repository of the desktop releases, for downloads and updates        |
 | `DIAGRAMS_REPOSITORY_EDITABLE` | off                      | With `1`, users can change the update source in the app settings                |
 | `DIAGRAMS_GITHUB_APP`          | none                     | The client ID of a GitHub App, for updates from a private repository            |
+| `DIAGRAMS_REPORT_URL`          | none                     | The address of your [report server](#report-server)                             |
+| `DIAGRAMS_REPORT_KEYS`         | none                     | The age public keys that problem reports are encrypted to, separated by commas  |
+
+Without `DIAGRAMS_REPORT_URL`, your copy sends no problem reports. Users can still copy the report text into an issue.
+
+### Report server
+
+The report server keeps the encrypted problem reports that users send. It runs on any container host:
+
+```sh
+docker run -d -p 8080:8080 -v reports:/data \
+  -e ALLOWED_ORIGINS=https://diagrams.example.com ghcr.io/math280h/diagrams-report-server
+```
+
+[`report-server/Dockerfile`](report-server/Dockerfile) builds the same image. Put a proxy with HTTPS in front of it.
+`/v1/health` answers while it runs. The server cannot read the reports, and it logs no report and no address.
+
+| Variable                                                               | Default         | Sets                                                                       |
+| ---------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------------- |
+| `ALLOWED_ORIGINS`                                                      | none            | The websites that may send reports, separated by commas                    |
+| `STORAGE`                                                              | `fs`            | `fs` keeps reports in `FS_DIR`, `s3` in an S3-compatible bucket            |
+| `FS_DIR`                                                               | `/data/reports` | The folder of the reports                                                  |
+| `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | none            | The bucket, with `STORAGE=s3`                                              |
+| `S3_REGION`                                                            | `auto`          | The region of the bucket                                                   |
+| `S3_PATH_STYLE`                                                        | off             | With `1`, the bucket name goes in the path, as MinIO and SeaweedFS need it |
+| `S3_PREFIX`                                                            | `reports/`      | The start of the object names                                              |
+| `RETENTION_DAYS`                                                       | `30`            | The days after which the server deletes a report                           |
+| `POW_PROVIDER`                                                         | `none`          | The proof of work against floods of reports: `none`, `altcha` or `cap`     |
+| `POW_SECRET`                                                           | none            | The secret that signs the challenges, 32 characters or more                |
+| `TRUST_PROXY_HOPS`                                                     | `0`             | The number of proxies in front of the server that set `X-Forwarded-For`    |
+| `REPORTS_PER_HOUR`, `CHALLENGES_PER_HOUR`                              | `20`, `60`      | The limits for each client network                                         |
+| `DAILY_REPORTS`, `DAILY_MEGABYTES`                                     | `2000`, `2048`  | The limits for all clients in a day                                        |
+
+Make a key pair with `age-keygen -o reports.key`, and build your copy with its public key as `DIAGRAMS_REPORT_KEYS`.
+Keep `reports.key` off the server. To read reports, copy the `.age` files from the folder or the bucket and run
+`node scripts/open-report.ts --identity reports.key <files or folder>`.
 
 ### Desktop app
 
