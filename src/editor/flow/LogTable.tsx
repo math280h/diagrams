@@ -11,6 +11,7 @@ import { useUi } from '@/store/ui-store'
 import { useSegmentIndex } from '@/engine/hooks'
 import { markOnCanvas } from './hooks'
 import { stepLine } from './names'
+import { StepContextMenu } from './StepContextMenu'
 import { selectClickedStep } from './step-selection'
 
 const COLUMNS =
@@ -134,7 +135,7 @@ export function LogTable({ flow }: { flow: Flow }) {
   }
 
   return (
-    <div ref={listRef} data-step-list className="relative min-h-0 flex-1 overflow-y-auto select-none">
+    <StepContextMenu ref={listRef} data-step-list className="relative min-h-0 flex-1 overflow-y-auto select-none">
       <div
         aria-hidden
         className={cn(
@@ -167,6 +168,7 @@ export function LogTable({ flow }: { flow: Flow }) {
             data-level={step.level}
             data-path={onPath || undefined}
             data-selected={selected || undefined}
+            data-step-id={step.id}
             aria-current={state === 'active' ? 'step' : undefined}
             onClick={(click) => {
               if (selectClickedStep(click, step.id, order) && segment) engine.playback.seek(segment.startMs + 1)
@@ -200,6 +202,6 @@ export function LogTable({ flow }: { flow: Flow }) {
           </button>
         )
       })}
-    </div>
+    </StepContextMenu>
   )
 }

@@ -10,6 +10,7 @@ import { useUi } from '@/store/ui-store'
 import { useSegmentIndex } from '@/engine/hooks'
 import { markOnCanvas } from './hooks'
 import { delayText, findPath, stepTargets } from '@/model/flow'
+import { StepContextMenu } from './StepContextMenu'
 import { selectClickedStep } from './step-selection'
 
 const COLUMN_PX = 168
@@ -130,7 +131,7 @@ export function SequenceView({ flow }: { flow: Flow }) {
   }
 
   return (
-    <div
+    <StepContextMenu
       ref={scrollRef}
       data-step-list
       className="relative min-h-0 flex-1 overflow-auto select-none"
@@ -194,6 +195,7 @@ export function SequenceView({ flow }: { flow: Flow }) {
               onFocus={() => markOnCanvas(stepTargets(row.step))}
               onBlur={() => markOnCanvas([])}
               data-selected={selected || undefined}
+              data-step-id={row.step.id}
               className="dg-log-row dg-seq-row relative block w-full"
               style={{ height: ROW_PX, width }}
             >
@@ -202,6 +204,6 @@ export function SequenceView({ flow }: { flow: Flow }) {
           )
         })}
       </div>
-    </div>
+    </StepContextMenu>
   )
 }

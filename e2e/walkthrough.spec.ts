@@ -60,6 +60,44 @@ test('selects several steps with Shift and Ctrl, and deletes them in one undo st
   await expect(rows(page)).toHaveCount(0)
 })
 
+test('deletes steps and selects all steps from the context menu of the log, the sequence and the timeline', async ({
+  page,
+}) => {
+  await openFlows(page)
+  const count = await rows(page).count()
+  const selected = page.locator('.dg-log-row[data-selected]')
+  await rows(page).nth(1).click()
+  await rows(page)
+    .nth(3)
+    .click({ modifiers: ['Shift'] })
+  await rows(page).nth(2).click({ button: 'right' })
+  await expect(selected).toHaveCount(3)
+  await page.getByRole('menuitem', { name: /^Delete 3 steps/ }).click()
+  await expect(rows(page)).toHaveCount(count - 3)
+
+  await rows(page).nth(4).click({ button: 'right' })
+  await expect(selected).toHaveCount(1)
+  await expect(rows(page).nth(4)).toHaveAttribute('data-selected', 'true')
+  await page.getByRole('menuitem', { name: /^Delete step/ }).click()
+  await expect(rows(page)).toHaveCount(count - 4)
+
+  await page.getByRole('button', { name: 'Sequence', exact: true }).click()
+  await page.getByRole('region', { name: 'Sequence' }).locator('[data-step-id]').first().click({ button: 'right' })
+  await page.getByRole('menuitem', { name: /^Delete step/ }).click()
+  await page.getByRole('button', { name: 'Timeline', exact: true }).click()
+  await page.locator('[data-step-id]').first().click({ button: 'right' })
+  await page.getByRole('menuitem', { name: /^Delete step/ }).click()
+  await page.getByRole('button', { name: 'Log', exact: true }).click()
+  await expect(rows(page)).toHaveCount(count - 6)
+
+  await rows(page).first().click({ button: 'right' })
+  await page.getByRole('menuitem', { name: /^Select all steps/ }).click()
+  await expect(selected).toHaveCount(count - 6)
+  await expect(page.getByRole('menu')).toHaveCount(0)
+  await page.keyboard.press('ControlOrMeta+z')
+  await expect(rows(page)).toHaveCount(count - 5)
+})
+
 test('numbers the previous, the current and the next step on the diagram', async ({ page }) => {
   await openFlows(page)
   await page.getByRole('button', { name: 'Flow settings' }).click()
