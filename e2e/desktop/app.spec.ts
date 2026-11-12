@@ -175,10 +175,7 @@ function iconFile() {
   return path.resolve('build', process.platform === 'win32' ? 'icon.ico' : 'icon.png')
 }
 
-test('colours the window buttons like the header, or with the window colours of the theme', async ({
-  app,
-  window,
-}) => {
+test('colours the window buttons like the header, or with the window colours of the theme', async ({ app, window }) => {
   test.skip(process.platform === 'darwin', 'macOS draws its own window buttons.')
   await expect(window.getByRole('button', { name: 'New diagram' })).toBeVisible()
   await app.evaluate(({ BrowserWindow }) => {

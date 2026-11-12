@@ -99,7 +99,9 @@ test('imports a theme file into the browser, warns about weak contrast, and remo
   const themes = page.getByRole('group', { name: 'Your themes' })
   const chooser = page.waitForEvent('filechooser')
   await themes.getByRole('button', { name: 'Import a theme file' }).click()
-  await (await chooser).setFiles({
+  await (
+    await chooser
+  ).setFiles({
     name: 'Dim Ink.theme.json',
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify({ name: 'Dim ink', base: 'dark', canvas: { muted: '#555555' } })),

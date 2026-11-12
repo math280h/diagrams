@@ -20,13 +20,16 @@ test('takes the themes of the themes folder, follows their changes, and copies a
   const files = window.getByRole('list', { name: 'Theme files' })
   await expect(files.getByRole('listitem')).toHaveText([/Brand/])
 
-  await window.getByRole('combobox', { name: 'Dark theme' }).click()
+  await window.getByRole('combobox', { name: 'Dark theme', exact: true }).click()
   await window.getByRole('option', { name: 'Brand' }).click()
   const canvas = window.locator('[data-editor-canvas] .dg-canvas')
   await expect(canvas).toHaveAttribute('data-theme', 'custom:brand')
   await expect(canvas).toHaveCSS('background-color', 'rgb(16, 24, 32)')
 
-  writeFileSync(path.join(themes, 'brand.theme.json'), JSON.stringify({ name: 'Brand', base: 'dark', canvas: { ground: '#203040' } }))
+  writeFileSync(
+    path.join(themes, 'brand.theme.json'),
+    JSON.stringify({ name: 'Brand', base: 'dark', canvas: { ground: '#203040' } }),
+  )
   await expect(canvas).toHaveCSS('background-color', 'rgb(32, 48, 64)')
 
   await window.getByRole('button', { name: 'Copy Brand as a custom theme' }).click()

@@ -13,13 +13,19 @@
     },
     "base": {
       "type": "string",
-      "enum": ["dark", "light"],
+      "enum": [
+        "dark",
+        "light"
+      ],
       "description": "The built-in theme that gives each colour that this theme leaves out. It also sets light or dark."
     },
     "contrast": {
       "description": "high for a theme with 7:1 for text and 4.5:1 for lines. The app can use it when the system asks for more contrast.",
       "type": "string",
-      "enum": ["standard", "high"]
+      "enum": [
+        "standard",
+        "high"
+      ]
     },
     "app": {
       "description": "The colours of the app around the canvas. Each is the CSS variable --<name>.",
@@ -357,6 +363,9 @@
       }
     }
   },
-  "required": ["name", "base"],
+  "required": [
+    "name",
+    "base"
+  ],
   "description": "A colour theme of Diagrams."
 }

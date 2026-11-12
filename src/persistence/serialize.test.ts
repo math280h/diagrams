@@ -221,7 +221,7 @@ describe('migrate', () => {
     const flow = { ...createFlow('Checkout'), steps: [step], paths: [side] }
     const v17 = { ...createDiagram(), version: 17, edges: [toFirst, toSecond], flows: [flow] }
     const migrated = migrate(JSON.parse(JSON.stringify(v17)))
-    expect(migrated.version).toBe(18)
+    expect(migrated.version).toBe(DIAGRAM_VERSION)
     expect(migrated.edges.map((edge) => edge.data)).toEqual([toFirst.data, toSecond.data])
     expect(migrated.flows[0]!.steps).toEqual([step])
     expect(migrated.flows[0]!.steps[0]).not.toHaveProperty('delayMs')
