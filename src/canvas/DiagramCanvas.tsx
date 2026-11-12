@@ -11,17 +11,15 @@ import { EngineBinding } from '@/engine/context'
 import type { DiagramTheme } from '@/model/schema'
 import { GRID_PX } from '@/model/graph'
 import type { DiagramEdge, DiagramNode } from '@/model/types'
-import { hasDetails } from '@/model/details'
 import type { DiagramDescription } from '@/export/describe'
 import type { DataCrossing } from '@/model/threats'
 import type { Theme } from '@/themes/schema'
 import { CanvasDescription } from './CanvasDescription'
 import { canvasThemeAttributes, useThemeStyles } from './canvas-theme'
-import { edgeAriaLabel, nodeAriaLabel, nodeName } from './aria'
+import { nodeHasDetails, toCanvasEdges, toCanvasNodes } from './canvas-elements'
 import { FlowEdge } from './edges/FlowEdge'
 import { FlowCaption, FlowToken } from './FlowOverlay'
 import { GRID_DOT_PX } from './grid'
-import { layerNodes } from './layers'
 import { CanvasModeContext } from './mode'
 import { createDetailsHover } from './details-hover'
 import { NodeDetailsCard } from './NodeDetailsCard'
@@ -34,10 +32,6 @@ import { LevelOfDetail } from './level-of-detail'
 import { createRouteStore, EdgeRouter, RouteStoreContext } from './edges/routing'
 import { StepNumbers } from './StepNumbers'
 import { ZoomProperty } from './zoom'
-
-function nodeHasDetails(node: DiagramNode): boolean {
-  return node.type !== 'text' && hasDetails(node.data.details)
-}
 
 export const CANVAS_MIN_ZOOM = 0.08
 
@@ -100,27 +94,14 @@ export function DiagramCanvas({
   const [routes] = useState(createRouteStore)
   const [hover] = useState(createDetailsHover)
   useThemeStyles(colorTheme)
-  const nodes = useMemo(() => {
-    const layered = flowProps.nodes && layerNodes(flowProps.nodes)
-    return layered?.map((node) => {
-      const marks = [
-        details && nodeHasDetails(node) && 'dg-has-details',
-        editable && node.data.pinned === true && 'dg-pinned',
-      ].filter(Boolean)
-      const className = [node.className, ...marks].filter(Boolean).join(' ')
-      return {
-        ...node,
-        ariaRole: 'group' as const,
-        ariaLabel: nodeAriaLabel(node),
-        ...(className ? { className } : {}),
-      }
-    })
-  }, [flowProps.nodes, details, editable])
-  const edges = useMemo(() => {
-    const names = new Map(flowProps.nodes?.map((node) => [node.id, nodeName(node)]))
-    const nameOf = (id: string) => names.get(id) ?? 'a missing node'
-    return flowProps.edges?.map((edge) => ({ ...edge, ariaLabel: edgeAriaLabel(edge, nameOf) }))
-  }, [flowProps.nodes, flowProps.edges])
+  const nodes = useMemo(
+    () => flowProps.nodes && toCanvasNodes(flowProps.nodes, details, editable),
+    [flowProps.nodes, details, editable],
+  )
+  const edges = useMemo(
+    () => flowProps.edges && toCanvasEdges(flowProps.edges, flowProps.nodes ?? []),
+    [flowProps.nodes, flowProps.edges],
+  )
 
   return (
     <CanvasModeContext value={mode}>

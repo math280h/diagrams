@@ -15,6 +15,8 @@ moves along connections; a flow walks a user through the system while the camera
 - **Language**: TypeScript 7. Native compiler for `tsc -b`.
 - **Canvas**: `@xyflow/react` 12 (MIT). Plain React and HTML nodes, full CSS control. Not tldraw (paid licence or
   watermark) or Excalidraw (hand-drawn).
+  - React Flow renders a node or an edge again when its object changes. `DiagramCanvas` keeps the same object for each
+    node and edge that does not change, so a drag renders only the dragged node and its edges.
 - **UI**: Tailwind 4, shadcn CLI 4 with Base UI, lucide icons. Tokens in CSS variables.
 - **State**: zustand 5 + immer 11. One central document store; immutable snapshots make undo cheap.
 - **Validation**: zod 4 for stored and imported data, with versioned migrations.

@@ -10,7 +10,8 @@ import { Minimap, MINIMAP_MIN_NODES } from '@/canvas/Minimap'
 import { useSettings } from '@/store/settings-store'
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { useActiveTheme } from '@/themes/active'
-import { DiagramCanvas } from '@/canvas/DiagramCanvas'
+import { DiagramCanvas, type DiagramCanvasProps } from '@/canvas/DiagramCanvas'
+import { CanvasDescription } from '@/canvas/CanvasDescription'
 import { useDiagramDescription } from '@/export/use-description'
 import { dataCrossings } from '@/model/threats'
 import type { DiagramNode } from '@/model/types'
@@ -47,7 +48,24 @@ function isDefaultViewport(viewport: Viewport): boolean {
   return viewport.x === 0 && viewport.y === 0 && viewport.zoom === 1
 }
 
-function HelperLinesOverlay({ lines }: { lines: HelperLines }) {
+type GuideLines = Pick<HelperLines, 'vertical' | 'horizontal'>
+
+const NO_GUIDES: GuideLines = {}
+
+function guidesOf(found: HelperLines): GuideLines {
+  if (found.vertical === undefined && found.horizontal === undefined) return NO_GUIDES
+  return { vertical: found.vertical, horizontal: found.horizontal }
+}
+
+function sameGuides(a: GuideLines, b: GuideLines): boolean {
+  return a.vertical === b.vertical && a.horizontal === b.horizontal
+}
+
+function LiveDescription() {
+  return <CanvasDescription description={useDiagramDescription()} />
+}
+
+function HelperLinesOverlay({ lines }: { lines: GuideLines }) {
   const [x, y, zoom] = useStore((state) => state.transform)
   return (
     <>
@@ -61,24 +79,29 @@ function HelperLinesOverlay({ lines }: { lines: HelperLines }) {
   )
 }
 
-export function EditorCanvas() {
+function DocumentCanvas(props: Omit<DiagramCanvasProps, 'nodes' | 'edges' | 'threats'>) {
   const nodes = useDoc((state) => state.nodes)
   const edges = useDoc((state) => state.edges)
-  const theme = useDoc((state) => state.theme)
-  const [initialViewport] = useState(() => useDoc.getState().viewport)
-  const [narrow] = useState(() => window.innerWidth < NARROW_SCREEN_PX)
-  const colorTheme = useActiveTheme()
-  const description = useDiagramDescription()
   const sensitiveView = useUi((state) => state.sensitiveView)
-  const showMinimap = useSettings((state) => state.showMinimap)
   const threats = useMemo(
     () =>
       sensitiveView ? new Map(dataCrossings(nodes, edges).map((crossing) => [crossing.edgeId, crossing])) : undefined,
     [sensitiveView, nodes, edges],
   )
+  return <DiagramCanvas {...props} nodes={nodes} edges={edges} threats={threats} />
+}
+
+export function EditorCanvas() {
+  const empty = useDoc((state) => state.nodes.length === 0)
+  const large = useDoc((state) => state.nodes.length >= MINIMAP_MIN_NODES)
+  const theme = useDoc((state) => state.theme)
+  const [initialViewport] = useState(() => useDoc.getState().viewport)
+  const [narrow] = useState(() => window.innerWidth < NARROW_SCREEN_PX)
+  const colorTheme = useActiveTheme()
+  const showMinimap = useSettings((state) => state.showMinimap)
   const recording = useUi((state) => state.recording)
   const previewing = useVersions((state) => state.previewId !== null)
-  const [lines, setLines] = useState<HelperLines>({})
+  const [lines, setLines] = useState<GuideLines>(NO_GUIDES)
   const [dragging, setDragging] = useState(false)
   const [contextTarget, setContextTarget] = useState<ContextTarget>({ kind: 'pane' })
   const { screenToFlowPosition } = useReactFlow()
@@ -96,20 +119,18 @@ export function EditorCanvas() {
     return () => bindInsertProjection(null)
   }, [screenToFlowPosition])
 
-  const handleNodesChange = useCallback(
-    (changes: NodeChange<DiagramNode>[]) => {
-      const [first] = changes
-      if (changes.length === 1 && first?.type === 'position' && first.dragging && first.position) {
-        const found = getHelperLines(first, useDoc.getState().nodes)
-        first.position = { x: found.snapX ?? first.position.x, y: found.snapY ?? first.position.y }
-        setLines(found)
-      } else if (lines.vertical !== undefined || lines.horizontal !== undefined) {
-        setLines({})
-      }
-      onNodesChange(changes)
-    },
-    [lines],
-  )
+  const handleNodesChange = useCallback((changes: NodeChange<DiagramNode>[]) => {
+    const [first] = changes
+    if (changes.length === 1 && first?.type === 'position' && first.dragging && first.position) {
+      const found = getHelperLines(first, useDoc.getState().nodes)
+      first.position = { x: found.snapX ?? first.position.x, y: found.snapY ?? first.position.y }
+      const guides = guidesOf(found)
+      setLines((current) => (sameGuides(current, guides) ? current : guides))
+    } else {
+      setLines(NO_GUIDES)
+    }
+    onNodesChange(changes)
+  }, [])
 
   const dragStart = useRef<DiagramNode[]>([])
 
@@ -125,7 +146,7 @@ export function EditorCanvas() {
     reparentAfterDrag(ids)
     moveBendsAfterDrag(dragStart.current)
     endGesture()
-    setLines({})
+    setLines(NO_GUIDES)
     setDragging(false)
   }, [])
 
@@ -175,19 +196,15 @@ export function EditorCanvas() {
       onDoubleClick={onDoubleClick}
     >
       <CanvasContextMenu target={contextTarget}>
-        <DiagramCanvas
-          nodes={nodes}
-          edges={edges}
+        <DocumentCanvas
           theme={theme}
           colorTheme={colorTheme}
           editable={!previewing}
           levelOfDetail
           onOpenDiagram={openDiagram}
           showCaption={false}
-          description={description}
-          threats={threats}
           defaultViewport={initialViewport}
-          fitView={nodes.length > 0 && isDefaultViewport(initialViewport) && !narrow}
+          fitView={!empty && isDefaultViewport(initialViewport) && !narrow}
           fitViewOptions={editorFit()}
           onNodesChange={handleNodesChange}
           onEdgesChange={onEdgesChange}
@@ -216,14 +233,19 @@ export function EditorCanvas() {
             setContextTarget({ kind: 'edge', id: edge.id })
           }}
           onSelectionContextMenu={() => setContextTarget({ kind: 'selection' })}
-          overlay={<HelperLinesOverlay lines={lines} />}
+          overlay={
+            <>
+              <LiveDescription />
+              {lines !== NO_GUIDES && <HelperLinesOverlay lines={lines} />}
+            </>
+          }
         >
           <RecoverViewport />
           {narrow && <StartFrame />}
-          {showMinimap && nodes.length >= MINIMAP_MIN_NODES && <Minimap />}
-        </DiagramCanvas>
+          {showMinimap && large && <Minimap />}
+        </DocumentCanvas>
       </CanvasContextMenu>
-      {nodes.length === 0 && <EmptyCanvas />}
+      {empty && <EmptyCanvas />}
       <ZoomControls />
     </div>
   )
