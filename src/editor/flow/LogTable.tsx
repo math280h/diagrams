@@ -1,16 +1,20 @@
 import { Waypoints } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Input } from '@/components/ui/input'
 import type { Timeline, TimelineSegment } from '@/engine/flow/compile'
-import { stepState } from '@/engine/flow/sides'
+import { findSegment, stepState } from '@/engine/flow/sides'
 import { useEngine, usePlaybackState, useSideIndices } from '@/engine/hooks'
+import { KEYS } from '@/lib/shortcut-keys'
 import { cn } from '@/lib/utils'
-import { findAnyPath, pathSteps, stepTargets, isOverview, overviewName } from '@/model/flow'
+import { findAnyPath, findStep, pathSteps, stepTargets, isOverview, overviewName } from '@/model/flow'
 import type { Flow, FlowPath, Step } from '@/model/schema'
+import { updateFlow } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
 import { useUi } from '@/store/ui-store'
 import { useSegmentIndex } from '@/engine/hooks'
 import { markOnCanvas } from './hooks'
 import { stepLine } from './names'
+import { parseTimeMs, startChanges } from './step-start'
 import { StepContextMenu } from './StepContextMenu'
 import { selectClickedStep } from './step-selection'
 
@@ -33,6 +37,65 @@ interface LogRow {
   state: 'skipped' | 'done' | 'active' | 'pending'
   onPath: boolean
   side: boolean
+  /** True if a step comes before the step on its track, so its start can change. */
+  movable: boolean
+}
+
+interface StartEdit {
+  /** The typed start, or `null` to keep the old start. */
+  startMs: number | null
+  keepLater: boolean
+  /** True for Enter and Escape: the focus goes back to the row, and the playhead to the step. */
+  byKey: boolean
+}
+
+function StartInput({
+  number,
+  startMs,
+  onDone,
+}: {
+  number: string
+  startMs: number
+  onDone: (edit: StartEdit) => void
+}) {
+  const [text, setText] = useState(offset(startMs))
+  const [invalid, setInvalid] = useState(false)
+  const done = useRef(false)
+  const finish = (edit: StartEdit) => {
+    if (done.current) return
+    done.current = true
+    onDone(edit)
+  }
+  return (
+    <Input
+      autoFocus
+      aria-label={`Start of step ${number}, in seconds`}
+      aria-invalid={invalid || undefined}
+      title={`Enter moves the later steps with the step. ${KEYS.keepLaterSteps} keeps them in place. Esc cancels.`}
+      inputMode="decimal"
+      spellCheck={false}
+      value={text}
+      onFocus={(event) => event.currentTarget.select()}
+      onContextMenu={(event) => event.stopPropagation()}
+      onChange={(event) => {
+        setText(event.target.value)
+        setInvalid(false)
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          finish({ startMs: null, keepLater: false, byKey: true })
+        } else if (event.key === 'Enter') {
+          event.preventDefault()
+          const parsed = parseTimeMs(text)
+          if (parsed === null) setInvalid(true)
+          else finish({ startMs: parsed, keepLater: event.altKey, byKey: true })
+        }
+      }}
+      onBlur={() => finish({ startMs: parseTimeMs(text), keepLater: false, byKey: false })}
+      className="-ml-[5px] h-5 w-[calc(100%+10px)] rounded-sm px-1 py-0 font-mono text-xs tabular-nums select-text md:text-xs dark:bg-transparent"
+    />
+  )
 }
 
 function logRows(
@@ -58,6 +121,7 @@ function logRows(
         state: segment ? stepState(segment.index, sideIndices[track] ?? -1) : 'skipped',
         onPath: true,
         side: true,
+        movable: segment !== undefined,
       }
       return { row, startMs }
     })
@@ -76,6 +140,7 @@ function logRows(
       state: segment ? stepState(segment.index, current) : 'skipped',
       onPath: pathStepIds.has(step.id),
       side: false,
+      movable: (segment?.index ?? 0) > 0,
     })
   })
   return [...rows, ...pending.map(({ row }) => row)]
@@ -101,6 +166,9 @@ export function LogTable({ flow }: { flow: Flow }) {
   const listRef = useRef<HTMLDivElement>(null)
   const showLatency = rows.some((row) => row.step.latencyMs !== null)
   const columns = showLatency ? COLUMNS : COLUMNS_WITHOUT_LATENCY
+  const [editingStepId, setEditingStepId] = useState<string | null>(null)
+  const refocusStepId = useRef<string | null>(null)
+  const seekAfterEdit = useRef<{ stepId: string; from: Timeline } | null>(null)
 
   useEffect(() => {
     const list = listRef.current
@@ -109,7 +177,37 @@ export function LogTable({ flow }: { flow: Flow }) {
     list.scrollTo({ top: Math.max(0, row.offsetTop - HEADER_HEIGHT_PX - row.offsetHeight), behavior: 'smooth' })
   }, [current])
 
+  useEffect(() => {
+    const pending = seekAfterEdit.current
+    const timeline = playback.timeline
+    if (!pending || !timeline || timeline === pending.from) return
+    seekAfterEdit.current = null
+    const found = findSegment(timeline, pending.stepId)
+    if (found) engine.playback.seek(found.segment.startMs + 1)
+  }, [engine, playback.timeline])
+
   useEffect(() => () => markOnCanvas([]), [])
+
+  const startEditing = (stepId: string) => {
+    engine.playback.pause()
+    setEditingStepId(stepId)
+  }
+
+  const finishEditing = (stepId: string, { startMs, keepLater, byKey }: StartEdit) => {
+    setEditingStepId(null)
+    if (byKey) refocusStepId.current = stepId
+    const timeline = engine.playback.timeline
+    if (startMs === null || !timeline) return
+    const changes = startChanges(timeline, stepId, startMs, keepLater)
+    if (changes.length === 0) return
+    if (byKey) seekAfterEdit.current = { stepId, from: timeline }
+    updateFlow(flow.id, (draft) => {
+      for (const change of changes) {
+        const place = findStep(draft, change.stepId)
+        if (place) place.step.durationMs = change.durationMs
+      }
+    })
+  }
 
   if (path && path.steps.length === 0) {
     const kind = path.concurrent ? 'side path' : 'path'
@@ -151,39 +249,32 @@ export function LogTable({ flow }: { flow: Flow }) {
         {showLatency && <span className="text-right">Latency</span>}
         <span className="max-lg:hidden">Caption</span>
       </div>
-      {rows.map(({ step, segment, number, element: elementOf, state, onPath, side }) => {
+      {rows.map(({ step, segment, number, element: elementOf, state, onPath, side, movable }) => {
         const line = stepLine(step, segment?.lanes)
         const element = elementOf(line)
         const { event } = line
         const body = flow.bodies ? line.body : ''
         const selected = selectedStepIds.includes(step.id)
-        return (
-          <button
-            key={step.id}
-            type="button"
-            data-index={side ? undefined : segment?.index}
-            data-side={side || undefined}
-            data-state={state}
-            data-kind={step.target.kind}
-            data-level={step.level}
-            data-path={onPath || undefined}
-            data-selected={selected || undefined}
-            data-step-id={step.id}
-            aria-current={state === 'active' ? 'step' : undefined}
-            onClick={(click) => {
-              if (selectClickedStep(click, step.id, order) && segment) engine.playback.seek(segment.startMs + 1)
-            }}
-            onPointerEnter={() => markOnCanvas(stepTargets(step))}
-            onPointerLeave={() => markOnCanvas([])}
-            onFocus={() => markOnCanvas(stepTargets(step))}
-            onBlur={() => markOnCanvas([])}
-            className={cn(
-              columns,
-              'dg-log-row h-6 w-full items-center gap-x-3 px-3 text-left font-mono text-xs tabular-nums',
-            )}
-          >
+        const row = {
+          'data-index': side ? undefined : segment?.index,
+          'data-side': side || undefined,
+          'data-state': state,
+          'data-kind': step.target.kind,
+          'data-level': step.level,
+          'data-path': onPath || undefined,
+          'data-selected': selected || undefined,
+          'data-step-id': step.id,
+          onPointerEnter: () => markOnCanvas(stepTargets(step)),
+          onPointerLeave: () => markOnCanvas([]),
+          className: cn(
+            columns,
+            'dg-log-row h-6 w-full items-center gap-x-3 px-3 text-left font-mono text-xs tabular-nums',
+          ),
+        }
+        const cells = (start: ReactNode) => (
+          <>
             <span className="text-right text-muted-foreground">{number}</span>
-            <span className="dg-log-dim max-sm:hidden">{segment ? offset(segment.startMs) : '—'}</span>
+            {start}
             <span className="dg-log-dot" />
             <span className="truncate font-sans text-[13px]">{element}</span>
             <span className="dg-log-event truncate max-sm:hidden" title={body ? `${event} ${body}`.trim() : undefined}>
@@ -199,6 +290,56 @@ export function LogTable({ flow }: { flow: Flow }) {
             <span className="sr-only">
               {selected && ', selected'}, {state}
             </span>
+          </>
+        )
+        if (editingStepId === step.id && segment) {
+          return (
+            <div key={step.id} {...row}>
+              {cells(
+                <StartInput
+                  number={number}
+                  startMs={segment.startMs}
+                  onDone={(edit) => finishEditing(step.id, edit)}
+                />,
+              )}
+            </div>
+          )
+        }
+        return (
+          <button
+            key={step.id}
+            ref={(button) => {
+              if (!button || refocusStepId.current !== step.id) return
+              refocusStepId.current = null
+              button.focus()
+            }}
+            type="button"
+            {...row}
+            aria-current={state === 'active' ? 'step' : undefined}
+            aria-keyshortcuts={movable ? KEYS.changeStart : undefined}
+            onClick={(click) => {
+              if (selectClickedStep(click, step.id, order) && segment) engine.playback.seek(segment.startMs + 1)
+            }}
+            onKeyDown={(key) => {
+              if (key.key !== 'F2' || !movable) return
+              key.preventDefault()
+              if (key.currentTarget.querySelector('[data-start]')?.checkVisibility()) startEditing(step.id)
+            }}
+            onFocus={() => markOnCanvas(stepTargets(step))}
+            onBlur={() => markOnCanvas([])}
+          >
+            {cells(
+              <span
+                data-start
+                className="dg-log-dim max-sm:hidden"
+                title={
+                  movable ? 'Double-click to change when the step starts. The later steps move with it.' : undefined
+                }
+                onDoubleClick={movable ? () => startEditing(step.id) : undefined}
+              >
+                {segment ? offset(segment.startMs) : '—'}
+              </span>,
+            )}
           </button>
         )
       })}

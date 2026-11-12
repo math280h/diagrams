@@ -130,3 +130,45 @@ test('changes the time of a step on the timeline, with or without moving the lat
   expect(local[1]).not.toBe(rippled[1])
   expect(local[2]).toBe(rippled[2])
 })
+
+test('changes when a step starts in the log, with or without moving the later steps', async ({ page }) => {
+  await openFlows(page)
+  const offset = (step: number) =>
+    rows(page)
+      .nth(step - 1)
+      .locator('span:nth-child(2)')
+  const starts = async () =>
+    (await rows(page).locator('span:nth-child(2)').allTextContents())
+      .slice(0, 4)
+      .map((text) => Math.round(Number(text.replace(/[+s]/g, '')) * 1000))
+  const [first, second, third, fourth] = await starts()
+  const input = page.getByRole('textbox', { name: 'Start of step 3, in seconds' })
+
+  await offset(1).dblclick()
+  await expect(page.getByRole('textbox', { name: /^Start of step/ })).toHaveCount(0)
+
+  await offset(3).dblclick()
+  await input.fill('later')
+  await input.press('Enter')
+  await expect(input).toHaveAttribute('aria-invalid', 'true')
+  await input.fill(String((third! + 1000) / 1000))
+  await input.press('Enter')
+  await expect(input).toHaveCount(0)
+  await expect(rows(page).nth(2)).toBeFocused()
+  await expect(rows(page).nth(2)).toHaveAttribute('data-state', 'active')
+  await expect.poll(starts).toEqual([first, second, third! + 1000, fourth! + 1000])
+
+  await page.keyboard.press('F2')
+  await input.fill(String(third! / 1000))
+  await input.press('Alt+Enter')
+  await expect.poll(starts).toEqual([first, second, third, fourth! + 1000])
+
+  await page.keyboard.press('F2')
+  await input.fill('0')
+  await input.press('Escape')
+  await expect(rows(page).nth(2)).toBeFocused()
+  await expect.poll(starts).toEqual([first, second, third, fourth! + 1000])
+
+  await page.keyboard.press('ControlOrMeta+z')
+  await expect.poll(starts).toEqual([first, second, third! + 1000, fourth! + 1000])
+})
