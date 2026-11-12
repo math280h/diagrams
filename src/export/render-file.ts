@@ -3,17 +3,31 @@ import type { RenderRequest } from '@/desktop/contract'
 import { choosablePaths, sidePaths } from '@/model/flow'
 import { migrate } from '@/persistence/migrations'
 import { fromDiagram } from '@/persistence/serialize'
+import { parseThemeText, type Theme } from '@/themes/schema'
+import { customThemeId, findTheme } from '@/themes/store'
 import { renderDiagramImage, renderDiagramVideo } from './render-image'
 
 const IMAGE_MAX_SIZE_PX = 2048
 
 export class RenderRequestError extends Error {}
 
+function requestTheme(request: RenderRequest): Theme | undefined {
+  if (request.themeText !== undefined) {
+    const parsed = parseThemeText(customThemeId('render'), request.themeText)
+    if (!parsed.ok) throw new RenderRequestError(`The theme file cannot be used: ${parsed.problem}`)
+    return parsed.theme
+  }
+  if (request.theme === undefined) return undefined
+  const theme = findTheme(request.theme)
+  if (!theme) throw new RenderRequestError(`The app has no theme "${request.theme}".`)
+  return theme
+}
+
 /**
  * Renders a diagram file as an image, a video or a GIF.
  *
- * @throws RenderRequestError If the file is not a diagram, the diagram is empty, or it has no flow or no path with the
- *   name or the id. A side path is not a path for this request.
+ * @throws RenderRequestError If the file is not a diagram, the diagram is empty, it has no flow or no path with the
+ *   name or the id, or the theme is not available. A side path is not a path for this request.
  */
 export async function renderDiagramFile(request: RenderRequest): Promise<Blob> {
   let content: DiagramContent
@@ -30,6 +44,7 @@ export async function renderDiagramFile(request: RenderRequest): Promise<Blob> {
     throw new RenderRequestError(`The file is not a diagram: ${error instanceof Error ? error.message : String(error)}`)
   }
   if (content.nodes.length === 0) throw new RenderRequestError('The diagram is empty, so there is nothing to render.')
+  const theme = requestTheme(request)
   let flowId: string | undefined
   let pathId: string | undefined
   if (request.flow !== undefined) {
@@ -61,7 +76,7 @@ export async function renderDiagramFile(request: RenderRequest): Promise<Blob> {
   if (request.format === 'png' || request.format === 'svg') {
     const { blob } = await renderDiagramImage(content, {
       format: request.format,
-      theme: request.theme,
+      theme,
       flowId,
       pathId,
       step: request.step,
@@ -71,7 +86,7 @@ export async function renderDiagramFile(request: RenderRequest): Promise<Blob> {
   }
   return renderDiagramVideo(content, {
     format: request.format,
-    theme: request.theme,
+    theme,
     flowId,
     pathId,
     ...(request.maxSizePx !== undefined ? { maxSizePx: request.maxSizePx } : {}),

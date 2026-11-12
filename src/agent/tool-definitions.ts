@@ -2,6 +2,7 @@ import { z } from '@/lib/zod'
 import { LAYOUT_DIRECTIONS, LAYOUT_STYLES } from '@/layout/types'
 import { BOUNDARY_PROVIDER_IDS } from '@/model/boundaries'
 import { COLORS } from '@/model/colors'
+import { BUILT_IN_THEME_IDS } from '@/themes/tokens'
 import {
   CAMERA_MOTIONS,
   CAMERA_STYLES,
@@ -466,16 +467,12 @@ export const TOOL_DEFINITIONS = {
   update_diagram: {
     title: 'Update diagram',
     description:
-      'Rename a diagram or change its theme: colour mode, fonts, background grid, protocol and boundary colours.',
+      'Rename a diagram or change its look: fonts, background grid, protocol and boundary colours, routing. The colours come from the theme of each reader.',
     input: z.object({
       diagramId,
       name: z.string().optional(),
       theme: z
         .object({
-          mode: z
-            .enum(['auto', 'dark', 'light'])
-            .optional()
-            .describe('The canvas colour mode. auto (the default) follows the app theme.'),
           fonts: z.enum(FONT_PAIRS).optional(),
           background: z
             .enum(['dots', 'grid', 'none'])
@@ -635,7 +632,7 @@ export const TOOL_DEFINITIONS = {
   render_image: {
     title: 'Render image',
     description:
-      'Render a diagram as a PNG image to check your work: layout, overlaps, labels and icons. Can show only some nodes, a step of a flow, and the dark or light theme.',
+      'Render a diagram as a PNG image to check your work: layout, overlaps, labels and icons. Can show only some nodes, a step of a flow, and another theme.',
     input: z.object({
       diagramId,
       focus: z
@@ -656,9 +653,11 @@ export const TOOL_DEFINITIONS = {
         .optional()
         .describe('With flow: the step index from 0 to show, among the steps that the path plays.'),
       theme: z
-        .enum(['dark', 'light'])
+        .string()
         .optional()
-        .describe('The canvas theme. The default is the theme of the diagram.'),
+        .describe(
+          `The colour theme: ${BUILT_IN_THEME_IDS.join(', ')}, or custom:<file name> for a theme of the user. The default is the theme that the app shows.`,
+        ),
       maxSizePx: z
         .number()
         .int()

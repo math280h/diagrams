@@ -14,8 +14,9 @@ import type { DiagramEdge, DiagramNode } from '@/model/types'
 import { hasDetails } from '@/model/details'
 import type { DiagramDescription } from '@/export/describe'
 import type { DataCrossing } from '@/model/threats'
-import { useHighContrast } from '@/store/settings-store'
+import type { Theme } from '@/themes/schema'
 import { CanvasDescription } from './CanvasDescription'
+import { canvasThemeAttributes, useThemeStyles } from './canvas-theme'
 import { edgeAriaLabel, nodeAriaLabel, nodeName } from './aria'
 import { FlowEdge } from './edges/FlowEdge'
 import { FlowCaption, FlowToken } from './FlowOverlay'
@@ -45,7 +46,8 @@ const edgeTypes = { flow: FlowEdge }
 
 export interface DiagramCanvasProps extends Omit<ReactFlowProps<DiagramNode, DiagramEdge>, 'nodeTypes' | 'edgeTypes'> {
   theme: DiagramTheme
-  resolvedTheme: 'dark' | 'light'
+  /** The colours of the canvas. */
+  colorTheme: Theme
   editable: boolean
   exportMode?: boolean
   /** Shows the details of a node on hover and on click, and marks the nodes that have details. */
@@ -67,7 +69,7 @@ export interface DiagramCanvasProps extends Omit<ReactFlowProps<DiagramNode, Dia
 
 export function DiagramCanvas({
   theme,
-  resolvedTheme,
+  colorTheme,
   editable,
   exportMode,
   details = false,
@@ -97,7 +99,7 @@ export function DiagramCanvas({
   )
   const [routes] = useState(createRouteStore)
   const [hover] = useState(createDetailsHover)
-  const highContrast = useHighContrast() && !exportMode
+  useThemeStyles(colorTheme)
   const nodes = useMemo(() => {
     const layered = flowProps.nodes && layerNodes(flowProps.nodes)
     return layered?.map((node) => {
@@ -126,8 +128,7 @@ export function DiagramCanvas({
         <div
           ref={rootRef}
           className="dg-canvas"
-          data-theme={resolvedTheme}
-          data-contrast={highContrast ? 'more' : undefined}
+          {...canvasThemeAttributes(colorTheme)}
           data-fonts={theme.fonts}
           data-boundary-colors={theme.boundaryColors ? 'true' : undefined}
           data-protocol-colors={theme.protocolColors ? 'true' : undefined}
@@ -155,7 +156,7 @@ export function DiagramCanvas({
             panOnDrag={editable ? [0, 1] : true}
             panOnScroll={editable}
             zoomOnDoubleClick={false}
-            colorMode={resolvedTheme}
+            colorMode={colorTheme.base}
             proOptions={{ hideAttribution: true }}
             {...flowProps}
             {...(details

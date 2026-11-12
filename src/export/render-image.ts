@@ -1,7 +1,8 @@
-import { currentCanvasTheme } from '@/canvas/canvas-theme'
 import type { DiagramContent } from '@/agent/compact'
 import type { RenderedImage, RenderOptions } from '@/agent/context'
 import { compileFlow, laneWindow } from '@/engine/flow/compile'
+import { activeTheme } from '@/themes/active'
+import type { Theme } from '@/themes/schema'
 import { diagramBounds } from './bounds'
 import { openStageSession } from './stage-session'
 import { recordStage, type VideoFormat } from './video'
@@ -44,7 +45,7 @@ export async function renderDiagramImage(
 ): Promise<{ blob: Blob; width: number; height: number; scale: number }> {
   const nodes = content.nodes.map((node) => ({ ...node, selected: false, dragging: false }))
   const edges = content.edges.map((edge) => ({ ...edge, selected: false }))
-  const resolvedTheme = options.theme ?? currentCanvasTheme(content.theme.mode)
+  const colorTheme = options.theme ?? activeTheme()
   const flow = options.flowId ? content.flows.find((candidate) => candidate.id === options.flowId) : undefined
   const bounds = diagramBounds(nodes, options.focusIds ? new Set(options.focusIds) : undefined)
   const size = flow
@@ -67,7 +68,7 @@ export async function renderDiagramImage(
       nodes,
       edges,
       theme: { ...content.theme, background: 'none' },
-      resolvedTheme,
+      colorTheme,
       viewport: { x: PADDING_PX - bounds.x, y: PADDING_PX - bounds.y, zoom: 1 },
       transparent: false,
       flows: content.flows,
@@ -101,7 +102,7 @@ export async function renderDiagramPng(content: DiagramContent, options: RenderO
  */
 export async function renderDiagramVideo(
   content: DiagramContent,
-  options: { format: VideoFormat; theme?: 'dark' | 'light'; flowId?: string; pathId?: string; maxSizePx?: number },
+  options: { format: VideoFormat; theme?: Theme; flowId?: string; pathId?: string; maxSizePx?: number },
 ): Promise<Blob> {
   const nodes = content.nodes.map((node) => ({ ...node, selected: false, dragging: false }))
   const edges = content.edges.map((edge) => ({ ...edge, selected: false }))
@@ -116,7 +117,7 @@ export async function renderDiagramVideo(
     nodes,
     edges,
     theme: { ...content.theme, background: 'none' },
-    resolvedTheme: options.theme ?? currentCanvasTheme(content.theme.mode),
+    colorTheme: options.theme ?? activeTheme(),
     viewport: { x: 0, y: 0, zoom: 1 },
     transparent: false,
     flows: content.flows,

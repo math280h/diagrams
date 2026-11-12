@@ -11,6 +11,7 @@ import { reportError } from '@/store/problem-store'
 import { safeFileName } from '@/lib/format'
 import { useDoc } from '@/store/doc-store'
 import { useUi } from '@/store/ui-store'
+import { useThemesByBase } from '@/themes/active'
 import { descriptionParagraph } from './describe'
 import { readmeImagePaths, readmeSnippet, type ReadmeFormat } from './readme'
 import { renderDiagramImage, renderDiagramVideo } from './render-image'
@@ -18,7 +19,7 @@ import { useDiagramDescription } from './use-description'
 
 const NO_FLOW = 'traffic'
 const IMAGE_MAX_SIZE_PX = 2400
-const THEMES = ['dark', 'light'] as const
+const BASES = ['dark', 'light'] as const
 
 function fileName(path: string): string {
   return path.split('/').at(-1)!
@@ -33,6 +34,7 @@ export function ReadmeExport() {
   const [flowChoice, setFlowChoice] = useState<string>(activeFlowId ?? flows[0]?.id ?? NO_FLOW)
   const [basePath, setBasePath] = useState(() => `docs/images/${safeFileName(name)}`)
   const [status, setStatus] = useState<string | null>(null)
+  const themes = useThemesByBase()
   const flow = flows.find((candidate) => candidate.id === flowChoice)
   const paths = readmeImagePaths(basePath, format)
   const snippet = readmeSnippet(paths, descriptionParagraph(description))
@@ -47,13 +49,14 @@ export function ReadmeExport() {
     const { id, ...doc } = useDoc.getState()
     const content = { ...doc, id: id ?? '' }
     try {
-      for (const theme of THEMES) {
-        setStatus(`Rendering the ${theme} ${format === 'gif' ? 'GIF' : 'image'}…`)
+      for (const base of BASES) {
+        const theme = themes[base]
+        setStatus(`Rendering the ${base} ${format === 'gif' ? 'GIF' : 'image'} in ${theme.name}…`)
         const blob =
           format === 'gif'
             ? await renderDiagramVideo(content, { format: 'gif', theme, flowId: flow?.id })
             : (await renderDiagramImage(content, { format: 'png', theme, maxSizePx: IMAGE_MAX_SIZE_PX })).blob
-        downloadBlob(blob, fileName(paths[theme]))
+        downloadBlob(blob, fileName(paths[base]))
       }
       toast.success('Exported the dark and the light image')
     } catch (error) {
@@ -110,8 +113,8 @@ export function ReadmeExport() {
         />
         <p className="text-xs text-muted-foreground">
           Put the two images at the image path in your repository and paste the snippet in the README. GitHub shows the
-          dark image in dark mode and the light image in light mode. The alt text is the text description of the
-          diagram.
+          dark image in dark mode and the light image in light mode. The images use your {themes.dark.name} and{' '}
+          {themes.light.name} themes. The alt text is the text description of the diagram.
         </p>
       </div>
       <DialogFooter>

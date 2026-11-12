@@ -175,36 +175,53 @@ function iconFile() {
   return path.resolve('build', process.platform === 'win32' ? 'icon.ico' : 'icon.png')
 }
 
-test('colours the window buttons like the header in the light and the dark theme', async ({ app, window }) => {
+test('colours the window buttons like the header, or with the window colours of the theme', async ({ app, window }) => {
   test.skip(process.platform === 'darwin', 'macOS draws its own window buttons.')
   await expect(window.getByRole('button', { name: 'New diagram' })).toBeVisible()
   await app.evaluate(({ BrowserWindow }) => {
     const calls: unknown[] = []
-    Object.assign(globalThis, { titleBarCalls: calls })
+    const borders: unknown[] = []
+    Object.assign(globalThis, { titleBarCalls: calls, borderCalls: borders })
     const main = BrowserWindow.getAllWindows()[0]!
     const setOverlay = main.setTitleBarOverlay.bind(main)
     main.setTitleBarOverlay = (options) => {
       calls.push(options)
       setOverlay(options)
     }
+    // Electron has setAccentColor only on Windows.
+    if (typeof main.setAccentColor !== 'function') return
+    const setAccent = main.setAccentColor.bind(main)
+    main.setAccentColor = (color) => {
+      borders.push(color)
+      setAccent(color)
+    }
   })
   const lastColors = () =>
     app.evaluate(() =>
       (globalThis as unknown as { titleBarCalls: { color: string; symbolColor: string }[] }).titleBarCalls.at(-1),
     )
-  const startWithTheme = async (theme: 'dark' | 'light') => {
-    await window.evaluate((value) => {
-      const saved = JSON.parse(localStorage.getItem('dg:settings') ?? '{"state":{},"version":0}') as {
-        state: Record<string, unknown>
-      }
-      localStorage.setItem('dg:settings', JSON.stringify({ ...saved, state: { ...saved.state, theme: value } }))
-    }, theme)
+  const lastBorder = () => app.evaluate(() => (globalThis as unknown as { borderCalls: unknown[] }).borderCalls.at(-1))
+  const startWithTheme = async (mode: 'dark' | 'light', darkTheme = 'dark') => {
+    await window.evaluate(
+      ({ themeMode, dark }) => {
+        const saved = JSON.parse(localStorage.getItem('dg:settings') ?? '{"state":{},"version":1}') as {
+          state: Record<string, unknown>
+        }
+        const state = { ...saved.state, themeMode, themes: { light: 'light', dark } }
+        localStorage.setItem('dg:settings', JSON.stringify({ state, version: 1 }))
+      },
+      { themeMode: mode, dark: darkTheme },
+    )
     await window.reload()
     await expect(window.getByRole('button', { name: 'New diagram' })).toBeVisible()
   }
 
+  await startWithTheme('dark', 'blueprint')
+  await expect.poll(lastColors).toMatchObject({ color: '#0f2a4e', symbolColor: '#f2f6fc' })
+  if (process.platform === 'win32') await expect.poll(lastBorder).toBe('#ffd84a')
   await startWithTheme('dark')
   await expect.poll(lastColors).toMatchObject({ color: '#0a0a0a', symbolColor: '#fafafa' })
+  if (process.platform === 'win32') await expect.poll(lastBorder).toBeNull()
   await startWithTheme('light')
   await expect.poll(lastColors).toMatchObject({ color: '#ffffff', symbolColor: '#0a0a0a' })
 })

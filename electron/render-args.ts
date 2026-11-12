@@ -1,14 +1,18 @@
 import path from 'node:path'
 import type { RenderFormat } from '@/desktop/contract'
+import { BUILT_IN_THEME_IDS, THEME_FILE_SUFFIX } from '@/themes/tokens'
 
 const FORMATS: ReadonlySet<string> = new Set<RenderFormat>(['png', 'svg', 'gif', 'mp4', 'webm'])
+const THEME_IDS: ReadonlySet<string> = new Set(BUILT_IN_THEME_IDS)
 
 export const RENDER_USAGE = `Usage: Diagrams --render <diagram file> --out <image or video file> [options]
 
 The format comes from the extension of --out: .png, .svg, .gif, .mp4 or .webm.
 
 Options:
-  --theme dark|light   The canvas theme. The default is the theme of the diagram.
+  --theme <theme>      A built-in theme or a ${THEME_FILE_SUFFIX} file. The default is the light or
+                       the dark theme, as the system setting is. Built-in themes:
+                       ${BUILT_IN_THEME_IDS.join(', ')}.
   --flow <name or id>  The flow to play in a video, or to show in an image.
   --path <name or id>  With --flow: the path of the flow. Without it, the main steps.
   --step <number>      With --flow and an image: the step to show, from 0, among the steps
@@ -20,7 +24,10 @@ export interface RenderArgs {
   input: string
   output: string
   format: RenderFormat
-  theme?: 'dark' | 'light'
+  /** The id of a built-in theme. */
+  theme?: string
+  /** The path of a theme file. */
+  themeFile?: string
   flow?: string
   path?: string
   step?: number
@@ -52,8 +59,11 @@ export function parseRenderArgs(argv: readonly string[]): RenderArgs | null {
   const format = path.extname(output).slice(1).toLowerCase()
   if (!FORMATS.has(format)) throw new RenderUsageError(`--out must end in .png, .svg, .gif, .mp4 or .webm.`)
   const theme = values.get('theme')
-  if (theme !== undefined && theme !== 'dark' && theme !== 'light') {
-    throw new RenderUsageError('--theme must be dark or light.')
+  const themeFile = theme?.endsWith(THEME_FILE_SUFFIX) ? path.resolve(theme) : undefined
+  if (theme !== undefined && !themeFile && !THEME_IDS.has(theme)) {
+    throw new RenderUsageError(
+      `--theme must be a ${THEME_FILE_SUFFIX} file or one of: ${BUILT_IN_THEME_IDS.join(', ')}.`,
+    )
   }
   const step = values.get('step')
   const stepNumber = step === undefined ? undefined : Number(step)
@@ -74,7 +84,7 @@ export function parseRenderArgs(argv: readonly string[]): RenderArgs | null {
     input: path.resolve(input),
     output: path.resolve(output),
     format: format as RenderFormat,
-    ...(theme ? { theme } : {}),
+    ...(themeFile ? { themeFile } : theme ? { theme } : {}),
     ...(values.has('flow') ? { flow: values.get('flow') } : {}),
     ...(values.has('path') ? { path: values.get('path') } : {}),
     ...(stepNumber !== undefined ? { step: stepNumber } : {}),

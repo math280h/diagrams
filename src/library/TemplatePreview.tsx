@@ -2,7 +2,7 @@ import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { applyEdgeChanges, ReactFlowProvider, type EdgeChange } from '@xyflow/react'
 import { ArrowLeft, CopyPlus, Pause, Play, Square } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { useCanvasTheme } from '@/canvas/canvas-theme'
+import { useActiveTheme } from '@/themes/active'
 import { useLocalNodes } from '@/canvas/use-local-nodes'
 import { DiagramCanvas } from '@/canvas/DiagramCanvas'
 import { CAPTION_HEIGHT_PX } from '@/canvas/FlowOverlay'
@@ -30,7 +30,7 @@ function Preview({ template }: { template: Template }) {
   const [nodes, onNodesChange] = useLocalNodes(initial.nodes)
   const [edges, setEdges] = useState<DiagramEdge[]>(initial.edges)
   const [activeFlowId, setActiveFlowId] = useState<string | null>(null)
-  const resolvedTheme = useCanvasTheme(diagram.theme.mode)
+  const colorTheme = useActiveTheme()
   useReadableFraming({ edges: initial.edges, paddingPx: 48, minZoom: 0, maxZoom: 1.1, once: true, withText: true })
 
   const play = (flow: Flow) => {
@@ -106,7 +106,7 @@ function Preview({ template }: { template: Template }) {
           nodes={nodes}
           edges={edges}
           theme={diagram.theme}
-          resolvedTheme={resolvedTheme}
+          colorTheme={colorTheme}
           editable={false}
           levelOfDetail
           onNodesChange={onNodesChange}

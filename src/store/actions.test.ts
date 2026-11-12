@@ -579,9 +579,9 @@ describe('updateEdges', () => {
 describe('diagram name, theme and view', () => {
   it('renames the diagram and changes the theme as undo steps', () => {
     setName('Shop')
-    setTheme({ mode: 'dark' })
+    setTheme({ fonts: 'inter' })
     setTheme({ snap: false })
-    expect(useDoc.getState().theme).toEqual({ ...DEFAULT_THEME, mode: 'dark', snap: false })
+    expect(useDoc.getState().theme).toEqual({ ...DEFAULT_THEME, fonts: 'inter', snap: false })
     undo()
     expect(useDoc.getState().theme).toEqual(DEFAULT_THEME)
     expect(useDoc.getState().name).toBe('Shop')
@@ -601,12 +601,12 @@ describe('diagram name, theme and view', () => {
     const older = card(300, 100)
     const version: Diagram = {
       ...createDiagram('Older'),
-      theme: { ...DEFAULT_THEME, mode: 'light' },
+      theme: { ...DEFAULT_THEME, fonts: 'plex' },
       nodes: [toStoredNode(older)],
     }
     restoreContent(version)
     expect(useDoc.getState().name).toBe('Older')
-    expect(useDoc.getState().theme.mode).toBe('light')
+    expect(useDoc.getState().theme.fonts).toBe('plex')
     expect(useDoc.getState().nodes.map((node) => node.id)).toEqual([older.id])
 
     undo()

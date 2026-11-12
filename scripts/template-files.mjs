@@ -25,16 +25,13 @@ function stableJson(built: object): string {
   return text
 }
 
-it('writes each template and the diagrams that it opens as diagram files in the dark and the light theme', () => {
+it('writes each template and the diagrams that it opens as diagram files', () => {
   const out = process.env.TEMPLATE_FILES_DIR!
   for (const template of TEMPLATES) {
-    for (const mode of ['dark', 'light'] as const) {
-      templateDiagrams(template).forEach((diagram, index) => {
-        diagram.theme.mode = mode
-        const name = index === 0 ? template.id : \`\${template.id}.\${diagram.id}\`
-        writeFileSync(path.join(out, \`\${name}.\${mode}.diagram.json\`), stableJson(diagram))
-      })
-    }
+    templateDiagrams(template).forEach((diagram, index) => {
+      const name = index === 0 ? template.id : \`\${template.id}.\${diagram.id}\`
+      writeFileSync(path.join(out, \`\${name}.diagram.json\`), stableJson(diagram))
+    })
   }
 })
 `

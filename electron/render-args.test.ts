@@ -43,6 +43,17 @@ describe('render arguments', () => {
     })
   })
 
+  it('reads a built-in theme and a theme file', () => {
+    const base = ['--render', 'a.json', '--out', 'a.png']
+    expect(parseRenderArgs([...app, ...base, '--theme', 'blueprint'])).toMatchObject({ theme: 'blueprint' })
+    expect(parseRenderArgs([...app, ...base, '--theme', 'themes/brand.theme.json'])).toEqual({
+      input: path.resolve('a.json'),
+      output: path.resolve('a.png'),
+      format: 'png',
+      themeFile: path.resolve('themes/brand.theme.json'),
+    })
+  })
+
   it('reads the path of a flow', () => {
     expect(
       parseRenderArgs([
@@ -69,7 +80,10 @@ describe('render arguments', () => {
     [['--render', 'a.json'], '--out is missing.'],
     [['--render', '--out', 'a.png'], '--render needs a value.'],
     [['--render', 'a.json', '--out', 'a.jpg'], '--out must end in .png, .svg, .gif, .mp4 or .webm.'],
-    [['--render', 'a.json', '--out', 'a.png', '--theme', 'blue'], '--theme must be dark or light.'],
+    [
+      ['--render', 'a.json', '--out', 'a.png', '--theme', 'blue'],
+      '--theme must be a .theme.json file or one of: light, dark, light-high-contrast, dark-high-contrast, graphite, blueprint, circuit, dusk, graph-paper, fog.',
+    ],
     [['--render', 'a.json', '--out', 'a.png', '--step', '1.5'], '--step must be a whole number from 0.'],
     [
       ['--render', 'a.json', '--out', 'a.png', '--max-size', '10'],

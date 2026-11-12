@@ -129,7 +129,6 @@ export function defaultGroupData(overrides: Partial<GroupData> = {}): GroupData 
 }
 
 export const DEFAULT_THEME: DiagramTheme = {
-  mode: 'auto',
   fonts: 'host',
   background: 'dots',
   snap: true,

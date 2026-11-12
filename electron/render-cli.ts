@@ -81,6 +81,7 @@ export function isolateRender(): () => void {
 export async function runRender(args: RenderArgs): Promise<number> {
   try {
     const text = await readFile(args.input, 'utf8')
+    const themeText = args.themeFile === undefined ? undefined : await readFile(args.themeFile, 'utf8')
     const rpc = createRendererRpc()
     const capture = createCaptureService()
     const handlers: MainHandlers = {
@@ -96,7 +97,10 @@ export async function runRender(args: RenderArgs): Promise<number> {
       'app.about': async () => appAbout(),
       'agent.info': async () => AGENT_OFF,
       'agent.resetToken': refuse,
-      'window.setTitleBarColors': async () => null,
+      'window.setColors': async () => null,
+      'themes.list': async () => [],
+      'themes.write': refuse,
+      'themes.reveal': refuse,
       'app.settings': async () => ({ keepRunning: false, websites: [BUILD.website], shareWebsite: BUILD.website }),
       'app.setKeepRunning': refuse,
       'app.addWebsite': refuse,
@@ -140,6 +144,7 @@ export async function runRender(args: RenderArgs): Promise<number> {
         format: args.format,
         ...(args.maxSizePx !== undefined ? { maxSizePx: args.maxSizePx } : {}),
         ...(args.theme ? { theme: args.theme } : {}),
+        ...(themeText !== undefined ? { themeText } : {}),
         ...(args.flow !== undefined ? { flow: args.flow } : {}),
         ...(args.path !== undefined ? { path: args.path } : {}),
         ...(args.step !== undefined ? { step: args.step } : {}),

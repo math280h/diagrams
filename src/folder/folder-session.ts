@@ -13,6 +13,8 @@ export interface FolderSession {
   watchCalls(on: boolean): void
   /** Calls the listener with the names of the call files after each folder scan that finds some. */
   onCalls(listener: (names: string[]) => void): () => void
+  /** Calls the listener when a folder scan finds a change in the theme files. */
+  onThemes(listener: () => void): () => void
   /** Calls the listener when a folder scan fails, for example after the browser takes back the permission. */
   onProblem(listener: (message: string) => void): () => void
   stop(): void
@@ -29,6 +31,7 @@ export async function openFolderSession(folder: FileSystemDirectoryHandle): Prom
   })
   reportOutside = (change) => repository.applyExternal(change)
   const callListeners = new Set<(names: string[]) => void>()
+  const themeListeners = new Set<() => void>()
   const problemListeners = new Set<(message: string) => void>()
   let reading = Promise.resolve()
 
@@ -48,6 +51,8 @@ export async function openFolderSession(folder: FileSystemDirectoryHandle): Prom
         })
     } else if (data.kind === 'calls') {
       for (const listener of callListeners) listener(data.names)
+    } else if (data.kind === 'themes') {
+      for (const listener of themeListeners) listener()
     } else {
       for (const listener of problemListeners) listener(data.message)
     }
@@ -66,10 +71,12 @@ export async function openFolderSession(folder: FileSystemDirectoryHandle): Prom
     repository,
     watchCalls: (calls) => send({ kind: 'calls', calls }),
     onCalls: (listener) => listen(callListeners, listener),
+    onThemes: (listener) => listen(themeListeners, listener),
     onProblem: (listener) => listen(problemListeners, listener),
     stop() {
       worker.terminate()
       callListeners.clear()
+      themeListeners.clear()
       problemListeners.clear()
     },
   }

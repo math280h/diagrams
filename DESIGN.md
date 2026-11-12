@@ -341,25 +341,43 @@ colours" off: all wires neutral edge grey.
 - **Muted** (muted): secondary text, node detail lines, edge labels, pending log lines, icons.
 - **Faint** (faint): idle node text in a flow, least important metadata.
 
+### Themes
+
+Per viewer, not per diagram: Mode (System, Light, Dark), a light theme and a dark theme on the App tab of Settings, and
+in the library theme menu and the command menu. Exports use the theme on screen, or a theme that the export dialog
+picks. Built-in themes: `src/themes/built-in/*.theme.json`; users add `.theme.json` files.
+
+- Light and Dark: the system on this page. The other themes keep its structure and roles, with their own neutrals and
+  their own signal colour:
+  - Graphite (dark): soft pencil grey in place of pure black, for long sessions. Signal #5b93ff.
+  - Blueprint (dark): a cyanotype drawing, Prussian blue sheet and white lines. Signal: highlighter yellow #ffd84a; warn
+    moves to orange.
+  - Circuit (dark): solder-mask green, copper traces for plain connections, white print. Signal: LED blue #63b3ff.
+  - Dusk (dark): violet evening. Signal: apricot #ffa36c; warn moves to yellow.
+  - Graph paper (light): pale green paper with a green grid, pencil text. Signal: pen blue #1f4fd1.
+  - Fog (light): overcast grey, less glare than white. Signal: indigo #4a46d8.
+- A palette hue that is near the signal colour gets less chroma, as boundary blue does in Light and Dark.
+
 ### High contrast
 
-Per viewer, not per diagram: Contrast (System, Standard, High) on the App tab of Settings; "High contrast canvas" in
-the library theme and command menus. System follows the OS "more contrast" setting. On-screen canvases and colour
-swatches only; exports keep standard colours. Values: `[data-contrast='more']` in `src/styles/canvas.css`.
+A mark on a theme (`contrast: high`), not an overlay. Light high contrast and Dark high contrast have it. When the OS
+asks for more contrast, the app shows the high contrast theme of the base, as Settings sets it.
 
 - Text colours: 7:1 (WCAG AAA) on Ground, Node Fill, Canvas Raised, coloured cards (standard 4.5:1).
 - Node Line, Strong Line, Edge, Edge Strong, Signal Blue, protocol wires, coloured card outlines: 4.5:1 on Ground and
   Node Fill. Dim Line: 3:1, so idle flow nodes still show.
-- Node Fill moves closer to Ground; outlines separate nodes.
+- Node Fill moves closer to Ground; outlines separate nodes. App text, borders and inputs get stronger too.
 - Same hues; light values at lower OKLCH lightness. Dark: Signal Blue lighter (#5e97ff), Signal Ink black.
 - Dimmed opacity (standard in parentheses): nodes outside the explored neighbourhood 45% (16%); threat view connections
   without sensitive data 50% (25%); idle node art in a flow 70% (40%).
-- `src/styles/contrast.browser.test.ts` checks every pair, both themes, both contrasts.
+- `src/styles/contrast.browser.test.ts` checks every pair of every built-in theme, at 7:1 and 4.5:1 for a high contrast
+  theme.
 
 ### Named Rules
 
 **The One Signal Rule.** Signal Blue: walkthrough or keyboard only; never a button, link, badge, chart, node kind or
-boundary style. Neither boundary nor protocol palette has a saturated blue.
+boundary style. Neither boundary nor protocol palette has a saturated blue. Another theme keeps the rule with its own
+signal colour.
 
 **The Protocol Owns the Wire Rule.** A protocol hue colours only its wire: line, arrowhead, traffic, label, and the
 token on or just off that wire. Visited and active edges: 2 px, protocol text colour. HTTP is lime, not amber, so it

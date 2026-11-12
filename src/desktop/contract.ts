@@ -9,6 +9,25 @@ export interface StoredFile {
 
 export type FileChange = { kind: 'changed'; id: string; text: string; path?: string } | { kind: 'removed'; id: string }
 
+/** The text of a theme file, and its file name without `.theme.json`. */
+export interface ThemeSource {
+  name: string
+  text: string
+}
+
+/**
+ * The colours of the desktop window in `#rrggbb` form. `controls` and `symbols` colour the window buttons on Windows
+ * and Linux. `border` colours the active window border on Windows, and `null` keeps the system colour. `scheme` sets
+ * the light or dark look of menus, of the window frame and of `prefers-color-scheme`.
+ */
+export interface WindowColors {
+  controls: string
+  symbols: string
+  background: string
+  border: string | null
+  scheme: 'system' | 'dark' | 'light'
+}
+
 export type AgentState = 'starting' | 'running' | 'port-in-use' | 'failed'
 
 /** The app and the system it runs on, for bug reports. */
@@ -86,7 +105,10 @@ export type RenderFormat = 'png' | 'svg' | 'gif' | 'mp4' | 'webm'
 export interface RenderRequest {
   text: string
   format: RenderFormat
-  theme?: 'dark' | 'light'
+  /** The id of a theme. Without it and without `themeText`, the theme that the app shows. */
+  theme?: string
+  /** The text of a theme file to render with. */
+  themeText?: string
   /** The flow to show or play: its name or its id. */
   flow?: string
   /** With `flow`: the path to show or play, by its name or its id. Without it, the main steps. */
@@ -132,7 +154,13 @@ export interface MainRequests {
   'app.about': { input: null; output: AppAbout }
   'agent.info': { input: null; output: AgentInfo }
   'agent.resetToken': { input: null; output: AgentInfo }
-  'window.setTitleBarColors': { input: { color: string; symbolColor: string }; output: null }
+  'window.setColors': { input: WindowColors; output: null }
+  /** Returns the theme files in the `themes` folder of the diagrams folder. */
+  'themes.list': { input: null; output: ThemeSource[] }
+  /** Writes a new theme file in the `themes` folder. It fails when a file with this name exists. */
+  'themes.write': { input: ThemeSource; output: null }
+  /** Shows the `themes` folder in the file manager, and makes it first when it does not exist. */
+  'themes.reveal': { input: null; output: null }
   'app.settings': { input: null; output: AppSettings }
   'app.setKeepRunning': { input: { keepRunning: boolean }; output: AppSettings }
   /** Adds a website to the websites that may send diagrams. The input is an address that the user typed. */
@@ -200,6 +228,8 @@ export interface RendererRequests {
 /** Events from the main process to the renderer. */
 export interface MainEvents {
   'files.changed': FileChange
+  /** All theme files, after a change in the `themes` folder. */
+  'themes.changed': ThemeSource[]
   'agent.info': AgentInfo
   'rpc.cancel': { requestId: string }
   'window.navigation': { canGoBack: boolean; canGoForward: boolean }

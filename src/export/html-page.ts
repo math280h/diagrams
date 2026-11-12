@@ -1,9 +1,13 @@
 import type { Diagram } from '@/model/schema'
 import { PAGE_DATA_IDS, type PageIcons } from '@/standalone/page-data'
+import type { Theme } from '@/themes/schema'
+import type { ThemeBase } from '@/themes/tokens'
 
 export interface PageParts {
   diagram: Diagram
   icons: PageIcons
+  /** The themes of the page. It shows the theme of the light or dark setting of the reader. */
+  themes: Record<ThemeBase, Theme>
   /** The player script, which reads the diagram and the icons from the page. */
   script: string
   style: string
@@ -49,6 +53,7 @@ export function pageHtml(parts: PageParts): string {
     '<div id="root"></div>',
     `<script type="application/json" id="${PAGE_DATA_IDS.diagram}">${jsonInScript(parts.diagram)}</script>`,
     `<script type="application/json" id="${PAGE_DATA_IDS.icons}">${jsonInScript(parts.icons)}</script>`,
+    `<script type="application/json" id="${PAGE_DATA_IDS.themes}">${jsonInScript(parts.themes)}</script>`,
     `<script>${inRawText(parts.script, 'script')}</script>`,
     `<script type="text/plain" id="third-party-licenses">${inRawText(parts.licenses, 'script')}</script>`,
     '</body>',

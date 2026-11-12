@@ -1,6 +1,7 @@
 import type { IconSet } from '@/canvas/icons/library'
 import type { Diagram } from '@/model/schema'
 import type { Template } from '@/templates'
+import type { Theme } from '@/themes/schema'
 import type { DiagramContent } from './compact'
 import type { LayoutFunction } from './placement'
 
@@ -12,7 +13,8 @@ export interface RenderOptions {
   pathId?: string
   /** With `flowId`: the step to show, from 0, among the steps of the path. */
   step?: number
-  theme?: 'dark' | 'light'
+  /** The colours of the image. Without it, the theme that the app shows. */
+  theme?: Theme
   maxSizePx: number
 }
 

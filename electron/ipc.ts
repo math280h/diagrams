@@ -4,6 +4,7 @@ import { HEX_COLOR_PATTERN } from '@/desktop/constants'
 import { IPC_CHANNELS, type MainRequests } from '@/desktop/contract'
 import { MAX_PAGE_ZOOM } from '@/export/capture-plan'
 import { GRAPHVIZ_ENGINES } from '@/layout/types'
+import { MAX_THEME_FILE_BYTES, THEME_NAME_PATTERN } from '@/themes/tokens'
 import { originOf } from './app-protocol'
 
 export type MainHandlers = {
@@ -36,7 +37,16 @@ const INPUTS = {
   'app.about': z.null(),
   'agent.info': z.null(),
   'agent.resetToken': z.null(),
-  'window.setTitleBarColors': z.object({ color: HEX_COLOR, symbolColor: HEX_COLOR }),
+  'window.setColors': z.object({
+    controls: HEX_COLOR,
+    symbols: HEX_COLOR,
+    background: HEX_COLOR,
+    border: HEX_COLOR.nullable(),
+    scheme: z.enum(['system', 'dark', 'light']),
+  }),
+  'themes.list': z.null(),
+  'themes.write': z.object({ name: z.string().regex(THEME_NAME_PATTERN), text: z.string().max(MAX_THEME_FILE_BYTES) }),
+  'themes.reveal': z.null(),
   'app.settings': z.null(),
   'app.setKeepRunning': z.object({ keepRunning: z.boolean() }),
   'app.addWebsite': z.object({ website: z.string().max(MAX_ADDRESS_CHARS) }),

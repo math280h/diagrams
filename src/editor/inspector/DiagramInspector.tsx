@@ -31,6 +31,7 @@ import {
 import { useDoc } from '@/store/doc-store'
 import { useSettings } from '@/store/settings-store'
 import { setUi } from '@/store/ui-store'
+import { ThemeSettings } from '@/themes/ThemeSettings'
 import { useFitToScreen } from '@/editor/fit'
 import { tidyUp } from '@/editor/layout-command'
 import { plural } from '@/lib/format'
@@ -56,11 +57,14 @@ export function SettingsPanel() {
         </TabsList>
       </div>
       <TabsContent value="diagram">
-        <ScopeNote>Saved in the diagram. Everyone who opens it, and every export, uses these.</ScopeNote>
+        <ScopeNote>
+          Saved in the diagram. Everyone who opens it, and every export, uses these. The theme of each reader sets the
+          colours.
+        </ScopeNote>
         <DiagramSettings />
       </TabsContent>
       <TabsContent value="app">
-        <ScopeNote>Only for you, on this device. Diagrams and exports do not change.</ScopeNote>
+        <ScopeNote>Only for you, on this device. Diagrams do not change, and your exports use your theme.</ScopeNote>
         <AppSettings />
       </TabsContent>
     </Tabs>
@@ -83,18 +87,6 @@ function DiagramSettings() {
   return (
     <>
       <Section title="Canvas">
-        <Field label="Theme">
-          <Segmented
-            label="Canvas theme"
-            value={theme.mode}
-            onChange={(mode) => setTheme({ mode })}
-            options={[
-              { value: 'auto', label: 'Same as app' },
-              { value: 'light', label: 'Light' },
-              { value: 'dark', label: 'Dark' },
-            ]}
-          />
-        </Field>
         <Field label="Background">
           <Segmented
             label="Background"
@@ -185,49 +177,29 @@ function DiagramSettings() {
 }
 
 function AppSettings() {
-  const appTheme = useSettings((state) => state.theme)
-  const setAppTheme = useSettings((state) => state.setTheme)
-  const contrast = useSettings((state) => state.contrast)
-  const setContrast = useSettings((state) => state.setContrast)
   const ambientMotion = useSettings((state) => state.ambientMotion)
   const setAmbientMotion = useSettings((state) => state.setAmbientMotion)
 
   return (
-    <Section title="Look and motion">
-      <Field label="Theme">
-        <Segmented
-          label="App theme"
-          value={appTheme}
-          onChange={setAppTheme}
-          options={[
-            { value: 'system', label: 'System' },
-            { value: 'light', label: 'Light' },
-            { value: 'dark', label: 'Dark' },
-          ]}
-        />
-      </Field>
-      <Field label="Contrast">
-        <Segmented
-          label="Canvas contrast"
-          value={contrast}
-          onChange={setContrast}
-          options={[
-            { value: 'system', label: 'System' },
-            { value: 'standard', label: 'Standard' },
-            { value: 'high', label: 'High' },
-          ]}
-        />
-      </Field>
-      <SwitchField label="Animate traffic while editing" checked={ambientMotion} onChange={setAmbientMotion} />
-      <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => setUi({ shortcutsOpen: true })}>
-        <Keyboard /> Keyboard shortcuts
-      </Button>
-      {isDesktop() && (
-        <Button variant="ghost" size="sm" className="w-full justify-start" onClick={openDesktopSettings}>
-          <Settings /> Websites and updates
+    <>
+      <ThemeSettings />
+      <Section title="Motion and shortcuts">
+        <SwitchField label="Animate traffic while editing" checked={ambientMotion} onChange={setAmbientMotion} />
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start"
+          onClick={() => setUi({ shortcutsOpen: true })}
+        >
+          <Keyboard /> Keyboard shortcuts
         </Button>
-      )}
-    </Section>
+        {isDesktop() && (
+          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={openDesktopSettings}>
+            <Settings /> Websites and updates
+          </Button>
+        )}
+      </Section>
+    </>
   )
 }
 

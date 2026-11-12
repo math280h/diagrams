@@ -1,4 +1,5 @@
 import { AxeBuilder } from '@axe-core/playwright'
+import { BUILT_IN_THEMES } from '@/themes/built-in'
 import { expect, test, type Page } from './fixtures'
 import { copyTemplate } from './helpers'
 
@@ -92,3 +93,29 @@ for (const colorScheme of ['dark', 'light'] as const) {
     })
   })
 }
+
+test.describe('the other built-in themes', () => {
+  test.use({ reducedMotion: 'reduce' })
+
+  for (const theme of BUILT_IN_THEMES.filter(({ id }) => id !== 'light' && id !== 'dark')) {
+    test(`${theme.name} passes the WCAG checks in the editor and the app settings`, async ({ page }) => {
+      await page.addInitScript(
+        ({ id, base }) => {
+          if (localStorage.getItem('dg:settings')) return
+          const themes = { light: 'light', dark: 'dark', [base]: id }
+          localStorage.setItem('dg:settings', JSON.stringify({ state: { themeMode: base, themes }, version: 1 }))
+        },
+        { id: theme.id, base: theme.base },
+      )
+      await page.goto('/')
+      await copyTemplate(page, 'Order system')
+      await expect(page.locator('[data-editor-canvas] .dg-canvas')).toHaveAttribute('data-theme', theme.id)
+      await page.locator('.react-flow__node', { hasText: 'Orders' }).first().click()
+      await expectNoViolations(page, `${theme.name} editor`)
+      await page.keyboard.press('Escape')
+      await page.getByRole('button', { name: 'Settings', exact: true }).click()
+      await page.getByRole('tab', { name: 'App', exact: true }).click()
+      await expectNoViolations(page, `${theme.name} app settings`)
+    })
+  }
+})

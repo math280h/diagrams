@@ -13,10 +13,10 @@ import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { swatchColor } from '@/canvas/canvas-theme'
+import { canvasThemeAttributes, swatchColor } from '@/canvas/canvas-theme'
 import { cn } from '@/lib/utils'
 import { COLOR_NAMES, COLORS, type Color } from '@/model/colors'
-import { useHighContrast, useResolvedAppTheme } from '@/store/settings-store'
+import { useActiveTheme } from '@/themes/active'
 
 export function Section({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   return (
@@ -227,13 +227,11 @@ function Swatches({
   onChange: (value: string) => void
   children?: ReactNode
 }) {
-  const theme = useResolvedAppTheme()
-  const highContrast = useHighContrast()
+  const theme = useActiveTheme()
   return (
     <ToggleGroup
       aria-label="Colour"
-      data-theme={theme}
-      data-contrast={highContrast ? 'more' : undefined}
+      {...canvasThemeAttributes(theme)}
       value={value === null ? [] : [value]}
       onValueChange={(next) => {
         if (next[0] !== undefined) onChange(next[0])

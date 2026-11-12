@@ -13,9 +13,19 @@ export function pathspecs(patterns) {
   return patterns.map((pattern) => `:(glob)${pattern}`)
 }
 
-/** Returns the image path next to a diagram file: `docs/orders.diagram.json` gives `docs/orders.png`. */
-export function imagePath(file, format) {
-  return `${file.replace(/(\.diagram)?\.json$/i, '')}.${format}`
+/**
+ * Returns the image path next to a diagram file: `docs/orders.diagram.json` gives `docs/orders.png`. With a theme, the
+ * name holds the theme: `docs/orders.dark.png`, or `docs/orders.brand.png` for the theme file `themes/brand.theme.json`.
+ */
+export function imagePath(file, format, theme) {
+  const name = file.replace(/(\.diagram)?\.json$/i, '')
+  if (!theme) return `${name}.${format}`
+  return `${name}.${theme.replace(/^.*[\\/]/, '').replace(/(\.theme)?\.json$/i, '')}.${format}`
+}
+
+/** Splits the `theme` input into themes, at spaces, commas and line breaks. */
+export function parseThemes(text) {
+  return text.split(/[\s,]+/).filter(Boolean)
 }
 
 /** Splits a command such as `node_modules/.bin/electron .` into the program and its arguments. */

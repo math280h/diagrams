@@ -11,6 +11,7 @@
     "release",
     "pnpm-lock.yaml",
     ".playwright-mcp",
-    "src/canvas/icons/data"
+    "src/canvas/icons/data",
+    "public/theme.schema.json"
   ]
 }
