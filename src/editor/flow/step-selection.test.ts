@@ -7,7 +7,7 @@ import { useDoc } from '@/store/doc-store'
 import { resetHistory, undo } from '@/store/history'
 import { setUi, useUi } from '@/store/ui-store'
 import { createStep } from './record'
-import { clickedSelection, deleteSelectedSteps, selectAllSteps } from './step-selection'
+import { clickedSelection, deleteSelectedSteps, selectAllSteps, selectStepForMenu } from './step-selection'
 
 const ORDER = ['a', 'b', 'c', 'd', 'e']
 const plain = { toggle: false, range: false }
@@ -82,6 +82,23 @@ describe('selected steps', () => {
     deleteSelectedSteps()
     expect(ids()).toEqual([flow.steps[3]!.id, flow.steps[4]!.id])
     expect(paths()).toEqual([])
+  })
+
+  it('keeps the selection for a menu on a selected step, and selects only another step', () => {
+    const [first, second, third] = flow.steps
+    setUi({ selectedStepIds: [first!.id, second!.id] })
+    selectStepForMenu(second!.id)
+    expect(useUi.getState().selectedStepIds).toEqual([first!.id, second!.id])
+    selectStepForMenu(third!.id)
+    expect(useUi.getState().selectedStepIds).toEqual([third!.id])
+  })
+
+  it('clears the canvas selection for a menu on a step, so the menu can delete the step', () => {
+    selectOnly([useDoc.getState().nodes[0]!.id])
+    selectStepForMenu(flow.steps[1]!.id)
+    expect(useDoc.getState().nodes.some((node) => node.selected)).toBe(false)
+    expect(deleteSelectedSteps()).toBe(true)
+    expect(ids()).toHaveLength(4)
   })
 
   it('deletes nothing while a node is selected or the flow panel is closed', () => {

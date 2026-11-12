@@ -24,6 +24,7 @@ import { useDoc } from '@/store/doc-store'
 import { useUi } from '@/store/ui-store'
 import { Segmented, SliderField } from '@/editor/inspector/controls'
 import { stepLine, targetName } from './names'
+import { StepContextMenu } from './StepContextMenu'
 import { selectClickedStep } from './step-selection'
 import { findStep, overviewName } from '@/model/flow'
 
@@ -107,6 +108,7 @@ function StepBlocks({
     return (
       <div
         key={step.id}
+        data-step-id={step.id}
         title={[step.target.kind === 'flow' ? label : line.element, line.event].filter(Boolean).join(': ')}
         className={cn(
           'absolute top-1 bottom-1 flex items-center overflow-hidden rounded-md border px-1.5 text-[11px] select-none',
@@ -409,11 +411,11 @@ export function Timeline({ flow }: { flow: Flow }) {
               </div>
             ))}
           </div>
-          <div className="relative border-b border-panel-border" style={{ height: LANE_HEIGHT }}>
+          <StepContextMenu className="relative border-b border-panel-border" style={{ height: LANE_HEIGHT }}>
             <StepBlocks flow={flow} segments={segments} scale={scale} order={order} selectedStepIds={selectedStepIds} />
-          </div>
+          </StepContextMenu>
           {sides.map((side) => (
-            <div
+            <StepContextMenu
               key={side.path.id}
               className="relative border-b border-panel-border"
               style={{ height: LANE_HEIGHT }}
@@ -427,7 +429,7 @@ export function Timeline({ flow }: { flow: Flow }) {
                 order={order}
                 selectedStepIds={selectedStepIds}
               />
-            </div>
+            </StepContextMenu>
           ))}
           {flow.tracks.map((track) => (
             <div

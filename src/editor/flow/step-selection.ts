@@ -48,6 +48,15 @@ export function selectClickedStep(event: MouseEvent, stepId: string, order: read
   return !click.toggle && !click.range
 }
 
+/**
+ * Selects a step before its context menu opens, and clears the canvas selection. If the step is in the selection, the
+ * selection does not change.
+ */
+export function selectStepForMenu(stepId: string) {
+  selectOnly([])
+  if (!useUi.getState().selectedStepIds.includes(stepId)) setUi({ selectedStepIds: [stepId] })
+}
+
 /** Returns the id of the selected step, or `null` when no step or more than one step is selected. */
 export function useSelectedStepId(): string | null {
   return useUi((state) => (state.selectedStepIds.length === 1 ? state.selectedStepIds[0]! : null))
