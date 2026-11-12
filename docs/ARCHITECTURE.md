@@ -819,7 +819,8 @@ distroless Node.js base.
   two are maintained, open and self-hosted, and they track no behaviour. mCaptcha has no maintained release.
 - Cap format 2 uses HashWX in WebAssembly, and the website policy has no `wasm-unsafe-eval`. Thus the server issues
   only format 1, and its bundle replaces the HashWX module of `capjs-core` (LGPL-3.0 WebAssembly) with
-  `report-server/src/no-hashwx.ts`.
+  `report-server/src/no-hashwx.ts`. `capjs-core` needs esbuild and javascript-obfuscator only for its browser checks,
+  so the `overrides` of `pnpm-workspace.yaml` do not install them.
 - The browser solves in a worker. The main process solves Cap in slices of 12 ms, so that it stays responsive and the
   user can cancel.
 - `report-server/src/conformance.test.ts` sends, deletes and replays reports with each provider and the client code of
