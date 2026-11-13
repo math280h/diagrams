@@ -265,7 +265,8 @@ IP addresses.
 | `REPORTS_PER_HOUR`, `CHALLENGES_PER_HOUR`                              | `20`, `60`      | Limits per client IP address (an IPv6 /64 counts as one address)           |
 | `DAILY_REPORTS`, `DAILY_MEGABYTES`                                     | `2000`, `2048`  | Limits for all clients per day                                             |
 
-Set `CLIENT_IP_HEADER` only to a header that the proxy always overwrites, such as `X-Real-IP`. Behind a CDN, set
+Set `CLIENT_IP_HEADER` only to a header that the proxy always overwrites, such as `X-Real-IP`. Behind a Cloudflare
+Tunnel, use `CF-Connecting-IP` if the tunnel is the only way to reach the server. Behind a CDN, set
 `TRUSTED_PROXIES` to the address ranges of the CDN, for example [the Cloudflare ranges](https://www.cloudflare.com/ips/).
 For a request from those ranges, the limits count the address that the CDN added to `X-Forwarded-For`. A request that
 goes around the CDN keeps its own address.
