@@ -1,11 +1,4 @@
-import {
-  Background,
-  BackgroundVariant,
-  ConnectionMode,
-  ReactFlow,
-  SelectionMode,
-  type ReactFlowProps,
-} from '@xyflow/react'
+import { ConnectionMode, ReactFlow, SelectionMode, type ReactFlowProps } from '@xyflow/react'
 import { useMemo, useRef, useState, type ReactNode } from 'react'
 import { EngineBinding } from '@/engine/context'
 import type { DiagramTheme } from '@/model/schema'
@@ -20,6 +13,7 @@ import { nodeHasDetails, toCanvasEdges, toCanvasNodes } from './canvas-elements'
 import { FlowEdge } from './edges/FlowEdge'
 import { FlowCaption, FlowToken } from './FlowOverlay'
 import { GRID_DOT_PX } from './grid'
+import { GridBackground } from './GridBackground'
 import { CanvasModeContext } from './mode'
 import { createDetailsHover } from './details-hover'
 import { NodeDetailsCard } from './NodeDetailsCard'
@@ -164,10 +158,10 @@ export function DiagramCanvas({
             edges={edges}
           >
             {theme.background === 'dots' && (
-              <Background variant={BackgroundVariant.Dots} gap={GRID_PX} size={GRID_DOT_PX} color="var(--dg-grid)" />
+              <GridBackground variant="dots" gap={GRID_PX} size={GRID_DOT_PX} color="var(--dg-grid)" />
             )}
             {theme.background === 'grid' && (
-              <Background variant={BackgroundVariant.Lines} gap={GRID_PX} lineWidth={1} color="var(--dg-grid-line)" />
+              <GridBackground variant="lines" gap={GRID_PX} lineWidth={1} color="var(--dg-grid-line)" />
             )}
             {theme.routeAround && <EdgeRouter store={routes} />}
             <EngineBinding rootRef={rootRef} />
