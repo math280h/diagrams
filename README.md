@@ -56,9 +56,9 @@ Your diagrams stay on your computer. There is no account and no server that stor
 - **Exports made on your device.** Images, videos, GIFs and web pages render in your browser or in the desktop app, not
   on a server.
 - **No account.** There is nothing to sign up for.
-- **Problem reports only when you send them.** The app keeps errors and crashes on your device, where you can read
-  them. A report leaves your device only when you read it and send it. It holds no diagram, and the app encrypts it so
-  that only the maintainers can read it. A crash dump goes with it only when you turn that on.
+- **No automatic error reports.** A problem report is sent only when you press Send, after you have seen its full
+  text. It contains no diagram content and is encrypted for the maintainers. Crash dumps stay on your computer unless
+  you attach one.
 
 ## Desktop app
 
