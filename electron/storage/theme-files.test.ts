@@ -60,10 +60,12 @@ function watcherOf(target: string): FakeWatcher | undefined {
   return watchers.findLast((watcher) => watcher.folder === target)
 }
 
-function startWatch() {
+async function startWatch() {
   const files = createThemeFiles(folder)
   const onChange = vi.fn()
-  return { themes: files.folder, onChange, watcher: watchThemeFolder(files, onChange) }
+  const watcher = watchThemeFolder(files, onChange)
+  await watcher.rescan()
+  return { themes: files.folder, onChange, watcher }
 }
 
 beforeEach(() => {
@@ -128,7 +130,7 @@ describe('watchThemeFolder', () => {
   })
 
   it('watches a themes folder that appears after the watch starts, and reports a burst of changes once', async () => {
-    const { themes, onChange, watcher } = startWatch()
+    const { themes, onChange, watcher } = await startWatch()
     expect(watchers.map((item) => item.folder)).toEqual([folder])
 
     mkdirSync(themes)
@@ -151,7 +153,7 @@ describe('watchThemeFolder', () => {
   it('ignores other files of the diagrams folder, and keeps the watcher when the themes folder only changes', async () => {
     const themes = path.join(folder, 'themes')
     mkdirSync(themes)
-    const { onChange, watcher } = startWatch()
+    const { onChange, watcher } = await startWatch()
     watcherOf(folder)!.emit('rename', 'd_one.diagram.json')
     expect(vi.getTimerCount()).toBe(0)
 
@@ -166,7 +168,7 @@ describe('watchThemeFolder', () => {
   it('watches the new folder when another program replaces the themes folder', async () => {
     const themes = path.join(folder, 'themes')
     mkdirSync(themes)
-    const { onChange, watcher } = startWatch()
+    const { onChange, watcher } = await startWatch()
     const first = watcherOf(themes)!
     rmSync(themes, { recursive: true })
     mkdirSync(themes)
@@ -180,7 +182,7 @@ describe('watchThemeFolder', () => {
   it('reports a failed theme watcher, and watches the folder again when it comes back', async () => {
     const themes = path.join(folder, 'themes')
     mkdirSync(themes)
-    const { onChange, watcher } = startWatch()
+    const { onChange, watcher } = await startWatch()
     const first = watcherOf(themes)!
     rmSync(themes, { recursive: true })
     first.fail()
@@ -197,7 +199,7 @@ describe('watchThemeFolder', () => {
   it('starts a failed theme watcher again while the themes folder stays', async () => {
     const themes = path.join(folder, 'themes')
     mkdirSync(themes)
-    const { onChange, watcher } = startWatch()
+    const { onChange, watcher } = await startWatch()
     const first = watcherOf(themes)!
     first.fail()
     await reported(onChange, 1)
@@ -212,7 +214,7 @@ describe('watchThemeFolder', () => {
   it('keeps a working theme watcher when a rescan comes while a report is due', async () => {
     const themes = path.join(folder, 'themes')
     mkdirSync(themes)
-    const { onChange, watcher } = startWatch()
+    const { onChange, watcher } = await startWatch()
     const first = watcherOf(themes)!
     writeFileSync(path.join(themes, 'brand.theme.json'), '{}')
     first.emit('rename', 'brand.theme.json')
@@ -226,7 +228,7 @@ describe('watchThemeFolder', () => {
   })
 
   it('catches up at a rescan with a themes folder and a theme file that came without an event', async () => {
-    const { themes, onChange, watcher } = startWatch()
+    const { themes, onChange, watcher } = await startWatch()
     await watcher.rescan()
     expect(vi.getTimerCount()).toBe(0)
 
@@ -248,7 +250,7 @@ describe('watchThemeFolder', () => {
   })
 
   it('starts the watcher of the diagrams folder again after an error, and catches up', async () => {
-    const { themes, onChange, watcher } = startWatch()
+    const { themes, onChange, watcher } = await startWatch()
     const parent = watcherOf(folder)!
     parent.fail()
     expect(parent.close).toHaveBeenCalled()
@@ -264,7 +266,7 @@ describe('watchThemeFolder', () => {
 
   it('tries the diagrams folder again until it exists, and then catches up', async () => {
     rmSync(folder, { recursive: true })
-    const { themes, onChange, watcher } = startWatch()
+    const { themes, onChange, watcher } = await startWatch()
     expect(watchers).toEqual([])
     vi.advanceTimersByTime(RESTART_DELAY_MS)
     expect(watchers).toEqual([])
@@ -281,7 +283,7 @@ describe('watchThemeFolder', () => {
   it('stops both watchers, a due report, later rescans and restarts', async () => {
     const themes = path.join(folder, 'themes')
     mkdirSync(themes)
-    const { onChange, watcher } = startWatch()
+    const { onChange, watcher } = await startWatch()
     watcherOf(themes)!.emit('change', 'brand.theme.json')
     watcher.stop()
     writeFileSync(path.join(themes, 'brand.theme.json'), '{}')
@@ -325,7 +327,7 @@ describe('watchThemeFolder with the file watcher of the system', () => {
   it(
     'reports a themes folder that another program makes',
     async () => {
-      const { themes, onChange, watcher } = startWatch()
+      const { themes, onChange, watcher } = await startWatch()
       try {
         await untilWatching(folder)
         mkdirSync(themes)
@@ -343,7 +345,7 @@ describe('watchThemeFolder with the file watcher of the system', () => {
     async () => {
       const themes = path.join(folder, 'themes')
       mkdirSync(themes)
-      const { onChange, watcher } = startWatch()
+      const { onChange, watcher } = await startWatch()
       try {
         await untilWatching(themes)
         writeFileSync(path.join(themes, 'brand.theme.json'), '{}')
