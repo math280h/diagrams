@@ -290,7 +290,7 @@ export function DesktopSettingsDialog() {
         <Updates />
         <Section
           title="Problem reports"
-          description="The app keeps crash dumps and problems on this computer. It sends a report only when you send it."
+          description="The app keeps crash dumps and problems on this computer. It sends nothing until you press Send on a report."
         >
           <Button
             variant="outline"

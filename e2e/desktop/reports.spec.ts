@@ -42,7 +42,7 @@ test('keeps a crash of the app with its dump, and tells about it at the next sta
     await expect(text).not.toContainText(homedir())
     const dumpSwitch = dialog.getByRole('switch', { name: /^Add the crash dump/ })
     await expect(dumpSwitch).not.toBeChecked()
-    await expect(dialog).toContainText('It can hold text from your diagrams')
+    await expect(dialog).toContainText('It can contain diagram text')
     await expect(dialog.getByRole('button', { name: 'Show the file' })).toBeVisible()
     await expect(dialog).toContainText('This build sends no reports.')
     await window.keyboard.press('Escape')

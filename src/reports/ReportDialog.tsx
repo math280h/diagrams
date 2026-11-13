@@ -103,9 +103,9 @@ function DumpSwitch({
         <Switch aria-label={label} aria-describedby={hintId} checked={checked} onCheckedChange={onChange} />
       </div>
       <p id={hintId} className="leading-5 text-muted-foreground">
-        A crash dump is a copy of part of the memory of the app at the crash. It can hold text from your diagrams, file
-        paths and other data that the app had open. It goes into the report encrypted, so that only the maintainers can
-        read it. You can read the file yourself first.
+        A crash dump is a copy of part of the app&apos;s memory at the time of the crash. It can contain diagram text,
+        file paths and other data that the app had open. The app encrypts it together with the report, and only the
+        maintainers can read it. To check the file first, use Show the file.
       </p>
       <Button variant="outline" size="sm" onClick={() => showCrashDump(subject.crash.id)}>
         <FolderOpen /> Show the file
@@ -123,11 +123,11 @@ function SentView({ report }: { report: SentReport }) {
       </DialogHeader>
       <div className="space-y-1 text-[13px] leading-5 text-muted-foreground">
         <p>
-          Report id <code className="font-mono text-xs text-foreground select-all">{report.id}</code>.
+          Report ID: <code className="font-mono text-xs text-foreground select-all">{report.id}</code>
         </p>
         <p>
-          The report server deletes the report on {dayFormat.format(report.expiresAt)}. To delete it before that, open
-          Problem reports.
+          The server deletes the report on {dayFormat.format(report.expiresAt)}. You can delete it earlier in Problem
+          reports.
         </p>
       </div>
       <DialogFooter>
@@ -190,9 +190,8 @@ function ReportForm({ subject, backend }: { subject: ReportSubject; backend: Rep
       <DialogHeader>
         <DialogTitle>{TITLES[subject.kind]}</DialogTitle>
         <DialogDescription>
-          Only the report text below leaves this device, and only when you send or save it. It holds no diagram, file
-          name, address or secret.
-          {backend.canEncrypt && ' The app encrypts it on this device, so that only the maintainers can read it.'}
+          The report is the text below. It has no diagram content, file names, addresses or secrets.
+          {backend.canEncrypt && ' The app encrypts it on this device, and only the maintainers can read it.'}
         </DialogDescription>
       </DialogHeader>
 
@@ -211,7 +210,7 @@ function ReportForm({ subject, backend }: { subject: ReportSubject; backend: Rep
           onChange={(event) => setNote(event.target.value)}
         />
         <p id={noteHintId} className="text-[13px] leading-5 text-muted-foreground">
-          The note goes into the report as you write it. Do not add private details.
+          The note is sent as written. Leave out private details.
         </p>
       </div>
 
@@ -244,7 +243,7 @@ function ReportForm({ subject, backend }: { subject: ReportSubject; backend: Rep
       {status.kind === 'sending' && (
         <p role="status" className="flex items-center gap-2 text-[13px] text-muted-foreground">
           <Loader2 aria-hidden className="size-3.5 animate-spin" />
-          Sending. The app first does a short task that the report server asks for against spam.
+          Sending. The app first solves an anti-spam puzzle. This takes a few seconds.
         </p>
       )}
       {status.kind === 'failed' && (

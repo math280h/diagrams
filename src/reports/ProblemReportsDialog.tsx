@@ -47,7 +47,7 @@ function RecentProblems() {
   return (
     <Section
       title="Problems in this session"
-      description="The errors that the app showed or caught since you opened it. The app forgets them when you close it."
+      description="Problems since you opened the app. The app keeps them in memory only and clears them when you close it."
     >
       {problems.length === 0 ? (
         <Empty>No problems in this session.</Empty>
@@ -94,7 +94,7 @@ function Crashes() {
   return (
     <Section
       title="Crashes"
-      description="When a part of the app stops, the app keeps a crash dump on this computer. It keeps the newest 5 for 7 days."
+      description="The app keeps the newest 5 crash dumps on this computer. It deletes a dump after 7 days."
     >
       {crashes === null ? (
         <Empty>Loading the crashes…</Empty>
@@ -176,7 +176,7 @@ function SentReports({ backend }: { backend: ReportBackend }) {
   return (
     <Section
       title="Sent reports"
-      description="The reports that you sent from this device. The report server deletes each one on the day below."
+      description="Reports sent from this device. The server deletes each one on the date shown."
     >
       {reports === null ? (
         <Empty>Loading the sent reports…</Empty>
@@ -226,7 +226,7 @@ export function ProblemReportsDialog() {
         <DialogHeader>
           <DialogTitle>Problem reports</DialogTitle>
           <DialogDescription>
-            The app keeps problems and crashes on this device. Nothing leaves it until you read a report and send it.
+            The app keeps problems and crashes on this device. It sends nothing until you press Send on a report.
           </DialogDescription>
         </DialogHeader>
         <RecentProblems />

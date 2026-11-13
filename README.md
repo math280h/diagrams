@@ -56,10 +56,10 @@ Your diagrams stay on your computer. There is no account and no server that stor
 - **Exports made on your device.** Images, videos, GIFs and web pages render in your browser or in the desktop app, not
   on a server.
 - **No account.** There is nothing to sign up for.
-- **No automatic error reports.** A problem report is sent only when you press Send, after you have seen its full
-  text. It contains no diagram content and is encrypted for the maintainers. Crash dumps stay on your computer unless
-  you attach one.<br>
-  <sub>_Building it yourself? Reports are off unless you set [`DIAGRAMS_REPORT_URL`](#build-options)._</sub>
+- **No automatic error reports.** The app sends a problem report when you press Send in a dialog that shows the full
+  text. The report has no diagram content and is encrypted on your device for the maintainers. Crash dumps stay on your
+  computer unless you attach one.<br>
+  <sub>_A build without [`DIAGRAMS_REPORT_URL`](#build-options) has no report server and sends no reports._</sub>
 
 ## Desktop app
 
@@ -236,7 +236,7 @@ Without `DIAGRAMS_REPORT_URL`, the app has no Send button. Users can still copy 
 
 ### Report server
 
-You need this only if your copy should accept problem reports. It stores the encrypted reports that users send:
+The report server stores the encrypted problem reports from users of your copy. Start it with:
 
 ```sh
 docker run -d -p 8080:8080 -v reports:/data \
