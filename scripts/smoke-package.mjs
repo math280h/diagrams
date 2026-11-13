@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client'
+import { chromium } from '@playwright/test'
 
 const RELEASE = path.join(import.meta.dirname, '..', 'release')
 const START_TIMEOUT_MS = 90_000
@@ -58,20 +59,38 @@ async function callTool(client, name, args) {
   return result.content
 }
 
-const executable = process.argv[2] ?? packagedApp()
+async function openAtLoginState(debugPort) {
+  const browser = await chromium.connectOverCDP(`http://127.0.0.1:${debugPort}`)
+  try {
+    const pages = browser.contexts().flatMap((context) => context.pages())
+    const page = pages.find((item) => !item.url().endsWith('#/capture'))
+    if (!page) throw new Error('The packaged app has no window to ask for its settings.')
+    return await page.evaluate(async () => (await window.desktop.request('app.settings', null)).openAtLogin)
+  } finally {
+    await browser.close()
+  }
+}
+
+const SYSTEM_LOGIN_ITEM_FLAG = '--system-login-item'
+const args = process.argv.slice(2)
+const systemLoginItem = args.includes(SYSTEM_LOGIN_ITEM_FLAG)
+const executable = args.find((arg) => arg !== SYSTEM_LOGIN_ITEM_FLAG) ?? packagedApp()
 if (!existsSync(executable)) throw new Error(`No packaged app at ${executable}. Run electron-builder first.`)
 const temp = mkdtempSync(path.join(tmpdir(), 'diagrams-smoke-'))
 const userData = path.join(temp, 'user-data')
 const dataDir = path.join(temp, 'diagrams')
+const autostartDir = path.join(temp, 'autostart')
 const port = await freePort()
+const debugPort = systemLoginItem ? await freePort() : null
 console.log(`Starting ${executable}`)
-const child = spawn(executable, [], {
+const child = spawn(executable, debugPort ? [`--remote-debugging-port=${debugPort}`] : [], {
   env: {
     ...process.env,
     DIAGRAMS_USER_DATA: userData,
     DIAGRAMS_DATA_DIR: dataDir,
     DIAGRAMS_AGENT_PORT: String(port),
     DIAGRAMS_REGISTER_PROTOCOL: '0',
+    ...(!systemLoginItem && { DIAGRAMS_AUTOSTART_DIR: autostartDir }),
     DIAGRAMS_HIDE_WINDOW: 'offscreen',
     ELECTRON_ENABLE_LOGGING: '1',
   },
@@ -102,6 +121,15 @@ try {
   await client.close()
   const files = readdirSync(dataDir)
   if (!files.includes(`${created.diagramId}.diagram.json`)) throw new Error('The app did not write the diagram file.')
+  if (debugPort) {
+    const state = await openAtLoginState(debugPort)
+    console.log(`Start when you sign in: ${state}`)
+    if (state !== 'on') throw new Error(`The app did not add itself to the programs at sign-in. Its state is ${state}.`)
+  } else {
+    const autostart = readFileSync(path.join(autostartDir, 'diagrams.desktop'), 'utf8')
+    if (!autostart.includes(' --background\n'))
+      throw new Error('The app did not add itself to the programs at sign-in.')
+  }
   console.log(`The packaged app works: it created, listed, rendered and saved "${created.name}".`)
 } finally {
   child.kill()

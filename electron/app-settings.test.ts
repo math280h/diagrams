@@ -26,6 +26,8 @@ function stored(change: Partial<StoredSettings> = {}): StoredSettings {
   return {
     keepRunning: true,
     backgroundNoticeShown: false,
+    openAtLoginAdded: false,
+    agentWindow: 'show',
     websites: [OFFICIAL],
     shareWebsite: OFFICIAL,
     addedBuildWebsites: [OFFICIAL],
@@ -99,12 +101,23 @@ describe('createAppSettings', () => {
   })
 
   it('gives the renderer only the settings that it shows, with a website for share links', () => {
-    expect(publicSettings(stored({ keepRunning: false, backgroundNoticeShown: true }))).toEqual({
+    const settings = stored({ keepRunning: false, backgroundNoticeShown: true, openAtLoginAdded: true })
+    expect(publicSettings({ ...settings, agentWindow: 'hidden' }, 'on')).toEqual({
       keepRunning: false,
+      openAtLogin: 'on',
+      agentWindow: 'hidden',
       websites: [OFFICIAL],
       shareWebsite: OFFICIAL,
     })
-    expect(publicSettings(stored({ websites: [COMPANY], shareWebsite: OFFICIAL })).shareWebsite).toBe(COMPANY)
+    expect(publicSettings(stored({ websites: [COMPANY], shareWebsite: OFFICIAL }), 'off').shareWebsite).toBe(COMPANY)
+  })
+
+  it('reads the agent window mode and the one-time sign-in entry, and uses the default for other values', () => {
+    const file = settingsFile()
+    createAppSettings(file, OFFICIAL).update({ openAtLoginAdded: true, agentWindow: 'focus' })
+    expect(createAppSettings(file, OFFICIAL).get()).toMatchObject({ openAtLoginAdded: true, agentWindow: 'focus' })
+    writeFileSync(file, JSON.stringify({ ...stored(), openAtLoginAdded: 'yes', agentWindow: 'minimized' }))
+    expect(createAppSettings(file, OFFICIAL).get()).toMatchObject({ openAtLoginAdded: false, agentWindow: 'show' })
   })
 })
 
@@ -121,7 +134,7 @@ describe('website changes', () => {
     const settings = stored({ websites: [OFFICIAL, COMPANY], shareWebsite: COMPANY })
     const removed = removeWebsite(settings, COMPANY)
     expect(removed.websites).toEqual([OFFICIAL])
-    expect(publicSettings(removed).shareWebsite).toBe(OFFICIAL)
+    expect(publicSettings(removed, 'off').shareWebsite).toBe(OFFICIAL)
     expect(() => removeWebsite(removed, OFFICIAL)).toThrow('at least one website')
   })
 

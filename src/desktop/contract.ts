@@ -65,9 +65,26 @@ export type UpdateState =
   | 'ready'
   | 'failed'
 
+/**
+ * Tells whether the app starts in the background when the user signs in to the computer. `approval` means that macOS
+ * waits until the user allows the app in System Settings. `unsupported` means a build that cannot start at sign-in,
+ * such as a build from source.
+ */
+export type OpenAtLogin = 'on' | 'off' | 'approval' | 'unsupported'
+
+export const AGENT_WINDOW_MODES = ['show', 'focus', 'hidden'] as const
+
+/**
+ * What the app does with its window when an agent changes a diagram while the window is closed. `show` shows the
+ * window without focus, `focus` shows it in front of other windows, and `hidden` keeps it closed.
+ */
+export type AgentWindowMode = (typeof AGENT_WINDOW_MODES)[number]
+
 export interface AppSettings {
   /** If true, the app and its agent server keep running after the window closes, until the user quits. */
   keepRunning: boolean
+  openAtLogin: OpenAtLogin
+  agentWindow: AgentWindowMode
   /** The origins of the websites that may send diagrams to the app. The list is never empty. */
   websites: string[]
   /** The origin of the website that share links open on. It is one of `websites`. */
@@ -163,6 +180,9 @@ export interface MainRequests {
   'themes.reveal': { input: null; output: null }
   'app.settings': { input: null; output: AppSettings }
   'app.setKeepRunning': { input: { keepRunning: boolean }; output: AppSettings }
+  /** Adds the app to the programs that start when the user signs in, or removes it. */
+  'app.setOpenAtLogin': { input: { openAtLogin: boolean }; output: AppSettings }
+  'app.setAgentWindow': { input: { agentWindow: AgentWindowMode }; output: AppSettings }
   /** Adds a website to the websites that may send diagrams. The input is an address that the user typed. */
   'app.addWebsite': { input: { website: string }; output: AppSettings }
   /** Removes a website. The last website stays. */

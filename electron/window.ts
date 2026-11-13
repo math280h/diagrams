@@ -2,6 +2,7 @@ import { app, BrowserWindow, Menu, nativeTheme, shell, type WebContents } from '
 import type { WindowColors } from '@/desktop/contract'
 import { APP_ORIGIN, originOf } from './app-protocol'
 import { APP_NAME, devServerUrl, iconPath, preloadPath } from './paths'
+import type { WindowState } from './window-bounds'
 import { loadWindowColors, loadWindowState, saveWindowColors, trackWindowState } from './window-state'
 
 const DARK_GROUND = '#000000'
@@ -34,8 +35,21 @@ export interface WindowHooks {
   visibilityChanged(visible: boolean): void
 }
 
+/** How a window shows: in front of other windows with focus, or without focus. */
+export type WindowShow = 'focus' | 'inactive'
+
+interface MainWindow {
+  window: BrowserWindow
+  readyToShow: boolean
+  showWhenReady: WindowShow | null
+  stateToRestore: WindowState | null
+  unseenAgentWindow: boolean
+  closed: Promise<void> | null
+}
+
 let hooks: WindowHooks | null = null
-let mainWindow: BrowserWindow | null = null
+let main: MainWindow | null = null
+let lastClosedUnseen = false
 let quitting = false
 let closedForQuit = false
 
@@ -47,8 +61,41 @@ export function setWindowHooks(next: WindowHooks) {
   hooks = next
 }
 
+function currentMain(): MainWindow | null {
+  return main && !main.window.isDestroyed() ? main : null
+}
+
 export function currentWindow() {
-  return mainWindow && !mainWindow.isDestroyed() ? mainWindow : null
+  return currentMain()?.window ?? null
+}
+
+function restoreSavedState(entry: MainWindow) {
+  const state = entry.stateToRestore
+  if (!state) return
+  entry.stateToRestore = null
+  if (state.fullScreen) entry.window.setFullScreen(true)
+  else if (state.maximized) entry.window.maximize()
+}
+
+// On Windows, a window that maximizes or goes full screen takes the focus from the active window.
+function present(entry: MainWindow, show: WindowShow) {
+  entry.unseenAgentWindow = false
+  if (windowHidden) return
+  const { window } = entry
+  void app.dock?.show()
+  if (show === 'inactive') {
+    if (!window.isVisible()) window.showInactive()
+    return
+  }
+  restoreSavedState(entry)
+  if (window.isMinimized()) window.restore()
+  window.show()
+  window.focus()
+}
+
+function requestShow(entry: MainWindow, show: WindowShow) {
+  if (entry.readyToShow) present(entry, show)
+  else if (entry.showWhenReady !== 'focus') entry.showWhenReady = show
 }
 
 /** Returns the origin of the renderer page: the dev server in development, the app scheme otherwise. */
@@ -57,7 +104,12 @@ export function rendererOrigin() {
   return dev ? originOf(dev) : APP_ORIGIN
 }
 
-export function createMainWindow(): BrowserWindow {
+/**
+ * Creates the main window.
+ *
+ * @param show - How the window shows when its page is ready. With `null`, it stays hidden for agent calls.
+ */
+export function createMainWindow(show: WindowShow | null = 'focus'): BrowserWindow {
   if (process.platform !== 'darwin' && !devServerUrl()) Menu.setApplicationMenu(null)
   const state = loadWindowState()
   const colors = loadWindowColors()
@@ -94,13 +146,19 @@ export function createMainWindow(): BrowserWindow {
       offscreen: HIDE_WINDOW === 'offscreen',
     },
   })
+  const entry: MainWindow = {
+    window,
+    readyToShow: false,
+    showWhenReady: show,
+    stateToRestore: windowHidden ? null : state,
+    unseenAgentWindow: show === null,
+    closed: null,
+  }
   window.once('ready-to-show', () => {
-    if (windowHidden) return
-    if (state.fullScreen) window.setFullScreen(true)
-    else if (state.maximized) window.maximize()
-    window.show()
+    entry.readyToShow = true
+    if (entry.showWhenReady) present(entry, entry.showWhenReady)
   })
-  trackWindowState(window)
+  trackWindowState(window, () => entry.stateToRestore === null)
   window.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('https:')) void shell.openExternal(url)
     return { action: 'deny' }
@@ -122,12 +180,11 @@ export function createMainWindow(): BrowserWindow {
   window.on('show', reportVisibility)
   window.webContents.on('did-finish-load', reportVisibility)
 
-  let closing = false
   window.on('close', (event) => {
-    if (closing || closedForQuit || !hooks) return
+    if (entry.closed || closedForQuit || !hooks) return
     // Electron cancels the quit when a window prevents its close.
     event.preventDefault()
-    closing = true
+    entry.closed = new Promise((resolve) => window.once('closed', () => resolve()))
     void hooks
       .beforeClose()
       .catch(() => undefined)
@@ -136,12 +193,17 @@ export function createMainWindow(): BrowserWindow {
         if (quitting) app.quit()
       })
   })
-  window.on('focus', () => hooks?.focused())
+  window.on('focus', () => {
+    restoreSavedState(entry)
+    hooks?.focused()
+  })
   window.on('closed', () => {
-    if (mainWindow === window) mainWindow = null
+    if (main !== entry) return
+    lastClosedUnseen = entry.unseenAgentWindow
+    main = null
   })
 
-  mainWindow = window
+  main = entry
   hooks?.attach(window.webContents)
   void window.loadURL(devServerUrl() ?? `${APP_ORIGIN}/index.html`)
   return window
@@ -153,14 +215,43 @@ export async function prepareQuit() {
   closedForQuit = true
 }
 
-/** Shows the main window in front of other windows, and creates it if it does not exist. */
+/**
+ * Shows the main window in front of other windows, and creates it if it does not exist. A window that closes now
+ * closes first, and a new window shows after that.
+ */
 export function focusWindow() {
-  const window = currentWindow() ?? createMainWindow()
-  if (windowHidden) return window
-  if (window.isMinimized()) window.restore()
-  window.show()
-  window.focus()
-  return window
+  const entry = currentMain()
+  if (!entry) createMainWindow('focus')
+  else if (entry.closed) void entry.closed.then(focusWindow)
+  else requestShow(entry, 'focus')
+}
+
+/**
+ * Makes sure that a main window exists for an agent call. A new window stays hidden without `show`. When the window
+ * closes now, the promise resolves after a new window starts.
+ *
+ * @param show - How a window that the user cannot see shows. A minimized window stays minimized.
+ */
+export async function prepareAgentWindow(show: WindowShow | null) {
+  const closing = currentMain()?.closed
+  if (closing) await closing
+  const entry = currentMain()
+  if (!entry) {
+    createMainWindow(show)
+    return
+  }
+  if (show && !entry.window.isVisible() && !entry.window.isMinimized()) requestShow(entry, show)
+}
+
+/** Closes the main window if it opened for agent calls and has not shown. */
+export function closeUnseenWindow() {
+  const entry = currentMain()
+  if (entry?.unseenAgentWindow) entry.window.close()
+}
+
+/** Tells whether the last main window closed before it showed: a window that opened for agent calls. */
+export function closedUnseen() {
+  return lastClosedUnseen
 }
 
 /**

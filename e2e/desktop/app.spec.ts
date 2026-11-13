@@ -1,11 +1,12 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client'
+import { Client } from '@modelcontextprotocol/client'
 import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
+import { AUTOSTART_FILE, BACKGROUND_ARG } from '@/desktop/constants'
 import { IPC_CHANNELS } from '@/desktop/contract'
-import { AGENT_ENDPOINT } from '@/desktop/constants'
+import { OPEN_AT_LOGIN_LABEL } from '@/desktop/keep-running'
 import { copyTemplate } from '../helpers'
-import { agentUrl, callTool, diagramFile, expect, test } from './fixtures'
+import { callTool, connectAgent, diagramFile, expect, test } from './fixtures'
 
 /** The time for the agent server to start next to a startup error, on a slow test machine. */
 const AGENT_START_WAIT_MS = 20_000
@@ -93,6 +94,17 @@ test('keeps the agent server after the window closes, and opens a window for the
   await reopened
 })
 
+test('answers an agent call that comes while the window closes, in a new window', async ({ app, window, mcp }) => {
+  await callTool(mcp, 'create_diagram', { name: 'Before the close', template: 'order-system' })
+  const closed = window.waitForEvent('close')
+  const reopened = app.waitForEvent('window')
+  await closeWindow(app, window)
+  const { json } = await callTool(mcp, 'list_diagrams')
+  expect(JSON.stringify(json)).toContain('Before the close')
+  await closed
+  await reopened
+})
+
 test('quits when the window closes after the user turns off keep running', async ({ appEnv, dirs }) => {
   const app = await electron.launch({ args: ['.'], env: appEnv })
   const window = await app.firstWindow()
@@ -107,6 +119,62 @@ test('quits when the window closes after the user turns off keep running', async
   const exit = untilExit(app)
   await closeWindow(app, window)
   await exit
+})
+
+test('starts at sign-in without a window, and starts one for the first agent call', async ({
+  appEnv,
+  dirs,
+  agentPort,
+}) => {
+  const app = await electron.launch({ args: ['.', BACKGROUND_ARG], env: appEnv })
+  const client = new Client({ name: 'e2e', version: '1.0.0' })
+  try {
+    await connectAgent(client, dirs.userData, agentPort, AGENT_START_WAIT_MS)
+    expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(0)
+
+    const opened = app.waitForEvent('window')
+    const { json } = await callTool(client, 'list_diagrams')
+    expect(json).toHaveProperty('diagrams')
+    await opened
+    expect(app.process().exitCode).toBeNull()
+  } finally {
+    await client.close()
+    await app.close()
+  }
+})
+
+test('adds itself to the programs at sign-in once, and stays off after the user turns it off', async ({
+  appEnv,
+  dirs,
+}) => {
+  const autostart = path.join(path.dirname(dirs.userData), 'autostart')
+  const entry = path.join(autostart, AUTOSTART_FILE)
+  const env = { ...appEnv, DIAGRAMS_AUTOSTART_DIR: autostart }
+  const first = await electron.launch({ args: ['.'], env })
+  try {
+    const window = await first.firstWindow()
+    await expect.poll(() => existsSync(entry)).toBe(true)
+    expect(readFileSync(entry, 'utf8')).toContain(` ${BACKGROUND_ARG}\n`)
+
+    await window.getByRole('banner').getByRole('button', { name: 'Connect an agent' }).click()
+    const openAtLogin = window.getByRole('switch', { name: OPEN_AT_LOGIN_LABEL })
+    await expect(openAtLogin).toBeChecked()
+    await openAtLogin.click()
+    await expect(openAtLogin).not.toBeChecked()
+    expect(existsSync(entry)).toBe(false)
+  } finally {
+    await first.close()
+  }
+
+  const second = await electron.launch({ args: ['.'], env })
+  try {
+    const window = await second.firstWindow()
+    await window.getByRole('banner').getByRole('button', { name: 'Connect an agent' }).click()
+    await expect(window.getByRole('switch', { name: OPEN_AT_LOGIN_LABEL })).not.toBeChecked()
+    expect(existsSync(entry)).toBe(false)
+  } finally {
+    await second.close()
+  }
 })
 
 test('explains a diagrams folder that it cannot open, and answers agents at once', async ({
@@ -127,24 +195,7 @@ test('explains a diagrams folder that it cannot open, and answers agents at once
     await expect(problem.getByRole('link', { name: 'Report a problem' })).toBeVisible()
     await window.keyboard.press('Escape')
 
-    const token = readFileSync(path.join(dirs.userData, 'agent-token'), 'utf8').trim()
-    await expect
-      .poll(
-        async () => {
-          try {
-            await client.connect(
-              new StreamableHTTPClientTransport(new URL(`${agentUrl(agentPort)}${AGENT_ENDPOINT}`), {
-                requestInit: { headers: { Authorization: `Bearer ${token}` } },
-              }),
-            )
-            return true
-          } catch {
-            return false
-          }
-        },
-        { timeout: AGENT_START_WAIT_MS },
-      )
-      .toBe(true)
+    await connectAgent(client, dirs.userData, agentPort, AGENT_START_WAIT_MS)
     const started = Date.now()
     await expect(callTool(client, 'list_diagrams')).rejects.toThrow('could not open the diagrams folder')
     expect(Date.now() - started).toBeLessThan(5000)

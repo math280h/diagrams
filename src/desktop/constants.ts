@@ -8,6 +8,11 @@ export const AGENT_PORTS: readonly number[] = Array.from({ length: AGENT_PORT_CO
 export const FIRST_DEV_AGENT_PORT = AGENT_PORT + AGENT_PORT_COUNT / 2
 export const AGENT_ENDPOINT = '/mcp'
 
+/** The argument that starts the desktop app without a window. The login item gives it. */
+export const BACKGROUND_ARG = '--background'
+/** The file name of the XDG autostart entry that starts the desktop app at sign-in. */
+export const AUTOSTART_FILE = 'diagrams.desktop'
+
 export const DEEP_LINK_SCHEME = 'diagrams'
 /** The deep link that opens the desktop app at "Connect an agent". An app without it only opens its window. */
 export const CONNECT_AGENT_LINK = `${DEEP_LINK_SCHEME}://connect-agent`

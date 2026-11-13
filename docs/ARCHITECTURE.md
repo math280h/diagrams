@@ -1228,8 +1228,28 @@ with snapdom, because Chromium gives only pixels.
 
 ### Background
 
-The app continues to run in the background after its window closes, so agents can use it without an open window. An
-agent call opens the window again, because the tools run in the renderer. A setting turns this off.
+The app continues to run in the background after its window closes, so agents can use it without an open window. A
+setting turns this off.
+
+- Start at sign-in (`electron/login-item.ts`): the Windows Run key, a macOS login item or an XDG autostart entry starts
+  the app with `--background` (macOS: `wasOpenedAtLogin`). The app then shows only its tray icon.
+  - The app adds the item one time, at the first start of an installed build. After that, the system keeps the state,
+    so a change in Task Manager or System Settings stays. The settings read that state again when they show and when
+    the window gets the focus.
+  - A Mac app adds the item only from the Applications folder, because an item for a disk image or a translocated copy
+    stops working when that copy goes. A failed add tries again at the next start.
+  - The Windows uninstaller removes the Run key value. A package manager cannot remove files in home folders, so the
+    autostart entry has `TryExec`: the desktop skips it after the program is removed.
+  - Builds from source do not start at sign-in. `DIAGRAMS_AUTOSTART_DIR` makes the item an autostart entry in a test
+    folder on each system (desktop e2e tests, package smoke test).
+- The tools run in the renderer, so an agent call starts a hidden window when there is none. A call that only reads
+  keeps it hidden. For a change, a setting shows the window without focus, shows it in front, or keeps it hidden.
+- On Windows, a window that maximizes takes the focus. Thus a window that shows without focus gets its saved maximized
+  or full-screen state at its first focus, and it does not save its state before that.
+- A hidden renderer uses memory. A window that opened for agent calls and did not show closes 5 minutes after the last
+  call. This close does not quit the app.
+- A window that closes first saves its diagram. An agent call or an open from the tray in that time waits for the close
+  and then starts a new window, because the renderer that closes cannot answer.
 
 ### Agent tools
 
