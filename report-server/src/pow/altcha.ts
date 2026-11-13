@@ -13,14 +13,22 @@ const proofSchema = z.object({
   solution: z.object({ counter: z.number(), derivedKey: z.string(), time: z.number().optional() }),
 })
 
-/** Returns the provider that asks for an ALTCHA proof of work with PBKDF2, signed with the secret. */
-export function altchaProof(secret: string, now: () => number = Date.now): ProofProvider {
+/**
+ * Returns the provider that asks for an ALTCHA proof of work with PBKDF2, signed with the secret.
+ *
+ * @param iterations - The PBKDF2 iterations of one attempt for each size class.
+ */
+export function altchaProof(
+  secret: string,
+  now: () => number = Date.now,
+  iterations: Readonly<Record<SizeClass, number>> = PBKDF2_ITERATIONS,
+): ProofProvider {
   const used = new UsedProofs(now)
   return {
     async issue(sizeClass) {
       const challenge = await createChallenge({
         algorithm: 'PBKDF2/SHA-256',
-        cost: PBKDF2_ITERATIONS[sizeClass],
+        cost: iterations[sizeClass],
         deriveKey,
         expiresAt: new Date(now() + CHALLENGE_TTL_MS),
         hmacSignatureSecret: secret,

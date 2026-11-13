@@ -17,7 +17,11 @@ import {
 import { deleteReport, ReportServerError, sendReport, type ReportClient } from '@/reports/send'
 import { createApp } from './app'
 import { readConfig } from './config'
-import { createProof, createStore } from './setup'
+import { altchaProof } from './pow/altcha'
+import { capProof } from './pow/cap'
+import { noProof } from './pow/none'
+import type { ProofProvider } from './pow/provider'
+import { createStore } from './setup'
 
 const REMOTE_URL = process.env['REPORT_SERVER_URL']
 const REMOTE_ORIGIN = process.env['REPORT_SERVER_ORIGIN']
@@ -32,6 +36,17 @@ interface Target {
   close: () => Promise<void>
 }
 
+function lightProof(provider: PowProvider): ProofProvider {
+  switch (provider) {
+    case 'none':
+      return noProof()
+    case 'altcha':
+      return altchaProof(SECRET, Date.now, { text: 100, dump: 200 })
+    case 'cap':
+      return capProof(SECRET, Date.now, { text: 2, dump: 3 })
+  }
+}
+
 async function localTarget(provider: PowProvider): Promise<Target> {
   const dir = await mkdtemp(path.join(tmpdir(), 'report-server-'))
   const config = readConfig({
@@ -41,7 +56,7 @@ async function localTarget(provider: PowProvider): Promise<Target> {
     POW_SECRET: SECRET,
     ALLOWED_ORIGINS: ORIGIN,
   })
-  const app = createApp({ config, store: createStore(config), proof: createProof(config) })
+  const app = createApp({ config, store: createStore(config), proof: lightProof(provider) })
   return {
     client: {
       endpoint: 'http://report-server.test',

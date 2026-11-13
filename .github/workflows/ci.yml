@@ -350,7 +350,7 @@ jobs:
             --env S3_PATH_STYLE=1 --env S3_ACCESS_KEY_ID="$S3_KEY" --env S3_SECRET_ACCESS_KEY="$S3_SECRET" \
             --env POW_PROVIDER=altcha --env POW_SECRET --env ALLOWED_ORIGINS="$ORIGIN" diagrams-report-server
           for port in 8081 8082; do
-            curl -fsS --retry 10 --retry-connrefused --retry-delay 1 -o /dev/null "http://127.0.0.1:$port/v1/health"
+            curl -fsS --retry 30 --retry-all-errors --retry-delay 1 -o /dev/null "http://127.0.0.1:$port/v1/health"
           done
       - name: Run the conformance tests against both servers
         run: |
@@ -361,6 +361,7 @@ jobs:
       - name: Show the server logs
         if: failure()
         run: |
+          docker ps --all
           docker logs reports-fs || true
           docker logs reports-s3 || true
           docker logs bucket || true

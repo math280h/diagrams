@@ -9,13 +9,21 @@ const PUZZLES: Record<SizeClass, number> = { text: 12, dump: 40 }
 
 const proofSchema = z.object({ token: z.string(), solutions: z.array(z.number()) })
 
-/** Returns the provider that asks for a Cap proof of work of format 1 (SHA-256), without browser checks. */
-export function capProof(secret: string, now: () => number = Date.now): ProofProvider {
+/**
+ * Returns the provider that asks for a Cap proof of work of format 1 (SHA-256), without browser checks.
+ *
+ * @param puzzles - The number of puzzles of a challenge for each size class.
+ */
+export function capProof(
+  secret: string,
+  now: () => number = Date.now,
+  puzzles: Readonly<Record<SizeClass, number>> = PUZZLES,
+): ProofProvider {
   const used = new UsedProofs(now)
   return {
     async issue(sizeClass) {
       const result = await generateChallenge(secret, {
-        challengeCount: PUZZLES[sizeClass],
+        challengeCount: puzzles[sizeClass],
         challengeSize: CHALLENGE_SIZE,
         challengeDifficulty: DIFFICULTY,
         expiresMs: CHALLENGE_TTL_MS,
