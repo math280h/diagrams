@@ -9,6 +9,7 @@ export function nodeHasDetails(node: DiagramNode): boolean {
 
 const canvasNodes = new Map<string, WeakMap<DiagramNode, DiagramNode>>()
 const canvasEdges = new WeakMap<DiagramEdge, DiagramEdge>()
+const canvasEdgeLists = new WeakMap<DiagramEdge[], DiagramEdge[]>()
 
 function toCanvasNode(node: DiagramNode, details: boolean, editable: boolean): DiagramNode {
   const key = `${details} ${editable}`
@@ -49,12 +50,13 @@ export function toCanvasNodes(nodes: DiagramNode[], details: boolean, editable: 
 /**
  * Returns the edges that React Flow draws, with a name for screen readers from the names of their ends.
  *
- * @returns The same object as in an earlier call for each edge that has the same object and the same name.
+ * @returns The same object as in an earlier call for each edge that has the same object and the same name, and the
+ * same array when all the edges are the same.
  */
 export function toCanvasEdges(edges: DiagramEdge[], nodes: DiagramNode[]): DiagramEdge[] {
   const names = new Map(nodes.map((node) => [node.id, nodeName(node)]))
   const nameOf = (id: string) => names.get(id) ?? 'a missing node'
-  return edges.map((edge) => {
+  const next = edges.map((edge) => {
     const ariaLabel = edgeAriaLabel(edge, nameOf)
     let canvasEdge = canvasEdges.get(edge)
     if (canvasEdge?.ariaLabel !== ariaLabel) {
@@ -63,4 +65,8 @@ export function toCanvasEdges(edges: DiagramEdge[], nodes: DiagramNode[]): Diagr
     }
     return canvasEdge
   })
+  const previous = canvasEdgeLists.get(edges)
+  if (previous?.length === next.length && previous.every((edge, index) => edge === next[index])) return previous
+  canvasEdgeLists.set(edges, next)
+  return next
 }

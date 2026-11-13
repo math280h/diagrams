@@ -55,4 +55,19 @@ describe('toCanvasEdges', () => {
     expect(after).not.toBe(before)
     expect(after?.ariaLabel).toBe('API to Orders DB, SQL')
   })
+
+  it('keeps the array while no edge changes', () => {
+    const nodes = [card('API'), card('Postgres'), card('Cache')]
+    const edges = [createEdge('API', 'Postgres'), createEdge('API', 'Cache')]
+    const before = toCanvasEdges(edges, nodes)
+    expect(toCanvasEdges(edges, [{ ...nodes[0]!, position: { x: 80, y: 0 } }, nodes[1]!, nodes[2]!])).toBe(before)
+
+    const renamed = toCanvasEdges(edges, [
+      nodes[0]!,
+      nodes[1]!,
+      { ...nodes[2]!, data: defaultCardData({ title: 'Redis' }) },
+    ])
+    expect(renamed).not.toBe(before)
+    expect(renamed[0]).toBe(before[0])
+  })
 })
