@@ -778,7 +778,8 @@ and a preview of the exact text.
 - The website sends from the page. Its `connect-src` gets the origin of the report server only in a build with one.
   The desktop app sends from the main process with `net.fetch`, so the renderer policy stays `'self'`.
 - A build without `DIAGRAMS_REPORT_URL` shows no "Send report", and a build without keys can only copy the text. The
-  release workflow sets both from its environment, so a fork never sends to the report server of this repository.
+  release and preview app workflows set both from their GitHub environment, `release` or `preview`. Thus a fork never
+  sends to the report server of this repository, and preview builds send to the preview report server.
 - The sent list keeps the delete token of each sent report: in `localStorage` (`dg:sent-reports`) on the website, and
   in `reports/sent.json` of the user data folder on the desktop. Thus the user can delete a report before the server
   deletes it.
