@@ -423,12 +423,11 @@ jobs:
           hdiutil attach release/*-mac-arm64.dmg -nobrowse -readonly -mountpoint "$mount"
           ditto "$mount/Diagrams.app" /Applications/Diagrams.app
           hdiutil detach "$mount" -force
-          node scripts/smoke-package.mjs /Applications/Diagrams.app/Contents/MacOS/Diagrams --system-login-item
+          smoke=0
+          node scripts/smoke-package.mjs /Applications/Diagrams.app/Contents/MacOS/Diagrams --system-login-item || smoke=$?
           sudo sfltool dumpbtm > "$RUNNER_TEMP/btm.txt"
-          grep -B 6 -A 10 'dev.thias.diagrams' "$RUNNER_TEMP/btm.txt" || {
-            echo 'macOS has no login item for the app.'
-            exit 1
-          }
+          grep -i -B 6 -A 10 'diagrams' "$RUNNER_TEMP/btm.txt" || echo 'The background items of macOS do not name the app.'
+          [ "$smoke" -eq 0 ] || exit "$smoke"
           export DIAGRAMS_DATA_DIR="$RUNNER_TEMP/launch-diagrams"
           export DIAGRAMS_AUTOSTART_DIR="$RUNNER_TEMP/launch-autostart"
           export DIAGRAMS_REGISTER_PROTOCOL=0
