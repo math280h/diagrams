@@ -12,6 +12,8 @@ moves along connections; a flow walks a user through the system while the camera
   - React Compiler does not compile a function that it cannot handle, and at the default `panicThreshold` the build
     shows no warning. `scripts/react-compiler.ts` collects these functions from the app build and the player build.
     The build fails when they differ from `KNOWN_SKIPS`, or when the compiler fails.
+  - The `icons` chunk group holds the Lucide icons that the first page imports. Without it, Rolldown makes one chunk
+    for each icon that two chunks share: about 80 files of less than 2 kB on the first page.
 - **Language**: TypeScript 7. Native compiler for `tsc -b`.
 - **Canvas**: `@xyflow/react` 12 (MIT). Plain React and HTML nodes, full CSS control. Not tldraw (paid licence or
   watermark) or Excalidraw (hand-drawn).
