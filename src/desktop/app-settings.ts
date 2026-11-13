@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { reportError } from '@/store/problem-store'
 import { desktopApi } from './bridge'
-import type { AppSettings, MainRequests } from './contract'
+import type { AgentWindowMode, AppSettings, MainRequests } from './contract'
 
 export const useAppSettings = create<{ settings: AppSettings | null }>(() => ({ settings: null }))
 
@@ -40,6 +40,22 @@ export function setKeepRunning(keepRunning: boolean) {
     'app.setKeepRunning',
     { keepRunning },
     { title: 'Could not change the setting', facts: [`Keep running: ${keepRunning}`] },
+  )
+}
+
+export function setOpenAtLogin(openAtLogin: boolean) {
+  return changeSettings(
+    'app.setOpenAtLogin',
+    { openAtLogin },
+    { title: 'Could not change the setting', facts: [`Start when you sign in: ${openAtLogin}`] },
+  )
+}
+
+export function setAgentWindow(agentWindow: AgentWindowMode) {
+  return changeSettings(
+    'app.setAgentWindow',
+    { agentWindow },
+    { title: 'Could not change the setting', facts: [`Agent window: ${agentWindow}`] },
   )
 }
 

@@ -394,14 +394,21 @@ jobs:
           if ($install.ExitCode -ne 0) { throw "The installer ended with exit code $($install.ExitCode)." }
           $app = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter 'Diagrams.exe' | Select-Object -First 1
           if (-not $app) { throw 'The installer did not install Diagrams.exe.' }
-          node scripts/smoke-package.mjs $app.FullName
+          node scripts/smoke-package.mjs $app.FullName --system-login-item
           if ($LASTEXITCODE -ne 0) { throw 'The installed app failed the smoke test.' }
+          $run = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+          $loginItem = 'dev.thias.diagrams'
+          $command = (Get-ItemProperty $run -Name $loginItem -ErrorAction SilentlyContinue).$loginItem
+          if ($command -ne "`"$($app.FullName)`" --background") { throw "The app did not start at sign-in: '$command'." }
           $uninstaller = Get-ChildItem $app.DirectoryName -Filter 'Uninstall*.exe' | Select-Object -First 1
           node scripts/installer-contents.ts nsis $installer.FullName $uninstaller.FullName
           if ($LASTEXITCODE -ne 0) { throw 'The SBOM does not list the plugins of the installers.' }
           $uninstall = Start-Process -FilePath $uninstaller.FullName -ArgumentList '/S', "_?=$($app.DirectoryName)" -Wait -PassThru
           if ($uninstall.ExitCode -ne 0) { throw "The uninstaller ended with exit code $($uninstall.ExitCode)." }
           if (Test-Path $app.FullName) { throw 'The uninstaller did not remove Diagrams.exe.' }
+          if ((Get-ItemProperty $run).PSObject.Properties.Name -contains $loginItem) {
+            throw 'The uninstaller did not remove the start at sign-in.'
+          }
       - name: Mount and test the macOS disk image
         if: runner.os == 'macOS'
         run: |
@@ -409,6 +416,24 @@ jobs:
           hdiutil attach release/*-mac-arm64.dmg -nobrowse -readonly -mountpoint "$mount"
           trap 'hdiutil detach "$mount" -force' EXIT
           node scripts/smoke-package.mjs "$mount/Diagrams.app/Contents/MacOS/Diagrams"
+      - name: Test the start at sign-in on macOS
+        if: runner.os == 'macOS'
+        run: |
+          mount=$(mktemp -d)
+          hdiutil attach release/*-mac-arm64.dmg -nobrowse -readonly -mountpoint "$mount"
+          ditto "$mount/Diagrams.app" /Applications/Diagrams.app
+          hdiutil detach "$mount" -force
+          node scripts/smoke-package.mjs /Applications/Diagrams.app/Contents/MacOS/Diagrams --system-login-item
+          sudo sfltool dumpbtm > "$RUNNER_TEMP/btm.txt"
+          grep -B 6 -A 10 'dev.thias.diagrams' "$RUNNER_TEMP/btm.txt" || {
+            echo 'macOS has no login item for the app.'
+            exit 1
+          }
+          export DIAGRAMS_DATA_DIR="$RUNNER_TEMP/launch-diagrams"
+          export DIAGRAMS_AUTOSTART_DIR="$RUNNER_TEMP/launch-autostart"
+          export DIAGRAMS_REGISTER_PROTOCOL=0
+          swift scripts/macos-login-launch.swift /Applications/Diagrams.app normal "$RUNNER_TEMP/launch-normal"
+          swift scripts/macos-login-launch.swift /Applications/Diagrams.app login "$RUNNER_TEMP/launch-login"
       - name: Test the AppImage
         if: runner.os == 'Linux'
         run: |
@@ -421,7 +446,11 @@ jobs:
         run: |
           sudo apt-get install -y "$PWD/$(ls release/*.deb)"
           executable=$(dpkg -L diagrams | grep -E '^/opt/.+/diagrams$')
-          xvfb-run --auto-servernum node scripts/smoke-package.mjs "$executable"
+          xvfb-run --auto-servernum node scripts/smoke-package.mjs "$executable" --system-login-item
+          grep -qxF "TryExec=$executable" "$HOME/.config/autostart/diagrams.desktop" || {
+            echo 'The app did not add an autostart entry with TryExec.'
+            exit 1
+          }
           sudo apt-get remove -y diagrams
       - name: Keep the installers
         if: ${{ !cancelled() }}

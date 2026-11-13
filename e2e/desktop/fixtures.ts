@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -86,26 +86,35 @@ export const test = base.extend<DesktopFixtures>({
   },
   mcp: async ({ window, dirs, agentPort }, use) => {
     await expect(window.getByRole('banner').getByRole('button', { name: 'Connect an agent' })).toBeVisible()
-    const token = readFileSync(path.join(dirs.userData, 'agent-token'), 'utf8').trim()
     const client = new Client({ name: 'e2e', version: '1.0.0' })
-    await expect
-      .poll(async () => {
+    await connectAgent(client, dirs.userData, agentPort)
+    await use(client)
+    await client.close()
+  },
+})
+
+/** Connects the client to the agent server of the app as soon as the app has written its access token. */
+export async function connectAgent(client: Client, userData: string, port: number, timeoutMs?: number) {
+  const tokenFile = path.join(userData, 'agent-token')
+  await expect
+    .poll(
+      async () => {
+        if (!existsSync(tokenFile)) return false
         try {
           await client.connect(
-            new StreamableHTTPClientTransport(new URL(`${agentUrl(agentPort)}${AGENT_ENDPOINT}`), {
-              requestInit: { headers: { Authorization: `Bearer ${token}` } },
+            new StreamableHTTPClientTransport(new URL(`${agentUrl(port)}${AGENT_ENDPOINT}`), {
+              requestInit: { headers: { Authorization: `Bearer ${readFileSync(tokenFile, 'utf8').trim()}` } },
             }),
           )
           return true
         } catch {
           return false
         }
-      })
-      .toBe(true)
-    await use(client)
-    await client.close()
-  },
-})
+      },
+      { ...(timeoutMs && { timeout: timeoutMs }) },
+    )
+    .toBe(true)
+}
 
 /** Calls an MCP tool and returns its JSON text, or throws with the error text. */
 export async function callTool(client: Client, name: string, args: Record<string, unknown> = {}) {

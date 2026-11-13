@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { addWebsite, removeWebsite, setShareWebsite, useAppSettings } from './app-settings'
 import { BUILD, releaseLinks, repositoryName, websiteOrigin } from './build-config'
 import { cancelGitHubSignIn, signInToGitHub, signOutOfGitHub, useGitHubSignIn } from './github-sign-in'
-import { KeepRunningSetting } from './KeepRunningSetting'
+import { BackgroundSettings } from './BackgroundSettings'
 import { useDesktopSettingsDialog } from './settings-dialog'
 import { checkForUpdates, setUpdateRepository, useUpdateInfo } from './updates'
 
@@ -299,7 +299,7 @@ export function DesktopSettingsDialog() {
           <DialogDescription>These settings are for the app on this computer.</DialogDescription>
         </DialogHeader>
         <Websites />
-        <KeepRunningSetting />
+        <BackgroundSettings />
         <Updates />
       </DialogContent>
     </Dialog>

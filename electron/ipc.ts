@@ -1,7 +1,7 @@
 import { ipcMain, type IpcMainInvokeEvent } from 'electron'
 import { z } from 'zod'
 import { HEX_COLOR_PATTERN } from '@/desktop/constants'
-import { IPC_CHANNELS, type MainRequests } from '@/desktop/contract'
+import { AGENT_WINDOW_MODES, IPC_CHANNELS, type MainRequests } from '@/desktop/contract'
 import { MAX_PAGE_ZOOM } from '@/export/capture-plan'
 import { GRAPHVIZ_ENGINES } from '@/layout/types'
 import { MAX_THEME_FILE_BYTES, THEME_NAME_PATTERN } from '@/themes/tokens'
@@ -49,6 +49,8 @@ const INPUTS = {
   'themes.reveal': z.null(),
   'app.settings': z.null(),
   'app.setKeepRunning': z.object({ keepRunning: z.boolean() }),
+  'app.setOpenAtLogin': z.object({ openAtLogin: z.boolean() }),
+  'app.setAgentWindow': z.object({ agentWindow: z.enum(AGENT_WINDOW_MODES) }),
   'app.addWebsite': z.object({ website: z.string().max(MAX_ADDRESS_CHARS) }),
   'app.removeWebsite': z.object({ website: z.string().max(MAX_ADDRESS_CHARS) }),
   'app.setShareWebsite': z.object({ website: z.string().max(MAX_ADDRESS_CHARS) }),

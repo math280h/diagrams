@@ -71,12 +71,19 @@ function saveWindowState(window: BrowserWindow) {
   }
 }
 
-/** Saves the position, size and maximized state of the window when they change and when it closes. */
-export function trackWindowState(window: BrowserWindow) {
+/**
+ * Saves the position, size and maximized state of the window when they change and when it closes.
+ *
+ * @param restored - Returns false while the window does not have the saved state yet. The saved state then stays.
+ */
+export function trackWindowState(window: BrowserWindow, restored: () => boolean) {
   let timer: NodeJS.Timeout | undefined
+  const save = () => {
+    if (restored()) saveWindowState(window)
+  }
   const schedule = () => {
     clearTimeout(timer)
-    timer = setTimeout(() => saveWindowState(window), SAVE_DELAY_MS)
+    timer = setTimeout(save, SAVE_DELAY_MS)
   }
   window.on('resize', schedule)
   window.on('move', schedule)
@@ -86,6 +93,6 @@ export function trackWindowState(window: BrowserWindow) {
   window.on('leave-full-screen', schedule)
   window.on('close', () => {
     clearTimeout(timer)
-    saveWindowState(window)
+    save()
   })
 }

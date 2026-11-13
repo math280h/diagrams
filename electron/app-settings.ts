@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { z } from 'zod'
 import { repositoryName, websiteOrigin } from '@/desktop/build-config'
-import type { AppSettings } from '@/desktop/contract'
+import { AGENT_WINDOW_MODES, type AgentWindowMode, type AppSettings, type OpenAtLogin } from '@/desktop/contract'
 
 export const APP_SETTINGS_FILE = 'app-settings.json'
 
@@ -10,6 +10,9 @@ export interface StoredSettings {
   keepRunning: boolean
   /** True after the app told the user once that it still runs without a window. */
   backgroundNoticeShown: boolean
+  /** True after the app adds itself one time to the programs that start at sign-in. After that, only the user changes it. */
+  openAtLoginAdded: boolean
+  agentWindow: AgentWindowMode
   /** The website origins that may send diagrams to the app. */
   websites: string[]
   /** The origin of the website for share links, or `null` for the first website. */
@@ -23,6 +26,8 @@ export interface StoredSettings {
 const DEFAULT_SETTINGS: StoredSettings = {
   keepRunning: true,
   backgroundNoticeShown: false,
+  openAtLoginAdded: false,
+  agentWindow: 'show',
   websites: [],
   shareWebsite: null,
   addedBuildWebsites: [],
@@ -42,6 +47,8 @@ const STORED_SETTINGS = z
   .object({
     keepRunning: z.boolean().catch(DEFAULT_SETTINGS.keepRunning),
     backgroundNoticeShown: z.boolean().catch(DEFAULT_SETTINGS.backgroundNoticeShown),
+    openAtLoginAdded: z.boolean().catch(DEFAULT_SETTINGS.openAtLoginAdded),
+    agentWindow: z.enum(AGENT_WINDOW_MODES).catch(DEFAULT_SETTINGS.agentWindow),
     websites: ORIGINS,
     shareWebsite: z.unknown().transform(originOrNull),
     addedBuildWebsites: ORIGINS,
@@ -136,7 +143,17 @@ export function createAppSettings(file: string, buildWebsite: string) {
   }
 }
 
-export function publicSettings({ keepRunning, websites, shareWebsite }: StoredSettings): AppSettings {
+export type AppSettingsStore = ReturnType<typeof createAppSettings>
+
+/**
+ * Returns the settings for the renderer.
+ *
+ * @param openAtLogin - The state that the system keeps, not the stored settings.
+ */
+export function publicSettings(
+  { keepRunning, agentWindow, websites, shareWebsite }: StoredSettings,
+  openAtLogin: OpenAtLogin,
+): AppSettings {
   const share = shareWebsite !== null && websites.includes(shareWebsite) ? shareWebsite : websites[0]!
-  return { keepRunning, websites, shareWebsite: share }
+  return { keepRunning, openAtLogin, agentWindow, websites, shareWebsite: share }
 }
