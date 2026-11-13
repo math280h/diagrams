@@ -1,7 +1,5 @@
 import { EyeOff, HardDrive, ImageDown, Link2, type LucideIcon } from 'lucide-react'
 import { cn } from 'cn'
-import { Button } from '@/components/ui/button'
-import { openProblemReports } from '@/reports/report-store'
 
 interface PrivacyPoint {
   icon: LucideIcon
@@ -45,12 +43,6 @@ export function PrivacySection({ className }: { className?: string }) {
         </h2>
         <p className="mt-3 text-base leading-6 text-pretty text-muted-foreground">
           A diagram leaves your computer only when you send it as a link or a file, or let a connected agent read it.
-        </p>
-        <p className="mt-3 text-[13px] leading-5 text-pretty text-muted-foreground">
-          Problems and crashes stay on your computer too. A problem report leaves it only when you read it and send it.{' '}
-          <Button variant="link" size="sm" className="h-auto px-0 text-[13px]" onClick={openProblemReports}>
-            Problem reports
-          </Button>
         </p>
       </div>
       <div>

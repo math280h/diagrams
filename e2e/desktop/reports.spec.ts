@@ -47,7 +47,8 @@ test('keeps a crash of the app with its dump, and tells about it at the next sta
     await expect(dialog).toContainText('This build sends no reports.')
     await window.keyboard.press('Escape')
 
-    await window.getByRole('button', { name: 'Problem reports' }).click()
+    await window.getByRole('button', { name: 'App settings' }).click()
+    await window.getByRole('dialog', { name: 'App settings' }).getByRole('button', { name: 'Problem reports' }).click()
     const list = window.getByRole('dialog', { name: 'Problem reports' })
     const crashes = list.getByRole('list', { name: 'Crashes' })
     await expect(crashes).toContainText('The app stopped')
