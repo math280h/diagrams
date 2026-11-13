@@ -108,6 +108,14 @@ describe('createApp', () => {
     expect((await post({ 'x-forwarded-for': 'spoofed, 192.0.2.2' })).status).toBe(429)
   })
 
+  it('counts the visitor behind a trusted CDN, and a client that skips the CDN by its own address', async () => {
+    const { post } = setup({ REPORTS_PER_HOUR: '1', CLIENT_IP_HEADER: 'X-Real-IP', TRUSTED_PROXIES: '173.245.48.0/20' })
+    expect((await post({ 'x-real-ip': '173.245.48.1', 'x-forwarded-for': '192.0.2.1' })).status).toBe(201)
+    expect((await post({ 'x-real-ip': '173.245.48.2', 'x-forwarded-for': 'spoofed, 192.0.2.1' })).status).toBe(429)
+    expect((await post({ 'x-real-ip': '192.0.2.9', 'x-forwarded-for': '192.0.2.50' })).status).toBe(201)
+    expect((await post({ 'x-real-ip': '192.0.2.9', 'x-forwarded-for': '192.0.2.51' })).status).toBe(429)
+  })
+
   it('stops for the day at the daily quota', async () => {
     const { post, advance } = setup({ DAILY_REPORTS: '1' })
     expect((await post()).status).toBe(201)

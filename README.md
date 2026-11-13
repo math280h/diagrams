@@ -260,8 +260,15 @@ IP addresses.
 | `POW_PROVIDER`                                                         | `none`          | Proof of work that clients solve before they send: `none`, `altcha`, `cap` |
 | `POW_SECRET`                                                           | none            | Secret that signs the challenges, at least 32 characters                   |
 | `TRUST_PROXY_HOPS`                                                     | `0`             | Number of proxies in front of the server that set `X-Forwarded-For`        |
+| `CLIENT_IP_HEADER`                                                     | none            | Header in which the proxy in front of the server sets the client address   |
+| `TRUSTED_PROXIES`                                                      | none            | Address ranges of trusted proxies such as a CDN, separated by commas       |
 | `REPORTS_PER_HOUR`, `CHALLENGES_PER_HOUR`                              | `20`, `60`      | Limits per client IP address (an IPv6 /64 counts as one address)           |
 | `DAILY_REPORTS`, `DAILY_MEGABYTES`                                     | `2000`, `2048`  | Limits for all clients per day                                             |
+
+Set `CLIENT_IP_HEADER` only to a header that the proxy always overwrites, such as `X-Real-IP`. Behind a CDN, set
+`TRUSTED_PROXIES` to the address ranges of the CDN, for example [the Cloudflare ranges](https://www.cloudflare.com/ips/).
+For a request from those ranges, the limits count the address that the CDN added to `X-Forwarded-For`. A request that
+goes around the CDN keeps its own address.
 
 Create a key pair with `age-keygen -o reports.key` and pass its public key (`age1…`) as `DIAGRAMS_REPORT_KEYS` when you
 build. Keep `reports.key` off the server. To read reports, download the `.age` files from the folder or the bucket and

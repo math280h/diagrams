@@ -14,6 +14,8 @@ describe('readConfig', () => {
       pow: { provider: 'none', secret: '' },
       allowedOrigins: [],
       trustProxyHops: 0,
+      clientIpHeader: '',
+      trustedProxies: [],
       limits: { reportsPerHour: 20, challengesPerHour: 60, dailyReports: 2000, dailyBytes: 2048 * 1024 * 1024 },
     })
   })
@@ -63,5 +65,15 @@ describe('readConfig', () => {
       /"https:\/\/a.example\/" is not an origin/,
     )
     expect(() => readConfig({ ALLOWED_ORIGINS: 'a.example' })).toThrow(/not an origin/)
+  })
+
+  it('reads the client address header and the ranges of trusted proxies', () => {
+    const config = readConfig({ CLIENT_IP_HEADER: 'X-Real-IP', TRUSTED_PROXIES: '173.245.48.0/20, 2400:cb00::/32' })
+    expect(config.clientIpHeader).toBe('x-real-ip')
+    expect(config.trustedProxies).toEqual(['173.245.48.0/20', '2400:cb00::/32'])
+    expect(() => readConfig({ CLIENT_IP_HEADER: 'x real ip' })).toThrow(/CLIENT_IP_HEADER/)
+    expect(() => readConfig({ TRUSTED_PROXIES: '173.245.48.0/33' })).toThrow(
+      /"173.245.48.0\/33" is not an address range/,
+    )
   })
 })

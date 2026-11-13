@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clientAddress, DailyQuota, HourlyLimit, limitKey } from './limits'
+import { clientAddress, DailyQuota, HourlyLimit, inRanges, limitKey, parseRange } from './limits'
 
 describe('HourlyLimit', () => {
   it('starts a new hour for each address on its own', () => {
@@ -46,6 +46,46 @@ describe('clientAddress', () => {
     expect(clientAddress('10.0.0.1', 'spoofed, 192.0.2.1, 10.0.0.2', 2)).toBe('192.0.2.1')
     expect(clientAddress('10.0.0.1', '192.0.2.1', 3)).toBe('192.0.2.1')
     expect(clientAddress('10.0.0.1', ' , ', 1)).toBe('10.0.0.1')
+  })
+
+  it('takes the address that a trusted proxy in front added to the header', () => {
+    const cdn = inRanges(['173.245.48.0/20', '2400:cb00::/32'])
+    expect(clientAddress('173.245.48.1', 'spoofed, 198.51.100.7', 0, cdn)).toBe('198.51.100.7')
+    expect(clientAddress('2400:cb00::9', '198.51.100.7, 173.245.48.2', 0, cdn)).toBe('198.51.100.7')
+    expect(clientAddress('10.0.0.1', '198.51.100.7, 173.245.48.1', 1, cdn)).toBe('198.51.100.7')
+    expect(clientAddress('173.245.48.1', null, 0, cdn)).toBe('173.245.48.1')
+  })
+
+  it('keeps the peer address of a client that skips the trusted proxy', () => {
+    const cdn = inRanges(['173.245.48.0/20'])
+    expect(clientAddress('203.0.113.9', '173.245.48.1, 198.51.100.7', 0, cdn)).toBe('203.0.113.9')
+    expect(clientAddress('10.0.0.1', '198.51.100.7, 203.0.113.9', 1, cdn)).toBe('203.0.113.9')
+  })
+})
+
+describe('parseRange', () => {
+  it('reads IPv4 and IPv6 ranges, and a single address', () => {
+    expect(parseRange('173.245.48.0/20')).toEqual({ address: '173.245.48.0', prefix: 20, family: 'ipv4' })
+    expect(parseRange('2400:cb00::/32')).toEqual({ address: '2400:cb00::', prefix: 32, family: 'ipv6' })
+    expect(parseRange('192.0.2.1')).toEqual({ address: '192.0.2.1', prefix: 32, family: 'ipv4' })
+  })
+
+  it('rejects text that is not a range', () => {
+    for (const range of ['192.0.2.0/33', '2400:cb00::/129', 'proxy/8', '10.0.0.0/', '10.0.0.0/x', '10.0.0.0/8/1']) {
+      expect(parseRange(range)).toBeNull()
+    }
+  })
+})
+
+describe('inRanges', () => {
+  it('matches IPv4, mapped IPv4 and IPv6 addresses', () => {
+    const cdn = inRanges(['173.245.48.0/20', '2400:cb00::/32'])
+    expect(cdn('173.245.63.255')).toBe(true)
+    expect(cdn('::ffff:173.245.48.1')).toBe(true)
+    expect(cdn('2400:cb00:1::5')).toBe(true)
+    expect(cdn('173.245.64.0')).toBe(false)
+    expect(cdn('2001:db8::1')).toBe(false)
+    expect(cdn('unknown')).toBe(false)
   })
 })
 

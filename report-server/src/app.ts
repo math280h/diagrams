@@ -4,12 +4,15 @@ import { bodyLimit } from 'hono/body-limit'
 import { isAgeFile } from '@/reports/age-file'
 import { DELETE_TOKEN, PROOF_HEADER, REPORT_API, REPORT_ID, REPORT_SIZE_LIMITS, type Receipt } from '@/reports/protocol'
 import type { ServerConfig } from './config'
-import { clientAddress, DailyQuota, HourlyLimit, limitKey } from './limits'
+import { clientAddress, DailyQuota, HourlyLimit, inRanges, limitKey } from './limits'
 import type { ProofProvider, SizeClass } from './pow/provider'
 import type { ReportStore } from './storage/store'
 
 export interface AppOptions {
-  config: Pick<ServerConfig, 'retentionMs' | 'allowedOrigins' | 'trustProxyHops' | 'limits' | 'pow'>
+  config: Pick<
+    ServerConfig,
+    'retentionMs' | 'allowedOrigins' | 'trustProxyHops' | 'clientIpHeader' | 'trustedProxies' | 'limits' | 'pow'
+  >
   store: ReportStore
   proof: ProofProvider
   now?: () => number
@@ -43,10 +46,14 @@ export function createApp(options: AppOptions): Hono {
   const challengeLimit = new HourlyLimit(config.limits.challengesPerHour, now)
   const quota = new DailyQuota(config.limits.dailyReports, config.limits.dailyBytes, now)
   const allowedOrigins = new Set(config.allowedOrigins)
-  const address = (context: Context) =>
-    limitKey(
-      clientAddress(socketAddress(context), context.req.header('x-forwarded-for') ?? null, config.trustProxyHops),
+  const isTrustedProxy = inRanges(config.trustedProxies)
+  const address = (context: Context) => {
+    const reported = config.clientIpHeader ? context.req.header(config.clientIpHeader)?.trim() : undefined
+    const forwardedFor = context.req.header('x-forwarded-for') ?? null
+    return limitKey(
+      clientAddress(reported || socketAddress(context), forwardedFor, config.trustProxyHops, isTrustedProxy),
     )
+  }
   const fail = (context: Context, status: 400 | 401 | 403 | 404 | 413 | 429 | 500 | 503, message: string) =>
     context.json({ message }, status)
 

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { POW_PROVIDERS, type PowProvider } from '@/reports/protocol'
+import { parseRange } from './limits'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const MIN_SECRET_LENGTH = 32
@@ -40,6 +41,12 @@ const environmentSchema = z
     POW_SECRET: z.string().optional(),
     ALLOWED_ORIGINS: listValue,
     TRUST_PROXY_HOPS: integer(0, 0, 5),
+    CLIENT_IP_HEADER: z
+      .string()
+      .regex(/^[A-Za-z0-9-]*$/, 'CLIENT_IP_HEADER must be the name of a header.')
+      .default('')
+      .transform((value) => value.toLowerCase()),
+    TRUSTED_PROXIES: listValue,
     REPORTS_PER_HOUR: integer(20, 1, 10_000),
     CHALLENGES_PER_HOUR: integer(60, 1, 100_000),
     DAILY_REPORTS: integer(2000, 1, 1_000_000),
@@ -70,6 +77,11 @@ const environmentSchema = z
         context.addIssue({ code: 'custom', path: ['ALLOWED_ORIGINS'], message: `"${origin}" is not an origin.` })
       }
     }
+    for (const range of env.TRUSTED_PROXIES) {
+      if (!parseRange(range)) {
+        context.addIssue({ code: 'custom', path: ['TRUSTED_PROXIES'], message: `"${range}" is not an address range.` })
+      }
+    }
   })
 
 export interface S3Settings {
@@ -90,6 +102,10 @@ export interface ServerConfig {
   pow: { provider: PowProvider; secret: string }
   allowedOrigins: readonly string[]
   trustProxyHops: number
+  /** The lowercase name of the header that holds the address of the client of the nearest proxy, or `''`. */
+  clientIpHeader: string
+  /** Address ranges such as `173.245.48.0/20` of further proxies, for example a CDN, in front of the nearest proxy. */
+  trustedProxies: readonly string[]
   limits: { reportsPerHour: number; challengesPerHour: number; dailyReports: number; dailyBytes: number }
 }
 
@@ -125,6 +141,8 @@ export function readConfig(env: Record<string, string | undefined>): ServerConfi
     pow: { provider: value.POW_PROVIDER, secret: value.POW_SECRET ?? '' },
     allowedOrigins: value.ALLOWED_ORIGINS,
     trustProxyHops: value.TRUST_PROXY_HOPS,
+    clientIpHeader: value.CLIENT_IP_HEADER,
+    trustedProxies: value.TRUSTED_PROXIES,
     limits: {
       reportsPerHour: value.REPORTS_PER_HOUR,
       challengesPerHour: value.CHALLENGES_PER_HOUR,

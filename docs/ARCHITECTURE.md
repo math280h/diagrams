@@ -812,6 +812,11 @@ distroless Node.js base.
 - The limits are in memory: reports and challenges per hour for each client address (an IPv6 /64 network counts as one
   address), a daily count and size, 64 KB without a dump and 16 MB with one, and the age header. The server logs no
   body and no address.
+- The client address is the socket address. `CLIENT_IP_HEADER` names a header that replaces the socket address, for a
+  proxy that does not add to `X-Forwarded-For`. `TRUST_PROXY_HOPS` moves the client address to the `X-Forwarded-For`
+  entry that the outermost proxy added. While the client address is in `TRUSTED_PROXIES`, for example the ranges of a
+  CDN, the server moves to the next entry on the left. A client that goes around the CDN can write any address into
+  `X-Forwarded-For`. Thus the server stops at the first address that is not in the ranges.
 - The receipt holds a random delete token. The server keeps only its SHA-256 hash.
 - CORS accepts only the origins in `ALLOWED_ORIGINS`. A request without an `Origin` header, from the desktop main
   process, passes, because a browser always sends the header on these requests. `Origin: null` fails.
