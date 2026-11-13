@@ -1,4 +1,4 @@
-import { useReactFlow, useStore, useViewport } from '@xyflow/react'
+import { useReactFlow, useStore } from '@xyflow/react'
 import { Map as MapIcon, Maximize, Minus, Plus } from 'lucide-react'
 import { MINIMAP_MIN_NODES } from '@/canvas/Minimap'
 import { useSettings } from '@/store/settings-store'
@@ -8,7 +8,7 @@ import { useFitToScreen } from './fit'
 import { KEYS } from '@/lib/shortcut-keys'
 
 export function ZoomControls() {
-  const { zoom } = useViewport()
+  const zoomPercent = useStore((state) => Math.round(state.transform[2] * 100))
   const { zoomIn, zoomOut, zoomTo } = useReactFlow()
   const fitToScreen = useFitToScreen()
   const large = useStore((state) => state.nodes.length >= MINIMAP_MIN_NODES)
@@ -25,13 +25,13 @@ export function ZoomControls() {
             <Button
               variant="ghost"
               size="sm"
-              aria-label={`${Math.round(zoom * 100)}%, reset zoom to 100%`}
+              aria-label={`${zoomPercent}%, reset zoom to 100%`}
               onClick={() => void zoomTo(1, { duration: 200 })}
               className="w-12 px-0 text-xs font-normal tabular-nums"
             />
           }
         >
-          {Math.round(zoom * 100)}%
+          {zoomPercent}%
         </TooltipTrigger>
         <TooltipContent>Reset zoom to 100%</TooltipContent>
       </Tooltip>

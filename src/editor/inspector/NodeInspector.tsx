@@ -344,7 +344,7 @@ function TypeFields({ node }: { node: DiagramNode }) {
           <CardFields node={node} />
           <DetailsFields node={node} />
           <OpensFields node={node} />
-          <NodeLinks node={node} />
+          <NodeLinks nodeId={node.id} />
         </>
       )
     case 'shape':
