@@ -59,8 +59,7 @@ Your diagrams stay on your computer. There is no account and no server that stor
 - **No automatic error reports.** A problem report is sent only when you press Send, after you have seen its full
   text. It contains no diagram content and is encrypted for the maintainers. Crash dumps stay on your computer unless
   you attach one.<br>
-  <sub>_Building it yourself? Leave out [`DIAGRAMS_REPORT_URL`](#build-options) and your build has no report server
-  and no Send button._</sub>
+  <sub>_Building it yourself? Reports are off unless you set [`DIAGRAMS_REPORT_URL`](#build-options)._</sub>
 
 ## Desktop app
 
