@@ -65,9 +65,12 @@ function TimeReadout() {
   const leftRef = useRef<HTMLSpanElement>(null)
   const duration = playback.durationMs
   useEffect(() => {
+    const show = (element: HTMLElement | null, text: string) => {
+      if (element && element.textContent !== text) element.textContent = text
+    }
     const write = (time: number) => {
-      if (elapsedRef.current) elapsedRef.current.textContent = formatDuration(time)
-      if (leftRef.current) leftRef.current.textContent = `${formatSeconds(Math.max(0, duration - time))} left`
+      show(elapsedRef.current, formatDuration(time))
+      show(leftRef.current, `${formatSeconds(Math.max(0, duration - time))} left`)
     }
     write(engine.playback.time.get())
     return engine.playback.time.on('change', write)

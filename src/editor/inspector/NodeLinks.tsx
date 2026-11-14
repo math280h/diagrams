@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { nodeTitle } from '@/model/labels'
 import { useEngine } from '@/engine/hooks'
 import { compileFlow } from '@/engine/flow/compile'
-import type { DiagramNode } from '@/model/types'
+import type { DiagramEdge, DiagramNode } from '@/model/types'
 import { selectOnly } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
 import { setUi } from '@/store/ui-store'
@@ -20,18 +20,24 @@ function Count({ value }: { value: number }) {
   return <span className="text-[11px] text-muted-foreground tabular-nums">{value}</span>
 }
 
-function Connections({ node }: { node: DiagramNode }) {
-  const nodes = useDoc((state) => state.nodes)
+function otherEnd(edge: DiagramEdge, nodeId: string): string {
+  return edge.source === nodeId ? edge.target : edge.source
+}
+
+function Connections({ nodeId }: { nodeId: string }) {
   const edges = useDoc(
-    useShallow((state) => state.edges.filter((edge) => edge.source === node.id || edge.target === node.id)),
+    useShallow((state) => state.edges.filter((edge) => edge.source === nodeId || edge.target === nodeId)),
+  )
+  const titles = useDoc(
+    useShallow((state) => edges.map((edge) => title(state.nodes.find((other) => other.id === otherEnd(edge, nodeId))))),
   )
   if (edges.length === 0) return null
   return (
     <Section title="Connections" action={<Count value={edges.length} />}>
       <ul className="-mx-1">
-        {edges.map((edge) => {
-          const outgoing = edge.source === node.id
-          const otherId = outgoing ? edge.target : edge.source
+        {edges.map((edge, index) => {
+          const outgoing = edge.source === nodeId
+          const otherId = otherEnd(edge, nodeId)
           return (
             <li key={edge.id}>
               <Button
@@ -44,7 +50,7 @@ function Connections({ node }: { node: DiagramNode }) {
                 ) : (
                   <ArrowLeft className="size-3.5 shrink-0 text-muted-foreground" aria-label="Incoming" />
                 )}
-                <span className="min-w-0 flex-1 truncate">{title(nodes.find((other) => other.id === otherId))}</span>
+                <span className="min-w-0 flex-1 truncate">{titles[index]}</span>
                 {edge.data?.label && (
                   <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{edge.data.label}</span>
                 )}
@@ -57,20 +63,20 @@ function Connections({ node }: { node: DiagramNode }) {
   )
 }
 
-function LogLines({ node }: { node: DiagramNode }) {
+function LogLines({ nodeId }: { nodeId: string }) {
   const engine = useEngine()
   const flows = useDoc((state) => state.flows)
-  const nodes = useDoc((state) => state.nodes)
+  const ids = useDoc(useShallow((state) => state.nodes.map((candidate) => candidate.id)))
   const edges = useDoc((state) => state.edges)
-  const nodeIds = new Set(nodes.map((candidate) => candidate.id))
+  const nodeIds = new Set(ids)
   const edgeById = new Map(edges.map((edge) => [edge.id, edge]))
 
   const lines = flows.flatMap((flow) =>
     compileFlow(flow, nodeIds, edges)
       .segments.filter(({ step, reversed }) => {
-        if (step.target.kind === 'node') return step.target.id === node.id
+        if (step.target.kind === 'node') return step.target.id === nodeId
         const edge = edgeById.get(step.target.id)
-        return edge !== undefined && (reversed ? edge.target : edge.source) === node.id
+        return edge !== undefined && (reversed ? edge.target : edge.source) === nodeId
       })
       .map((segment) => ({ flow, segment })),
   )
@@ -110,11 +116,11 @@ function LogLines({ node }: { node: DiagramNode }) {
 }
 
 /** Lists the connections of a node and the flow steps that it starts. */
-export function NodeLinks({ node }: { node: DiagramNode }) {
+export function NodeLinks({ nodeId }: { nodeId: string }) {
   return (
     <>
-      <Connections node={node} />
-      <LogLines node={node} />
+      <Connections nodeId={nodeId} />
+      <LogLines nodeId={nodeId} />
     </>
   )
 }

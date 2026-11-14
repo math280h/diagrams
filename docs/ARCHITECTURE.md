@@ -12,9 +12,13 @@ moves along connections; a flow walks a user through the system while the camera
   - React Compiler does not compile a function that it cannot handle, and at the default `panicThreshold` the build
     shows no warning. `scripts/react-compiler.ts` collects these functions from the app build and the player build.
     The build fails when they differ from `KNOWN_SKIPS`, or when the compiler fails.
+  - The `icons` chunk group holds the Lucide icons that the first page imports. Without it, Rolldown makes one chunk
+    for each icon that two chunks share: about 80 files of less than 2 kB on the first page.
 - **Language**: TypeScript 7. Native compiler for `tsc -b`.
 - **Canvas**: `@xyflow/react` 12 (MIT). Plain React and HTML nodes, full CSS control. Not tldraw (paid licence or
   watermark) or Excalidraw (hand-drawn).
+  - React Flow renders a node or an edge again when its object changes. `DiagramCanvas` keeps the same object for each
+    node and edge that does not change, so a drag renders only the dragged node and its edges.
 - **UI**: Tailwind 4, shadcn CLI 4 with Base UI, lucide icons. Tokens in CSS variables.
 - **State**: zustand 5 + immer 11. One central document store; immutable snapshots make undo cheap.
 - **Validation**: zod 4 for stored and imported data, with versioned migrations.

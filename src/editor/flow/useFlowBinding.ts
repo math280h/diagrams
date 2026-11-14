@@ -12,7 +12,7 @@ import { useUi } from '@/store/ui-store'
 export function useFlowBinding() {
   const engine = useEngine()
   const flows = useDoc((state) => state.flows)
-  const nodes = useDoc((state) => state.nodes)
+  const nodeIds = useDoc((state) => state.nodes.map((node) => node.id).join('|'))
   const edges = useDoc((state) => state.edges)
   const activeFlowId = useUi((state) => state.activeFlowId)
   const activePathId = useUi((state) => state.activePathId)
@@ -27,7 +27,6 @@ export function useFlowBinding() {
   }, [open, flows])
 
   const flow = open ? flows.find((candidate) => candidate.id === activeFlowId) : undefined
-  const nodeIds = nodes.map((node) => node.id).join('|')
 
   useEffect(() => {
     if (!flow) {

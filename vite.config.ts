@@ -60,6 +60,22 @@ export default defineConfig({
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
   worker: { format: 'es', plugins: () => [licenses.worker()] },
+  build: {
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: 'icons',
+              test: /node_modules[\\/]\.pnpm[\\/]lucide-react@[^\\/]+[\\/]node_modules[\\/]lucide-react[\\/]dist[\\/]esm[\\/]icons[\\/]/,
+              tags: ['$initial'],
+              includeDependenciesRecursively: false,
+            },
+          ],
+        },
+      },
+    },
+  },
   server: {
     host: '127.0.0.1',
     watch: { ignored: [inGeneratedFolder] },
