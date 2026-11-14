@@ -53,7 +53,12 @@ export function pinnedImages(dockerfile: string): PinnedImage[] {
   }))
 }
 
-function ociPurl(name: string, repository: string, tag: string, digest?: string): string {
+/** Returns the GHCR repository of the website image of a GitHub repository. */
+export function imageRepository(repositoryUrl: string = REPOSITORY_URL): string {
+  return `ghcr.io${new URL(repositoryUrl).pathname.toLowerCase()}`
+}
+
+export function ociPurl(name: string, repository: string, tag: string, digest?: string): string {
   const version = digest ? `@${encodeURIComponent(digest)}` : ''
   return `pkg:oci/${name}${version}?repository_url=${repository}&tag=${tag}`
 }
@@ -120,7 +125,7 @@ export function baseImageComponent(images: readonly PinnedImage[]): Component {
  * @throws Error If a bundled package, or a program inside a bundled package, has no component.
  */
 export function imageSbom(bom: Bom, image: WebsiteImage): Bom {
-  const repository = `ghcr.io${new URL(REPOSITORY_URL).pathname.toLowerCase()}`
+  const repository = imageRepository()
   const purl = ociPurl(repository.split('/').at(-1)!, repository, image.version)
   return composeSbom(bundledOnly(bom, image.bundled), {
     ...image,

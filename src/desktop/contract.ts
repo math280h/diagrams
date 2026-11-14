@@ -1,4 +1,6 @@
 import type { GraphvizEngine } from '@/layout/types'
+import type { SentReport } from '@/reports/history'
+import type { OperatingSystem } from '@/reports/report'
 
 export interface StoredFile {
   id: string
@@ -35,6 +37,38 @@ export interface AppAbout {
   version: string
   /** The operating system, its version and the processor architecture, as in `Windows 10.0.26200 (x64)`. */
   system: string
+}
+
+/** The facts of the desktop app for a problem report, and the values that a report must not hold. */
+export interface DesktopReportContext {
+  version: string
+  electron: string
+  os: OperatingSystem
+  /** Values that the main process knows, such as the home folder and the agent token. */
+  sensitive: string[]
+}
+
+/** What the app read from a crash dump. The dump file itself stays on this computer. */
+export interface DumpSummary {
+  bytes: number
+  /** The exception or signal, such as `EXCEPTION_ACCESS_VIOLATION` or `SIGSEGV`, or an empty string. */
+  exception: string
+  /** The module and the offset where the process stopped, such as `Diagrams.exe+0x1a2b3c`, or an empty string. */
+  location: string
+}
+
+/** A crash of the desktop app, from the crash events of the app and the crash dumps of Electron. */
+export interface CrashRecord {
+  id: string
+  /** The time of the crash, in milliseconds since 1970. */
+  time: number
+  /** The process that stopped: `main`, `renderer`, `gpu`, `utility`, or `unknown` for a dump without an event. */
+  process: string
+  reason: string
+  exitCode: number | null
+  dump: DumpSummary | null
+  /** False until the app told the user about the crash. */
+  seen: boolean
 }
 
 export interface AgentInfo {
@@ -202,6 +236,28 @@ export interface MainRequests {
   /** Returns the stage at a moment as RGBA pixels with straight alpha. */
   'capture.frame': { input: CaptureRequest; output: { pixels: Uint8Array; width: number; height: number } }
   'capture.close': { input: { sessionId: string }; output: null }
+  'reports.context': { input: null; output: DesktopReportContext }
+  /** Returns the kept crashes, the newest first. */
+  'reports.crashes': { input: null; output: CrashRecord[] }
+  /** Marks each kept crash as seen. */
+  'reports.markSeen': { input: null; output: CrashRecord[] }
+  /** Shows the crash dump of a crash in the file manager. */
+  'reports.showDump': { input: { id: string }; output: null }
+  /** Deletes a crash and its crash dump from this computer. */
+  'reports.deleteCrash': { input: { id: string }; output: CrashRecord[] }
+  /**
+   * Encrypts the report JSON, with the crash dump of `dumpOf` when it is not `null`, and sends it to the report server
+   * of the build.
+   */
+  'reports.send': { input: { json: string; dumpOf: string | null }; output: SentReport }
+  /** Stops the report that `reports.send` sends now. Without such a report, it does nothing. */
+  'reports.cancelSend': { input: null; output: null }
+  /** Encrypts the report like `reports.send` and asks the user where to save it. `false` means that the user cancelled. */
+  'reports.save': { input: { json: string; dumpOf: string | null }; output: { saved: boolean } }
+  /** Returns the reports that this app sent and that the server keeps still, the newest first. */
+  'reports.sent': { input: null; output: SentReport[] }
+  /** Deletes a sent report from the report server and from the list. */
+  'reports.deleteSent': { input: { id: string }; output: SentReport[] }
 }
 
 /** Requests from the main process to the renderer. */
@@ -237,6 +293,8 @@ export interface MainEvents {
   'window.visibility': { visible: boolean }
   'update.info': UpdateInfo
   'github.info': GitHubSignIn
+  /** All kept crashes, after the app recorded a crash. */
+  'reports.crashes': CrashRecord[]
 }
 
 export const IPC_CHANNELS = {

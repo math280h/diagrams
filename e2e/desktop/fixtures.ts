@@ -25,6 +25,23 @@ function freePort(): Promise<number> {
   })
 }
 
+/** Starts the app with the environment and waits for its window. */
+export async function launchApp(env: Record<string, string>): Promise<{ app: ElectronApplication; window: Page }> {
+  const app = await electron.launch({ args: ['.'], env })
+  const window = await app.firstWindow()
+  await expect(window.locator('header').first()).toBeVisible({ timeout: 30_000 })
+  return { app, window }
+}
+
+/** Resolves when the app process exits, and fails after 15 seconds. */
+export function untilExit(app: ElectronApplication): Promise<unknown> {
+  const exited = new Promise<void>((resolve) => app.process().once('exit', () => resolve()))
+  return Promise.race([
+    exited,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('The app did not quit.')), 15_000)),
+  ])
+}
+
 export interface DesktopFixtures {
   /**
    * How the app window stays hidden. `offscreen` renders at the full frame rate; `native` keeps a native window that

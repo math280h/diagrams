@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   publish:
-    name: Publish the website image
+    name: Publish the ${{ matrix.name }} image
     if: ${{ !github.event.release.prerelease }}
     runs-on: ubuntu-26.04
     permissions:
@@ -20,13 +20,29 @@ jobs:
       packages: write
       id-token: write
       attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: website
+            dockerfile: Dockerfile
+            suffix: ''
+            sbom: diagrams-website.cdx.json
+            artifact: docker-sbom
+          - name: report server
+            dockerfile: report-server/Dockerfile
+            suffix: -report-server
+            sbom: diagrams-report-server.cdx.json
+            artifact: report-server-sbom
     env:
       TAG: ${{ github.event.release.tag_name }}
+      DOCKERFILE: ${{ matrix.dockerfile }}
     steps:
       - name: Check the release
         id: release
         env:
           GH_TOKEN: ${{ github.token }}
+          SUFFIX: ${{ matrix.suffix }}
         run: |
           if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::The tag $TAG is not a full release such as v1.2.3."
@@ -34,7 +50,7 @@ jobs:
           fi
           newest=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)
           echo "latest=$([ "$newest" = "$TAG" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${GITHUB_REPOSITORY,,}$SUFFIX" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ env.TAG }}
@@ -62,6 +78,7 @@ jobs:
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
+          file: ${{ matrix.dockerfile }}
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -74,8 +91,8 @@ jobs:
         env:
           VERSION: ${{ steps.meta.outputs.version }}
         run: |
-          docker buildx build --target sbom --build-arg "VERSION=$VERSION" --build-arg "DIAGRAMS_REPOSITORY=$GITHUB_REPOSITORY" \
-            --output "type=local,dest=$RUNNER_TEMP/sbom" .
+          docker buildx build --file "$DOCKERFILE" --target sbom --build-arg "VERSION=$VERSION" \
+            --build-arg "DIAGRAMS_REPOSITORY=$GITHUB_REPOSITORY" --output "type=local,dest=$RUNNER_TEMP/sbom" .
       - name: Attest the build provenance of the image
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
@@ -88,11 +105,11 @@ jobs:
         with:
           subject-name: ${{ steps.release.outputs.image }}
           subject-digest: ${{ steps.build.outputs.digest }}
-          sbom-path: ${{ runner.temp }}/sbom/diagrams-website.cdx.json
+          sbom-path: ${{ runner.temp }}/sbom/${{ matrix.sbom }}
           push-to-registry: true
           create-storage-record: false
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: docker-sbom
-          path: ${{ runner.temp }}/sbom/diagrams-website.cdx.json
+          name: ${{ matrix.artifact }}
+          path: ${{ runner.temp }}/sbom/${{ matrix.sbom }}
           if-no-files-found: error

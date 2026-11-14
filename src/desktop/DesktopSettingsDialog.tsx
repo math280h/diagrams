@@ -1,6 +1,7 @@
-import { Copy, ExternalLink, Loader2, RefreshCw, X } from 'lucide-react'
-import { useId, useState, type FormEvent, type ReactNode } from 'react'
+import { Copy, ExternalLink, Loader2, MessageSquareWarning, RefreshCw, X } from 'lucide-react'
+import { useId, useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
+import { DialogSection as Section } from '@/components/DialogSection'
 import { GitHubMark } from '@/components/GitHubMark'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -9,24 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { addWebsite, removeWebsite, setShareWebsite, useAppSettings } from './app-settings'
 import { BUILD, releaseLinks, repositoryName, websiteOrigin } from './build-config'
 import { cancelGitHubSignIn, signInToGitHub, signOutOfGitHub, useGitHubSignIn } from './github-sign-in'
+import { openProblemReports } from '@/reports/report-store'
 import { KeepRunningSetting } from './KeepRunningSetting'
 import { useDesktopSettingsDialog } from './settings-dialog'
 import { checkForUpdates, setUpdateRepository, useUpdateInfo } from './updates'
-
-function Section({ title, description, children }: { title: string; description: ReactNode; children: ReactNode }) {
-  const headingId = useId()
-  return (
-    <section aria-labelledby={headingId} className="space-y-3 border-t pt-4 text-[13px]">
-      <div className="space-y-0.5">
-        <h3 id={headingId} className="font-medium text-foreground">
-          {title}
-        </h3>
-        <p className="leading-5 text-muted-foreground">{description}</p>
-      </div>
-      {children}
-    </section>
-  )
-}
 
 function Problem({ id, message }: { id: string; message: string | null }) {
   if (!message) return null
@@ -301,6 +288,21 @@ export function DesktopSettingsDialog() {
         <Websites />
         <KeepRunningSetting />
         <Updates />
+        <Section
+          title="Problem reports"
+          description="The app keeps crash dumps and problems on this computer. It sends nothing until you press Send on a report."
+        >
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              useDesktopSettingsDialog.setState({ open: false })
+              openProblemReports()
+            }}
+          >
+            <MessageSquareWarning /> Problem reports
+          </Button>
+        </Section>
       </DialogContent>
     </Dialog>
   )

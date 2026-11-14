@@ -25,7 +25,7 @@ test('explains a failed save with the details for a bug report', async ({ page }
   await expect(details).toContainText('The browser storage is full.')
   await expect(details).toContainText('Storage: browser')
   await expect(details).toContainText('Save failure: quota')
-  await expect(problem.getByRole('link', { name: 'Report a problem' })).toHaveAttribute('href', BUG_REPORT_URL)
+  await expect(problem.getByRole('link', { name: 'Open an issue on GitHub' })).toHaveAttribute('href', BUG_REPORT_URL)
   await page.keyboard.press('Escape')
   await expect(problem).toBeHidden()
 })

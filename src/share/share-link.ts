@@ -1,3 +1,4 @@
+import { base64UrlToBytes, bytesToBase64Url } from '@/lib/base64url'
 import type { Diagram } from '@/model/schema'
 import { DiagramFormatError, migrate } from '@/persistence/migrations'
 import { compressLink, decompressLink } from './link-codec'
@@ -23,19 +24,6 @@ export const DICTIONARY_CHARS = 160 * 1024
 const INCOMPLETE = 'This link is not complete. Ask for the link again, or copy all of it.'
 
 export class ShareLinkError extends Error {}
-
-function toBase64Url(bytes: Uint8Array): string {
-  let binary = ''
-  for (let start = 0; start < bytes.length; start += 0x8000) {
-    binary += String.fromCharCode(...bytes.subarray(start, start + 0x8000))
-  }
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-}
-
-function fromBase64Url(text: string): Uint8Array {
-  const binary = atob(text.replace(/-/g, '+').replace(/_/g, '/'))
-  return Uint8Array.from(binary, (char) => char.charCodeAt(0))
-}
 
 async function transform(bytes: Uint8Array, stream: CompressionStream | DecompressionStream): Promise<Uint8Array> {
   const output = new Blob([bytes as BlobPart]).stream().pipeThrough(stream)
@@ -94,14 +82,14 @@ export async function encodeShareData(diagram: Diagram): Promise<string> {
   const payload = new Uint8Array(header.length + packed.length)
   payload.set(header)
   payload.set(packed, header.length)
-  return MODEL_PREFIX + toBase64Url(payload) + MODEL_END
+  return MODEL_PREFIX + bytesToBase64Url(payload) + MODEL_END
 }
 
 async function readModelData(data: string): Promise<unknown> {
   if (!data.endsWith(MODEL_END)) throw new ShareLinkError(INCOMPLETE)
   let payload: Uint8Array
   try {
-    payload = fromBase64Url(data.slice(MODEL_PREFIX.length, -MODEL_END.length))
+    payload = base64UrlToBytes(data.slice(MODEL_PREFIX.length, -MODEL_END.length))
   } catch {
     throw new ShareLinkError(INCOMPLETE)
   }
@@ -122,7 +110,7 @@ async function readModelData(data: string): Promise<unknown> {
 async function readDeflateData(data: string): Promise<unknown> {
   try {
     const bytes = await transform(
-      fromBase64Url(data.slice(DEFLATE_PREFIX.length)),
+      base64UrlToBytes(data.slice(DEFLATE_PREFIX.length)),
       new DecompressionStream('deflate-raw'),
     )
     return JSON.parse(new TextDecoder().decode(bytes))

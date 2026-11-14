@@ -8,6 +8,7 @@ lerna-debug.log*
 
 node_modules
 dist
+report-server/dist
 dist-ssr
 dist-electron
 out

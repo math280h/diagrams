@@ -56,6 +56,10 @@ Your diagrams stay on your computer. There is no account and no server that stor
 - **Exports made on your device.** Images, videos, GIFs and web pages render in your browser or in the desktop app, not
   on a server.
 - **No account.** There is nothing to sign up for.
+- **No automatic error reports.** The app sends a problem report when you press Send in a dialog that shows the full
+  text. The report has no diagram content and is encrypted on your device for the maintainers. Crash dumps stay on your
+  computer unless you attach one.<br>
+  <sub>_A build without [`DIAGRAMS_REPORT_URL`](#build-options) has no report server and sends no reports._</sub>
 
 ## Desktop app
 
@@ -202,8 +206,7 @@ docker run -d -p 8080:8080 ghcr.io/math280h/diagrams
 
 The [image](https://github.com/math280h/diagrams/pkgs/container/diagrams) runs on `linux/amd64` and `linux/arm64`. It
 serves the site on port 8080, and `/health` answers while it runs. Put a proxy with HTTPS in front of it. The
-[`Dockerfile`](Dockerfile) builds the same image, with `DIAGRAMS_WEBSITE` and `DIAGRAMS_REPOSITORY` from the
-[build options](#build-options) as `--build-arg`.
+[`Dockerfile`](Dockerfile) builds the same image, with the [build options](#build-options) as `--build-arg`.
 
 ### Static files
 
@@ -217,7 +220,8 @@ static file server:
 
 ### Build options
 
-Set these variables for `pnpm build` or `pnpm desktop:package`. `docker build` takes only the first two.
+Set these variables for `pnpm build` or `pnpm desktop:package`. `docker build` accepts all of them except
+`DIAGRAMS_REPOSITORY_EDITABLE` and `DIAGRAMS_GITHUB_APP`.
 
 | Variable                       | Default                  | Sets                                                                            |
 | ------------------------------ | ------------------------ | ------------------------------------------------------------------------------- |
@@ -225,6 +229,51 @@ Set these variables for `pnpm build` or `pnpm desktop:package`. `docker build` t
 | `DIAGRAMS_REPOSITORY`          | `math280h/diagrams`      | The GitHub repository of the desktop releases, for downloads and updates        |
 | `DIAGRAMS_REPOSITORY_EDITABLE` | off                      | With `1`, users can change the update source in the app settings                |
 | `DIAGRAMS_GITHUB_APP`          | none                     | The client ID of a GitHub App, for updates from a private repository            |
+| `DIAGRAMS_REPORT_URL`          | none                     | The address of your [report server](#report-server)                             |
+| `DIAGRAMS_REPORT_KEYS`         | none                     | The age public keys that reports are encrypted for, separated by commas         |
+
+Without `DIAGRAMS_REPORT_URL`, the app has no Send button. Users can still copy a report into a GitHub issue.
+
+### Report server
+
+The report server stores the encrypted problem reports from users of your copy. Start it with:
+
+```sh
+docker run -d -p 8080:8080 -v reports:/data \
+  -e ALLOWED_ORIGINS=https://diagrams.example.com ghcr.io/math280h/diagrams-report-server
+```
+
+[`report-server/Dockerfile`](report-server/Dockerfile) builds the same image. Put a proxy with HTTPS in front of it.
+`/v1/health` returns 200 while it runs. The server cannot decrypt the reports, and it does not log request bodies or
+IP addresses.
+
+| Variable                                                               | Default         | Sets                                                                       |
+| ---------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------------- |
+| `ALLOWED_ORIGINS`                                                      | none            | Websites that may send reports, separated by commas                        |
+| `STORAGE`                                                              | `fs`            | `fs` stores reports in `FS_DIR`, `s3` in an S3-compatible bucket           |
+| `FS_DIR`                                                               | `/data/reports` | Folder for the reports                                                     |
+| `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | none            | The bucket, with `STORAGE=s3`                                              |
+| `S3_REGION`                                                            | `auto`          | Region of the bucket                                                       |
+| `S3_PATH_STYLE`                                                        | off             | Set to `1` for path-style URLs, which MinIO and SeaweedFS need             |
+| `S3_PREFIX`                                                            | `reports/`      | Prefix of the object keys                                                  |
+| `RETENTION_DAYS`                                                       | `30`            | Days before a report is deleted                                            |
+| `POW_PROVIDER`                                                         | `none`          | Proof of work that clients solve before they send: `none`, `altcha`, `cap` |
+| `POW_SECRET`                                                           | none            | Secret that signs the challenges, at least 32 characters                   |
+| `TRUST_PROXY_HOPS`                                                     | `0`             | Number of proxies in front of the server that set `X-Forwarded-For`        |
+| `CLIENT_IP_HEADER`                                                     | none            | Header in which the proxy in front of the server sets the client address   |
+| `TRUSTED_PROXIES`                                                      | none            | Address ranges of trusted proxies such as a CDN, separated by commas       |
+| `REPORTS_PER_HOUR`, `CHALLENGES_PER_HOUR`                              | `20`, `60`      | Limits per client IP address (an IPv6 /64 counts as one address)           |
+| `DAILY_REPORTS`, `DAILY_MEGABYTES`                                     | `2000`, `2048`  | Limits for all clients per day                                             |
+
+Set `CLIENT_IP_HEADER` only to a header that the proxy always overwrites, such as `X-Real-IP`. Behind a Cloudflare
+Tunnel, use `CF-Connecting-IP` if the tunnel is the only way to reach the server. Behind a CDN, set
+`TRUSTED_PROXIES` to the address ranges of the CDN, for example [the Cloudflare ranges](https://www.cloudflare.com/ips/).
+For a request from those ranges, the limits count the address that the CDN added to `X-Forwarded-For`. A request that
+goes around the CDN keeps its own address.
+
+Create a key pair with `age-keygen -o reports.key` and pass its public key (`age1…`) as `DIAGRAMS_REPORT_KEYS` when you
+build. Keep `reports.key` off the server. To read reports, download the `.age` files from the folder or the bucket and
+run `node scripts/open-report.ts --identity reports.key <files or folder>`.
 
 ### Desktop app
 

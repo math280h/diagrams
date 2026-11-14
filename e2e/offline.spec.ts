@@ -1,27 +1,13 @@
 import { appendFile, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
-import { createServer } from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 import { expect, test, type BrowserContext, type Page } from './fixtures'
 import { build, preview, type PreviewServer } from 'vite'
 import type { AssetList } from '@/sw/asset-list'
-import { copyTemplate } from './helpers'
+import { copyTemplate, freePort } from './helpers'
 
 const BUILD_TIMEOUT_MS = 180_000
 const CACHE_ALL_TIMEOUT_MS = 120_000
-
-function freePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const probe = createServer()
-    probe.once('error', reject)
-    probe.listen(0, '127.0.0.1', () => {
-      const address = probe.address()
-      probe.close(() =>
-        typeof address === 'object' && address ? resolve(address.port) : reject(new Error('No free port.')),
-      )
-    })
-  })
-}
 
 let outDir = ''
 let server: PreviewServer | null = null

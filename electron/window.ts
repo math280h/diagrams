@@ -2,6 +2,7 @@ import { app, BrowserWindow, Menu, nativeTheme, shell, type WebContents } from '
 import type { WindowColors } from '@/desktop/contract'
 import { APP_ORIGIN, originOf } from './app-protocol'
 import { APP_NAME, devServerUrl, iconPath, preloadPath } from './paths'
+import { isCrashReason } from './reports/crash-store'
 import { loadWindowColors, loadWindowState, saveWindowColors, trackWindowState } from './window-state'
 
 const DARK_GROUND = '#000000'
@@ -13,6 +14,7 @@ const TITLE_BAR_HEIGHT_PX = APP_HEADER_HEIGHT_PX - HEADER_BORDER_PX
 const DARK_TITLE_BAR = { color: '#0a0a0a', symbolColor: '#fafafa' }
 const LIGHT_TITLE_BAR = { color: '#ffffff', symbolColor: '#0a0a0a' }
 const MAC_TRAFFIC_LIGHTS = { x: 16, y: 15 }
+const MIN_CRASH_RELOAD_GAP_MS = 60_000
 
 const HIDE_WINDOW = process.env.DIAGRAMS_HIDE_WINDOW
 
@@ -109,6 +111,13 @@ export function createMainWindow(): BrowserWindow {
     if (originOf(url) !== rendererOrigin()) event.preventDefault()
   })
   window.on('page-title-updated', (event) => event.preventDefault())
+  let crashReloadAt = Number.NEGATIVE_INFINITY
+  window.webContents.on('render-process-gone', (_event, details) => {
+    if (!isCrashReason(details.reason) || window.isDestroyed() || quitting) return
+    if (Date.now() - crashReloadAt < MIN_CRASH_RELOAD_GAP_MS) return
+    crashReloadAt = Date.now()
+    window.webContents.reload()
+  })
   const reportNavigation = () => {
     const history = window.webContents.navigationHistory
     hooks?.navigated({ canGoBack: history.canGoBack(), canGoForward: history.canGoForward() })

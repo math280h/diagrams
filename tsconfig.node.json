@@ -22,6 +22,7 @@
     "vitest.config.ts",
     "playwright.config.ts",
     "vite.electron.config.ts",
+    "report-server/vite.config.ts",
     "scripts/**/*.ts",
     "electron-builder.ts"
   ]

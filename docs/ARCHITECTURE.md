@@ -349,8 +349,9 @@ Icon names are Lucide names (`database`) or prefixed set icons: `aws:`, `azure:`
 
 ```
 actions/render/ GitHub Action that renders diagram files and comments on pull requests
-electron/       desktop main process: window, app protocol, IPC, diagram files, agent server, deep links
+electron/       desktop main process: window, app protocol, IPC, diagram files, agent server, deep links, crashes
 claude-plugin/  agent skills and the Claude Code plugin manifest, bundled into the main process
+report-server/  the server that keeps encrypted problem reports, and its container image
 src/
   main.tsx, router.tsx, RootLayout.tsx   start-up, routes, app chrome, route and start-up errors
   agent/        agent tool definitions, handlers, references, placement, compact diagram form
@@ -369,6 +370,7 @@ src/
   layout/       ELK layers, group grid and edge router, run in a worker
   library/      library page, live previews and their framing
   releases/     What’s new page from the GitHub releases
+  reports/      problem reports: report format, removal rules, encryption, proof of work, report dialogs
   share/        share links and the page that plays them
   player/       presentation page and the player stage that it shares with the web page export
   standalone/   entry of the standalone player that a web page export carries
@@ -755,7 +757,91 @@ frame.
 
 Failures go through `src/store/problem-store.ts`: `reportError` shows a toast with "More details", and `showProblem`
 opens the one problem dialog with the details to copy into a bug report. A problem shown with a key, such as the agent
-server state, changes or closes when its source calls `updateProblem`.
+server state, changes or closes when its source calls `updateProblem`. Each shown problem, each route error and each
+uncaught error also goes into the recent problems of the session, in memory only (`src/reports/recent-problems.ts`).
+
+### Problem reports
+
+A problem report leaves the device only when the user reads it and sends it or saves it. The design follows the debug
+logs of Signal Desktop and the problem reports of the Mullvad VPN app: no automatic upload, removal of private values,
+and a preview of the exact text.
+
+- The report is JSON from approved fields (`src/reports/report.ts`). The dialog shows this text, and the app sends
+  this text. Thus a new field is visible in the preview before it can leave the device.
+- `src/reports/redact.ts` first removes the values that the app knows: the texts of the open diagram, the texts of the
+  diagram that was open at the problem, and the names of the diagrams. On the desktop, it also removes the home folder, the diagrams and user data folders, the user name,
+  the host name, the agent token and the pending handoff codes. Then rules remove web and file addresses, paths,
+  email addresses, network addresses, ids and long tokens. `src/reports/build.test.ts` puts a marker into each kind of
+  value and fails when the report text still holds it.
+- A stack frame keeps only the function name, the file name, the line and the column. A V8 stack gives frames only
+  from its `at` lines, because a message line can have the form of a Gecko frame.
+- The app encrypts each report on the device with age (`age-encryption`) to the public keys of the build. Thus the
+  report server and its storage hold only ciphertext, and a leaked bucket shows no report. The file holds `DGREPORT`,
+  a version byte, the length of the JSON, the JSON, and the crash dump with gzip (`src/reports/bundle.ts`). Most bytes
+  of a minidump are zero: a 35 MB dump of the main process on Windows becomes about 0.2 MB.
+- The website sends from the page. Its `connect-src` gets the origin of the report server only in a build with one.
+  The desktop app sends from the main process with `net.fetch`, so the renderer policy stays `'self'`.
+- A build without `DIAGRAMS_REPORT_URL` shows no "Send report", and a build without keys can only copy the text. The
+  release and preview app workflows set both from their GitHub environment, `release` or `preview`. Thus a fork never
+  sends to the report server of this repository, and preview builds send to the preview report server.
+- The sent list keeps the delete token of each sent report: in `localStorage` (`dg:sent-reports`) on the website, and
+  in `reports/sent.json` of the user data folder on the desktop. Thus the user can delete a report before the server
+  deletes it.
+
+#### Crashes of the desktop app
+
+- The main process starts the Electron crash reporter with `uploadToServer: false`. Crashpad writes minidumps to
+  `Crashpad` in the user data folder, and nothing leaves the computer.
+- The main process records `render-process-gone` and `child-process-gone` with an abnormal reason in
+  `reports/crashes.json`. A dump within 60 seconds of an event belongs to that event.
+- A crash of the main process gives no event. Thus `reports/session.json` exists while the app runs. At the next
+  start, a dump from a session that did not end, and that no event explains, is a crash of the main process.
+- The app keeps the newest 5 dumps for 7 days and the events for 30 days, because a dump can be several megabytes.
+- `electron/reports/minidump.ts` reads only the exception and the module and offset of the crash. The problem reports
+  dialog shows them, and "Show the file" opens the dump for the own tools of the user.
+- A dump holds memory of the app, so it can hold diagram text. Thus a dump goes with a report only when the user turns
+  on the switch, which says so. The removal rules cannot change a dump.
+- After a crash of the window, the main process loads the window again, at most once a minute. The app then tells the
+  user once about the crash.
+
+#### Report server
+
+`report-server/` is a Hono app for Node.js. Vite bundles it into one file, and the image runs that file on a
+distroless Node.js base.
+
+- An S3-compatible bucket alone cannot take reports from the public: the app would need bucket credentials, which it
+  cannot keep secret, and a bucket has no rate limits. The server keeps the credentials and the limits.
+- Storage is a folder or an S3-compatible bucket (`aws4fetch` signs the requests). The server deletes reports after
+  `RETENTION_DAYS` itself, every hour, because some bucket services have no lifecycle rules.
+- The limits are in memory: reports and challenges per hour for each client address (an IPv6 /64 network counts as one
+  address), a daily count and size, 64 KB without a dump and 16 MB with one, and the age header. The server logs no
+  body and no address.
+- The client address is the socket address. `CLIENT_IP_HEADER` names a header that replaces the socket address, for a
+  proxy that does not add to `X-Forwarded-For`. `TRUST_PROXY_HOPS` moves the client address to the `X-Forwarded-For`
+  entry that the outermost proxy added. While the client address is in `TRUSTED_PROXIES`, for example the ranges of a
+  CDN, the server moves to the next entry on the left. A client that goes around the CDN can write any address into
+  `X-Forwarded-For`. Thus the server stops at the first address that is not in the ranges.
+- The receipt holds a random delete token. The server keeps only its SHA-256 hash.
+- CORS accepts only the origins in `ALLOWED_ORIGINS`. A request without an `Origin` header, from the desktop main
+  process, passes, because a browser always sends the header on these requests. `Origin: null` fails.
+- Proof of work slows down floods of reports. `POW_PROVIDER` is `none` (the default), `altcha` (PBKDF2, signed with
+  `POW_SECRET`) or `cap` (Cap format 1, SHA-256). Each challenge is for a size class, and each proof works once. These
+  two are maintained, open and self-hosted, and they track no behaviour. mCaptcha has no maintained release.
+- Cap format 2 uses HashWX in WebAssembly, and the website policy has no `wasm-unsafe-eval`. Thus the server issues
+  only format 1, and its bundle replaces the HashWX module of `capjs-core` (LGPL-3.0 WebAssembly) with
+  `report-server/src/no-hashwx.ts`. `capjs-core` needs esbuild and javascript-obfuscator only for its browser checks,
+  so the `overrides` of `pnpm-workspace.yaml` do not install them.
+- The browser solves in a worker. The main process solves Cap in slices of 12 ms, so that it stays responsive and the
+  user can cancel.
+- `report-server/src/conformance.test.ts` sends, deletes and replays reports with each provider and the client code of
+  the app. CI also runs it against the image, once with a folder and once with a SeaweedFS bucket.
+- The image has no cache mount and no `VOLUME`, so each container host can build and run it. The release workflow
+  publishes `ghcr.io/<repository>-report-server` with an SBOM (`scripts/report-server-sbom.ts`) and attestations.
+
+`scripts/open-report.ts` decrypts report files with an age identity file and writes `report.json` and `crash.dmp`. It
+treats each file as untrusted: it limits the size of the file and of the decompressed dump, writes fixed names,
+overwrites nothing and prints no control characters. `minidump-stackwalk` from rust-minidump, with the Electron symbols of the release, gives the stack of a
+dump.
 
 ### Undo
 
@@ -1075,11 +1161,16 @@ Firefox and Safari have no folder picker. There, the website can show a folder o
 result into the bundles as `BUILD`. The options give a self-hosted copy its own website address and release
 repository. A value that the build cannot use stops the build.
 
+`DIAGRAMS_REPORT_URL` and `DIAGRAMS_REPORT_KEYS` (age public keys, separated by commas) set the report server of
+[problem reports](#problem-reports). They have no default, also not in the official build, so that a fork without them
+sends no report. A report server needs keys, because the app sends only encrypted reports.
+
 ### Docker image
 
 `Dockerfile` builds the website image that `.github/workflows/docker-image.yml` publishes for each release.
 
-- The build stage takes `DIAGRAMS_WEBSITE` and `DIAGRAMS_REPOSITORY` as build arguments.
+- The build stage takes `DIAGRAMS_WEBSITE`, `DIAGRAMS_REPOSITORY`, `DIAGRAMS_REPORT_URL` and `DIAGRAMS_REPORT_KEYS`
+  as build arguments.
 - The build stage runs on the platform of the build computer, because `dist/` is the same for each platform. The final
   stage has no `RUN` step, so the arm64 image needs no emulation.
 - The final stage is distroless with static-web-server, a static binary. It has no shell and runs as `nonroot`.
@@ -1511,6 +1602,8 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
 - "Typecheck, lint and unit tests": static checks and Vitest, with browser tests in Chromium.
 - "Docker image": builds the website image and its SBOM, and scans both and the Dockerfile with Trivy. It runs the image
   with a read-only file system and no capabilities, and checks the content types, cache headers and compression.
+- "Report server image": builds and scans the report server image in the same way. It tests the bucket store against
+  SeaweedFS, and runs the conformance tests against the image with a folder (Cap) and with the bucket (ALTCHA).
 - "Web tests 1 of 4" to "4 of 4": the end-to-end tests, split with Playwright `--shard`. A 4-core runner gets 2
   workers; four shards give the 8 of a developer computer. The matrix sets the number (`strategy.job-total`).
 - "All checks": the required check of the "Protect main" ruleset, also for the desktop jobs. It fails unless each job
@@ -1583,12 +1676,13 @@ those texts.
 | `127.0.0.1:27419-27428` handoff                   | "Open in desktop app", to the app that received the code                                 | The diagram, loopback interface only                                        |
 | `127.0.0.1:27419-27428`, is the app running       | The Desktop app tab of "Connect an agent" opens                                          | No data, loopback interface only                                            |
 | `127.0.0.1:27419-27428/mcp`                       | While the desktop app runs and an agent calls it                                         | Diagrams and images, to the connected agent                                 |
+| The report server of the build                    | A build with `DIAGRAMS_REPORT_URL`: the user sends a report or deletes a sent one        | The encrypted report, its proof of work, the delete token. No diagram.      |
 
 - Share links carry the diagram in the fragment, which a browser never sends. Links and exports use no network.
 - The desktop renderer connects only to `'self'`, `data:` and `blob:`. `https:` links open in the system browser.
 - `src/content-security-policy.ts` holds the renderer policy. `electron/app-protocol.ts` sends it as a header. The
   website build puts it in a meta element at the start of the page (`scripts/content-security-policy.ts`), with
-  `connect-src` for `api.github.com` and the agent ports from the table. A meta element cannot set
+  `connect-src` for `api.github.com`, the agent ports and the report server from the table. A meta element cannot set
   `frame-ancestors`, so other sites can show the website in a frame, unless the host sets `frame-ancestors` in a
   header.
 - zod tests for eval when it creates an object schema, and the policy reports that test as a violation. App code
@@ -1613,7 +1707,8 @@ Some packages hold another program in compiled form, with its own licence: Graph
 (web worker and main), llhttp in undici (main). `EMBEDDED_SOFTWARE` names each one with its licence text. The build
 fails when a bundled module loads WebAssembly or holds a base64 WebAssembly module, and its package has no entry.
 
-The standalone player build writes `dist/standalone/licenses.txt`, which each web page export holds. The preload
+The report server build writes `report-server/dist/third-party-licenses.txt`, which the image holds next to the server
+bundle. The standalone player build writes `dist/standalone/licenses.txt`, which each web page export holds. The preload
 build writes no licence file, so `withoutPackages` fails the preload build when that build bundles a package. The SBOM check reads the
 licence files of the web, player and main builds.
 
