@@ -173,7 +173,7 @@ async function start() {
   }
   const watcher = watchDiagramFolder(files, (change) => rpc.emit('files.changed', change))
   const themes = createThemeFiles(files.folder)
-  const stopThemeWatcher = watchThemeFolder(themes, () => {
+  const themeWatcher = watchThemeFolder(themes, () => {
     void themes.list().then((sources) => rpc.emit('themes.changed', sources))
   })
   const linked = createLinkedFiles(path.join(userData, 'linked-files.json'))
@@ -426,6 +426,7 @@ async function start() {
     focused: () => {
       watcher.rescan()
       linkedWatcher.rescan()
+      void themeWatcher.rescan()
     },
     navigated: (state) => rpc.emit('window.navigation', state),
     visibilityChanged: (visible) => rpc.emit('window.visibility', { visible }),
@@ -436,7 +437,7 @@ async function start() {
     updates.stop()
     watcher.stop()
     linkedWatcher.stop()
-    stopThemeWatcher()
+    themeWatcher.stop()
     clearTimeout(retry)
     void server.stop()
   })
