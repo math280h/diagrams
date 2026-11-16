@@ -1,10 +1,13 @@
-import { ArrowUpRight } from 'lucide-react'
+import { ArrowUpRight, MessageSquareWarning } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { CommandBlock } from '@/components/CommandBlock'
+import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { desktopApi } from '@/desktop/bridge'
 import { BUG_REPORT_URL } from '@/desktop/constants'
 import { problemReport, type Problem } from '@/lib/problem-report'
+import { problemSubject } from '@/reports/recent-problems'
+import { openReport } from '@/reports/report-store'
 import { closeProblem, useProblemStore } from '@/store/problem-store'
 
 function websiteAbout() {
@@ -39,14 +42,26 @@ function ProblemContent({ problem }: { problem: Problem }) {
         <DialogDescription>{problem.message}</DialogDescription>
       </DialogHeader>
       <CommandBlock label="Details for a bug report" value={problemReport(about, problem)} />
-      <a
-        href={BUG_REPORT_URL}
-        target="_blank"
-        rel="noreferrer"
-        className="inline-flex items-center gap-1 self-start text-[13px] font-medium hover:underline"
-      >
-        Report a problem <ArrowUpRight aria-hidden className="size-3.5" />
-      </a>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <a
+          href={BUG_REPORT_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 text-[13px] font-medium hover:underline"
+        >
+          Open an issue on GitHub <ArrowUpRight aria-hidden className="size-3.5" />
+        </a>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            closeProblem()
+            openReport(problemSubject(problem))
+          }}
+        >
+          <MessageSquareWarning /> Report this problem
+        </Button>
+      </div>
     </>
   )
 }

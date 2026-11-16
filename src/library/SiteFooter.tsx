@@ -3,8 +3,12 @@ import { ArrowUpRight } from 'lucide-react'
 import { AppMark } from '@/components/AppMark'
 import { BUILD_RELEASES } from '@/desktop/build-config'
 import { REPOSITORY_URL } from '@/desktop/constants'
+import { openProblemReports } from '@/reports/report-store'
 
-type FooterLink = { label: string; to: '/releases' } | { label: string; href: string }
+type FooterLink =
+  | { label: string; to: '/releases' }
+  | { label: string; href: string }
+  | { label: string; onClick: () => void }
 
 const GROUPS: { title: string; links: FooterLink[] }[] = [
   {
@@ -12,6 +16,7 @@ const GROUPS: { title: string; links: FooterLink[] }[] = [
     links: [
       { label: 'What’s new', to: '/releases' },
       { label: 'Get the desktop app', href: BUILD_RELEASES.latestRelease },
+      { label: 'Problem reports', onClick: openProblemReports },
     ],
   },
   {
@@ -36,6 +41,13 @@ const GROUPS: { title: string; links: FooterLink[] }[] = [
 const LINK_CLASS = 'inline-flex items-center gap-1 hover:text-foreground hover:underline'
 
 function FooterItem({ link }: { link: FooterLink }) {
+  if ('onClick' in link) {
+    return (
+      <button type="button" className={LINK_CLASS} onClick={link.onClick}>
+        {link.label}
+      </button>
+    )
+  }
   if ('to' in link) {
     return (
       <Link to={link.to} className={LINK_CLASS}>

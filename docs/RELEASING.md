@@ -179,7 +179,9 @@ action.
 ## Set up the live website
 
 The Deploy the website workflow deploys the official live site. It reads its deploy token and the name of the website
-service from the `release` environment in GitHub, and it fails with a message when one is missing. The website is a
+service from the `release` environment in GitHub, and it fails with a message when one is missing. When the
+environment also names the service of the [report server](../README.md#report-server), the workflow deploys the report
+server first. The website is a
 static build (`pnpm build`), so a copy can run on any host; a fork that deploys another way can delete the workflow.
 
 A preview release does not deploy the live site.

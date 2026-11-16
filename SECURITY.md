@@ -16,6 +16,7 @@ fix is out, the advisory names you, unless you ask not to be named.
 | The website at [draw.thias.dev](https://draw.thias.dev) | Yes                |
 | The desktop app                                         | The latest version |
 | The Docker image                                        | The latest version |
+| The report server and its image                         | The latest version |
 | Older desktop versions and forks                        | No                 |
 
 ## Verify a download
@@ -50,6 +51,10 @@ attestation in the registry. Check an image with its version:
 gh attestation verify oci://ghcr.io/math280h/diagrams:0.2.0 --repo math280h/diagrams \
   --signer-workflow math280h/diagrams/.github/workflows/docker-image.yml --source-ref refs/tags/v0.2.0
 ```
+
+The report server image (`ghcr.io/math280h/diagrams-report-server`) has the same attestations: verify it with the
+same command and its own image name. Its SBOM lists the npm packages in the server bundle and the distroless Node.js
+base image.
 
 The SBOM attestation holds a CycloneDX 1.6 SBOM. It lists the npm packages in the website bundles with their licences
 and SHA-512 hashes, the programs, fonts and icon sets inside them, static-web-server and the distroless base image.
@@ -121,6 +126,9 @@ These parts handle data from outside the app:
 - **The `diagrams://` link** that the operating system passes to the desktop app.
 - **Diagram files**: JSON import, Mermaid import, and the files in `Documents/Diagrams` that other programs can change.
 - **The renderer of the desktop app**, which runs with context isolation and the Chromium sandbox.
+- **Problem reports.** The report text must hold no diagram text and no value that the removal rules name. The
+  report server accepts encrypted reports from anyone and must keep its limits, and a report file must not harm the
+  maintainer tool `scripts/open-report.ts`.
 - **Updates of the desktop app.** The app downloads updates over HTTPS from the published GitHub Releases of this
   repository and checks the SHA-512 of each download. The Windows and macOS builds are not signed yet, and the app
   does not check the OpenPGP signatures of the Linux packages. An attacker who controls the releases of this

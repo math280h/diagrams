@@ -9,6 +9,8 @@ export interface Problem {
   message: string
   /** Facts for a bug report, one per line, such as a state, a port or a stack line. They hold no secret. */
   facts: readonly string[]
+  /** The error that the app caught, for a problem report. */
+  error?: { name: string; stack: string }
 }
 
 /**
@@ -32,5 +34,10 @@ export function errorProblem(title: string, error: unknown, facts: readonly stri
     .map((line) => line.trim())
     .filter((line) => line.startsWith('at '))
     .slice(0, STACK_LINES)
-  return { title, message: error.message, facts: [...facts, `Error: ${error.name}`, ...stack] }
+  return {
+    title,
+    message: error.message,
+    facts: [...facts, `Error: ${error.name}`, ...stack],
+    error: { name: error.name, stack: error.stack ?? '' },
+  }
 }

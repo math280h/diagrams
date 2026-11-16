@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
+import { homedir, hostname, userInfo } from 'node:os'
 import path from 'node:path'
 import { app, dialog, session, shell } from 'electron'
 import electronUpdater from 'electron-updater'
@@ -46,6 +47,7 @@ import { configurePaths, diagramsFolder, iconPath, rendererFolder } from './path
 import { parseRenderArgs, RENDER_USAGE, RenderUsageError, type RenderArgs } from './render-args'
 import { isolateRender, runRender } from './render-cli'
 import { createRendererRpc } from './renderer-rpc'
+import { setupReports, startCrashReporter } from './reports/setup'
 import { createGitHubAuth, GITHUB_SIGN_IN_FILE, secretFile, type GitHubAuth } from './github-auth'
 import { createDiagramFiles } from './storage/diagram-files'
 import { committedText } from './storage/git'
@@ -158,6 +160,16 @@ function addLoginItemOnce(loginItem: LoginItem, settings: AppSettingsStore) {
   settings.update({ openAtLoginAdded: true })
 }
 
+function systemNames(): string[] {
+  let user = ''
+  try {
+    user = userInfo().username
+  } catch {
+    user = ''
+  }
+  return [homedir(), hostname(), user]
+}
+
 function restrictPermissions() {
   session.defaultSession.setPermissionRequestHandler((_contents, permission, callback) =>
     callback(ALLOWED_PERMISSIONS.has(permission)),
@@ -203,7 +215,7 @@ async function start() {
   }
   const watcher = watchDiagramFolder(files, (change) => rpc.emit('files.changed', change))
   const themes = createThemeFiles(files.folder)
-  const stopThemeWatcher = watchThemeFolder(themes, () => {
+  const themeWatcher = watchThemeFolder(themes, () => {
     void themes.list().then((sources) => rpc.emit('themes.changed', sources))
   })
   const linked = createLinkedFiles(path.join(userData, 'linked-files.json'))
@@ -331,9 +343,16 @@ async function start() {
     )
 
   const capture = createCaptureService()
+  const reports = setupReports({
+    userData,
+    sensitive: () => [...systemNames(), files.folder, userData, app.getPath('temp'), token, ...codes.pending()],
+    emitCrashes: (crashes) => rpc.emit('reports.crashes', crashes),
+    saveDialogParent: currentWindow,
+  })
   registerIpc(
     {
       ...capture.handlers,
+      ...reports,
       'files.list': async () => {
         const [inFolder, outside] = await Promise.all([files.readAll(), linked.readAll()])
         linkedWatcher.sync()
@@ -467,6 +486,7 @@ async function start() {
     focused: () => {
       watcher.rescan()
       linkedWatcher.rescan()
+      void themeWatcher.rescan()
     },
     navigated: (state) => rpc.emit('window.navigation', state),
     visibilityChanged: (visible) => rpc.emit('window.visibility', { visible }),
@@ -478,7 +498,7 @@ async function start() {
     updates.stop()
     watcher.stop()
     linkedWatcher.stop()
-    stopThemeWatcher()
+    themeWatcher.stop()
     clearTimeout(retry)
     void server.stop()
   })
@@ -516,6 +536,7 @@ if (renderArgs === 'invalid') {
       app.exit(code)
     })
 } else if (app.requestSingleInstanceLock()) {
+  startCrashReporter()
   registerProtocolClient()
   app.on('second-instance', (_event, argv) => {
     const link = findDeepLink(argv)

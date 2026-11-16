@@ -37,6 +37,11 @@ export function createHandoffCodes(options: { ttlMs: number; now?: () => number 
       prune()
       return codes.delete(code)
     },
+    /** Returns the codes that are not used or expired. */
+    pending(): string[] {
+      prune()
+      return [...codes.keys()]
+    },
   }
 }
 

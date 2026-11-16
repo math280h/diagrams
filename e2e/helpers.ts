@@ -1,5 +1,20 @@
+import { createServer } from 'node:net'
 import { expect, type Page } from '@playwright/test'
 import { AGENT_HOST, AGENT_PORTS } from '@/desktop/constants'
+
+/** Returns a TCP port on `127.0.0.1` that no program listens on. */
+export function freePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const probe = createServer()
+    probe.once('error', reject)
+    probe.listen(0, '127.0.0.1', () => {
+      const address = probe.address()
+      probe.close(() =>
+        typeof address === 'object' && address ? resolve(address.port) : reject(new Error('No free port.')),
+      )
+    })
+  })
+}
 
 /** Matches a request to the agent server of a desktop app on any agent port, for `page.route`. */
 export function isAgentUrl(url: URL) {

@@ -2,9 +2,9 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { createServer, type Server } from 'node:net'
 import path from 'node:path'
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client'
-import { _electron as electron, type ElectronApplication } from '@playwright/test'
+import type { ElectronApplication } from '@playwright/test'
 import { AGENT_ENDPOINT, AGENT_HOST, AGENT_PORTS, BUG_REPORT_URL } from '@/desktop/constants'
-import { agentUrl, expect, test } from './fixtures'
+import { agentUrl, expect, launchApp, test } from './fixtures'
 
 const RETRY_WAIT_MS = 15_000
 const MOVE_WAIT_MS = 30_000
@@ -67,13 +67,6 @@ function withoutFixedPort(env: Record<string, string>, folder?: string) {
     : rest
 }
 
-async function launch(env: Record<string, string>) {
-  const app = await electron.launch({ args: ['.'], env })
-  const window = await app.firstWindow()
-  await expect(window.locator('header').first()).toBeVisible({ timeout: 30_000 })
-  return { app, window }
-}
-
 async function closeAll(apps: ElectronApplication[]) {
   await Promise.all(apps.map((app) => app.close()))
 }
@@ -81,13 +74,13 @@ async function closeAll(apps: ElectronApplication[]) {
 test('runs two apps at once, each with its own agent port that it keeps', async ({ appEnv, dirs }) => {
   const apps: ElectronApplication[] = []
   try {
-    const first = await launch(withoutFixedPort(appEnv))
+    const first = await launchApp(withoutFixedPort(appEnv))
     apps.push(first.app)
     await expect.poll(() => agentAnswers(dirs.userData), { timeout: RETRY_WAIT_MS }).toBe(true)
 
     const other = path.join(path.dirname(dirs.userData), 'second-app')
     mkdirSync(other)
-    const second = await launch(withoutFixedPort(appEnv, other))
+    const second = await launchApp(withoutFixedPort(appEnv, other))
     apps.push(second.app)
     const otherUserData = path.join(other, 'user-data')
     await expect.poll(() => agentAnswers(otherUserData), { timeout: RETRY_WAIT_MS }).toBe(true)
@@ -105,7 +98,7 @@ test('keeps its port when another program lets it go within a few seconds', asyn
   const [taken] = await holdAgentPorts(1)
   mkdirSync(dirs.userData, { recursive: true })
   writeFileSync(path.join(dirs.userData, 'agent-port'), String(taken!.port))
-  const launching = launch(withoutFixedPort(appEnv))
+  const launching = launchApp(withoutFixedPort(appEnv))
   await taken!.release()
   const { app } = await launching
   try {
@@ -124,7 +117,7 @@ test('explains a taken port with details for a bug report, then moves to a free 
   const kept = held[0]!.port
   mkdirSync(dirs.userData, { recursive: true })
   writeFileSync(path.join(dirs.userData, 'agent-port'), String(kept))
-  const { app, window } = await launch(withoutFixedPort(appEnv))
+  const { app, window } = await launchApp(withoutFixedPort(appEnv))
   try {
     await expect(window.getByText('Agents cannot connect', { exact: true })).toBeVisible()
     await window.getByRole('button', { name: 'More details…' }).click()
@@ -133,7 +126,7 @@ test('explains a taken port with details for a bug report, then moves to a free 
     const details = problem.locator('code')
     await expect(details).toContainText(/^Diagrams \d+\.\d+\.\d+.*, (Windows|macOS|Linux) /)
     await expect(details).toContainText(`Agent server: port-in-use on port ${kept}`)
-    await expect(problem.getByRole('link', { name: 'Report a problem' })).toHaveAttribute('href', BUG_REPORT_URL)
+    await expect(problem.getByRole('link', { name: 'Open an issue on GitHub' })).toHaveAttribute('href', BUG_REPORT_URL)
     await expect(problem).toContainText('Other programs use all the agent ports', { timeout: MOVE_WAIT_MS })
 
     const free = held.at(-1)!

@@ -16,6 +16,10 @@ test('links the releases, the source code and the legal texts in the website foo
   await expect(link('MIT licence')).toHaveAttribute('href', `${REPOSITORY_URL}/blob/main/LICENSE`)
   await expect(link('Third-party licences')).toHaveAttribute('href', '/third-party-licenses.txt')
 
+  await footer.getByRole('button', { name: 'Problem reports' }).click()
+  await expect(page.getByRole('dialog', { name: 'Problem reports' })).toBeVisible()
+  await page.keyboard.press('Escape')
+
   await link('What’s new').click()
   await expect(page).toHaveURL(/#\/releases$/)
 })

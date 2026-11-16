@@ -17,11 +17,13 @@ import { isCaptureWindow, isDesktop } from './desktop/bridge'
 import { watchInstallPrompt } from './install/install-prompt'
 import { registerServiceWorker } from './install/register-service-worker'
 import { bootstrapStorage } from './persistence/bootstrap'
+import { captureUncaughtErrors } from './reports/recent-problems'
 import { router } from './router'
 import { StartupError } from './StartupError'
 import { startThemeFiles } from './themes/sources'
 
 async function startApp() {
+  captureUncaughtErrors()
   if (!isDesktop()) {
     watchInstallPrompt()
     if (import.meta.env.PROD) registerServiceWorker()

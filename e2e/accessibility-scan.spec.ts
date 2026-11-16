@@ -61,6 +61,18 @@ for (const colorScheme of ['dark', 'light'] as const) {
       await expectNoViolations(page, 'shortcuts')
       await page.keyboard.press('Escape')
 
+      await page.getByRole('button', { name: 'Command menu' }).click()
+      await page.getByPlaceholder('Search for an action').fill('Problem reports')
+      await page.getByRole('option', { name: 'Problem reports' }).click()
+      await expect(page.getByRole('dialog', { name: 'Problem reports' })).toBeVisible()
+      await expectNoViolations(page, 'problem reports')
+      await page.getByRole('button', { name: 'Describe a problem' }).click()
+      await expect(page.getByRole('dialog', { name: 'Describe a problem' }).getByLabel('Report text')).toContainText(
+        '"kind": "note"',
+      )
+      await expectNoViolations(page, 'report')
+      await page.keyboard.press('Escape')
+
       await page.getByRole('button', { name: 'Export' }).click()
       await page.getByRole('menuitem', { name: /^Image/ }).click()
       await expect(page.getByAltText('Export preview')).toBeVisible({ timeout: 15_000 })

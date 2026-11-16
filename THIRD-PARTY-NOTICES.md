@@ -8,7 +8,8 @@ this app, and this app is not a product of any of them.
 
 Each build also contains `third-party-licenses.txt` (and `third-party-licenses.main.txt` for the desktop main process)
 with the name, version, licence, source and full licence text of every bundled package. `pnpm build` and
-`pnpm desktop:build` write these files.
+`pnpm desktop:build` write these files. The report server image holds the same file for the server bundle, which
+`pnpm report-server:build` writes.
 
 ## Cloud architecture icons
 

@@ -28,6 +28,13 @@ describe('content security policy', () => {
     }
   })
 
+  it('lets the website connect to the origin of the report server of the build', () => {
+    expect(websitePolicy('https://reports.example.com/v1-base')['connect-src']?.at(-1)).toBe(
+      'https://reports.example.com',
+    )
+    expect(websitePolicy(null)['connect-src']).toEqual(websitePolicy()['connect-src'])
+  })
+
   it('puts the policy in a meta element before every other element of the head', () => {
     const plugin = contentSecurityPolicy()
     expect(plugin.apply).toBe('build')

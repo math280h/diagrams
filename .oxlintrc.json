@@ -79,6 +79,37 @@
       }
     },
     {
+      "files": [
+        "src/desktop/build-config.ts",
+        "src/lib/base64url.ts",
+        "src/lib/error-message.ts",
+        "src/reports/age-file.ts",
+        "src/reports/bundle.ts",
+        "src/reports/proof.ts",
+        "src/reports/protocol.ts",
+        "src/reports/report.ts"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "zod",
+                "message": "Import z from '../lib/zod.ts', which turns off the eval test that the Content-Security-Policy blocks."
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["@/*"],
+                "message": "Node scripts load this module, and Node does not resolve '@/'. Import with a relative path that ends in .ts."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "files": ["e2e/**/fixtures.ts"],
       "rules": {
         "react/rules-of-hooks": "off",

@@ -7,6 +7,8 @@ import { ConnectAgentDialog } from '@/desktop/ConnectAgentDialog'
 import { DesktopSettingsDialog } from '@/desktop/DesktopSettingsDialog'
 import { OpenInAppDialog } from '@/desktop/OpenInAppDialog'
 import { FolderAgentDialog } from '@/folder/FolderAgentDialog'
+import { ProblemReportsDialog } from '@/reports/ProblemReportsDialog'
+import { ReportDialog } from '@/reports/ReportDialog'
 import { useAppChrome } from './use-app-chrome'
 
 export function RootLayout() {
@@ -28,6 +30,8 @@ export function RootLayout() {
         </>
       )}
       <ProblemDialog />
+      <ProblemReportsDialog />
+      <ReportDialog />
       <Toaster theme={theme.base} position="top-center" offset={64} />
     </TooltipProvider>
   )

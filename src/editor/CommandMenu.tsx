@@ -24,6 +24,7 @@ import {
   LayoutGrid,
   LayoutList,
   Maximize,
+  MessageSquareWarning,
   Monitor,
   Moon,
   Pin,
@@ -44,6 +45,7 @@ import { quitApp } from '@/desktop/app-settings'
 import { canFollowFolder, canOpenFolder } from '@/folder/support'
 import { isDesktop } from '@/desktop/bridge'
 import { openDesktopSettings } from '@/desktop/settings-dialog'
+import { openProblemReports } from '@/reports/report-store'
 import { checkForUpdates } from '@/desktop/updates'
 import {
   CommandDialog,
@@ -315,6 +317,9 @@ export function CommandMenu() {
           ))}
           <CommandItem onSelect={run(() => setUi({ shortcutsOpen: true }))}>
             <Keyboard /> Keyboard shortcuts <CommandShortcut>?</CommandShortcut>
+          </CommandItem>
+          <CommandItem keywords={['report a problem', 'crash', 'bug', 'error']} onSelect={run(openProblemReports)}>
+            <MessageSquareWarning /> Problem reports
           </CommandItem>
           <CommandItem onSelect={run(() => void navigate({ to: '/' }))}>
             <Download className="rotate-180" /> Go to all diagrams

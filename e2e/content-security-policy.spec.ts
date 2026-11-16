@@ -1,27 +1,13 @@
 import { readFile, mkdtemp, rm } from 'node:fs/promises'
-import { createServer } from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 import { expect, test, type Page } from './fixtures'
 import { build, preview, type PreviewServer } from 'vite'
 import { BUILD_RELEASES } from '@/desktop/build-config'
 import { AGENT_PORTS } from '@/desktop/constants'
-import { copyTemplate, isAgentUrl } from './helpers'
+import { copyTemplate, freePort, isAgentUrl } from './helpers'
 
 const BUILD_TIMEOUT_MS = 180_000
-
-function freePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const probe = createServer()
-    probe.once('error', reject)
-    probe.listen(0, '127.0.0.1', () => {
-      const address = probe.address()
-      probe.close(() =>
-        typeof address === 'object' && address ? resolve(address.port) : reject(new Error('No free port.')),
-      )
-    })
-  })
-}
 
 let outDir = ''
 let server: PreviewServer | null = null
