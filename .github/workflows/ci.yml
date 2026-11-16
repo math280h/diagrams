@@ -19,26 +19,31 @@ jobs:
     permissions:
       pull-requests: read
     outputs:
+      checks: ${{ steps.files.outputs.checks }}
       app: ${{ steps.files.outputs.app }}
     steps:
-      - name: Find out if the pull request changes more than docs
+      - name: Find out if the pull request changes more than docs and image files
         id: files
         env:
           GH_TOKEN: ${{ github.token }}
           PULL_REQUEST: ${{ github.event.pull_request.number }}
           DOCS: '^(docs/|\.github/(CODEOWNERS|ISSUE_TEMPLATE/|PULL_REQUEST_TEMPLATE\.md|dependabot\.yml)|(CONTRIBUTING|SECURITY|CLAUDE|PRODUCT|DESIGN)\.md$)'
+          IMAGES: '^((report-server/)?Dockerfile|\.dockerignore|docker/.*)$'
         run: |
+          checks=true
           app=true
           if [ -n "$PULL_REQUEST" ]; then
             gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PULL_REQUEST/files" --jq '.[].filename' > "$RUNNER_TEMP/files"
-            grep -qvE "$DOCS" "$RUNNER_TEMP/files" || app=false
+            grep -vE "$DOCS" "$RUNNER_TEMP/files" > "$RUNNER_TEMP/checked" || checks=false
+            grep -qvE "$IMAGES" "$RUNNER_TEMP/checked" || app=false
           fi
+          echo "checks=$checks" >> "$GITHUB_OUTPUT"
           echo "app=$app" >> "$GITHUB_OUTPUT"
 
   static:
     name: Typecheck, lint and unit tests
     needs: changes
-    if: needs.changes.outputs.app == 'true'
+    if: needs.changes.outputs.checks == 'true'
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -219,7 +224,7 @@ jobs:
   docker:
     name: Docker image
     needs: changes
-    if: needs.changes.outputs.app == 'true'
+    if: needs.changes.outputs.checks == 'true'
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -283,7 +288,7 @@ jobs:
   report-server:
     name: Report server image
     needs: changes
-    if: needs.changes.outputs.app == 'true'
+    if: needs.changes.outputs.checks == 'true'
     runs-on: ubuntu-26.04
     env:
       ORIGIN: https://diagrams.example
