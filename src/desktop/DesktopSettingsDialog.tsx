@@ -11,7 +11,7 @@ import { addWebsite, removeWebsite, setShareWebsite, useAppSettings } from './ap
 import { BUILD, releaseLinks, repositoryName, websiteOrigin } from './build-config'
 import { cancelGitHubSignIn, signInToGitHub, signOutOfGitHub, useGitHubSignIn } from './github-sign-in'
 import { openProblemReports } from '@/reports/report-store'
-import { KeepRunningSetting } from './KeepRunningSetting'
+import { BackgroundSettings } from './BackgroundSettings'
 import { useDesktopSettingsDialog } from './settings-dialog'
 import { checkForUpdates, setUpdateRepository, useUpdateInfo } from './updates'
 
@@ -286,7 +286,7 @@ export function DesktopSettingsDialog() {
           <DialogDescription>These settings are for the app on this computer.</DialogDescription>
         </DialogHeader>
         <Websites />
-        <KeepRunningSetting />
+        <BackgroundSettings />
         <Updates />
         <Section
           title="Problem reports"

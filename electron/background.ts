@@ -24,9 +24,14 @@ function trayIcon(): NativeImage {
 }
 
 export interface Background {
-  /** Shows the tray icon while the setting is on, and removes it when the setting goes off. */
-  follow(keepRunning: boolean): void
-  /** Removes the Dock icon on macOS while the app runs without a window. A new window shows it again. */
+  /**
+   * Shows the tray icon or removes it.
+   *
+   * @param shown - True while the app can run without a window: it keeps running after the window closes, or it
+   *   started at sign-in.
+   */
+  follow(shown: boolean): void
+  /** Removes the Dock icon on macOS while the app runs without a window. A window that shows brings it back. */
   hideDock(): void
   /**
    * Tells the user that the app still runs without a window, and how to quit it.
@@ -42,12 +47,9 @@ export interface Background {
  */
 export function createBackground({ open, quit }: { open: () => void; quit: () => void }): Background {
   let tray: Tray | null = null
-  app.on('browser-window-created', (_event, window) => {
-    if (!window.webContents.isOffscreen()) void app.dock?.show()
-  })
   return {
-    follow(keepRunning) {
-      if (!keepRunning) {
+    follow(shown) {
+      if (!shown) {
         tray?.destroy()
         tray = null
         return
