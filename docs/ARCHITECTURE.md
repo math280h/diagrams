@@ -1176,8 +1176,8 @@ sends no report. A report server needs keys, because the app sends only encrypte
 - The final stage is distroless with static-web-server, a static binary. It has no shell and runs as `nonroot`.
 - The Node.js image has no corepack, so the build copies pnpm from the official pnpm image.
   `scripts/dockerfile.test.ts` keeps its version equal to `packageManager`.
-  - Dependabot bumps the pnpm image in a separate pull request, outside the `images` group. Dependabot cannot bump
-    `packageManager`, so add that change to the same pull request. Thus a failed pnpm bump does not block the other
+  - Dependabot bumps the pnpm image of both Dockerfiles in one pull request, in its own `pnpm` group. Dependabot cannot
+    bump `packageManager`, so add that change to the same pull request. Thus a failed pnpm bump does not block the other
     images.
 - The pnpm store is a cache mount. The website host accepts only the cache mount ID `s/<service ID>-<target>`, and
   no variable in it. Thus the ID holds the service ID of the website, and a fork that deploys to its own service
