@@ -1619,6 +1619,9 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
 - "Changed files": when a pull request changes only files that no check reads (`docs/`, `CONTRIBUTING.md`,
   `CODEOWNERS`, the issue and pull request templates, `dependabot.yml` and some other Markdown files), the jobs of the
   app do not run. `README.md`, `LICENSE` and the skills are not in the list, because tests read them.
+  - When a pull request changes only these files and the image files (the two Dockerfiles, `.dockerignore` and
+    `docker/`), only "Typecheck, lint and unit tests" and the two image jobs run. No web or desktop test reads the
+    image files.
 - "Typecheck, lint and unit tests": static checks and Vitest, with browser tests in Chromium.
 - "Docker image": builds the website image and its SBOM, and scans both and the Dockerfile with Trivy. It runs the image
   with a read-only file system and no capabilities, and checks the content types, cache headers and compression.
