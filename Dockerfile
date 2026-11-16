@@ -1,6 +1,6 @@
 FROM --platform=$BUILDPLATFORM ghcr.io/pnpm/pnpm:12.21.0@sha256:168feba88e6a1684c99a62cbf4fe361d4e683e2a6c920d3b0acde7e15a28b62d AS pnpm
 
-FROM ghcr.io/static-web-server/static-web-server:2.44.2@sha256:23be6c04d474979d6e738081918f5874f88502a150d1123fd000719101a0f05c AS server
+FROM ghcr.io/static-web-server/static-web-server:2.44.3@sha256:ccf2d666ffe5f8ef2ec96bc40f07757605998c04b78f7d8fdb98a584dd4f5717 AS server
 
 FROM --platform=$BUILDPLATFORM node:26-trixie-slim@sha256:5adad64f9a1fca2d51972caa65983634c8a774eb300d72b20f7f2a0f60368072 AS build
 COPY --from=pnpm /opt/pnpm /opt/pnpm
@@ -30,10 +30,10 @@ COPY --from=sbom-build /diagrams-website.cdx.json /
 FROM gcr.io/distroless/static-debian13:nonroot@sha256:aafe993665bf6200db38a02c11a9351e782a84b6a45e7f33b6695638c88e3931
 COPY --from=server /static-web-server /usr/local/bin/static-web-server
 ADD --chmod=644 --checksum=sha256:65a16095f3a6e1385664ecd3629d2442928aab83b55326e88ea953bcecd127f3 \
-    https://raw.githubusercontent.com/static-web-server/static-web-server/v2.44.2/LICENSE-MIT \
+    https://raw.githubusercontent.com/static-web-server/static-web-server/v2.44.3/LICENSE-MIT \
     /usr/share/doc/static-web-server/LICENSE-MIT
 ADD --chmod=644 --checksum=sha256:a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2 \
-    https://raw.githubusercontent.com/static-web-server/static-web-server/v2.44.2/LICENSE-APACHE \
+    https://raw.githubusercontent.com/static-web-server/static-web-server/v2.44.3/LICENSE-APACHE \
     /usr/share/doc/static-web-server/LICENSE-APACHE
 COPY docker/sws.toml /etc/static-web-server/sws.toml
 COPY --from=build /app/dist /srv
