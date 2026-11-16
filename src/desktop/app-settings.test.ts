@@ -4,7 +4,9 @@ import {
   loadAppSettings,
   quitApp,
   removeWebsite,
+  setAgentWindow,
   setKeepRunning,
+  setOpenAtLogin,
   setShareWebsite,
   useAppSettings,
 } from './app-settings'
@@ -15,6 +17,8 @@ vi.mock('@/store/problem-store', () => ({ reportError }))
 
 const SETTINGS: AppSettings = {
   keepRunning: true,
+  openAtLogin: 'on',
+  agentWindow: 'show',
   websites: ['https://draw.thias.dev'],
   shareWebsite: 'https://draw.thias.dev',
 }
@@ -47,6 +51,16 @@ describe('app settings', () => {
     expect(await setKeepRunning(false)).toBe(true)
     expect(request).toHaveBeenCalledWith('app.setKeepRunning', { keepRunning: false })
     expect(useAppSettings.getState().settings).toEqual({ ...SETTINGS, keepRunning: false })
+    expect(await setAgentWindow('hidden')).toBe(true)
+    expect(request).toHaveBeenLastCalledWith('app.setAgentWindow', { agentWindow: 'hidden' })
+    expect(useAppSettings.getState().settings?.agentWindow).toBe('hidden')
+  })
+
+  it('takes the sign-in state from the main process, which reads it from the system', async () => {
+    const request = installDesktop(async () => ({ ...SETTINGS, openAtLogin: 'approval' }))
+    expect(await setOpenAtLogin(true)).toBe(true)
+    expect(request).toHaveBeenCalledWith('app.setOpenAtLogin', { openAtLogin: true })
+    expect(useAppSettings.getState().settings?.openAtLogin).toBe('approval')
   })
 
   it('reports a change that the main process refuses, and keeps the old setting', async () => {
