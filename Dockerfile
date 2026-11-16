@@ -30,10 +30,10 @@ COPY --from=sbom-build /diagrams-website.cdx.json /
 FROM gcr.io/distroless/static-debian13:nonroot@sha256:aafe993665bf6200db38a02c11a9351e782a84b6a45e7f33b6695638c88e3931
 COPY --from=server /static-web-server /usr/local/bin/static-web-server
 ADD --chmod=644 --checksum=sha256:65a16095f3a6e1385664ecd3629d2442928aab83b55326e88ea953bcecd127f3 \
-    https://raw.githubusercontent.com/static-web-server/static-web-server/v2.44.2/LICENSE-MIT \
+    https://raw.githubusercontent.com/static-web-server/static-web-server/v2.44.3/LICENSE-MIT \
     /usr/share/doc/static-web-server/LICENSE-MIT
 ADD --chmod=644 --checksum=sha256:a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2 \
-    https://raw.githubusercontent.com/static-web-server/static-web-server/v2.44.2/LICENSE-APACHE \
+    https://raw.githubusercontent.com/static-web-server/static-web-server/v2.44.3/LICENSE-APACHE \
     /usr/share/doc/static-web-server/LICENSE-APACHE
 COPY docker/sws.toml /etc/static-web-server/sws.toml
 COPY --from=build /app/dist /srv
