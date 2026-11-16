@@ -115,7 +115,7 @@ describe('createBackground', () => {
     expect(background.notify()).toBe(false)
   })
 
-  it('uses the menu bar on macOS: a template icon, the menu on a click, and the Dock only with a window', async () => {
+  it('uses the menu bar on macOS: a template icon, the menu on a click, and no Dock icon without a window', async () => {
     const { createBackground } = await loadBackground('darwin')
     const background = createBackground({ open: vi.fn(), quit: vi.fn() })
     background.follow(true)
@@ -124,10 +124,6 @@ describe('createBackground', () => {
 
     background.hideDock()
     expect(electron.dock.hide).toHaveBeenCalledTimes(1)
-    const created = electron.appListeners.get('browser-window-created')!
-    created({}, { webContents: { isOffscreen: () => true } })
-    expect(electron.dock.show).not.toHaveBeenCalled()
-    created({}, { webContents: { isOffscreen: () => false } })
-    expect(electron.dock.show).toHaveBeenCalledTimes(1)
+    expect(electron.appListeners.has('browser-window-created')).toBe(false)
   })
 })

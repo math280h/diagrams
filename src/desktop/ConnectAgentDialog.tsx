@@ -12,7 +12,7 @@ import { showProblem } from '@/store/problem-store'
 import { movedPortNotice, resetAgentToken, useAgentHistory, useAgentStore } from './agent-store'
 import { CLAUDE_MARKETPLACE_NAME, CLAUDE_PLUGIN_NAME, CLAUDE_PLUGIN_TOKEN_KEY } from './constants'
 import type { AgentInfo } from './contract'
-import { KeepRunningSetting } from './KeepRunningSetting'
+import { BackgroundSettings } from './BackgroundSettings'
 
 function statusText(info: AgentInfo | null, lastCallAt: number | null) {
   if (!info || info.state === 'starting') return { tone: 'muted', text: 'Starting the agent server…' }
@@ -147,7 +147,7 @@ export function ConnectAgentDialog() {
             </TabsContent>
           </Tabs>
         )}
-        <KeepRunningSetting />
+        <BackgroundSettings />
         <div className="space-y-2 border-t pt-4 text-[13px] text-muted-foreground">
           <p>Set up one of the two, not both. With both, Claude Code connects to the app twice.</p>
           <p>

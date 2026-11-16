@@ -3,11 +3,13 @@ import { homedir, hostname, userInfo } from 'node:os'
 import path from 'node:path'
 import { app, dialog, session, shell } from 'electron'
 import electronUpdater from 'electron-updater'
+import { TOOL_DEFINITIONS } from '@/agent/tool-definitions'
 import {
   AGENT_ENDPOINT,
   AGENT_HOST,
   AGENT_PORT,
   AGENT_PORTS,
+  BACKGROUND_ARG,
   CLAUDE_MARKETPLACE_FOLDER,
   DEEP_LINK_SCHEME,
   DEV_ORIGINS,
@@ -25,12 +27,14 @@ import { createAgentServer, portIsFree, startAgentServer } from './agent/server'
 import { buildInstructions, bundledPluginConfig, bundledSkillFiles, loadSkills, registerSkills } from './agent/skills'
 import { createToken, loadToken } from './agent/token'
 import { appAbout } from './about'
+import { agentWindowShow, createIdleClose } from './agent-window'
 import { registerAppScheme, serveRenderer } from './app-protocol'
 import {
   addWebsite,
   APP_SETTINGS_FILE,
   createAppSettings,
   publicSettings,
+  type AppSettingsStore,
   removeWebsite,
   setShareWebsite,
 } from './app-settings'
@@ -38,6 +42,7 @@ import { createBackground } from './background'
 import { findDeepLink, isConnectAgentLink, parseReceiveLink } from './deep-link'
 import { createCaptureService } from './capture'
 import { registerIpc } from './ipc'
+import { createLoginItem, startedAtLogin, type LoginItem } from './login-item'
 import { configurePaths, diagramsFolder, iconPath, rendererFolder } from './paths'
 import { parseRenderArgs, RENDER_USAGE, RenderUsageError, type RenderArgs } from './render-args'
 import { isolateRender, runRender } from './render-cli'
@@ -53,9 +58,12 @@ import { checkUpdateRepository, repositoryFeed } from './update-repository'
 import { createUpdates, updatePolicy, type UpdatePolicy } from './updates'
 import { layoutGraphviz } from './graphviz'
 import {
+  closedUnseen,
+  closeUnseenWindow,
   createMainWindow,
   currentWindow,
   focusWindow,
+  prepareAgentWindow,
   prepareQuit,
   rendererOrigin,
   setWindowColors,
@@ -68,6 +76,7 @@ const FLUSH_TIMEOUT_MS = 3000
 const AGENT_CALL_LIMIT_MS = 10 * 60_000
 const HANDOFF_OPEN_TIMEOUT_MS = 20_000
 const AGENT_SETUP_OPEN_TIMEOUT_MS = 20_000
+const UNSEEN_AGENT_WINDOW_IDLE_MS = 5 * 60_000
 const PORT_RETRY_MS = 2000
 /** How long the app waits for its kept agent port, for example while an app that quits still holds it. */
 const PORT_GRACE_MS = 10_000
@@ -138,6 +147,19 @@ function currentUpdatePolicy(): UpdatePolicy {
   })
 }
 
+function addLoginItemOnce(loginItem: LoginItem, settings: AppSettingsStore) {
+  if (settings.get().openAtLoginAdded || !loginItem.installed()) {
+    loginItem.sync()
+    return
+  }
+  try {
+    loginItem.set(true)
+  } catch {
+    return
+  }
+  settings.update({ openAtLoginAdded: true })
+}
+
 function systemNames(): string[] {
   let user = ''
   try {
@@ -157,17 +179,24 @@ function restrictPermissions() {
 
 async function start() {
   restrictPermissions()
+  const atLogin = startedAtLogin(process.argv)
   const icon = iconPath()
   if (windowHidden) app.dock?.hide()
   else if (icon && process.platform === 'darwin') app.dock?.setIcon(icon)
   const userData = app.getPath('userData')
   const settings = createAppSettings(path.join(userData, APP_SETTINGS_FILE), BUILD.website)
+  const loginItem = createLoginItem()
+  addLoginItemOnce(loginItem, settings)
+  const appSettings = (stored = settings.get()) => publicSettings(stored, loginItem.state())
   const handoffOrigins = (): readonly string[] =>
     app.isPackaged ? settings.get().websites : [...settings.get().websites, ...DEV_ORIGINS]
   const updateRepository = () => (BUILD.repositoryEditable && settings.get().updateRepository) || BUILD.repository
   const background = windowHidden ? null : createBackground({ open: () => focusWindow(), quit: () => app.quit() })
-  background?.follow(settings.get().keepRunning)
+  const followBackground = () => background?.follow(settings.get().keepRunning || atLogin)
+  followBackground()
+  if (atLogin) background?.hideDock()
   app.on('window-all-closed', () => {
+    if (closedUnseen()) return
     if (!settings.get().keepRunning) {
       app.quit()
       return
@@ -175,6 +204,7 @@ async function start() {
     background?.hideDock()
     if (!settings.get().backgroundNoticeShown && background?.notify()) settings.update({ backgroundNoticeShown: true })
   })
+  const agentCalls = createIdleClose(UNSEEN_AGENT_WINDOW_IDLE_MS, closeUnseenWindow)
   let port =
     portFromEnvironment() ??
     (await loadAgentPort(userData, app.isPackaged ? AGENT_PORT : FIRST_DEV_AGENT_PORT, portIsFree))
@@ -249,9 +279,15 @@ async function start() {
       port: serverPort,
       instructions: buildInstructions(skills),
       token: () => token,
-      callTool: (tool, args, signal) => {
-        if (!currentWindow()) createMainWindow()
-        return rpc.call('agent.call', { tool, args }, { timeoutMs: AGENT_CALL_LIMIT_MS, signal })
+      callTool: async (tool, args, signal) => {
+        const end = agentCalls.start()
+        try {
+          const { readOnlyHint } = TOOL_DEFINITIONS[tool].annotations
+          await prepareAgentWindow(agentWindowShow(settings.get().agentWindow, readOnlyHint))
+          return await rpc.call('agent.call', { tool, args }, { timeoutMs: AGENT_CALL_LIMIT_MS, signal })
+        } finally {
+          end()
+        }
       },
       extend: (mcp) => registerSkills(mcp, skills),
       routes: (routes) =>
@@ -386,17 +422,22 @@ async function start() {
         await shell.openPath(await themes.ensureFolder())
         return null
       },
-      'app.settings': async () => publicSettings(settings.get()),
+      'app.settings': async () => appSettings(),
       'app.setKeepRunning': async ({ keepRunning }) => {
-        background?.follow(keepRunning)
-        return publicSettings(settings.update({ keepRunning }))
+        const next = settings.update({ keepRunning })
+        followBackground()
+        return appSettings(next)
       },
-      'app.addWebsite': async ({ website }) =>
-        publicSettings(settings.update((current) => addWebsite(current, website))),
+      'app.setOpenAtLogin': async ({ openAtLogin }) => {
+        loginItem.set(openAtLogin)
+        return appSettings()
+      },
+      'app.setAgentWindow': async ({ agentWindow }) => appSettings(settings.update({ agentWindow })),
+      'app.addWebsite': async ({ website }) => appSettings(settings.update((current) => addWebsite(current, website))),
       'app.removeWebsite': async ({ website }) =>
-        publicSettings(settings.update((current) => removeWebsite(current, website))),
+        appSettings(settings.update((current) => removeWebsite(current, website))),
       'app.setShareWebsite': async ({ website }) =>
-        publicSettings(settings.update((current) => setShareWebsite(current, website))),
+        appSettings(settings.update((current) => setShareWebsite(current, website))),
       'app.quit': async () => {
         setImmediate(() => app.quit())
         return null
@@ -453,6 +494,7 @@ async function start() {
 
   app.on('will-quit', () => {
     capture.dispose()
+    agentCalls.stop()
     updates.stop()
     watcher.stop()
     linkedWatcher.stop()
@@ -462,7 +504,7 @@ async function start() {
   })
 
   serveRenderer(rendererFolder())
-  createMainWindow()
+  if (!atLogin) createMainWindow()
   ready = true
   for (const url of pendingLinks.splice(0)) openLink(url)
 
@@ -499,14 +541,14 @@ if (renderArgs === 'invalid') {
   app.on('second-instance', (_event, argv) => {
     const link = findDeepLink(argv)
     if (link) openLink(link)
-    else focusWindow()
+    else if (!argv.includes(BACKGROUND_ARG)) focusWindow()
   })
   app.on('open-url', (event, url) => {
     event.preventDefault()
     openLink(url)
   })
-  app.on('activate', () => {
-    if (ready && !currentWindow()) createMainWindow()
+  app.on('activate', (_event, hasVisibleWindows) => {
+    if (ready && !hasVisibleWindows) focusWindow()
   })
   void app.whenReady().then(async () => {
     const link = findDeepLink(process.argv)
