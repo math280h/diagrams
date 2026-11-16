@@ -26,6 +26,8 @@ updates:
       images:
         patterns: ['*']
         exclude-patterns: ['pnpm/pnpm']
+      pnpm:
+        patterns: ['pnpm/pnpm']
 
   - package-ecosystem: npm
     directory: /
