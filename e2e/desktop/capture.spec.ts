@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import type { ElectronApplication } from '@playwright/test'
 import { decode } from 'modern-gif'
@@ -86,6 +86,7 @@ test('renders the image of an agent in the capture window and keeps the zoom of 
   app,
   window,
   mcp,
+  evidence,
 }) => {
   await callTool(mcp, 'create_diagram', { name: 'Captured', template: 'order-system' })
   await expect(window.locator('[data-editor-canvas] .react-flow__node').first()).toBeVisible()
@@ -93,6 +94,7 @@ test('renders the image of an agent in the capture window and keeps the zoom of 
 
   const result = await callTool(mcp, 'render_image', { maxSizePx: 800 })
   const data = result.content.find((block) => block.type === 'image')?.data
+  if (data) evidence.keep('agent-image.png', Buffer.from(data, 'base64'))
   expect(result.json.width).toBe(800)
 
   const windows = await app.evaluate(({ BrowserWindow }) =>
@@ -145,6 +147,7 @@ test('opens a new capture window after the old one stops', async ({ app, window,
 
 test('gives the pixels of the image in a video frame, within 2 in each channel, also for a small image', async ({
   window: page,
+  evidence,
 }) => {
   const stage = sampleStage()
   const result = await page.evaluate(async (spec) => {
@@ -165,9 +168,17 @@ test('gives the pixels of the image in a video frame, within 2 in each channel, 
         pixels: context.getImageData(0, 0, bitmap.width, bitmap.height).data,
       }
     }
+    const toBase64 = (bytes: Uint8Array) => btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(''))
+    const framePng = async (frame: { pixels: Uint8Array; width: number; height: number }) => {
+      const canvas = new OffscreenCanvas(frame.width, frame.height)
+      const data = new ImageData(new Uint8ClampedArray(frame.pixels), frame.width, frame.height)
+      canvas.getContext('2d')!.putImageData(data, 0, 0)
+      return toBase64(new Uint8Array(await (await canvas.convertToBlob({ type: 'image/png' })).arrayBuffer()))
+    }
     const compare = async (scale: number) => {
       const request = { sessionId, moment: { ambientMs: 0, timeMs: 0 }, scale, transparent: false }
-      const image = await decodePng((await desktop.request('capture.image', request)).png)
+      const { png } = await desktop.request('capture.image', request)
+      const image = await decodePng(png)
       const frame = await desktop.request('capture.frame', request)
       let maxDelta = 0
       const colors = new Set<number>()
@@ -178,17 +189,24 @@ test('gives the pixels of the image in a video frame, within 2 in each channel, 
         colors.add((image.pixels[i]! << 16) | (image.pixels[i + 1]! << 8) | image.pixels[i + 2]!)
       }
       return {
+        scale,
         image: [image.width, image.height],
         frame: [frame.width, frame.height],
         expected: [Math.round(spec.width * scale), Math.round(spec.height * scale)],
         maxDelta,
         colors: colors.size,
+        imagePng: toBase64(new Uint8Array(png)),
+        framePng: await framePng(frame),
       }
     }
     const results = [await compare(0.5), await compare(0.2), await compare(0.02)]
     await desktop.request('capture.close', { sessionId })
     return results
   }, stage)
+  for (const { scale, imagePng, framePng } of result) {
+    evidence.keep(`scale-${scale}-image.png`, Buffer.from(imagePng, 'base64'))
+    evidence.keep(`scale-${scale}-frame.png`, Buffer.from(framePng, 'base64'))
+  }
   for (const capture of result) {
     expect(capture.image).toEqual(capture.expected)
     expect(capture.frame).toEqual(capture.expected)
@@ -225,7 +243,7 @@ test('draws text without subpixel colour fringes', async ({ window: page }) => {
   expect(fringes).toBeLessThanOrEqual(MAX_COLOUR_PAIRS)
 })
 
-test('gives each video frame the pixels of its own moment', async ({ window: page }, testInfo) => {
+test('gives each video frame the pixels of its own moment', async ({ window: page, evidence }) => {
   const stage = flowStage()
   const result = await page.evaluate(
     async ({ spec, durationMs, count }) => {
@@ -259,37 +277,38 @@ test('gives each video frame the pixels of its own moment', async ({ window: pag
       const moments = Array.from({ length: count }, (_, index) =>
         Math.round((((index * 5) % count) / count) * durationMs),
       )
+      const toBase64 = (bytes: Uint8Array) => btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(''))
       const stills: Uint8ClampedArray[] = []
-      for (const timeMs of moments)
-        stills.push(await decodePng((await desktop.request('capture.image', request(timeMs))).png))
+      const files: { name: string; png: string }[] = []
+      for (const [index, timeMs] of moments.entries()) {
+        const { png } = await desktop.request('capture.image', request(timeMs))
+        stills.push(await decodePng(png))
+        files.push({ name: `moment-${index}-still.png`, png: toBase64(new Uint8Array(png)) })
+      }
       const toPng = async (pixels: ArrayLike<number>, width: number, height: number) => {
         const canvas = new OffscreenCanvas(width, height)
         canvas.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(pixels), width, height), 0, 0)
-        const bytes = new Uint8Array(await (await canvas.convertToBlob({ type: 'image/png' })).arrayBuffer())
-        return btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(''))
+        return toBase64(new Uint8Array(await (await canvas.convertToBlob({ type: 'image/png' })).arrayBuffer()))
       }
       const changes = stills.slice(1).map((still, index) => differing(still, stills[index]!))
       const closest: number[] = []
-      const mismatches: { name: string; png: string }[] = []
       for (const index of moments.keys()) {
         const frame = await desktop.request('capture.frame', request(moments[index]!))
         const distances = stills.map((still) => differing(frame.pixels, still))
         const nearest = distances.indexOf(Math.min(...distances))
         closest.push(nearest)
         if (nearest === index) continue
-        const png = (pixels: ArrayLike<number>) => toPng(pixels, frame.width, frame.height)
-        mismatches.push(
-          { name: `moment-${index}-frame.png`, png: await png(frame.pixels) },
-          { name: `moment-${index}-still.png`, png: await png(stills[index]!) },
-          { name: `moment-${index}-closest-still-${nearest}.png`, png: await png(stills[nearest]!) },
-        )
+        files.push({
+          name: `moment-${index}-frame-closest-to-${nearest}.png`,
+          png: await toPng(frame.pixels, frame.width, frame.height),
+        })
       }
       await desktop.request('capture.close', { sessionId })
-      return { changes, closest, mismatches }
+      return { changes, closest, files }
     },
     { ...stage, count: MOMENTS },
   )
-  for (const { name, png } of result.mismatches) writeFileSync(testInfo.outputPath(name), Buffer.from(png, 'base64'))
+  for (const { name, png } of result.files) evidence.keep(name, Buffer.from(png, 'base64'))
   expect(Math.min(...result.changes)).toBeGreaterThan(0)
   expect(result.closest).toEqual(result.closest.map((_, index) => index))
 })
@@ -298,6 +317,7 @@ test('exports a transparent PNG and a GIF from the export dialog in the capture 
   app,
   window,
   dirs,
+  evidence,
 }) => {
   test.setTimeout(180_000)
   await copyTemplate(window, 'Order system')
@@ -313,6 +333,7 @@ test('exports a transparent PNG and a GIF from the export dialog in the capture 
     BrowserWindow.getAllWindows().map((w) => w.webContents.getURL()),
   )
   expect(urls.some((url) => url.endsWith(CAPTURE_HASH))).toBe(true)
+  evidence.keep('order-system.png', readFileSync(png))
 
   const image = await window.evaluate(async (base64) => {
     const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
@@ -339,7 +360,9 @@ test('exports a transparent PNG and a GIF from the export dialog in the capture 
   await saveNextDownload(app, gif)
   await window.getByRole('button', { name: 'Export GIF' }).click()
   await expect.poll(() => downloadState(app), { timeout: 120_000 }).toBe('completed')
+  const gifBytes = readFileSync(gif)
+  evidence.keep('order-system.gif', gifBytes)
   // modern-gif ignores the byte offset of a typed array, and readFileSync can give a small file inside a shared buffer.
-  const frames = decode(new Uint8Array(readFileSync(gif))).frames
+  const frames = decode(new Uint8Array(gifBytes)).frames
   expect(frames.length).toBeGreaterThan(5)
 })
