@@ -1654,7 +1654,10 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
     reviewer can install the app from the installers of a pull request before the merge.
   - A failed desktop end-to-end test writes its evidence to its test results (`e2e/desktop/fixtures.ts`). The
     evidence is the output of each app process with Chromium logs (`ELECTRON_ENABLE_LOGGING`), `crashes.json`, the
-    crash dumps, the GPU state and the checked images. The job uploads the test results only after a failure.
+    exception and location of each crash dump, the GPU state and the checked images. The job uploads the test results
+    only after a failure.
+  - A dump holds the memory of a process, and anyone can download the artifacts of a public repository. Thus the
+    evidence holds the dumps themselves only with `E2E_KEEP_CRASH_DUMPS=1`, for a local run.
   - On `macos-latest`, some runners have more cores, and Playwright then uses 2 workers. With two apps on the virtual
     GPU, the GPU device is often lost and the GPU process restarts. A canvas in a page then reads transparent pixels,
     so the capture tests decode and compare pixels in the main process of the app (`e2e/desktop/pixels.ts`).

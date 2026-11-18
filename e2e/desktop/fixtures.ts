@@ -25,6 +25,7 @@ import {
 import electronPath from 'electron'
 import { AGENT_ENDPOINT, AGENT_HOST } from '@/desktop/constants'
 import { createDiagram } from '@/model/defaults'
+import { readMinidump } from '../../electron/reports/minidump'
 
 export { expect }
 
@@ -33,6 +34,8 @@ const CRASH_LOG_FILE = path.join('reports', 'crashes.json')
 const MAX_DUMP_FOLDER_DEPTH = 3
 const OUTPUT_CLOSE_WAIT_MS = 5000
 const GPU_STATE_WAIT_MS = 5000
+/** True when `E2E_KEEP_CRASH_DUMPS` is `1`. The evidence then holds the crash dumps, not only their summaries. */
+const KEEP_CRASH_DUMPS = process.env.E2E_KEEP_CRASH_DUMPS === '1'
 
 export function agentUrl(port: number): string {
   return `http://${AGENT_HOST}:${port}`
@@ -107,9 +110,16 @@ export class Evidence {
     for (const [name, data] of this.files) writeFileSync(testInfo.outputPath(name), data)
     const crashLog = path.join(userData, CRASH_LOG_FILE)
     if (existsSync(crashLog)) copyFileSync(crashLog, testInfo.outputPath('crashes.json'))
-    for (const dump of crashDumps(userData, { unfinished: true })) {
-      copyFileSync(dump, testInfo.outputPath(path.basename(dump)))
-    }
+    const dumps = crashDumps(userData, { unfinished: true })
+    if (dumps.length === 0) return
+    const summaries = dumps.map((dump) => ({
+      file: path.basename(dump),
+      bytes: statSync(dump).size,
+      ...readMinidump(readFileSync(dump)),
+    }))
+    writeFileSync(testInfo.outputPath('crash-dumps.json'), JSON.stringify(summaries, null, 2))
+    if (!KEEP_CRASH_DUMPS) return
+    for (const dump of dumps) copyFileSync(dump, testInfo.outputPath(path.basename(dump)))
   }
 }
 
