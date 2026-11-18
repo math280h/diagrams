@@ -32,6 +32,7 @@ const CRASH_DUMPS_FOLDER = 'Crashpad'
 const CRASH_LOG_FILE = path.join('reports', 'crashes.json')
 const MAX_DUMP_FOLDER_DEPTH = 3
 const OUTPUT_CLOSE_WAIT_MS = 5000
+const GPU_STATE_WAIT_MS = 5000
 
 export function agentUrl(port: number): string {
   return `http://${AGENT_HOST}:${port}`
@@ -82,13 +83,17 @@ export class Evidence {
     this.files.set(name, data)
   }
 
+  /** Keeps the GPU state of a running app. It gives up after a short time, because an app that hangs cannot answer. */
   async keepGpuState(app: ElectronApplication) {
-    const state = await app
-      .evaluate(async ({ app: electronApp }) => ({
-        featureStatus: electronApp.getGPUFeatureStatus(),
-        info: await electronApp.getGPUInfo('basic'),
-      }))
-      .catch((error: unknown) => ({ error: String(error) }))
+    const state = await Promise.race([
+      app
+        .evaluate(async ({ app: electronApp }) => ({
+          featureStatus: electronApp.getGPUFeatureStatus(),
+          info: await electronApp.getGPUInfo('basic'),
+        }))
+        .catch((error: unknown) => ({ error: String(error) })),
+      delay(GPU_STATE_WAIT_MS, { error: 'The app did not give its GPU state in time.' }, { ref: false }),
+    ])
     this.keep('gpu.json', JSON.stringify(state, null, 2))
   }
 

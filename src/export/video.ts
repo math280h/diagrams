@@ -54,9 +54,11 @@ export async function recordStage(session: StageSession, options: RecordOptions)
   const target = document.createElement('canvas')
   target.width = width
   target.height = height
-  const context = target.getContext('2d')!
 
   if (options.format === 'gif') {
+    // With willReadFrequently, Chromium keeps the canvas in CPU memory. A canvas in GPU memory loses its pixels when the
+    // GPU process restarts, and getImageData then gives transparent pixels.
+    const context = target.getContext('2d', { willReadFrequently: true })!
     const [{ Encoder }, { default: workerUrl }] = await Promise.all([
       import('modern-gif'),
       import('modern-gif/worker?url'),
@@ -69,6 +71,7 @@ export async function recordStage(session: StageSession, options: RecordOptions)
     return encoder.flush('blob')
   }
 
+  const context = target.getContext('2d')!
   const mediabunny = await import('mediabunny')
   const format = options.format === 'mp4' ? new mediabunny.Mp4OutputFormat() : new mediabunny.WebMOutputFormat()
   const codec = await mediabunny.getFirstEncodableVideoCodec(format.getSupportedVideoCodecs(), { width, height })
