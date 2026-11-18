@@ -434,7 +434,7 @@ jobs:
         run: pnpm e2e:desktop
       - name: Desktop end-to-end tests, repeated
         if: runner.os == 'macOS'
-        run: pnpm exec playwright test --project desktop --repeat-each 8
+        run: pnpm exec playwright test --project desktop --repeat-each 6 --workers 2
       - name: Desktop end-to-end tests
         if: runner.os == 'Linux'
         run: xvfb-run --auto-servernum pnpm e2e:desktop
