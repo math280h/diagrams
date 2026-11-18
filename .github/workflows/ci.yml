@@ -396,7 +396,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.app == 'true'
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         include:
           - os: windows-latest
@@ -430,8 +430,11 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Desktop end-to-end tests
-        if: runner.os != 'Linux'
+        if: runner.os == 'Windows'
         run: pnpm e2e:desktop
+      - name: Desktop end-to-end tests, repeated
+        if: runner.os == 'macOS'
+        run: pnpm exec playwright test e2e/desktop/capture.spec.ts e2e/desktop/reports.spec.ts e2e/desktop/app.spec.ts --project desktop --repeat-each 6 --workers 2
       - name: Desktop end-to-end tests
         if: runner.os == 'Linux'
         run: xvfb-run --auto-servernum pnpm e2e:desktop
