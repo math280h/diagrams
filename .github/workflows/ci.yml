@@ -396,7 +396,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.app == 'true'
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         include:
           - os: windows-latest

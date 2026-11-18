@@ -47,6 +47,7 @@ function frameHash(frame: NativeImage, width: number, height: number) {
   return createHash('sha1').update(crop.toBitmap()).digest('hex').slice(0, 10)
 }
 let tracePlan: CapturePlan | null = null
+let unmarkedPaints = 0
 function traceWindow(contents: WebContents) {
   contents.on('paint', (_event, dirty, frame) => {
     const { width, height } = frame.getSize()
@@ -55,6 +56,12 @@ function traceWindow(contents: WebContents) {
         ? frame.crop({ x: 0, y: height - MARKER_PX, width: MARKER_PX * 2, height: MARKER_PX }).toBitmap()
         : null
     const marker = squares ? readMarker(squares) : null
+    if (marker === null) {
+      unmarkedPaints += 1
+      return
+    }
+    if (unmarkedPaints > 0) trace(`${unmarkedPaints} paints without a marker`)
+    unmarkedPaints = 0
     const hash = tracePlan ? frameHash(frame, tracePlan.stageWidth, tracePlan.stageHeight) : '-'
     const corner = frame.crop({ x: 0, y: 0, width: 1, height: 1 }).toBitmap()
     trace(
