@@ -9,10 +9,7 @@ export interface Pixels {
   data: Uint8Array | Uint8ClampedArray
 }
 
-/**
- * Decodes a PNG in the main process of the app. The main process decodes on the CPU, so a restart of the GPU process
- * cannot change the result, as it can for a canvas in a page.
- */
+/** Decodes a PNG on the CPU, in the main process of the app. */
 export async function decodePng(app: ElectronApplication, png: Uint8Array): Promise<Pixels> {
   const decoded = await app.evaluate(({ nativeImage }, base64) => {
     const image = nativeImage.createFromBuffer(Buffer.from(base64, 'base64'))
@@ -21,7 +18,6 @@ export async function decodePng(app: ElectronApplication, png: Uint8Array): Prom
   return { width: decoded.width, height: decoded.height, data: bgraToRgba(Buffer.from(decoded.bgra, 'base64')) }
 }
 
-/** Encodes pixels as a PNG in the main process of the app. */
 export async function encodePng(app: ElectronApplication, pixels: Pixels): Promise<Buffer> {
   const bgra = Buffer.alloc(pixels.data.length)
   for (let i = 0; i < pixels.data.length; i += 4) {
@@ -80,7 +76,6 @@ export async function captureImage(page: Page, request: CaptureRequest): Promise
   return Buffer.from(base64, 'base64')
 }
 
-/** Returns the pixels of a capture video frame. */
 export async function captureFrame(page: Page, request: CaptureRequest): Promise<Pixels> {
   const frame = await page.evaluate(async (input) => {
     const { desktop } = window as unknown as { desktop: DesktopApi }

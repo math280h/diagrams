@@ -14,8 +14,7 @@ import { rendererOrigin } from './window'
 const IDLE_CLOSE_MS = 30_000
 const CALL_TIMEOUT_MS = 120_000
 /**
- * An image capture renders its moment again and takes the new frame until two frames are the same, but not more than
- * this number of frames.
+ * An image capture renders its moment until two frames in a row are the same, but not more than this number of times.
  */
 const MAX_IMAGE_FRAMES = 10
 const IMAGE_FRAME_GAP_MS = 30
@@ -41,8 +40,8 @@ function showsRender(frame: NativeImage, plan: CapturePlan, marker: number) {
 }
 
 /**
- * Resolves with the first frame that `accept` takes. It first asks the window to send its last frame again, because that
- * frame can arrive before this function listens.
+ * Resolves with the first frame that `accept` takes. That frame can be the last frame that the window sent before the
+ * call.
  */
 function nextFrame(contents: WebContents, accept: (frame: NativeImage) => boolean): Promise<NativeImage> {
   return new Promise((resolve, reject) => {

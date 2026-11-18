@@ -797,8 +797,8 @@ and a preview of the exact text.
 - A crash of the main process gives no event. Thus `reports/session.json` exists while the app runs. At the next
   start, a dump from a session that did not end, and that no event explains, is a crash of the main process. An event
   of a later session cannot take that dump, because the GPU process can stop within 60 seconds of the next start.
-- Each new crash gets its own notice, so a later crash cannot replace the notice of an earlier one. When one list has
-  more new crashes, the notice tells about the crash of the main process first, because that crash closed the app.
+- Each new crash gets its own notice, so a later crash cannot replace the notice of an earlier one. When a list has
+  more than one new crash, the notice is about the main process crash, because that crash closed the app.
 - The app keeps the newest 5 dumps for 7 days and the events for 30 days, because a dump can be several megabytes.
 - `electron/reports/minidump.ts` reads only the exception and the module and offset of the crash. The problem reports
   dialog shows them, and "Show the file" opens the dump for the own tools of the user.
@@ -897,7 +897,8 @@ The browser frame rate has no effect.
 
 - CSS transitions are off on the export stage (`data-export`): they run on wall-clock time.
 - The GIF encoder reads each frame from a canvas with `willReadFrequently`, which Chromium keeps in CPU memory. A
-  canvas in GPU memory gives transparent pixels after a restart of the GPU process, so a GIF frame could be blank.
+  canvas in GPU memory gives transparent pixels after a restart of the GPU process, and the GIF then gets a blank
+  frame.
 - The canvas grid is off in exports unless the user turns it on: it is an editing aid.
 - The animation tab shows a preview strip of five export-stage frames (the real camera path and framing) and, during a render, the time left from the
   frame times so far.
@@ -1651,9 +1652,9 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
     installer and uninstaller with 7-Zip.
   - Each job uploads its installers as the workflow artifact `installers-<runner>`. GitHub keeps them for 7 days. A
     reviewer can install the app from the installers of a pull request before the merge.
-  - A failed desktop end-to-end test writes its evidence to its test results (`e2e/desktop/fixtures.ts`): the output
-    of each app process with Chromium logs (`ELECTRON_ENABLE_LOGGING`), `crashes.json`, the crash dumps, the GPU state
-    and the images that the test checked. The job uploads the test results only after a failure.
+  - A failed desktop end-to-end test writes its evidence to its test results (`e2e/desktop/fixtures.ts`). The
+    evidence is the output of each app process with Chromium logs (`ELECTRON_ENABLE_LOGGING`), `crashes.json`, the
+    crash dumps, the GPU state and the checked images. The job uploads the test results only after a failure.
   - On `macos-latest`, some runners have more cores, and Playwright then uses 2 workers. With two apps on the virtual
     GPU, the GPU device is often lost and the GPU process restarts. A canvas in a page then reads transparent pixels,
     so the capture tests decode and compare pixels in the main process of the app (`e2e/desktop/pixels.ts`).

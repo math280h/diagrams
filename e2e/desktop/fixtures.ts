@@ -83,7 +83,7 @@ export class Evidence {
     this.files.set(name, data)
   }
 
-  /** Keeps the GPU state of a running app. It gives up after a short time, because an app that hangs cannot answer. */
+  /** Keeps the GPU state of a running app, or an error when the app does not answer within {@link GPU_STATE_WAIT_MS}. */
   async keepGpuState(app: ElectronApplication) {
     const state = await Promise.race([
       app
@@ -97,7 +97,10 @@ export class Evidence {
     this.keep('gpu.json', JSON.stringify(state, null, 2))
   }
 
-  /** Writes the evidence to the test results. It waits a short time for the last output of the app processes. */
+  /**
+   * Writes the evidence to the test results. It waits up to {@link OUTPUT_CLOSE_WAIT_MS} for the last output of the app
+   * processes.
+   */
   async write(testInfo: TestInfo, userData: string) {
     await Promise.race([Promise.all(this.outputsClosed), delay(OUTPUT_CLOSE_WAIT_MS, undefined, { ref: false })])
     this.outputs.forEach((output, index) => writeFileSync(testInfo.outputPath(`app-${index + 1}.log`), output.join('')))

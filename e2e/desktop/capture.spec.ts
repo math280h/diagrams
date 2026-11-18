@@ -25,8 +25,7 @@ const PADDING_PX = 48
 const MOMENTS = 12
 /** The largest number of neighbour pixel pairs with opposite red and blue shifts in a capture. */
 const MAX_COLOUR_PAIRS = 50
-/** A blank GIF frame has one colour. A frame of a diagram has many. */
-const MIN_GIF_FRAME_COLOURS = 10
+const BLANK_FRAME_MAX_COLOURS = 10
 
 /** Saves the next download of the app to a file, without the save dialog. */
 function saveNextDownload(app: ElectronApplication, file: string) {
@@ -276,5 +275,5 @@ test('exports a transparent PNG and a GIF from the export dialog in the capture 
   const frames = decodeFrames(new Uint8Array(gifBytes))
   expect(frames.length).toBeGreaterThan(5)
   const colours = frames.map((frame) => colourCount({ width: frame.width, height: frame.height, data: frame.data }))
-  expect(Math.min(...colours), 'the fewest colours in a frame').toBeGreaterThan(MIN_GIF_FRAME_COLOURS)
+  expect(Math.min(...colours), 'the fewest colours in a frame').toBeGreaterThan(BLANK_FRAME_MAX_COLOURS)
 })
