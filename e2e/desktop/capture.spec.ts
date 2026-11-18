@@ -1,9 +1,8 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import type { ElectronApplication } from '@playwright/test'
-import { decode } from 'modern-gif'
+import { decodeFrames } from 'modern-gif'
 import { CAPTURE_HASH } from '@/desktop/constants'
-import type { DesktopApi } from '@/desktop/contract'
 import { compileFlow } from '@/engine/flow/compile'
 import { diagramBounds } from '@/export/bounds'
 import { DIAGRAM_VERSION, type Diagram } from '@/model/schema'
@@ -11,11 +10,23 @@ import { fromDiagram } from '@/persistence/serialize'
 import { builtInTheme } from '@/themes/built-in'
 import { copyTemplate } from '../helpers'
 import { callTool, expect, test } from './fixtures'
+import {
+  captureFrame,
+  captureImage,
+  closeStage,
+  colourCount,
+  decodePng,
+  encodePng,
+  openStage,
+  type Pixels,
+} from './pixels'
 
 const PADDING_PX = 48
 const MOMENTS = 12
 /** The largest number of neighbour pixel pairs with opposite red and blue shifts in a capture. */
 const MAX_COLOUR_PAIRS = 50
+/** A blank GIF frame has one colour. A frame of a diagram has many. */
+const MIN_GIF_FRAME_COLOURS = 10
 
 /** Saves the next download of the app to a file, without the save dialog. */
 function saveNextDownload(app: ElectronApplication, file: string) {
@@ -107,20 +118,10 @@ test('renders the image of an agent in the capture window and keeps the zoom of 
   expect(windows.filter((other) => !other.url.endsWith(CAPTURE_HASH)).map((other) => other.zoom)).toEqual([1])
   expect(await window.evaluate(() => globalThis.devicePixelRatio)).toBe(pixelRatio)
 
-  const image = await window.evaluate(async (base64) => {
-    const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
-    const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }))
-    const context = new OffscreenCanvas(bitmap.width, bitmap.height).getContext('2d')!
-    context.drawImage(bitmap, 0, 0)
-    const pixels = context.getImageData(0, 0, bitmap.width, bitmap.height).data
-    const colors = new Set<number>()
-    for (let i = 0; i < pixels.length; i += 4 * 7)
-      colors.add((pixels[i]! << 16) | (pixels[i + 1]! << 8) | pixels[i + 2]!)
-    return { width: bitmap.width, corner: Array.from(pixels.subarray(0, 4)), colors: colors.size }
-  }, data!)
+  const image = await decodePng(app, Buffer.from(data!, 'base64'))
   expect(image.width).toBe(800)
-  expect(image.corner[3]).toBe(255)
-  expect(image.colors).toBeGreaterThan(20)
+  expect(image.data[3]).toBe(255)
+  expect(colourCount(image, 7)).toBeGreaterThan(20)
 })
 
 test('opens a new capture window after the old one stops', async ({ app, window, mcp }) => {
@@ -146,171 +147,86 @@ test('opens a new capture window after the old one stops', async ({ app, window,
 })
 
 test('gives the pixels of the image in a video frame, within 2 in each channel, also for a small image', async ({
+  app,
   window: page,
   evidence,
 }) => {
   const stage = sampleStage()
-  const result = await page.evaluate(async (spec) => {
-    const { desktop } = window as unknown as { desktop: DesktopApi }
-    const { sessionId } = await desktop.request('capture.open', {
-      stage: spec,
-      width: spec.width,
-      height: spec.height,
-      fixedViewport: true,
-    })
-    const decodePng = async (png: Uint8Array) => {
-      const bitmap = await createImageBitmap(new Blob([new Uint8Array(png)], { type: 'image/png' }))
-      const context = new OffscreenCanvas(bitmap.width, bitmap.height).getContext('2d')!
-      context.drawImage(bitmap, 0, 0)
-      return {
-        width: bitmap.width,
-        height: bitmap.height,
-        pixels: context.getImageData(0, 0, bitmap.width, bitmap.height).data,
-      }
-    }
-    const toBase64 = (bytes: Uint8Array) => btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(''))
-    const framePng = async (frame: { pixels: Uint8Array; width: number; height: number }) => {
-      const canvas = new OffscreenCanvas(frame.width, frame.height)
-      const data = new ImageData(new Uint8ClampedArray(frame.pixels), frame.width, frame.height)
-      canvas.getContext('2d')!.putImageData(data, 0, 0)
-      return toBase64(new Uint8Array(await (await canvas.convertToBlob({ type: 'image/png' })).arrayBuffer()))
-    }
-    const compare = async (scale: number) => {
-      const request = { sessionId, moment: { ambientMs: 0, timeMs: 0 }, scale, transparent: false }
-      const { png } = await desktop.request('capture.image', request)
-      const image = await decodePng(png)
-      const frame = await desktop.request('capture.frame', request)
-      let maxDelta = 0
-      const colors = new Set<number>()
-      for (let i = 0; i < image.pixels.length; i += 4) {
-        for (let channel = 0; channel < 4; channel++) {
-          maxDelta = Math.max(maxDelta, Math.abs(image.pixels[i + channel]! - frame.pixels[i + channel]!))
-        }
-        colors.add((image.pixels[i]! << 16) | (image.pixels[i + 1]! << 8) | image.pixels[i + 2]!)
-      }
-      return {
-        scale,
-        image: [image.width, image.height],
-        frame: [frame.width, frame.height],
-        expected: [Math.round(spec.width * scale), Math.round(spec.height * scale)],
-        maxDelta,
-        colors: colors.size,
-        imagePng: toBase64(new Uint8Array(png)),
-        framePng: await framePng(frame),
-      }
-    }
-    const results = [await compare(0.5), await compare(0.2), await compare(0.02)]
-    await desktop.request('capture.close', { sessionId })
-    return results
-  }, stage)
-  for (const { scale, imagePng, framePng } of result) {
-    evidence.keep(`scale-${scale}-image.png`, Buffer.from(imagePng, 'base64'))
-    evidence.keep(`scale-${scale}-frame.png`, Buffer.from(framePng, 'base64'))
+  const sessionId = await openStage(page, stage, true)
+  for (const scale of [0.5, 0.2, 0.02]) {
+    const request = { sessionId, moment: { ambientMs: 0, timeMs: 0 }, scale, transparent: false }
+    const png = await captureImage(page, request)
+    evidence.keep(`scale-${scale}-image.png`, png)
+    const image = await decodePng(app, png)
+    const frame = await captureFrame(page, request)
+    evidence.keep(`scale-${scale}-frame.png`, await encodePng(app, frame))
+    const expected = [Math.round(stage.width * scale), Math.round(stage.height * scale)]
+    expect([image.width, image.height]).toEqual(expected)
+    expect([frame.width, frame.height]).toEqual(expected)
+    let maxDelta = 0
+    for (let i = 0; i < image.data.length; i++) maxDelta = Math.max(maxDelta, Math.abs(image.data[i]! - frame.data[i]!))
+    expect(maxDelta, `largest channel difference at scale ${scale}`).toBeLessThanOrEqual(2)
+    expect(colourCount(image)).toBeGreaterThan(image.width < 100 ? 5 : 20)
   }
-  for (const capture of result) {
-    expect(capture.image).toEqual(capture.expected)
-    expect(capture.frame).toEqual(capture.expected)
-    expect(capture.maxDelta).toBeLessThanOrEqual(2)
-    expect(capture.colors).toBeGreaterThan(capture.image[0]! < 100 ? 5 : 20)
-  }
+  await closeStage(page, sessionId)
 })
 
-test('draws text without subpixel colour fringes', async ({ window: page }) => {
+test('draws text without subpixel colour fringes', async ({ app, window: page }) => {
   const stage = sampleStage()
-  const fringes = await page.evaluate(async (spec) => {
-    const { desktop } = window as unknown as { desktop: DesktopApi }
-    const { sessionId } = await desktop.request('capture.open', {
-      stage: spec,
-      width: spec.width,
-      height: spec.height,
-      fixedViewport: true,
-    })
-    const request = { sessionId, moment: { ambientMs: 0, timeMs: 0 }, scale: 2, transparent: false }
-    const { png } = await desktop.request('capture.image', request)
-    await desktop.request('capture.close', { sessionId })
-    const bitmap = await createImageBitmap(new Blob([new Uint8Array(png)], { type: 'image/png' }))
-    const context = new OffscreenCanvas(bitmap.width, bitmap.height).getContext('2d')!
-    context.drawImage(bitmap, 0, 0)
-    const pixels = context.getImageData(0, 0, bitmap.width, bitmap.height).data
-    let pairs = 0
-    for (let i = 0; i + 4 < pixels.length; i += 4) {
-      const left = pixels[i]! - pixels[i + 2]!
-      const right = pixels[i + 4]! - pixels[i + 6]!
-      if ((left > 40 && right < -40) || (left < -40 && right > 40)) pairs++
-    }
-    return pairs
-  }, stage)
-  expect(fringes).toBeLessThanOrEqual(MAX_COLOUR_PAIRS)
+  const sessionId = await openStage(page, stage, true)
+  const png = await captureImage(page, { sessionId, moment: { ambientMs: 0, timeMs: 0 }, scale: 2, transparent: false })
+  await closeStage(page, sessionId)
+  const { data } = await decodePng(app, png)
+  let pairs = 0
+  for (let i = 0; i + 4 < data.length; i += 4) {
+    const left = data[i]! - data[i + 2]!
+    const right = data[i + 4]! - data[i + 6]!
+    if ((left > 40 && right < -40) || (left < -40 && right > 40)) pairs++
+  }
+  expect(pairs).toBeLessThanOrEqual(MAX_COLOUR_PAIRS)
 })
 
-test('gives each video frame the pixels of its own moment', async ({ window: page, evidence }) => {
-  const stage = flowStage()
-  const result = await page.evaluate(
-    async ({ spec, durationMs, count }) => {
-      const { desktop } = window as unknown as { desktop: DesktopApi }
-      const { sessionId } = await desktop.request('capture.open', {
-        stage: spec,
-        width: spec.width,
-        height: spec.height,
-        fixedViewport: false,
-      })
-      const request = (timeMs: number) => ({
-        sessionId,
-        moment: { ambientMs: timeMs, timeMs },
-        scale: 0.5,
-        transparent: false,
-      })
-      const decodePng = async (png: Uint8Array) => {
-        const bitmap = await createImageBitmap(new Blob([new Uint8Array(png)], { type: 'image/png' }))
-        const context = new OffscreenCanvas(bitmap.width, bitmap.height).getContext('2d')!
-        context.drawImage(bitmap, 0, 0)
-        return context.getImageData(0, 0, bitmap.width, bitmap.height).data
-      }
-      const differing = (a: ArrayLike<number>, b: ArrayLike<number>) => {
-        let changed = 0
-        for (let i = 0; i < a.length; i += 4) {
-          const delta = Math.abs(a[i]! - b[i]!) + Math.abs(a[i + 1]! - b[i + 1]!) + Math.abs(a[i + 2]! - b[i + 2]!)
-          if (delta > 6) changed++
-        }
-        return changed
-      }
-      const moments = Array.from({ length: count }, (_, index) =>
-        Math.round((((index * 5) % count) / count) * durationMs),
-      )
-      const toBase64 = (bytes: Uint8Array) => btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(''))
-      const stills: Uint8ClampedArray[] = []
-      const files: { name: string; png: string }[] = []
-      for (const [index, timeMs] of moments.entries()) {
-        const { png } = await desktop.request('capture.image', request(timeMs))
-        stills.push(await decodePng(png))
-        files.push({ name: `moment-${index}-still.png`, png: toBase64(new Uint8Array(png)) })
-      }
-      const toPng = async (pixels: ArrayLike<number>, width: number, height: number) => {
-        const canvas = new OffscreenCanvas(width, height)
-        canvas.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(pixels), width, height), 0, 0)
-        return toBase64(new Uint8Array(await (await canvas.convertToBlob({ type: 'image/png' })).arrayBuffer()))
-      }
-      const changes = stills.slice(1).map((still, index) => differing(still, stills[index]!))
-      const closest: number[] = []
-      for (const index of moments.keys()) {
-        const frame = await desktop.request('capture.frame', request(moments[index]!))
-        const distances = stills.map((still) => differing(frame.pixels, still))
-        const nearest = distances.indexOf(Math.min(...distances))
-        closest.push(nearest)
-        if (nearest === index) continue
-        files.push({
-          name: `moment-${index}-frame-closest-to-${nearest}.png`,
-          png: await toPng(frame.pixels, frame.width, frame.height),
-        })
-      }
-      await desktop.request('capture.close', { sessionId })
-      return { changes, closest, files }
-    },
-    { ...stage, count: MOMENTS },
+test('gives each video frame the pixels of its own moment', async ({ app, window: page, evidence }) => {
+  const { spec, durationMs } = flowStage()
+  const sessionId = await openStage(page, spec, false)
+  const request = (timeMs: number) => ({
+    sessionId,
+    moment: { ambientMs: timeMs, timeMs },
+    scale: 0.5,
+    transparent: false,
+  })
+  const differing = (a: Pixels, b: Pixels) => {
+    let changed = 0
+    for (let i = 0; i < a.data.length; i += 4) {
+      const delta =
+        Math.abs(a.data[i]! - b.data[i]!) +
+        Math.abs(a.data[i + 1]! - b.data[i + 1]!) +
+        Math.abs(a.data[i + 2]! - b.data[i + 2]!)
+      if (delta > 6) changed++
+    }
+    return changed
+  }
+  const moments = Array.from({ length: MOMENTS }, (_, index) =>
+    Math.round((((index * 5) % MOMENTS) / MOMENTS) * durationMs),
   )
-  for (const { name, png } of result.files) evidence.keep(name, Buffer.from(png, 'base64'))
-  expect(Math.min(...result.changes)).toBeGreaterThan(0)
-  expect(result.closest).toEqual(result.closest.map((_, index) => index))
+  const stills: Pixels[] = []
+  for (const [index, timeMs] of moments.entries()) {
+    const png = await captureImage(page, request(timeMs))
+    evidence.keep(`moment-${index}-still.png`, png)
+    stills.push(await decodePng(app, png))
+  }
+  const closest: number[] = []
+  for (const [index, timeMs] of moments.entries()) {
+    const frame = await captureFrame(page, request(timeMs))
+    const distances = stills.map((still) => differing(frame, still))
+    const nearest = distances.indexOf(Math.min(...distances))
+    closest.push(nearest)
+    if (nearest !== index) evidence.keep(`moment-${index}-frame-closest-to-${nearest}.png`, await encodePng(app, frame))
+  }
+  await closeStage(page, sessionId)
+  const changes = stills.slice(1).map((still, index) => differing(still, stills[index]!))
+  expect(Math.min(...changes)).toBeGreaterThan(0)
+  expect(closest).toEqual(closest.map((_, index) => index))
 })
 
 test('exports a transparent PNG and a GIF from the export dialog in the capture window', async ({
@@ -335,19 +251,13 @@ test('exports a transparent PNG and a GIF from the export dialog in the capture 
   expect(urls.some((url) => url.endsWith(CAPTURE_HASH))).toBe(true)
   evidence.keep('order-system.png', readFileSync(png))
 
-  const image = await window.evaluate(async (base64) => {
-    const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
-    const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }))
-    const context = new OffscreenCanvas(bitmap.width, bitmap.height).getContext('2d')!
-    context.drawImage(bitmap, 0, 0)
-    const pixels = context.getImageData(0, 0, bitmap.width, bitmap.height).data
-    let opaque = 0
-    for (let i = 3; i < pixels.length; i += 4) if (pixels[i] === 255) opaque++
-    return { corner: pixels[3], opaqueShare: opaque / (pixels.length / 4) }
-  }, readFileSync(png).toString('base64'))
-  expect(image.corner).toBe(0)
-  expect(image.opaqueShare).toBeGreaterThan(0.05)
-  expect(image.opaqueShare).toBeLessThan(0.95)
+  const image = await decodePng(app, readFileSync(png))
+  let opaque = 0
+  for (let i = 3; i < image.data.length; i += 4) if (image.data[i] === 255) opaque++
+  const opaqueShare = opaque / (image.width * image.height)
+  expect(image.data[3]).toBe(0)
+  expect(opaqueShare).toBeGreaterThan(0.05)
+  expect(opaqueShare).toBeLessThan(0.95)
 
   await window.getByRole('button', { name: 'Export' }).click()
   await window.getByRole('menuitem', { name: /Animation/ }).click()
@@ -363,6 +273,8 @@ test('exports a transparent PNG and a GIF from the export dialog in the capture 
   const gifBytes = readFileSync(gif)
   evidence.keep('order-system.gif', gifBytes)
   // modern-gif ignores the byte offset of a typed array, and readFileSync can give a small file inside a shared buffer.
-  const frames = decode(new Uint8Array(gifBytes)).frames
+  const frames = decodeFrames(new Uint8Array(gifBytes))
   expect(frames.length).toBeGreaterThan(5)
+  const colours = frames.map((frame) => colourCount({ width: frame.width, height: frame.height, data: frame.data }))
+  expect(Math.min(...colours), 'the fewest colours in a frame').toBeGreaterThan(MIN_GIF_FRAME_COLOURS)
 })
