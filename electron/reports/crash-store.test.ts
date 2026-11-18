@@ -87,6 +87,21 @@ describe('createCrashStore', () => {
     expect((await store().list()).find((crash) => crash.id === 'after-clean-end')?.process).toBe('unknown')
   })
 
+  it('keeps a dump of the main process apart from an event of the next session at about the same time', async () => {
+    await store().startSession()
+    await addDump('main-crash', START + 1000)
+    time = START + 2000
+    const next = store()
+    await next.startSession()
+    time = START + 3000
+    await next.record({ process: 'gpu', reason: 'abnormal-exit', exitCode: 8704 })
+    const list = await next.list()
+    expect(list.map((crash) => [crash.id, crash.process, crash.dump === null])).toEqual([
+      [`event-${START + 3000}`, 'gpu', true],
+      ['main-crash', 'main', false],
+    ])
+  })
+
   it('keeps the newest 5 dumps of the last 7 days', async () => {
     for (let index = 0; index < 7; index++) await addDump(`dump-${index}`, START - index * 60 * 60_000)
     await addDump('old', START - 8 * DAY_MS)

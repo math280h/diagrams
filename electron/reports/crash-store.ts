@@ -178,10 +178,11 @@ export function createCrashStore(options: CrashStoreOptions) {
 
   const matches = (event: CrashEvent, dump: DumpFile) => Math.abs(event.time - dump.modifiedAt) <= MAX_EVENT_TO_DUMP_MS
 
-  const pairs = (events: readonly CrashEvent[], dumps: readonly DumpFile[]) => {
-    const unmatched = [...events]
+  const pairs = (log: CrashLog, dumps: readonly DumpFile[]) => {
+    const unmatched = [...log.events]
     const eventOf = new Map<string, CrashEvent>()
     for (const dump of dumps) {
+      if (log.mainProcessDumps.includes(dump.id)) continue
       const index = unmatched.findIndex((event) => matches(event, dump))
       if (index !== -1) eventOf.set(dump.id, unmatched.splice(index, 1)[0]!)
     }
@@ -189,7 +190,7 @@ export function createCrashStore(options: CrashStoreOptions) {
   }
 
   const records = async (log: CrashLog, dumps: readonly DumpFile[]): Promise<CrashRecord[]> => {
-    const { eventOf, unmatched } = pairs(log.events, dumps)
+    const { eventOf, unmatched } = pairs(log, dumps)
     const list: CrashRecord[] = []
     for (const dump of dumps) {
       const event = eventOf.get(dump.id)
@@ -244,7 +245,7 @@ export function createCrashStore(options: CrashStoreOptions) {
         const { log, dumps } = await pruned()
         const dump = dumps.find((candidate) => candidate.id === id)
         const removed = dump
-          ? pairs(log.events, dumps).eventOf.get(dump.id)
+          ? pairs(log, dumps).eventOf.get(dump.id)
           : log.events.find((event) => eventId(event) === id)
         const next = { ...log, events: log.events.filter((event) => event !== removed) }
         if (dump) await removeDump(dump)
