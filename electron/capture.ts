@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import { app, BrowserWindow, type NativeImage, type WebContents } from 'electron'
 import { CAPTURE_HASH } from '@/desktop/constants'
@@ -37,8 +37,38 @@ function showsRender(frame: NativeImage, plan: CapturePlan, marker: number) {
   return readMarker(squares) === marker
 }
 
+const traceStart = Date.now()
+function trace(text: string) {
+  console.log(`[capture-trace ${Date.now() - traceStart}ms] ${text}`)
+}
+function frameHash(frame: NativeImage, width: number, height: number) {
+  const size = frame.getSize()
+  const crop = frame.crop({ x: 0, y: 0, width: Math.min(width, size.width), height: Math.min(height, size.height) })
+  return createHash('sha1').update(crop.toBitmap()).digest('hex').slice(0, 10)
+}
+let tracePlan: CapturePlan | null = null
+function traceWindow(contents: WebContents) {
+  contents.on('paint', (_event, dirty, frame) => {
+    const { width, height } = frame.getSize()
+    const squares =
+      height >= MARKER_PX && width >= MARKER_PX * 2
+        ? frame.crop({ x: 0, y: height - MARKER_PX, width: MARKER_PX * 2, height: MARKER_PX }).toBitmap()
+        : null
+    const marker = squares ? readMarker(squares) : null
+    const hash = tracePlan ? frameHash(frame, tracePlan.stageWidth, tracePlan.stageHeight) : '-'
+    const corner = frame.crop({ x: 0, y: 0, width: 1, height: 1 }).toBitmap()
+    trace(
+      `paint size=${width}x${height} dirty=${dirty.x},${dirty.y},${dirty.width},${dirty.height} marker=${marker} hash=${hash} corner=${Array.from(corner).join(',')}`,
+    )
+  })
+}
+app.on('child-process-gone', (_event, details) => trace(`child-process-gone ${JSON.stringify(details)}`))
+app.on('render-process-gone', (_event, _contents, details) => trace(`render-process-gone ${JSON.stringify(details)}`))
+app.on('gpu-info-update', () => trace('gpu-info-update'))
+
 /** Repaints the whole window and resolves with the first frame that `accept` takes. */
 function nextFrame(contents: WebContents, accept: (frame: NativeImage) => boolean): Promise<NativeImage> {
+  trace('nextFrame start')
   return new Promise((resolve, reject) => {
     const stop = () => {
       clearTimeout(timer)
@@ -55,6 +85,7 @@ function nextFrame(contents: WebContents, accept: (frame: NativeImage) => boolea
     // In offscreen mode, the image of a paint event holds the whole frame.
     const onPaint = (_event: Electron.Event, _dirty: Electron.Rectangle, frame: NativeImage) => {
       if (!accept(frame)) return contents.invalidate()
+      trace('nextFrame accepted')
       stop()
       resolve(frame)
     }
@@ -120,6 +151,8 @@ export function createCaptureService(): { handlers: CaptureHandlers; dispose: ()
       },
     })
     created.webContents.setFrameRate(60)
+    traceWindow(created.webContents)
+    trace('capture window created')
     created.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
     created.webContents.on('will-navigate', (event, url) => {
       if (originOf(url) !== rendererOrigin()) event.preventDefault()
@@ -169,11 +202,14 @@ export function createCaptureService(): { handlers: CaptureHandlers; dispose: ()
     target.setContentSize(plan.windowWidth, plan.windowHeight)
     renders += 1
     const marker = renders % MARKER_COUNT
+    tracePlan = plan
+    trace(`render start marker=${marker} plan=${JSON.stringify(plan)} moment=${JSON.stringify(request.moment)}`)
     await rpc.call(
       'capture.render',
       { moment: request.moment, transparent: request.transparent, marker, pageZoom: plan.pageZoom },
       { timeoutMs: CALL_TIMEOUT_MS },
     )
+    trace(`render done marker=${marker}`)
     return { target, plan, marker }
   }
 
@@ -204,15 +240,20 @@ export function createCaptureService(): { handlers: CaptureHandlers; dispose: ()
           const next = await capture(shown)
           const nextPixels = next.toBitmap()
           image = next
-          if (nextPixels.equals(pixels)) break
+          if (nextPixels.equals(pixels)) {
+            trace(`image stable after ${count + 1} frames`)
+            break
+          }
           pixels = nextPixels
         }
+        trace(`image done hash=${frameHash(image, image.getSize().width, image.getSize().height)}`)
         return { png: new Uint8Array(image.toPNG()) }
       }),
     'capture.frame': (request) =>
       serial(async () => {
         const image = await capture(await show(request))
         const size = image.getSize()
+        trace(`frame done hash=${frameHash(image, size.width, size.height)}`)
         // NativeImage bitmaps hold premultiplied BGRA pixels.
         return { pixels: bgraToRgba(image.toBitmap()), width: size.width, height: size.height }
       }),
