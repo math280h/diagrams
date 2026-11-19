@@ -33,19 +33,20 @@ export async function deleteCrash(id: string) {
 
 async function noticeNewCrashes(crashes: CrashRecord[]) {
   const api = desktopApi()
-  const newest = crashes.find((crash) => !crash.seen)
-  if (!api || !newest) return
+  const unseen = crashes.filter((crash) => !crash.seen)
+  const crash = unseen.find((candidate) => candidate.process === 'main') ?? unseen[0]
+  if (!api || !crash) return
   set(await api.request('reports.markSeen', null))
-  toast.error(`${crashTitle(newest)} unexpectedly`, {
-    id: CRASH_NOTICE_ID,
+  toast.error(`${crashTitle(crash)} unexpectedly`, {
+    id: `${CRASH_NOTICE_ID}-${crash.id}`,
     duration: Infinity,
-    action: { label: 'More details', onClick: () => openReport({ kind: 'crash', crash: { ...newest, seen: true } }) },
+    action: { label: 'More details', onClick: () => openReport({ kind: 'crash', crash: { ...crash, seen: true } }) },
   })
 }
 
 /**
- * Loads the crashes of the desktop app, follows new ones, and tells the user once about each crash. Returns a function
- * that stops it.
+ * Loads the crashes of the desktop app and follows new ones. For each list with new crashes, it shows one notice: about
+ * the crash of the main process, or else about the newest crash. Returns a function that stops it.
  */
 export function watchCrashes(): () => void {
   const api = desktopApi()

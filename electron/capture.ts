@@ -13,7 +13,9 @@ import { rendererOrigin } from './window'
 /** The capture window closes after this time without a capture. */
 const IDLE_CLOSE_MS = 30_000
 const CALL_TIMEOUT_MS = 120_000
-/** An image capture takes frames until two frames are the same, but not more than this number of frames. */
+/**
+ * An image capture renders its moment until two frames in a row are the same, but not more than this number of times.
+ */
 const MAX_IMAGE_FRAMES = 10
 const IMAGE_FRAME_GAP_MS = 30
 /** The main process keeps at most this many open stages, and removes the oldest first. */
@@ -37,7 +39,10 @@ function showsRender(frame: NativeImage, plan: CapturePlan, marker: number) {
   return readMarker(squares) === marker
 }
 
-/** Repaints the whole window and resolves with the first frame that `accept` takes. */
+/**
+ * Resolves with the first frame that `accept` takes. That frame can be the last frame that the window sent before the
+ * call.
+ */
 function nextFrame(contents: WebContents, accept: (frame: NativeImage) => boolean): Promise<NativeImage> {
   return new Promise((resolve, reject) => {
     const stop = () => {
@@ -54,12 +59,13 @@ function nextFrame(contents: WebContents, accept: (frame: NativeImage) => boolea
     const onDestroyed = () => fail('The capture window closed.')
     // In offscreen mode, the image of a paint event holds the whole frame.
     const onPaint = (_event: Electron.Event, _dirty: Electron.Rectangle, frame: NativeImage) => {
-      if (!accept(frame)) return contents.invalidate()
+      if (!accept(frame)) return
       stop()
       resolve(frame)
     }
     contents.on('paint', onPaint)
     contents.once('destroyed', onDestroyed)
+    // In offscreen mode, invalidate() sends the last frame again. It does not make the page draw a new frame.
     contents.invalidate()
   })
 }
@@ -196,12 +202,11 @@ export function createCaptureService(): { handlers: CaptureHandlers; dispose: ()
     },
     'capture.image': (request) =>
       serial(async () => {
-        const shown = await show(request)
-        let image = await capture(shown)
+        let image = await capture(await show(request))
         let pixels = image.toBitmap()
         for (let count = 1; count < MAX_IMAGE_FRAMES; count++) {
           await delay(IMAGE_FRAME_GAP_MS)
-          const next = await capture(shown)
+          const next = await capture(await show(request))
           const nextPixels = next.toBitmap()
           image = next
           if (nextPixels.equals(pixels)) break

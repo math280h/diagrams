@@ -1,18 +1,139 @@
 import { spawn } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import {
+  copyFileSync,
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { setTimeout as delay } from 'node:timers/promises'
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client'
-import { _electron as electron, test as base, expect, type ElectronApplication, type Page } from '@playwright/test'
+import {
+  _electron as electron,
+  test as base,
+  expect,
+  type ElectronApplication,
+  type Page,
+  type TestInfo,
+} from '@playwright/test'
 import electronPath from 'electron'
 import { AGENT_ENDPOINT, AGENT_HOST } from '@/desktop/constants'
 import { createDiagram } from '@/model/defaults'
+import { readMinidump } from '../../electron/reports/minidump'
 
 export { expect }
 
+const CRASH_DUMPS_FOLDER = 'Crashpad'
+const CRASH_LOG_FILE = path.join('reports', 'crashes.json')
+const MAX_DUMP_FOLDER_DEPTH = 3
+const OUTPUT_CLOSE_WAIT_MS = 5000
+const GPU_STATE_WAIT_MS = 5000
+/** True when `E2E_KEEP_CRASH_DUMPS` is `1`. The evidence then holds the crash dumps, not only their summaries. */
+const KEEP_CRASH_DUMPS = process.env.E2E_KEEP_CRASH_DUMPS === '1'
+
 export function agentUrl(port: number): string {
   return `http://${AGENT_HOST}:${port}`
+}
+
+/**
+ * Returns the crash dump files in the crash dumps folder of the user data folder.
+ *
+ * @param options.unfinished - Also returns the dumps that Crashpad still writes.
+ */
+export function crashDumps(userData: string, { unfinished = false } = {}): string[] {
+  const find = (folder: string, depth: number): string[] => {
+    if (depth > MAX_DUMP_FOLDER_DEPTH) return []
+    let names: string[]
+    try {
+      names = readdirSync(folder)
+    } catch {
+      return []
+    }
+    return names.flatMap((name) => {
+      const file = path.join(folder, name)
+      // Crashpad writes a dump in the folder "new" and moves it when the dump is complete.
+      if (statSync(file).isDirectory()) return name === 'new' && !unfinished ? [] : find(file, depth + 1)
+      return name.endsWith('.dmp') ? [file] : []
+    })
+  }
+  return find(path.join(userData, CRASH_DUMPS_FOLDER), 0)
+}
+
+/** Collects what explains a failed test: the output of each app process, the crashes and the files of the test. */
+export class Evidence {
+  private readonly outputs: string[][] = []
+  private readonly outputsClosed: Promise<void>[] = []
+  private readonly files = new Map<string, string | Uint8Array>()
+
+  watch(app: ElectronApplication) {
+    const child = app.process()
+    const output: string[] = []
+    this.outputs.push(output)
+    this.outputsClosed.push(new Promise((resolve) => child.once('close', () => resolve())))
+    const add = (chunk: Buffer) => output.push(chunk.toString())
+    child.stdout?.on('data', add)
+    child.stderr?.on('data', add)
+  }
+
+  /** Keeps a file for the test results. The test results get the file only when the test fails. */
+  keep(name: string, data: string | Uint8Array) {
+    this.files.set(name, data)
+  }
+
+  /** Keeps the GPU state of a running app, or an error when the app does not answer within {@link GPU_STATE_WAIT_MS}. */
+  async keepGpuState(app: ElectronApplication) {
+    const state = await Promise.race([
+      app
+        .evaluate(async ({ app: electronApp }) => ({
+          featureStatus: electronApp.getGPUFeatureStatus(),
+          info: await electronApp.getGPUInfo('basic'),
+        }))
+        .catch((error: unknown) => ({ error: String(error) })),
+      delay(GPU_STATE_WAIT_MS, { error: 'The app did not give its GPU state in time.' }, { ref: false }),
+    ])
+    this.keep('gpu.json', JSON.stringify(state, null, 2))
+  }
+
+  /**
+   * Writes the evidence to the test results. It waits up to {@link OUTPUT_CLOSE_WAIT_MS} for the last output of the app
+   * processes.
+   */
+  async write(testInfo: TestInfo, userData: string) {
+    await Promise.race([Promise.all(this.outputsClosed), delay(OUTPUT_CLOSE_WAIT_MS, undefined, { ref: false })])
+    this.outputs.forEach((output, index) => writeFileSync(testInfo.outputPath(`app-${index + 1}.log`), output.join('')))
+    for (const [name, data] of this.files) writeFileSync(testInfo.outputPath(name), data)
+    const crashLog = path.join(userData, CRASH_LOG_FILE)
+    if (existsSync(crashLog)) copyFileSync(crashLog, testInfo.outputPath('crashes.json'))
+    const dumps = crashDumps(userData, { unfinished: true })
+    if (dumps.length === 0) return
+    const summaries = dumps.map((dump) => ({
+      file: path.basename(dump),
+      bytes: statSync(dump).size,
+      ...readMinidump(readFileSync(dump)),
+    }))
+    writeFileSync(testInfo.outputPath('crash-dumps.json'), JSON.stringify(summaries, null, 2))
+    if (!KEEP_CRASH_DUMPS) return
+    for (const dump of dumps) copyFileSync(dump, testInfo.outputPath(path.basename(dump)))
+  }
+}
+
+let currentEvidence: Evidence | null = null
+
+/** Starts the app with Chromium logs on, and keeps its output for the evidence of the test. */
+export async function launchElectron(options: { args: string[]; env: Record<string, string> }) {
+  const app = await electron.launch({ ...options, env: { ...options.env, ELECTRON_ENABLE_LOGGING: '1' } })
+  currentEvidence?.watch(app)
+  return app
+}
+
+function failed(testInfo: TestInfo) {
+  return testInfo.status !== testInfo.expectedStatus
 }
 
 function freePort(): Promise<number> {
@@ -27,7 +148,7 @@ function freePort(): Promise<number> {
 
 /** Starts the app with the environment and waits for its window. */
 export async function launchApp(env: Record<string, string>): Promise<{ app: ElectronApplication; window: Page }> {
-  const app = await electron.launch({ args: ['.'], env })
+  const app = await launchElectron({ args: ['.'], env })
   const window = await app.firstWindow()
   await expect(window.locator('header').first()).toBeVisible({ timeout: 30_000 })
   return { app, window }
@@ -49,6 +170,8 @@ export interface DesktopFixtures {
    */
   hideWindow: 'offscreen' | 'native'
   dirs: { userData: string; data: string }
+  /** The evidence of the test. A failed test writes it to its test results. */
+  evidence: Evidence
   agentPort: number
   appEnv: Record<string, string>
   app: ElectronApplication
@@ -65,6 +188,16 @@ export const test = base.extend<DesktopFixtures>({
     await use({ userData: path.join(root, 'user-data'), data: path.join(root, 'diagrams') })
     rmSync(root, { recursive: true, force: true })
   },
+  evidence: [
+    async ({ dirs }, use, testInfo) => {
+      const evidence = new Evidence()
+      currentEvidence = evidence
+      await use(evidence)
+      currentEvidence = null
+      if (failed(testInfo)) await evidence.write(testInfo, dirs.userData)
+    },
+    { auto: true },
+  ],
   agentPort: async ({}, use) => {
     await use(await freePort())
   },
@@ -81,9 +214,10 @@ export const test = base.extend<DesktopFixtures>({
       DIAGRAMS_HIDE_WINDOW: hideWindow,
     })
   },
-  app: async ({ appEnv }, use) => {
-    const app = await electron.launch({ args: ['.'], env: appEnv })
+  app: async ({ appEnv, evidence }, use, testInfo) => {
+    const app = await launchElectron({ args: ['.'], env: appEnv })
     await use(app)
+    if (failed(testInfo)) await evidence.keepGpuState(app)
     await app.close()
   },
   window: async ({ app }, use) => {

@@ -1,12 +1,12 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { Client } from '@modelcontextprotocol/client'
-import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
+import type { ElectronApplication, Page } from '@playwright/test'
 import { AUTOSTART_FILE, BACKGROUND_ARG } from '@/desktop/constants'
 import { IPC_CHANNELS } from '@/desktop/contract'
 import { OPEN_AT_LOGIN_LABEL } from '@/desktop/keep-running'
 import { copyTemplate } from '../helpers'
-import { callTool, connectAgent, diagramFile, expect, test, untilExit } from './fixtures'
+import { callTool, connectAgent, diagramFile, expect, launchElectron, test, untilExit } from './fixtures'
 
 /** The time for the agent server to start next to a startup error, on a slow test machine. */
 const AGENT_START_WAIT_MS = 20_000
@@ -52,7 +52,7 @@ async function closeWindow(app: ElectronApplication, window: Page) {
 }
 
 test('quits from the command menu after it writes the last change', async ({ appEnv, dirs }) => {
-  const app = await electron.launch({ args: ['.'], env: appEnv })
+  const app = await launchElectron({ args: ['.'], env: appEnv })
   const window = await app.firstWindow()
   await window.getByRole('button', { name: 'New diagram' }).click()
   await expect(window).toHaveURL(/#\/d\//)
@@ -98,7 +98,7 @@ test('answers an agent call that comes while the window closes, in a new window'
 })
 
 test('quits when the window closes after the user turns off keep running', async ({ appEnv, dirs }) => {
-  const app = await electron.launch({ args: ['.'], env: appEnv })
+  const app = await launchElectron({ args: ['.'], env: appEnv })
   const window = await app.firstWindow()
   await window.getByRole('banner').getByRole('button', { name: 'Connect an agent' }).click()
   const keepRunning = window.getByRole('switch', { name: 'Keep running when the window closes' })
@@ -118,7 +118,7 @@ test('starts at sign-in without a window, and starts one for the first agent cal
   dirs,
   agentPort,
 }) => {
-  const app = await electron.launch({ args: ['.', BACKGROUND_ARG], env: appEnv })
+  const app = await launchElectron({ args: ['.', BACKGROUND_ARG], env: appEnv })
   const client = new Client({ name: 'e2e', version: '1.0.0' })
   try {
     await connectAgent(client, dirs.userData, agentPort, AGENT_START_WAIT_MS)
@@ -142,7 +142,7 @@ test('adds itself to the programs at sign-in once, and stays off after the user 
   const autostart = path.join(path.dirname(dirs.userData), 'autostart')
   const entry = path.join(autostart, AUTOSTART_FILE)
   const env = { ...appEnv, DIAGRAMS_AUTOSTART_DIR: autostart }
-  const first = await electron.launch({ args: ['.'], env })
+  const first = await launchElectron({ args: ['.'], env })
   try {
     const window = await first.firstWindow()
     await expect.poll(() => existsSync(entry)).toBe(true)
@@ -158,7 +158,7 @@ test('adds itself to the programs at sign-in once, and stays off after the user 
     await first.close()
   }
 
-  const second = await electron.launch({ args: ['.'], env })
+  const second = await launchElectron({ args: ['.'], env })
   try {
     const window = await second.firstWindow()
     await window.getByRole('banner').getByRole('button', { name: 'Connect an agent' }).click()
@@ -175,7 +175,7 @@ test('explains a diagrams folder that it cannot open, and answers agents at once
   agentPort,
 }) => {
   writeFileSync(dirs.data, 'A file where the diagrams folder should be')
-  const app = await electron.launch({ args: ['.'], env: appEnv })
+  const app = await launchElectron({ args: ['.'], env: appEnv })
   const client = new Client({ name: 'e2e', version: '1.0.0' })
   try {
     const window = await app.firstWindow()
