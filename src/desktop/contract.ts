@@ -87,7 +87,8 @@ export interface AgentInfo {
  * The state of app updates. `unsupported` means a build that does not update itself, such as a build from source.
  * `sign-in` means a build that gets its updates from a private repository, while the user is not signed in to
  * GitHub. `available` means a new version that the user must download. `ready` means a downloaded update waits for a
- * restart.
+ * restart. `install-failed` means that the install of the downloaded update failed and the app did not quit. The update
+ * waits for a restart again, and `message` gives the reason.
  */
 export type UpdateState =
   | 'unsupported'
@@ -97,6 +98,7 @@ export type UpdateState =
   | 'available'
   | 'downloading'
   | 'ready'
+  | 'install-failed'
   | 'failed'
 
 /**
@@ -227,7 +229,10 @@ export interface MainRequests {
   'update.info': { input: null; output: UpdateInfo }
   /** Checks for an update and resolves when the check ends. A build that installs updates starts the download. */
   'update.check': { input: null; output: UpdateInfo }
-  /** Quits the app, installs the downloaded update and starts the app again. */
+  /**
+   * Quits the app, installs the downloaded update and starts the app again. When the install fails, the app does not
+   * quit and the update state becomes `install-failed`.
+   */
   'update.install': { input: null; output: null }
   /**
    * Sets the GitHub repository of updates in a build that allows it, after a check that the repository has a release
