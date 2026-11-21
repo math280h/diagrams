@@ -356,7 +356,7 @@ async function start() {
       'files.list': async () => {
         const [inFolder, outside] = await Promise.all([files.readAll(), linked.readAll()])
         linkedWatcher.sync()
-        return { folder: files.folder, files: [...inFolder, ...outside] }
+        return { folder: files.folder, files: [...inFolder, ...outside], linkedFilesReset: linked.takeReset() }
       },
       'files.write': async ({ id, text }) => {
         await (isLinkedId(id) ? linked.write(id, text) : files.write(id, text))
@@ -395,6 +395,12 @@ async function start() {
       },
       'files.show': async ({ id }) => {
         shell.showItemInFolder(linkedPath(id))
+        return null
+      },
+      'files.showDamagedList': async () => {
+        const copy = linked.damagedCopy()
+        if (!copy) throw new Error('The app did not keep a copy of the damaged list.')
+        shell.showItemInFolder(copy)
         return null
       },
       'files.committed': async ({ id }) => ({ text: await committedText(linkedPath(id)) }),
