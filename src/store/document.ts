@@ -167,8 +167,7 @@ function startSession(diagram: Diagram): Session {
     if (outside.kind === 'newer') {
       toast.warning(storageCopy().changedElsewhere, {
         id: noticeId,
-        description:
-          'Load the newer version, or keep this version and save over it. Until you choose, your changes here do not save.',
+        description: 'Your changes here do not save until you choose.',
         duration: Infinity,
         action: {
           label: 'Load newer',

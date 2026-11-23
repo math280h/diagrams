@@ -1,11 +1,31 @@
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { DIAGRAM_VERSION } from '@/model/schema'
 import { diagramFile, expect, test } from './fixtures'
 
 const SAVE_WAIT_MS = 2000
+const APP_SAVE_DELAY_MS = 400
+const NOTICE_STEP_MS = 16
+const NOTICE_CLOCK_BUDGET_MS = APP_SAVE_DELAY_MS - 100
+
+// Sonner shows a new toast from a timer, so the paused clock must move.
+async function expectNoticeBeforeSave(window: Page, notice: Locator) {
+  let advancedMs = 0
+  await expect
+    .poll(
+      async () => {
+        if (advancedMs < NOTICE_CLOCK_BUDGET_MS) {
+          await window.clock.runFor(NOTICE_STEP_MS)
+          advancedMs += NOTICE_STEP_MS
+        }
+        return notice.isVisible()
+      },
+      { timeout: 10_000 },
+    )
+    .toBe(true)
+}
 
 async function openWithPausedClock(window: Page, folder: string, name: string) {
   const file = diagramFile(name)
@@ -29,7 +49,7 @@ test('keeps a file that changed on disk while an edit waits, until the user load
   await window.getByLabel('Diagram name').fill('Edit that waits')
   await window.getByLabel('Diagram name').press('Enter')
   writeFileSync(target, JSON.stringify({ ...JSON.parse(file.text), name: 'After the pull' }))
-  await expect(window.getByText('This diagram changed on disk.')).toBeVisible({ timeout: 10_000 })
+  await expectNoticeBeforeSave(window, window.getByText('This diagram changed on disk.'))
 
   await window.clock.runFor(SAVE_WAIT_MS)
   expect(nameOnDisk(target)).toBe('After the pull')
@@ -46,7 +66,7 @@ test('never writes over a file from a newer version of the app', async ({ window
   const { file, target } = await openWithPausedClock(window, dirs.data, 'Before the sync')
   const newer = JSON.stringify({ ...JSON.parse(file.text), version: DIAGRAM_VERSION + 1, name: 'From a newer app' })
   writeFileSync(target, newer)
-  await expect(window.getByText('The newer version cannot be read.')).toBeVisible({ timeout: 10_000 })
+  await expectNoticeBeforeSave(window, window.getByText('The newer version cannot be read.'))
   await expect(window.locator('[data-sonner-toast]').getByRole('button', { name: 'Export' })).toBeVisible()
 
   await window.getByLabel('Diagram name').fill('Edit after the sync')
