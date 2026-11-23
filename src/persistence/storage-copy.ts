@@ -92,7 +92,7 @@ export function watchSaveOutcomes(): () => void {
           event.message,
           {
             id: SAVE_FAILED_TOAST,
-            description: 'The app tries again. To keep your changes, choose Export, then Diagram file (JSON).',
+            description: 'The app tries again while the diagram is open.',
             duration: 12_000,
             facts: [`Storage: ${repository().location.kind}`, `Save failure: ${event.reason}`, `Diagram: ${event.id}`],
           },

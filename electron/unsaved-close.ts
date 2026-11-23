@@ -24,7 +24,8 @@ const SAVE_COPY = 0
 const CLOSE = 1
 const KEEP_OPEN = 2
 
-export function copyFileName(name: string) {
+/** Returns a file name for a diagram file, without the characters that file systems refuse. */
+export function diagramFileName(name: string) {
   return `${name.replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'Diagram'}${DIAGRAM_FILE_SUFFIX}`
 }
 
@@ -46,7 +47,7 @@ export async function confirmUnsavedClose(unsaved: UnsavedFile, dialogs: CloseDi
     })
     if (answer === CLOSE) return true
     if (answer !== SAVE_COPY) return false
-    const file = await dialogs.pickFile(copyFileName(unsaved.name))
+    const file = await dialogs.pickFile(diagramFileName(unsaved.name))
     if (file === null) continue
     try {
       await dialogs.write(file, unsaved.text)

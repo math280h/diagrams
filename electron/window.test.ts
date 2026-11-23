@@ -25,6 +25,11 @@ vi.mock('electron', async () => {
       this.emit('close', { preventDefault: () => (prevented = true) })
       if (!prevented) this.destroy()
     }
+    isMinimized() {
+      return false
+    }
+    show() {}
+    focus() {}
     async loadURL() {}
   }
   return {
@@ -54,17 +59,102 @@ vi.mock('./window-state', () => ({
 async function loadWindow() {
   vi.resetModules()
   const window = await import('./window')
-  const beforeClose = vi.fn(async () => undefined)
+  const beforeClose = vi.fn<WindowHooks['beforeClose']>(async () => null)
+  const confirmUnsavedClose = vi.fn<WindowHooks['confirmUnsavedClose']>(async () => true)
   const hooks: WindowHooks = {
     attach: () => undefined,
     beforeClose,
+    confirmUnsavedClose,
     focused: () => undefined,
     navigated: () => undefined,
     visibilityChanged: () => undefined,
   }
   window.setWindowHooks(hooks)
-  return { ...window, beforeClose }
+  return { ...window, beforeClose, confirmUnsavedClose }
 }
+
+const UNSAVED = { name: 'Shop', text: '{}' }
+
+function closed(window: { once(event: 'closed', listener: () => void): unknown }) {
+  return new Promise<void>((resolve) => window.once('closed', () => resolve()))
+}
+
+describe('close of a window with an unsaved diagram', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('stays open when the user keeps it, and closes after the next answer', async () => {
+    const { createMainWindow, beforeClose, confirmUnsavedClose } = await loadWindow()
+    beforeClose.mockResolvedValue(UNSAVED)
+    confirmUnsavedClose.mockResolvedValueOnce(false)
+    const window = createMainWindow(null)
+    window.close()
+    await vi.waitFor(() => expect(confirmUnsavedClose).toHaveBeenCalledOnce())
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(window.isDestroyed()).toBe(false)
+
+    const done = closed(window)
+    window.close()
+    await done
+    expect(confirmUnsavedClose).toHaveBeenCalledTimes(2)
+    expect(electron.quit).not.toHaveBeenCalled()
+  })
+
+  it('closes without a question when the diagram is saved, or when the system session ends', async () => {
+    const { createMainWindow, endSession, beforeClose, confirmUnsavedClose } = await loadWindow()
+    const saved = createMainWindow(null)
+    const savedDone = closed(saved)
+    saved.close()
+    await savedDone
+
+    beforeClose.mockResolvedValue(UNSAVED)
+    endSession()
+    const unsaved = createMainWindow(null)
+    const unsavedDone = closed(unsaved)
+    unsaved.close()
+    await unsavedDone
+    expect(confirmUnsavedClose).not.toHaveBeenCalled()
+  })
+
+  it('closes when the system session ends while the question shows', async () => {
+    const { createMainWindow, endSession, beforeClose, confirmUnsavedClose } = await loadWindow()
+    beforeClose.mockResolvedValue(UNSAVED)
+    confirmUnsavedClose.mockImplementation(
+      (_window, _unsaved, signal) =>
+        new Promise((resolve) => signal.addEventListener('abort', () => resolve(false), { once: true })),
+    )
+    const window = createMainWindow(null)
+    const done = closed(window)
+    window.close()
+    await vi.waitFor(() => expect(confirmUnsavedClose).toHaveBeenCalledOnce())
+    endSession()
+    await done
+  })
+
+  it('delays the end of a Windows session only while the diagram is not saved', async () => {
+    const { createMainWindow, setRendererUnsaved } = await loadWindow()
+    const window = createMainWindow(null)
+    const preventDefault = vi.fn()
+    window.emit('query-session-end', { preventDefault })
+    expect(preventDefault).not.toHaveBeenCalled()
+    setRendererUnsaved(true)
+    window.emit('query-session-end', { preventDefault })
+    expect(preventDefault).toHaveBeenCalledOnce()
+  })
+
+  it('does not prepare the quit while the user keeps the window open', async () => {
+    const { createMainWindow, prepareQuit, beforeClose, confirmUnsavedClose } = await loadWindow()
+    beforeClose.mockResolvedValue(UNSAVED)
+    confirmUnsavedClose.mockResolvedValueOnce(false)
+    const window = createMainWindow(null)
+    expect(await prepareQuit()).toBe(false)
+    const done = closed(window)
+    window.close()
+    await done
+    expect(beforeClose).toHaveBeenCalledTimes(2)
+  })
+})
 
 describe('prepareQuit', () => {
   beforeEach(() => {

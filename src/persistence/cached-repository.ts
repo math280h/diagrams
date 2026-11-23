@@ -20,6 +20,7 @@ export interface RepositorySink {
 export interface CachedRepository extends DiagramRepository {
   /** Takes a change that happened outside this window, for example a file that an editor or git changed. */
   applyExternal(change: FileChange): void
+  discardUnstored(id: string): void
 }
 
 interface Entry {
