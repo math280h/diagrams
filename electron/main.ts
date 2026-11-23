@@ -50,6 +50,7 @@ import { createRendererRpc } from './renderer-rpc'
 import { setupReports, startCrashReporter } from './reports/setup'
 import { createGitHubAuth, GITHUB_SIGN_IN_FILE, secretFile, type GitHubAuth } from './github-auth'
 import { createDiagramFiles } from './storage/diagram-files'
+import { TrashError } from './storage/file-queue'
 import { committedText } from './storage/git'
 import { createLinkedFiles, isLinkedId } from './storage/linked-files'
 import { createThemeFiles, watchThemeFolder } from './storage/theme-files'
@@ -58,6 +59,7 @@ import { checkUpdateRepository, repositoryFeed } from './update-repository'
 import { createUpdates, updatePolicy, type UpdatePolicy } from './updates'
 import { layoutGraphviz } from './graphviz'
 import {
+  cancelQuit,
   closedUnseen,
   closeUnseenWindow,
   createMainWindow,
@@ -271,6 +273,8 @@ async function start() {
     repository: updateRepository(),
     feed: updateFeed,
     emit: (info) => rpc.emit('update.info', info),
+    prepareQuit,
+    cancelQuit,
   })
 
   const createServer = (serverPort: number) =>
@@ -356,16 +360,22 @@ async function start() {
       'files.list': async () => {
         const [inFolder, outside] = await Promise.all([files.readAll(), linked.readAll()])
         linkedWatcher.sync()
-        return { folder: files.folder, files: [...inFolder, ...outside] }
+        return { folder: files.folder, files: [...inFolder, ...outside], linkedFilesReset: linked.takeReset() }
       },
       'files.write': async ({ id, text }) => {
         await (isLinkedId(id) ? linked.write(id, text) : files.write(id, text))
         return null
       },
       'files.remove': async ({ id, trash }) => {
-        await (isLinkedId(id) ? linked.unlink(id) : files.remove(id, { trash }))
-        linkedWatcher.sync()
-        return null
+        try {
+          await (isLinkedId(id) ? linked.unlink(id) : files.remove(id, { trash }))
+        } catch (error) {
+          if (error instanceof TrashError) return { kind: 'trash-failed', message: error.message }
+          throw error
+        } finally {
+          linkedWatcher.sync()
+        }
+        return { kind: 'removed' }
       },
       'files.open': async () => {
         const window = currentWindow()
@@ -395,6 +405,12 @@ async function start() {
       },
       'files.show': async ({ id }) => {
         shell.showItemInFolder(linkedPath(id))
+        return null
+      },
+      'files.showDamagedList': async () => {
+        const copy = linked.damagedCopy()
+        if (!copy) throw new Error('The app did not keep a copy of the damaged list.')
+        shell.showItemInFolder(copy)
         return null
       },
       'files.committed': async ({ id }) => ({ text: await committedText(linkedPath(id)) }),
@@ -446,9 +462,7 @@ async function start() {
       'update.info': async () => updates.info(),
       'update.check': () => updates.check(),
       'update.install': async () => {
-        if (updates.info().state !== 'ready') return null
-        await prepareQuit()
-        updates.install()
+        await updates.install()
         return null
       },
       'update.setRepository': async ({ repository }) => {

@@ -20,14 +20,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { isDesktop } from '@/desktop/bridge'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,7 +53,6 @@ import { dataCrossings } from '@/model/threats'
 import { fromDiagram } from '@/persistence/serialize'
 import {
   createBlankDiagram,
-  deleteDiagram,
   discardUnusedBlankDiagrams,
   duplicateDiagram,
   exportDiagramJson,
@@ -74,6 +66,7 @@ import type { DiagramMeta } from '@/persistence/repository'
 import { storageCopy } from '@/persistence/storage-copy'
 import { useLibrary } from '@/store/library-store'
 import { TEMPLATES, type Template } from '@/templates'
+import { DeleteDiagramDialog } from './DeleteDiagramDialog'
 import { Features } from './Features'
 import { PrivacySection } from './PrivacySection'
 import { LivePreview } from './LivePreview'
@@ -596,32 +589,7 @@ export function LibraryPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={deleting !== null} onOpenChange={(value) => !value && setDeleting(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>
-              {deleting?.path ? `Remove “${deleting.name}” from the library?` : `Delete “${deleting?.name}”?`}
-            </DialogTitle>
-            <DialogDescription>
-              {deleting?.path ? `The file stays where it is: ${deleting.path}` : storageCopy().deleteDetail}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setDeleting(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                if (deleting) deleteDiagram(deleting.id)
-                setDeleting(null)
-              }}
-            >
-              {deleting?.path ? 'Remove from library' : 'Delete diagram'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteDiagramDialog diagram={deleting} onClose={() => setDeleting(null)} />
     </div>
   )
 }

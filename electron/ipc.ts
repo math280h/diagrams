@@ -39,6 +39,7 @@ const INPUTS = {
   'files.open': z.null(),
   'files.saveAs': z.object({ name: z.string().max(200), text: z.string() }),
   'files.show': z.object({ id: z.string() }),
+  'files.showDamagedList': z.null(),
   'files.committed': z.object({ id: z.string() }),
   'app.about': z.null(),
   'agent.info': z.null(),

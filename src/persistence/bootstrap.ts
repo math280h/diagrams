@@ -1,4 +1,5 @@
 import { desktopApi } from '@/desktop/bridge'
+import { noticeLinkedFilesReset } from '@/desktop/linked-files-notice'
 import { followAgentSetting, restoreFolder } from '@/folder/folder-store'
 import { canOpenFolder } from '@/folder/support'
 import { startLibrary } from '@/store/library-store'
@@ -6,7 +7,7 @@ import { repository, setRepository } from './active-repository'
 import { askForPersistentStorageOnSave } from './persistent-storage'
 import type { StoredFile } from '@/desktop/contract'
 import { createCachedRepository, type CachedRepository } from './cached-repository'
-import type { DiagramRepository } from './repository'
+import { TrashError, type DiagramRepository } from './repository'
 import { watchSaveOutcomes } from './storage-copy'
 
 let desktopRepository: CachedRepository | null = null
@@ -23,13 +24,17 @@ export function takeLinkedFiles(files: readonly StoredFile[]) {
 export async function bootstrapStorage() {
   const desktop = desktopApi()
   if (desktop) {
-    const { folder, files } = await desktop.request('files.list', null)
+    const { folder, files, linkedFilesReset } = await desktop.request('files.list', null)
+    if (linkedFilesReset) noticeLinkedFilesReset(linkedFilesReset)
     const folderRepository = createCachedRepository({
       location: { kind: 'folder', path: folder },
       files,
       sink: {
         write: (file) => desktop.request('files.write', file),
-        remove: (id, trash) => desktop.request('files.remove', { id, trash }),
+        remove: async (id, trash) => {
+          const outcome = await desktop.request('files.remove', { id, trash })
+          if (outcome.kind === 'trash-failed') throw new TrashError(outcome.message)
+        },
       },
     })
     desktop.on('files.changed', (change) => folderRepository.applyExternal(change))

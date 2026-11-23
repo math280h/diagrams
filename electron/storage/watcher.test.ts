@@ -303,6 +303,18 @@ describe('watchLinkedFiles', () => {
     watcher.stop()
   })
 
+  it('reports nothing when a check of the linked files fails', async () => {
+    const { linked, changes, watcher } = setup([orders])
+    linked.rescan.mockRejectedValueOnce(new Error('The list of linked files cannot be read.'))
+    linked.inspect.mockRejectedValueOnce(new Error('No file is linked as "link-orders".'))
+    watcher.sync()
+    watcher.rescan()
+    lastWatcherOf(docs).emitChange('orders.diagram.json')
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS)
+    expect(changes).toEqual([])
+    watcher.stop()
+  })
+
   it('stops all folder watchers and drops the checks that wait', async () => {
     const { linked, watcher } = setup([orders, notes])
     watcher.sync()

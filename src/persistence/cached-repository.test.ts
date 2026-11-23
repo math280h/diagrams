@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createDiagram, createFlow } from '@/model/defaults'
 import type { Diagram } from '@/model/schema'
 import { createCachedRepository, serializeDiagram } from './cached-repository'
-import type { RepositoryEvent, StorageLocation } from './repository'
+import { TrashError, type RepositoryEvent, type StorageLocation } from './repository'
 
 function diagram(name: string, patch: Partial<Diagram> = {}): Diagram {
   return { ...createDiagram(name), ...patch }
@@ -92,8 +92,20 @@ describe('createCachedRepository', () => {
     expect(sink.remove).toHaveBeenCalledWith('a', true)
     expect(events).toEqual([
       { kind: 'removed', id: 'a' },
-      { kind: 'remove-failed', id: 'b', message: 'in use' },
+      { kind: 'remove-failed', id: 'b', reason: 'unknown', message: 'in use' },
     ])
+  })
+
+  it('keeps a diagram whose remove fails, and tells a failed trash from other failures', async () => {
+    const kept = diagram('Kept')
+    const { repository, sink, events } = setup([{ id: 'a', text: serializeDiagram(kept) }])
+    sink.remove.mockRejectedValueOnce(new TrashError('No trash on this drive.'))
+    repository.remove('a')
+    expect(repository.list()).toEqual([])
+    await repository.settled()
+    expect(events).toEqual([{ kind: 'remove-failed', id: 'a', reason: 'trash', message: 'No trash on this drive.' }])
+    expect(repository.list().map((meta) => meta.name)).toEqual(['Kept'])
+    expect(repository.load('a')?.name).toBe('Kept')
   })
 
   it('keeps list entries stable while their diagram does not change', () => {
