@@ -128,6 +128,8 @@ export function createCachedRepository(options: {
       return { ...migrate(JSON.parse(entry.text)), id }
     },
 
+    storedText: (id) => entries.get(id)?.text ?? null,
+
     save(diagram) {
       const text = serializeDiagram(diagram)
       const current = entries.get(diagram.id)

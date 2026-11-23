@@ -2,7 +2,8 @@ import { desktopApi } from '@/desktop/bridge'
 import { followAgentSetting, restoreFolder } from '@/folder/folder-store'
 import { canOpenFolder } from '@/folder/support'
 import { startLibrary } from '@/store/library-store'
-import { setRepository } from './active-repository'
+import { repository, setRepository } from './active-repository'
+import { askForPersistentStorageOnSave } from './persistent-storage'
 import type { StoredFile } from '@/desktop/contract'
 import { createCachedRepository, type CachedRepository } from './cached-repository'
 import type { DiagramRepository } from './repository'
@@ -42,6 +43,7 @@ export async function bootstrapStorage() {
     }
   }
   stopSaveOutcomes = watchSaveOutcomes()
+  if (repository().location.kind === 'browser') askForPersistentStorageOnSave()
   startLibrary()
 }
 

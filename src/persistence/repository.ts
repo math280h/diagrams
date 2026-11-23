@@ -48,6 +48,8 @@ export interface DiagramRepository {
   readonly location: StorageLocation
   list(): DiagramMeta[]
   load(id: string): Diagram | null
+  /** Returns the stored text of a diagram as it is, also when {@link DiagramRepository.load} cannot read it. */
+  storedText(id: string): string | null
   save(diagram: Diagram): SaveResult
   remove(id: string, options?: RemoveOptions): void
   /** Returns the size of all stored diagrams. */
@@ -130,6 +132,8 @@ export const localRepository: DiagramRepository = {
     if (!raw) return null
     return migrate(JSON.parse(raw))
   },
+
+  storedText: (id) => localStorage.getItem(diagramKey(id)),
 
   save(diagram) {
     const result = saveLocal(diagram)

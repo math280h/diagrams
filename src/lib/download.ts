@@ -21,13 +21,23 @@ export function pickFolderFiles(): Promise<File[]> {
   })
 }
 
-export function pickFile(accept: string): Promise<File | null> {
+function chooseFiles(accept: string, multiple: boolean): Promise<File[]> {
   return new Promise((resolve) => {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = accept
-    input.addEventListener('change', () => resolve(input.files?.[0] ?? null), { once: true })
-    input.addEventListener('cancel', () => resolve(null), { once: true })
+    input.multiple = multiple
+    input.addEventListener('change', () => resolve([...(input.files ?? [])]), { once: true })
+    input.addEventListener('cancel', () => resolve([]), { once: true })
     input.click()
   })
+}
+
+/** Asks the user for one or more files. Call it from a click. */
+export function pickFiles(accept: string): Promise<File[]> {
+  return chooseFiles(accept, true)
+}
+
+export async function pickFile(accept: string): Promise<File | null> {
+  return (await chooseFiles(accept, false))[0] ?? null
 }

@@ -64,10 +64,12 @@ import {
   discardUnusedBlankDiagrams,
   duplicateDiagram,
   exportDiagramJson,
+  exportStoredDiagram,
   renameDiagram,
   saveImported,
 } from '@/persistence/library-actions'
 import { loadDiagramOrNull, repository } from '@/persistence/active-repository'
+import { checkPersistentStorage, usePersistentStorage } from '@/persistence/persistent-storage'
 import type { DiagramMeta } from '@/persistence/repository'
 import { storageCopy } from '@/persistence/storage-copy'
 import { useLibrary } from '@/store/library-store'
@@ -170,7 +172,7 @@ function DiagramCard({ meta, onRename, onDelete }: { meta: DiagramMeta; onRename
             <DropdownMenuItem onClick={() => duplicateDiagram(meta.id)}>
               <Copy /> Duplicate
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => diagram && exportDiagramJson(diagram)} disabled={!diagram}>
+            <DropdownMenuItem onClick={() => (diagram ? exportDiagramJson(diagram) : exportStoredDiagram(meta))}>
               <Download /> Export diagram file
             </DropdownMenuItem>
             {canOpenInApp() && (
@@ -194,18 +196,37 @@ function DiagramCard({ meta, onRename, onDelete }: { meta: DiagramMeta; onRename
   )
 }
 
+function backUpAllDiagrams() {
+  void import('@/persistence/backup')
+    .then(({ downloadBackup }) => downloadBackup())
+    .catch((error: unknown) => reportError('Could not make the backup.', error))
+}
+
+function BrowserStorageNote({ usageBytes, budgetBytes }: { usageBytes: number; budgetBytes: number }) {
+  const persisted = usePersistentStorage((state) => state.persisted)
+  useEffect(() => void checkPersistentStorage(), [])
+  return (
+    <div className="mt-4">
+      <p className="flex flex-wrap items-center gap-x-3 text-[13px] text-muted-foreground">
+        <span className="tabular-nums">
+          {formatBytes(usageBytes)} of {formatBytes(budgetBytes)} used in this browser.{' '}
+          {persisted
+            ? 'Clearing the site data of this browser deletes them.'
+            : 'The browser can delete them when the disk is almost full, and Safari deletes them after 7 days without a visit.'}
+        </span>
+        <Button variant="link" size="xs" className="px-0" onClick={backUpAllDiagrams}>
+          <Download /> Back up all diagrams
+        </Button>
+      </p>
+      <FolderOffer />
+    </div>
+  )
+}
+
 function StorageNote({ usageBytes }: { usageBytes: number }) {
   const location = repository().location
   if (location.kind === 'browser') {
-    return (
-      <div className="mt-4">
-        <p className="text-[13px] text-muted-foreground tabular-nums">
-          {formatBytes(usageBytes)} of {formatBytes(location.budgetBytes)} used in this browser. Clearing the site data
-          of this browser deletes them, so export a diagram file to keep a copy.
-        </p>
-        <FolderOffer />
-      </div>
-    )
+    return <BrowserStorageNote usageBytes={usageBytes} budgetBytes={location.budgetBytes} />
   }
   if (location.kind === 'picked-folder') return <FolderStorageNote name={location.name} />
   if (location.kind === 'followed-folder') return <FollowedFolderNote name={location.name} />
@@ -539,6 +560,10 @@ export function LibraryPage() {
             setImportOpen(false)
             open(diagram.id)
           }
+        }}
+        onOpen={(id) => {
+          setImportOpen(false)
+          open(id)
         }}
       />
 
