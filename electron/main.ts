@@ -58,6 +58,7 @@ import { checkUpdateRepository, repositoryFeed } from './update-repository'
 import { createUpdates, updatePolicy, type UpdatePolicy } from './updates'
 import { layoutGraphviz } from './graphviz'
 import {
+  cancelQuit,
   closedUnseen,
   closeUnseenWindow,
   createMainWindow,
@@ -271,6 +272,8 @@ async function start() {
     repository: updateRepository(),
     feed: updateFeed,
     emit: (info) => rpc.emit('update.info', info),
+    prepareQuit,
+    cancelQuit,
   })
 
   const createServer = (serverPort: number) =>
@@ -446,9 +449,7 @@ async function start() {
       'update.info': async () => updates.info(),
       'update.check': () => updates.check(),
       'update.install': async () => {
-        if (updates.info().state !== 'ready') return null
-        await prepareQuit()
-        updates.install()
+        await updates.install()
         return null
       },
       'update.setRepository': async ({ repository }) => {

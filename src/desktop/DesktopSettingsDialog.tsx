@@ -264,6 +264,11 @@ function Updates() {
       {info.state === 'failed' && info.message && (
         <p className="break-words text-destructive">{info.message.split('\n', 1)[0]}</p>
       )}
+      {info.state === 'install-failed' && (
+        <p className="break-words text-destructive">
+          Could not install version {info.version}. {info.message?.split('\n', 1)[0]}
+        </p>
+      )}
       {BUILD.repositoryEditable && <UpdateRepository key={info.repository} repository={info.repository} />}
       {BUILD.githubApp && info.state !== 'unsupported' && (
         <GitHubSignInSetting repositoryNeedsSignIn={info.state === 'sign-in'} />

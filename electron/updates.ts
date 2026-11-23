@@ -65,7 +65,11 @@ export interface Updates {
   check(): Promise<UpdateInfo>
   /** Shows another repository of updates. The next check reads the feed again. */
   setRepository(repository: string): UpdateInfo
-  install(): void
+  /**
+   * Prepares the quit and installs the downloaded update, which quits the app. When the install fails, the call cancels
+   * the quit preparation and sets the state to `install-failed`. The call does nothing while an install runs.
+   */
+  install(): Promise<void>
   stop(): void
 }
 
@@ -81,6 +85,8 @@ function feedKey({ repository, token }: UpdateFeed) {
  * @param feed - Returns the feed for the next check, or `sign-in` while a private repository needs a GitHub sign-in.
  *   The updater keeps the feed of `app-update.yml` until it differs.
  * @param emit - Receives each change of the update state.
+ * @param prepareQuit - Runs before the install. It saves the open work, so that the windows can close at once.
+ * @param cancelQuit - Cancels `prepareQuit` when the install fails and the app does not quit.
  */
 export function createUpdates(options: {
   updater: Updater | null
@@ -90,6 +96,8 @@ export function createUpdates(options: {
   repository: string
   feed: () => Promise<UpdateFeed | 'sign-in'>
   emit: (info: UpdateInfo) => void
+  prepareQuit: () => Promise<void>
+  cancelQuit: () => void
   intervalMs?: number
 }): Updates {
   const { updater, policy, emit } = options
@@ -108,7 +116,13 @@ export function createUpdates(options: {
   }
   const setRepository = (repository: string) => publish({ repository })
   if (!updater || policy.kind === 'none') {
-    return { info: () => info, check: async () => info, setRepository, install: () => undefined, stop: () => undefined }
+    return {
+      info: () => info,
+      check: async () => info,
+      setRepository,
+      install: async () => undefined,
+      stop: () => undefined,
+    }
   }
 
   info = { ...info, state: 'idle' }
@@ -128,8 +142,16 @@ export function createUpdates(options: {
     publish({ state: policy.kind === 'install' ? 'downloading' : 'available', version: release.version }),
   )
   updater.on('update-downloaded', (release) => publish({ state: 'ready', version: release.version }))
+  const downloaded = () => info.state === 'ready' || info.state === 'install-failed'
+  let installStep: 'none' | 'preparing' | 'started' = 'none'
+  const failInstall = (error: unknown) => {
+    installStep = 'none'
+    options.cancelQuit()
+    publish({ state: 'install-failed', message: errorMessage(error) })
+  }
   updater.on('error', (error) => {
-    if (info.state !== 'ready') publish({ state: 'failed', message: errorMessage(error) })
+    if (installStep === 'started') failInstall(error)
+    else if (!downloaded()) publish({ state: 'failed', message: errorMessage(error) })
   })
 
   const checkFeed = async () => {
@@ -141,7 +163,7 @@ export function createUpdates(options: {
   }
   let running: Promise<UpdateInfo> | null = null
   const check = () => {
-    if (info.state === 'downloading' || info.state === 'ready') return Promise.resolve(info)
+    if (info.state === 'downloading' || downloaded()) return Promise.resolve(info)
     running ??= checkFeed()
       .catch((error: unknown) => publish({ state: 'failed', message: errorMessage(error) }))
       .finally(() => {
@@ -155,8 +177,16 @@ export function createUpdates(options: {
     info: () => info,
     check,
     setRepository,
-    install: () => {
-      if (info.state === 'ready') updater.quitAndInstall()
+    install: async () => {
+      if (installStep !== 'none' || !downloaded()) return
+      installStep = 'preparing'
+      try {
+        await options.prepareQuit()
+        installStep = 'started'
+        updater.quitAndInstall()
+      } catch (error) {
+        failInstall(error)
+      }
     },
     stop: () => clearInterval(timer),
   }
