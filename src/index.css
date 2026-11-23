@@ -377,6 +377,10 @@
   margin-top: 0.125rem;
 }
 
+[data-sonner-toast][data-styled='true']:has([data-button]) [data-button] ~ [data-button] {
+  margin-left: 0.5rem;
+}
+
 html[data-desktop] .dg-drag-strip {
   position: fixed;
   inset: 0 0 auto;
