@@ -2,7 +2,8 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { Locator, Page } from '@playwright/test'
-import { DIAGRAM_VERSION } from '@/model/schema'
+import { DIAGRAM_VERSION, type Diagram } from '@/model/schema'
+import { DiagramBuilder } from '@/templates/builder'
 import { diagramFile, expect, launchApp, test } from './fixtures'
 
 const SAVE_WAIT_MS = 2000
@@ -27,8 +28,7 @@ async function expectNoticeBeforeSave(window: Page, notice: Locator) {
     .toBe(true)
 }
 
-async function openWithPausedClock(window: Page, folder: string, name: string) {
-  const file = diagramFile(name)
+async function openWithPausedClock(window: Page, folder: string, name: string, file = diagramFile(name)) {
   const target = path.join(folder, `${file.id}.diagram.json`)
   writeFileSync(target, file.text)
   await window.clock.install()
@@ -75,6 +75,79 @@ test('never writes over a file from a newer version of the app', async ({ window
   await window.getByRole('link', { name: 'All diagrams' }).click()
   await expect(window.getByText('From a newer app')).toBeVisible()
   expect(readFileSync(target, 'utf8')).toBe(newer)
+})
+
+function twoCards(name: string) {
+  const b = new DiagramBuilder()
+  const api = b.card(0, 0, { title: 'API' })
+  const db = b.card(400, 0, { title: 'Orders DB' })
+  b.edge(api, db, { label: 'SQL' })
+  const diagram = { ...b.build(name), id: 'd_e2e_merge' }
+  return { diagram, file: { id: diagram.id, text: JSON.stringify(diagram) }, api, db }
+}
+
+function pulled(diagram: Diagram, recipe: (draft: Diagram) => void) {
+  const draft = structuredClone(diagram)
+  recipe(draft)
+  return JSON.stringify(draft)
+}
+
+const nodeOnDisk = (target: string, id: string) =>
+  (JSON.parse(readFileSync(target, 'utf8')) as Diagram).nodes.find((node) => node.id === id)
+
+async function renameCard(window: Page, label: string, name: string) {
+  await window.locator('[data-editor-canvas]').locator(`[aria-label="${label}, service"]`).click()
+  const field = window.getByRole('complementary', { name: 'Properties' }).getByRole('textbox', { name: 'Name' })
+  await field.fill(name)
+  await field.press('Tab')
+}
+
+test('merges a file that changed on disk with an edit that waits', async ({ window, dirs }) => {
+  const { diagram, file, api, db } = twoCards('Shop before the pull')
+  const { target } = await openWithPausedClock(window, dirs.data, diagram.name, file)
+  await renameCard(window, 'API', 'Gateway')
+  writeFileSync(
+    target,
+    pulled(diagram, (draft) => void (draft.nodes.find((node) => node.id === db)!.position = { x: 400, y: 200 })),
+  )
+  await expectNoticeBeforeSave(window, window.getByText('This diagram changed on disk.'))
+  await window.clock.runFor(SAVE_WAIT_MS)
+  expect(nodeOnDisk(target, api)).toMatchObject({ data: { title: 'API' } })
+
+  await window.locator('[data-sonner-toast]').getByRole('button', { name: 'Merge' }).click()
+  await window.clock.runFor(SAVE_WAIT_MS)
+  await expect.poll(() => nodeOnDisk(target, api)).toMatchObject({ data: { title: 'Gateway' } })
+  expect(nodeOnDisk(target, db)?.position).toEqual({ x: 400, y: 200 })
+})
+
+test('reviews a conflict with a file that changed on disk, and applies the side that the user picks', async ({
+  window,
+  dirs,
+}) => {
+  const { diagram, file, api, db } = twoCards('Shop before the review')
+  const { target } = await openWithPausedClock(window, dirs.data, diagram.name, file)
+  await renameCard(window, 'API', 'Gateway')
+  writeFileSync(
+    target,
+    pulled(diagram, (draft) => {
+      const card = draft.nodes.find((node) => node.id === api)
+      if (card?.type === 'card') card.data.title = 'Edge API'
+      draft.nodes.find((node) => node.id === db)!.position = { x: 400, y: 200 }
+    }),
+  )
+  await expectNoticeBeforeSave(window, window.getByText('1 change needs a choice before your changes save.'))
+  await window.locator('[data-sonner-toast]').getByRole('button', { name: 'Review' }).click()
+
+  const panel = window.getByRole('complementary', { name: 'Review the changes' })
+  await expect(panel.getByText('1 change needs a choice')).toBeVisible()
+  await expect(panel.getByRole('button', { name: 'Apply' })).toBeDisabled()
+  await panel.getByRole('button', { name: 'Use the disk version' }).click()
+  await panel.getByRole('button', { name: 'Apply' }).click()
+  await expect(panel).toHaveCount(0)
+
+  await window.clock.runFor(SAVE_WAIT_MS)
+  await expect.poll(() => nodeOnDisk(target, api)).toMatchObject({ data: { title: 'Edge API' } })
+  expect(nodeOnDisk(target, db)?.position).toEqual({ x: 400, y: 200 })
 })
 
 function repoWithDiagram(root: string, name: string) {

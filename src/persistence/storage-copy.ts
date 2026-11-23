@@ -15,6 +15,10 @@ export interface StorageCopy {
   removeFailed: string
   /** Where the version history keeps its versions, to end a sentence. */
   versionsPlace: string
+  /** The version from outside in a merge, after "Use", for example "the disk version". */
+  outsideVersion: string
+  /** Where the version from outside in a merge comes from, after "All" or "Changed", for example "from disk". */
+  fromOutside: string
 }
 
 const BROWSER_COPY: StorageCopy = {
@@ -28,6 +32,8 @@ const BROWSER_COPY: StorageCopy = {
   deleteDetail: 'This removes the diagram and its flows from this browser. You cannot undo it.',
   removeFailed: 'Could not delete the diagram from this browser.',
   versionsPlace: 'in this browser',
+  outsideVersion: 'the other tab’s version',
+  fromOutside: 'from the other tab',
 }
 
 const FOLDER_COPY: StorageCopy = {
@@ -41,6 +47,8 @@ const FOLDER_COPY: StorageCopy = {
   deleteDetail: 'This moves the diagram file to the trash.',
   removeFailed: 'Could not delete the diagram file.',
   versionsPlace: 'on this computer',
+  outsideVersion: 'the disk version',
+  fromOutside: 'from disk',
 }
 
 const PICKED_FOLDER_COPY: StorageCopy = {
@@ -61,6 +69,8 @@ const FOLLOWED_FOLDER_COPY: StorageCopy = {
   deleteDetail: 'This removes the diagram from this tab. The file stays in the folder.',
   removeFailed: 'Could not remove the diagram from this tab.',
   versionsPlace: 'in this browser',
+  outsideVersion: 'the folder version',
+  fromOutside: 'from the folder',
 }
 
 const COPIES: Record<StorageLocation['kind'], StorageCopy> = {

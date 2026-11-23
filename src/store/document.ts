@@ -5,14 +5,17 @@ import { errorMessage } from '@/lib/error-message'
 import { errorProblem, type Problem } from '@/lib/problem-report'
 import { rememberProblem } from '@/reports/recent-problems'
 import { showProblem } from './problem-store'
+import { mergeDiagrams, type MergeSide } from '@/model/diagram-merge'
 import type { Diagram } from '@/model/schema'
 import { repository } from '@/persistence/active-repository'
 import { exportDiagramJson } from '@/persistence/library-actions'
 import { fromDiagram, toDiagram } from '@/persistence/serialize'
 import { storageCopy } from '@/persistence/storage-copy'
+import { restoreContent } from './actions'
 import { useDoc, type DocState } from './doc-store'
 import { resetHistory } from './history'
-import { beginVersions, endVersions, recordVersion } from './versions'
+import { MERGE_PREVIEW_ID, reviewChosen, reviewOf, useOutsideReview } from './outside-review'
+import { beginVersions, endVersions, previewDiagram, previewVersion, recordVersion, useVersions } from './versions'
 
 const SAVE_DELAY_MS = 400
 
@@ -61,9 +64,17 @@ interface Session {
   stop(): void
   /** Returns true while a version from outside waits for the choice of the user. */
   held(): boolean
+  loadNewer(): void
+  keepThisVersion(): void
+  /** Puts the merge of the version from outside into the editor, if it has no conflict. */
+  merge(): void
+  review(): void
+  choose(keys: readonly string[], side: MergeSide): void
+  /** Puts the merge of the review into the editor, if the review has a choice for each conflict. */
+  applyReview(): void
 }
 
-type OutsideVersion = { kind: 'newer' } | { kind: 'unreadable'; problem: Problem }
+type OutsideVersion = { kind: 'newer'; theirs: Diagram } | { kind: 'unreadable'; problem: Problem }
 
 const UNREADABLE_TITLE = 'The newer version cannot be read.'
 
@@ -77,12 +88,16 @@ const UNREADABLE_TITLE = 'The newer version cannot be read.'
  * A change from outside loads at once, unless a change of the user waits for its save. A change of only the viewport
  * or the measured sizes does not count. Otherwise the session offers the newer version. Until the user loads it or
  * keeps the open version, a save only records a version. A version from outside that the app cannot read gets no save.
+ *
+ * The session merges a readable version from outside with the open diagram. The base of the merge is the version
+ * that the session saved or loaded last.
  */
 function startSession(diagram: Diagram): Session {
   const id = diagram.id
   let timer: ReturnType<typeof setTimeout> | undefined
   let lastSaved = savedContent(currentDiagram())
   let lastUserContent = userContent(currentDiagram())
+  let base = currentDiagram()
   let outside: OutsideVersion | null = null
   const userChangeWaits = () =>
     (timer !== undefined || outside !== null) && userContent(currentDiagram()) !== lastUserContent
@@ -101,6 +116,7 @@ function startSession(diagram: Diagram): Session {
     const content = savedContent(next)
     if (content === lastSaved) return
     lastSaved = content
+    base = next
     lastUserContent = userContent(next)
     if (repository().save(next).ok) useDoc.setState({ rev: next.rev })
     recordVersion(next)
@@ -113,8 +129,9 @@ function startSession(diagram: Diagram): Session {
     timer = undefined
     openDiagram(loaded)
     beginVersions(loaded)
-    lastSaved = savedContent(currentDiagram())
-    lastUserContent = userContent(currentDiagram())
+    base = currentDiagram()
+    lastSaved = savedContent(base)
+    lastUserContent = userContent(base)
   }
 
   const stopDoc = useDoc.subscribe((state, previous) => {
@@ -131,7 +148,41 @@ function startSession(diagram: Diagram): Session {
     if (noticeShown) toast.dismiss(noticeId)
     noticeShown = false
   }
+  const endReview = () => {
+    if (!useOutsideReview.getState().review) return
+    useOutsideReview.setState({ review: null })
+    if (useVersions.getState().previewId === MERGE_PREVIEW_ID) previewVersion(null)
+  }
+  const stopVersions = useVersions.subscribe((state, previous) => {
+    if (previous.previewId !== MERGE_PREVIEW_ID || state.previewId === MERGE_PREVIEW_ID) return
+    if (!useOutsideReview.getState().review) return
+    useOutsideReview.setState({ review: null })
+    showOutside()
+  })
+  const refreshReview = () => {
+    const current = useOutsideReview.getState().review
+    if (!current || outside?.kind !== 'newer') return
+    const next = reviewOf(base, currentDiagram(), outside.theirs, current.choices)
+    useOutsideReview.setState({ review: next })
+    previewDiagram(MERGE_PREVIEW_ID, next.result.diagram)
+  }
+  const review = () => {
+    if (outside?.kind !== 'newer') return
+    dismissNotice()
+    useOutsideReview.setState({ review: reviewOf(base, currentDiagram(), outside.theirs) })
+    flush()
+    refreshReview()
+  }
+  const takeMerge = (merged: Diagram) => {
+    endReview()
+    outside = null
+    dismissNotice()
+    restoreContent(merged)
+    lastSaved = ''
+    save()
+  }
   const takeNewer = (loaded: Diagram) => {
+    endReview()
     if (outside) recordVersion(currentDiagram())
     outside = null
     dismissNotice()
@@ -140,6 +191,7 @@ function startSession(diagram: Diagram): Session {
   const holdUnreadable = (error: unknown) => {
     const problem = errorProblem(UNREADABLE_TITLE, error)
     rememberProblem(problem)
+    endReview()
     outside = { kind: 'unreadable', problem }
     showOutside()
   }
@@ -156,27 +208,41 @@ function startSession(diagram: Diagram): Session {
     if (loaded) takeNewer(loaded)
   }
   const keepThisVersion = () => {
+    endReview()
     outside = null
-    noticeShown = false
+    dismissNotice()
     lastSaved = ''
     save()
   }
+  const merge = () => {
+    if (outside?.kind !== 'newer') return
+    const result = mergeDiagrams(base, currentDiagram(), outside.theirs)
+    if (result.conflicts.length > 0) showOutside()
+    else takeMerge(result.diagram)
+  }
   const showOutside = () => {
     if (!outside) return
+    if (outside.kind === 'newer' && useOutsideReview.getState().review) {
+      refreshReview()
+      return
+    }
     noticeShown = true
     if (outside.kind === 'newer') {
+      const conflicts = mergeDiagrams(base, currentDiagram(), outside.theirs).conflicts.length
+      const run = (action: () => void) => (event: { preventDefault(): void }) => {
+        event.preventDefault()
+        action()
+      }
       toast.warning(storageCopy().changedElsewhere, {
         id: noticeId,
-        description: 'Your changes here do not save until you choose.',
+        description:
+          conflicts === 0
+            ? 'Your changes here do not save until you choose.'
+            : `${conflicts === 1 ? '1 change needs' : `${conflicts} changes need`} a choice before your changes save.`,
         duration: Infinity,
-        action: {
-          label: 'Load newer',
-          onClick: (event) => {
-            event.preventDefault()
-            loadNewer()
-          },
-        },
-        cancel: { label: 'Keep this version', onClick: keepThisVersion },
+        action:
+          conflicts === 0 ? { label: 'Merge', onClick: run(merge) } : { label: 'Load newer', onClick: run(loadNewer) },
+        cancel: { label: 'Review', onClick: review },
       })
       return
     }
@@ -202,6 +268,7 @@ function startSession(diagram: Diagram): Session {
       .some((meta) => meta.id === id)
     if (!stored) {
       if (outside && timer === undefined) timer = setTimeout(save, SAVE_DELAY_MS)
+      endReview()
       outside = null
       noticeShown = true
       toast.warning(storageCopy().removedElsewhere, {
@@ -219,7 +286,7 @@ function startSession(diagram: Diagram): Session {
       takeNewer(loaded)
       return
     }
-    outside = { kind: 'newer' }
+    outside = { kind: 'newer', theirs: loaded }
     showOutside()
   })
   const onVisibility = () => {
@@ -235,10 +302,28 @@ function startSession(diagram: Diagram): Session {
     flush,
     reload,
     held: () => outside !== null,
+    loadNewer,
+    keepThisVersion,
+    merge,
+    review,
+    choose(keys, side) {
+      const current = useOutsideReview.getState().review
+      if (!current) return
+      const choices = new Map(current.choices)
+      for (const key of keys) choices.set(key, side)
+      useOutsideReview.setState({ review: { ...current, choices } })
+      refreshReview()
+    },
+    applyReview() {
+      const current = useOutsideReview.getState().review
+      if (current && reviewChosen(current)) takeMerge(current.result.diagram)
+    },
     stop() {
       clearTimeout(timer)
       timer = undefined
+      endReview()
       dismissNotice()
+      stopVersions()
       stopDoc()
       stopRepository()
       if (typeof document !== 'undefined') {
@@ -282,6 +367,39 @@ export function flushPendingSave() {
  */
 export function outsideVersionWaits(): boolean {
   return session?.held() ?? false
+}
+
+/** Replaces the open diagram with the version from outside that waits. */
+export function loadNewerVersion() {
+  session?.loadNewer()
+}
+
+/** Saves the open diagram over the version from outside that waits. */
+export function keepOpenVersion() {
+  session?.keepThisVersion()
+}
+
+/** Shows the merge of the open diagram and the version from outside that waits over the canvas. */
+export function reviewOutsideVersion() {
+  session?.review()
+}
+
+export function chooseMergeSide(keys: readonly string[], side: MergeSide) {
+  session?.choose(keys, side)
+}
+
+/**
+ * Puts the merge of the review into the editor as one undo step and saves it.
+ *
+ * It does nothing while a conflict of the review has no choice.
+ */
+export function applyOutsideReview() {
+  session?.applyReview()
+}
+
+/** Closes the review. The version from outside still waits for the choice of the user. */
+export function cancelOutsideReview() {
+  previewVersion(null)
 }
 
 /** Returns the id of the diagram whose changes the editor saves, or `null` while no editor shows one. */

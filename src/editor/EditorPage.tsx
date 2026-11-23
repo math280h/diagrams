@@ -14,6 +14,7 @@ import { storageCopy } from '@/persistence/storage-copy'
 import { useDocumentTitle } from '@/lib/use-document-title'
 import { useDoc } from '@/store/doc-store'
 import { useDiagramDocument } from '@/store/document'
+import { MERGE_PREVIEW_ID } from '@/store/outside-review'
 import { useSettings } from '@/store/settings-store'
 import { setUi, useUi } from '@/store/ui-store'
 import { useVersions } from '@/store/versions'
@@ -75,6 +76,7 @@ function EditorShell() {
   const historyOpen = useUi((state) => state.historyOpen)
   const sensitiveView = useUi((state) => state.sensitiveView)
   const previewing = useVersions((state) => state.previewId !== null)
+  const reviewing = useVersions((state) => state.previewId === MERGE_PREVIEW_ID)
 
   useEffect(
     () => () =>
@@ -106,7 +108,7 @@ function EditorShell() {
             </div>
           )}
         </div>
-        {historyOpen ? <HistoryPanel /> : <Inspector />}
+        {historyOpen ? <HistoryPanel /> : !reviewing && <Inspector />}
       </main>
       <InsertMenu />
       <CommandMenu />

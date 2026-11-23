@@ -652,6 +652,29 @@
   outline-offset: 3px;
 }
 
+.react-flow__node:is(.dg-merge-theirs, .dg-merge-mine, .dg-merge-conflict) {
+  border-radius: 10px;
+  outline: 2px solid var(--dg-text);
+  outline-offset: 6px;
+}
+.react-flow__node.dg-merge-theirs {
+  outline-style: dashed;
+}
+.react-flow__node.dg-merge-conflict {
+  outline-color: var(--dg-error);
+}
+.react-flow__edge:is(.dg-merge-theirs, .dg-merge-mine) .dg-edge-path {
+  stroke: var(--dg-text);
+  stroke-width: 2px;
+}
+.react-flow__edge.dg-merge-theirs .dg-edge-path {
+  stroke-dasharray: 6 4;
+}
+.react-flow__edge.dg-merge-conflict .dg-edge-path {
+  stroke: var(--dg-error);
+  stroke-width: 2px;
+}
+
 [data-editor-canvas][data-dragging] .dg-canvas .react-flow {
   --dg-grid: var(--dg-grid-active);
   --dg-grid-line: var(--dg-grid-line-active);

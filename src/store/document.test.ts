@@ -8,17 +8,22 @@ import { memoryVersionStore, setVersionStore, versionStore } from '@/persistence
 import { DiagramFormatError, migrate } from '@/persistence/migrations'
 import { DiagramBuilder } from '@/templates/builder'
 import { useDoc } from './doc-store'
-import { useHistory } from './history'
+import { undo, useHistory } from './history'
 import {
+  applyOutsideReview,
+  cancelOutsideReview,
+  chooseMergeSide,
   closeDiagramSession,
   currentDiagram,
   flushPendingSave,
+  keepOpenVersion,
   openDiagramId,
   openDiagramSession,
   outsideVersionWaits,
   whenDiagramReady,
 } from './document'
-import { versionsSettled } from './versions'
+import { MERGE_PREVIEW_ID, useOutsideReview } from './outside-review'
+import { useVersions, versionsSettled } from './versions'
 
 let saves = 0
 let refuseSaves = false
@@ -293,8 +298,8 @@ describe('changes from outside the editor', () => {
       vi.advanceTimersByTime(400)
       expect(saves).toBe(0)
 
-      expect(notice.warning().cancel.label).toBe('Keep this version')
-      notice.warning().cancel.onClick()
+      expect(notice.warning().cancel.label).toBe('Review')
+      keepOpenVersion()
       expect(repository().load(diagram.id)?.name).toBe('Edit that waits')
       expect(outsideVersionWaits()).toBe(false)
 
@@ -306,8 +311,7 @@ describe('changes from outside the editor', () => {
     }
   })
 
-  it('saves this version over the newer one when the user keeps it after an undo to the saved state', async () => {
-    const notice = await noticeButtons()
+  it('saves this version over the newer one when the user keeps it after an undo to the saved state', () => {
     const diagram = stored('Shop')
     openDiagramSession(diagram)
     useDoc.setState({ name: 'Edit that waits' })
@@ -317,7 +321,7 @@ describe('changes from outside the editor', () => {
       text: JSON.stringify({ ...diagram, name: 'Edited outside' }),
     })
     useDoc.setState({ name: 'Shop' })
-    notice.warning().cancel.onClick()
+    keepOpenVersion()
     expect(repository().load(diagram.id)?.name).toBe('Shop')
   })
 
@@ -401,6 +405,150 @@ describe('changes from outside the editor', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  function storedShop() {
+    const b = new DiagramBuilder()
+    const api = b.card(0, 0, { title: 'API' })
+    const db = b.card(400, 0, { title: 'Orders DB' })
+    b.edge(api, db)
+    const diagram = b.build('Shop')
+    repository().save(diagram)
+    saves = 0
+    return { diagram: repository().load(diagram.id)!, api, db }
+  }
+
+  function titleHere(nodeId: string, title: string) {
+    useDoc.setState((state) => ({
+      nodes: state.nodes.map((item) =>
+        item.id === nodeId && item.type === 'card' ? { ...item, data: { ...item.data, title } } : item,
+      ),
+    }))
+  }
+
+  function storedNode(diagram: Diagram | null | undefined, nodeId: string) {
+    return diagram?.nodes.find((item) => item.id === nodeId)
+  }
+
+  function changeOutside(diagram: Diagram, recipe: (draft: Diagram) => void) {
+    const draft = structuredClone(diagram)
+    recipe(draft)
+    folderRepository().applyExternal({ kind: 'changed', id: diagram.id, text: JSON.stringify(draft) })
+  }
+
+  const titleThere = (nodeId: string, title: string) => (draft: Diagram) => {
+    const found = storedNode(draft, nodeId)
+    if (found?.type === 'card') found.data.title = title
+  }
+
+  const moveThere = (nodeId: string) => (draft: Diagram) =>
+    void (storedNode(draft, nodeId)!.position = { x: 400, y: 200 })
+
+  it('merges a version from outside without conflicts and writes the result once', async () => {
+    vi.useFakeTimers()
+    try {
+      const notice = await noticeButtons()
+      const { diagram, api, db } = storedShop()
+      openDiagramSession(diagram)
+      titleHere(api, 'Gateway')
+      changeOutside(diagram, moveThere(db))
+      vi.advanceTimersByTime(400)
+      expect(saves).toBe(0)
+      expect(notice.warning().action.label).toBe('Merge')
+      expect(notice.warning().cancel.label).toBe('Review')
+
+      notice.warning().action.onClick({ preventDefault: () => undefined })
+      expect(saves).toBe(1)
+      const saved = repository().load(diagram.id)
+      expect(storedNode(saved, api)).toMatchObject({ data: { title: 'Gateway' } })
+      expect(storedNode(saved, db)?.position).toEqual({ x: 400, y: 200 })
+      expect(outsideVersionWaits()).toBe(false)
+      vi.advanceTimersByTime(400)
+      expect(saves).toBe(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('applies a reviewed merge as one undo step, once each conflict has a choice', async () => {
+    const notice = await noticeButtons()
+    const { diagram, api, db } = storedShop()
+    openDiagramSession(diagram)
+    titleHere(api, 'Gateway')
+    changeOutside(diagram, (draft) => {
+      titleThere(api, 'Edge API')(draft)
+      moveThere(db)(draft)
+    })
+    expect(notice.warning().action.label).toBe('Load newer')
+    expect(notice.warning()).toMatchObject({ description: '1 change needs a choice before your changes save.' })
+
+    notice.warning().cancel.onClick()
+    expect(useVersions.getState().previewId).toBe(MERGE_PREVIEW_ID)
+    const review = useOutsideReview.getState().review!
+    expect(review.result.conflicts.map((conflict) => conflict.key)).toEqual([`node:${api}`])
+    applyOutsideReview()
+    expect(outsideVersionWaits()).toBe(true)
+    expect(saves).toBe(0)
+
+    chooseMergeSide([`node:${api}`], 'theirs')
+    applyOutsideReview()
+    expect(useVersions.getState().previewId).toBeNull()
+    expect(useOutsideReview.getState().review).toBeNull()
+    expect(outsideVersionWaits()).toBe(false)
+    expect(saves).toBe(1)
+    const saved = repository().load(diagram.id)
+    expect(storedNode(saved, api)).toMatchObject({ data: { title: 'Edge API' } })
+    expect(storedNode(saved, db)?.position).toEqual({ x: 400, y: 200 })
+
+    undo()
+    expect(storedNode(currentDiagram(), api)).toMatchObject({ data: { title: 'Gateway' } })
+    expect(storedNode(currentDiagram(), db)?.position).toEqual({ x: 400, y: 0 })
+  })
+
+  it('keeps the version from outside waiting when the user cancels the review', async () => {
+    vi.useFakeTimers()
+    try {
+      const notice = await noticeButtons()
+      const { diagram, api } = storedShop()
+      openDiagramSession(diagram)
+      titleHere(api, 'Gateway')
+      changeOutside(diagram, titleThere(api, 'Edge API'))
+      notice.warning().cancel.onClick()
+      vi.advanceTimersByTime(400)
+      cancelOutsideReview()
+      expect(useOutsideReview.getState().review).toBeNull()
+      expect(outsideVersionWaits()).toBe(true)
+      expect(notice.warning().cancel.label).toBe('Review')
+      vi.advanceTimersByTime(400)
+      flushPendingSave()
+      expect(saves).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('merges again when the version from outside changes during the review, and keeps the choices that still apply', async () => {
+    const notice = await noticeButtons()
+    const { diagram, api, db } = storedShop()
+    openDiagramSession(diagram)
+    titleHere(api, 'Gateway')
+    changeOutside(diagram, titleThere(api, 'Edge API'))
+    notice.warning().cancel.onClick()
+    chooseMergeSide([`node:${api}`], 'theirs')
+
+    changeOutside(diagram, (draft) => {
+      titleThere(api, 'Edge API')(draft)
+      moveThere(db)(draft)
+    })
+    let review = useOutsideReview.getState().review!
+    expect(review.choices.get(`node:${api}`)).toBe('theirs')
+    expect(storedNode(review.result.diagram, db)?.position).toEqual({ x: 400, y: 200 })
+    expect(useVersions.getState().preview?.diagram).toBe(review.result.diagram)
+
+    changeOutside(diagram, moveThere(db))
+    review = useOutsideReview.getState().review!
+    expect(review.result.conflicts).toEqual([])
+    expect(review.choices.size).toBe(0)
   })
 
   it('ignores changes of other diagrams', async () => {

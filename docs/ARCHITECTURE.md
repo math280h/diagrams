@@ -1329,6 +1329,9 @@ with snapdom, because Chromium gives only pixels.
 - Until the user loads the newer version or keeps the open one, saves only record versions, so a due save cannot
   replace the newer version. A version that the app cannot read, for example a newer format, gets no save. The notice
   then offers an export.
+  - A readable newer version can merge with the open diagram (`src/model/diagram-merge.ts`). The base is the version
+    that the session saved or loaded last, so the merge sees which side changed each field. Nodes and edges merge by
+    field and flows as one unit; the review shows the result in the preview layer of the version history.
 - On close, the window saves the open diagram and waits for queued writes. A crashed renderer delays the close by at
   most 3 seconds (the save limit includes the renderer start).
 - Electron cancels a quit when a window prevents its close, so the window quits again after the save. The agent server
