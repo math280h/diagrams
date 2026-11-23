@@ -5,7 +5,7 @@ import { startLibrary } from '@/store/library-store'
 import { setRepository } from './active-repository'
 import type { StoredFile } from '@/desktop/contract'
 import { createCachedRepository, type CachedRepository } from './cached-repository'
-import type { DiagramRepository } from './repository'
+import { TrashError, type DiagramRepository } from './repository'
 import { watchSaveOutcomes } from './storage-copy'
 
 let desktopRepository: CachedRepository | null = null
@@ -28,7 +28,10 @@ export async function bootstrapStorage() {
       files,
       sink: {
         write: (file) => desktop.request('files.write', file),
-        remove: (id, trash) => desktop.request('files.remove', { id, trash }),
+        remove: async (id, trash) => {
+          const outcome = await desktop.request('files.remove', { id, trash })
+          if (outcome.kind === 'trash-failed') throw new TrashError(outcome.message)
+        },
       },
     })
     desktop.on('files.changed', (change) => folderRepository.applyExternal(change))

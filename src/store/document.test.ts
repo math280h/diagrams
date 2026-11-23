@@ -103,7 +103,7 @@ describe('diagram session', () => {
     const diagram = stored('Shop')
     openDiagramSession(diagram)
     useDoc.setState({ name: 'A change that waits for a save' })
-    deleteDiagram(diagram.id)
+    void deleteDiagram(diagram.id)
     closeDiagramSession(diagram.id)
     expect(repository().load(diagram.id)).toBeNull()
     expect(openDiagramId()).toBeNull()
@@ -112,7 +112,7 @@ describe('diagram session', () => {
   it('saves a diagram with the id of a deleted one after it opens again', () => {
     const diagram = stored('Shop')
     openDiagramSession(diagram)
-    deleteDiagram(diagram.id)
+    void deleteDiagram(diagram.id)
     repository().save(diagram)
     openDiagramSession(repository().load(diagram.id)!)
     useDoc.setState({ name: 'Back from the trash' })

@@ -1300,6 +1300,9 @@ with snapdom, because Chromium gives only pixels.
 - Repositories send `saved`, `save-failed`, `removed` or `remove-failed` when a save or remove ends (desktop: after the
   write). The library list refreshes on them. `watchSaveOutcomes` shows a run of failed saves once, again after a save
   reaches storage, and each failed remove.
+- A delete never changes to a permanent delete without the user. If the trash fails, the file, the diagram and its
+  versions stay; the library asks for a permanent delete, and an agent call fails. Versions go only after storage
+  takes the delete.
 - `openDiagramSession` (`src/store/document.ts`) owns the open diagram's saves: 400 ms delay, save on page hide,
   `flushPendingSave`. Unchanged content, as after a selection, writes nothing. A delete closes the session without the
   due save, so the file stays deleted.

@@ -9,6 +9,7 @@ import { nodeLabel } from '@/model/labels'
 import { stepBody } from '@/model/payload'
 import { setRepository, repository } from '@/persistence/active-repository'
 import { createCachedRepository } from '@/persistence/cached-repository'
+import { TrashError } from '@/persistence/repository'
 import { useDoc } from '@/store/doc-store'
 import { closeDiagramSession, openDiagram, openDiagramId, openDiagramSession } from '@/store/document'
 import { resetHistory, undo, useHistory } from '@/store/history'
@@ -993,6 +994,7 @@ describe('runAgentTool time limits', () => {
 
 describe('changes that do not reach storage', () => {
   let failWrites = false
+  let trashFails = false
   const failing = (message: string) => async () => {
     if (failWrites) throw new Error(message)
   }
@@ -1011,11 +1013,19 @@ describe('changes that do not reach storage', () => {
 
   beforeEach(() => {
     failWrites = false
+    trashFails = false
+    const removeFile = failing('file in use')
     setRepository(
       createCachedRepository({
         location: { kind: 'folder', path: '/test' },
         files: [],
-        sink: { write: failing('disk full'), remove: failing('file in use') },
+        sink: {
+          write: failing('disk full'),
+          remove: async () => {
+            if (trashFails) throw new TrashError('No trash on this drive.')
+            await removeFile()
+          },
+        },
       }),
     )
   })
@@ -1050,5 +1060,16 @@ describe('changes that do not reach storage', () => {
     await expect(HANDLERS.delete_diagram({ diagramId }, ctx)).rejects.toThrow(
       'The diagram could not be deleted: file in use',
     )
+  })
+
+  it('tells the agent that the trash failed, and keeps the diagram', async () => {
+    const ctx = sessionContext()
+    const [created] = await HANDLERS.create_diagram({ name: 'Shop' }, ctx)
+    const { diagramId } = JSON.parse(created && created.type === 'text' ? created.text : '{}') as { diagramId: string }
+    trashFails = true
+    await expect(HANDLERS.delete_diagram({ diagramId }, ctx)).rejects.toThrow(
+      'The diagram file could not go to the trash (No trash on this drive.), so the diagram and its file stay.',
+    )
+    expect(repository().load(diagramId)?.name).toBe('Shop')
   })
 })

@@ -50,6 +50,7 @@ import { createRendererRpc } from './renderer-rpc'
 import { setupReports, startCrashReporter } from './reports/setup'
 import { createGitHubAuth, GITHUB_SIGN_IN_FILE, secretFile, type GitHubAuth } from './github-auth'
 import { createDiagramFiles } from './storage/diagram-files'
+import { TrashError } from './storage/file-queue'
 import { committedText } from './storage/git'
 import { createLinkedFiles, isLinkedId } from './storage/linked-files'
 import { createThemeFiles, watchThemeFolder } from './storage/theme-files'
@@ -363,9 +364,15 @@ async function start() {
         return null
       },
       'files.remove': async ({ id, trash }) => {
-        await (isLinkedId(id) ? linked.unlink(id) : files.remove(id, { trash }))
-        linkedWatcher.sync()
-        return null
+        try {
+          await (isLinkedId(id) ? linked.unlink(id) : files.remove(id, { trash }))
+        } catch (error) {
+          if (error instanceof TrashError) return { kind: 'trash-failed', message: error.message }
+          throw error
+        } finally {
+          linkedWatcher.sync()
+        }
+        return { kind: 'removed' }
       },
       'files.open': async () => {
         const window = currentWindow()
