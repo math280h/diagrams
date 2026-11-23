@@ -15,6 +15,7 @@ import { restoreContent } from './actions'
 import { useDoc, type DocState } from './doc-store'
 import { resetHistory } from './history'
 import { MERGE_PREVIEW_ID, reviewChosen, reviewOf, useOutsideReview } from './outside-review'
+import { useUnsaved, type UnsavedDiagram } from './unsaved'
 import { beginVersions, endVersions, previewDiagram, previewVersion, recordVersion, useVersions } from './versions'
 
 const SAVE_DELAY_MS = 400
@@ -54,9 +55,12 @@ function userContent(diagram: Diagram) {
   return JSON.stringify([diagram.name, diagram.theme, nodes, diagram.edges, diagram.flows])
 }
 
+/** Delays before each new try of a save that failed. The last delay repeats. */
+export const SAVE_RETRY_DELAYS_MS = [2000, 5000, 10_000, 30_000, 60_000]
+
 interface Session {
   id: string
-  /** Saves now if a save is due. */
+  /** Saves now if a save is due or the last save failed. */
   flush(): void
   /** Takes a diagram that the app loaded again as the saved state. */
   reload(diagram: Diagram): void
@@ -85,26 +89,35 @@ const UNREADABLE_TITLE = 'The newer version cannot be read.'
  * writes nothing when the content is the same as at the open, after a reload or at the last save. It compares the
  * content in the form that a save writes. For example, a change of only the selection writes nothing.
  *
- * A change from outside loads at once, unless a change of the user waits for its save. A change of only the viewport
- * or the measured sizes does not count. Otherwise the session offers the newer version. Until the user loads it or
- * keeps the open version, a save only records a version. A version from outside that the app cannot read gets no save.
+ * After a save fails, {@link useUnsaved} holds the diagram, and the session saves again after each delay of
+ * {@link SAVE_RETRY_DELAYS_MS}, on the next change and on flush, until a save reaches storage.
+ *
+ * A change from outside loads at once, unless a change of the user waits for its save or did not reach storage. A
+ * change of only the viewport or the measured sizes does not count. Otherwise the session offers the newer version.
+ * Until the user loads it or keeps the open version, a save only records a version. A version from outside that the
+ * app cannot read gets no save.
  *
  * The session merges a readable version from outside with the open diagram. The base of the merge is the version
- * that the session saved or loaded last.
+ * that the session loaded last or that storage took last.
  */
 function startSession(diagram: Diagram): Session {
   const id = diagram.id
   let timer: ReturnType<typeof setTimeout> | undefined
+  let retryTimer: ReturnType<typeof setTimeout> | undefined
+  let failures = 0
   let lastSaved = savedContent(currentDiagram())
   let lastUserContent = userContent(currentDiagram())
   let base = currentDiagram()
+  let sentToStorage: Diagram | null = null
   let outside: OutsideVersion | null = null
   const userChangeWaits = () =>
-    (timer !== undefined || outside !== null) && userContent(currentDiagram()) !== lastUserContent
+    failures > 0 || ((timer !== undefined || outside !== null) && userContent(currentDiagram()) !== lastUserContent)
 
   const save = () => {
     clearTimeout(timer)
     timer = undefined
+    clearTimeout(retryTimer)
+    retryTimer = undefined
     const state = useDoc.getState()
     if (state.id !== id) return
     const next = toDiagram({ ...state, rev: state.rev + 1 })
@@ -114,25 +127,48 @@ function startSession(diagram: Diagram): Session {
       return
     }
     const content = savedContent(next)
-    if (content === lastSaved) return
+    if (content === lastSaved && failures === 0) return
     lastSaved = content
-    base = next
+    sentToStorage = next
     lastUserContent = userContent(next)
     if (repository().save(next).ok) useDoc.setState({ rev: next.rev })
     recordVersion(next)
   }
   const flush = () => {
-    if (timer !== undefined) save()
+    if (timer !== undefined || failures > 0) save()
+  }
+  const markStored = () => {
+    failures = 0
+    clearTimeout(retryTimer)
+    retryTimer = undefined
+    if (useUnsaved.getState().diagram?.id === id) useUnsaved.setState({ diagram: null })
   }
   const reload = (loaded: Diagram) => {
     clearTimeout(timer)
     timer = undefined
+    markStored()
     openDiagram(loaded)
     beginVersions(loaded)
     base = currentDiagram()
+    sentToStorage = null
     lastSaved = savedContent(base)
     lastUserContent = userContent(base)
   }
+  const retryLater = (failure: Omit<UnsavedDiagram, 'id'>) => {
+    const delayMs = SAVE_RETRY_DELAYS_MS[Math.min(failures, SAVE_RETRY_DELAYS_MS.length - 1)]
+    failures++
+    clearTimeout(retryTimer)
+    retryTimer = setTimeout(save, delayMs)
+    useUnsaved.setState({ diagram: { id, reason: failure.reason, message: failure.message } })
+  }
+  const stopOutcomes = repository().subscribe((event) => {
+    if (event.id !== id) return
+    if (event.kind === 'saved') {
+      if (sentToStorage) base = sentToStorage
+      sentToStorage = null
+      markStored()
+    } else if (event.kind === 'save-failed') retryLater(event)
+  })
 
   const stopDoc = useDoc.subscribe((state, previous) => {
     if (state.id !== id) return
@@ -321,11 +357,13 @@ function startSession(diagram: Diagram): Session {
     stop() {
       clearTimeout(timer)
       timer = undefined
+      markStored()
       endReview()
       dismissNotice()
       stopVersions()
       stopDoc()
       stopRepository()
+      stopOutcomes()
       if (typeof document !== 'undefined') {
         document.removeEventListener('visibilitychange', onVisibility)
         window.removeEventListener('pagehide', flush)
@@ -400,6 +438,25 @@ export function applyOutsideReview() {
 /** Closes the review. The version from outside still waits for the choice of the user. */
 export function cancelOutsideReview() {
   previewVersion(null)
+}
+
+/**
+ * Saves the open diagram now and waits until storage takes or refuses each save.
+ *
+ * @returns The open diagram if its changes are still not in storage, else `null`.
+ */
+export async function saveAndSettle(): Promise<UnsavedDiagram | null> {
+  flushPendingSave()
+  await repository().settled()
+  return useUnsaved.getState().diagram
+}
+
+/** Stops the saves of the open diagram and drops its changes that are not in storage. */
+export function discardUnsavedChanges() {
+  if (!session) return
+  const { id } = session
+  closeDiagramSession(id, false)
+  repository().discardUnstored?.(id)
 }
 
 /** Returns the id of the diagram whose changes the editor saves, or `null` while no editor shows one. */

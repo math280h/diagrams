@@ -1306,6 +1306,9 @@ with snapdom, because Chromium gives only pixels.
 - `openDiagramSession` (`src/store/document.ts`) owns the open diagram's saves: 400 ms delay, save on page hide,
   `flushPendingSave`. Unchanged content, as after a selection, writes nothing. A delete closes the session without the
   due save, so the file stays deleted.
+- After a failed save, the session saves again after a delay of 2 s to 60 s, on the next change and on flush, until a
+  save reaches storage. The changes are then only in memory, so the editor shows "Not saved" and asks before the user
+  leaves it. Only the last save of a diagram reports its outcome, so a skipped older write cannot clear this state.
 - "New diagram" stores the diagram at once, so Present, a reload and agent tools see it.
   - When the library shows again, `discardUnusedBlankDiagrams` deletes this window's empty new diagrams with the default
     name and no editor. The desktop skips the trash.
@@ -1334,6 +1337,9 @@ with snapdom, because Chromium gives only pixels.
     field and flows as one unit; the review shows the result in the preview layer of the version history.
 - On close, the window saves the open diagram and waits for queued writes. A crashed renderer delays the close by at
   most 3 seconds (the save limit includes the renderer start).
+- If that save also fails, the window asks first: save a copy, close without saving, or keep the window open. At the
+  end of the system session the window does not ask, so it never stops a shutdown. On Windows, an unsaved diagram
+  delays the shutdown, and the system lets the user end it.
 - Electron cancels a quit when a window prevents its close, so the window quits again after the save. The agent server
   and folder watcher stop on `will-quit`.
 

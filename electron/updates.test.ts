@@ -23,6 +23,7 @@ function setup(
   const steps: string[] = []
   const prepareQuit = vi.fn(async () => {
     steps.push('prepareQuit')
+    return true
   })
   const cancelQuit = vi.fn(() => {
     steps.push('cancelQuit')
@@ -148,6 +149,22 @@ describe('createUpdates', () => {
     await updates.install()
     expect(updater!.quitAndInstall).toHaveBeenCalledOnce()
     expect(cancelQuit).not.toHaveBeenCalled()
+    updates.stop()
+  })
+
+  it('does not install while the user keeps the app open, and installs on a later call', async () => {
+    const { updater, updates, steps, prepareQuit, cancelQuit } = setup()
+    await downloadUpdate(updater!, updates)
+    prepareQuit.mockImplementationOnce(async () => {
+      steps.push('prepareQuit')
+      return false
+    })
+    await updates.install()
+    expect(steps).toEqual(['prepareQuit'])
+    expect(updates.info().state).toBe('ready')
+    expect(cancelQuit).not.toHaveBeenCalled()
+    await updates.install()
+    expect(steps).toEqual(['prepareQuit', 'prepareQuit', 'quitAndInstall'])
     updates.stop()
   })
 
@@ -281,7 +298,7 @@ describe('createUpdates', () => {
       repository: BUILD_REPOSITORY,
       feed: async () => ({ repository: BUILD_REPOSITORY, token: null }),
       emit: () => undefined,
-      prepareQuit: async () => undefined,
+      prepareQuit: async () => true,
       cancelQuit: () => undefined,
       intervalMs: 1000,
     })

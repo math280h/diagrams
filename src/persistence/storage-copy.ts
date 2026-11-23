@@ -1,3 +1,4 @@
+import { toast } from 'sonner'
 import { reportError } from '@/store/problem-store'
 import { repository } from './active-repository'
 import type { StorageLocation } from './repository'
@@ -86,6 +87,10 @@ export function storageCopy(): StorageCopy {
 
 const SAVE_FAILED_TOAST = 'save-failed'
 
+export function dismissSaveFailedNotice() {
+  toast.dismiss(SAVE_FAILED_TOAST)
+}
+
 /**
  * Shows failed saves and removes of the repository as toasts, for as long as the app runs.
  *
@@ -102,10 +107,7 @@ export function watchSaveOutcomes(): () => void {
           event.message,
           {
             id: SAVE_FAILED_TOAST,
-            description:
-              event.reason === 'quota'
-                ? 'Choose Export, then Diagram file (JSON), before you close the tab. Delete other diagrams to free space.'
-                : 'Choose Export, then Diagram file (JSON), to keep your changes.',
+            description: 'The app tries again while the diagram is open.',
             duration: 12_000,
             facts: [`Storage: ${repository().location.kind}`, `Save failure: ${event.reason}`, `Diagram: ${event.id}`],
           },

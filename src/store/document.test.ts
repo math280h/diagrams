@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { StoredFile } from '@/desktop/contract'
 import { createDiagram } from '@/model/defaults'
 import { DIAGRAM_VERSION, type Diagram } from '@/model/schema'
 import { repository, setRepository } from '@/persistence/active-repository'
@@ -6,6 +7,7 @@ import { createCachedRepository } from '@/persistence/cached-repository'
 import { deleteDiagram } from '@/persistence/library-actions'
 import { memoryVersionStore, setVersionStore, versionStore } from '@/persistence/version-store'
 import { DiagramFormatError, migrate } from '@/persistence/migrations'
+import { localRepository } from '@/persistence/repository'
 import { DiagramBuilder } from '@/templates/builder'
 import { useDoc } from './doc-store'
 import { undo, useHistory } from './history'
@@ -15,14 +17,18 @@ import {
   chooseMergeSide,
   closeDiagramSession,
   currentDiagram,
+  discardUnsavedChanges,
   flushPendingSave,
   keepOpenVersion,
   openDiagramId,
   openDiagramSession,
   outsideVersionWaits,
+  SAVE_RETRY_DELAYS_MS,
+  saveAndSettle,
   whenDiagramReady,
 } from './document'
 import { MERGE_PREVIEW_ID, useOutsideReview } from './outside-review'
+import { useUnsaved } from './unsaved'
 import { useVersions, versionsSettled } from './versions'
 
 let saves = 0
@@ -628,6 +634,175 @@ describe('saves of the open diagram', () => {
     const diagram = stored('Shop')
     openDiagramSession(diagram)
     expect(currentDiagram()).toMatchObject({ id: diagram.id, name: 'Shop', version: diagram.version })
+  })
+})
+
+function browserStorage() {
+  const items = new Map<string, string>()
+  const state = { full: false, diagramWrites: 0 }
+  vi.stubGlobal('localStorage', {
+    get length() {
+      return items.size
+    },
+    key: (index: number) => [...items.keys()][index] ?? null,
+    getItem: (key: string) => items.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      if (key.startsWith('dg:diagram:')) {
+        state.diagramWrites++
+        if (state.full) throw new DOMException('The quota has been exceeded.', 'QuotaExceededError')
+      }
+      items.set(key, value)
+    },
+    removeItem: (key: string) => void items.delete(key),
+  })
+  const view = new EventTarget()
+  vi.stubGlobal('window', view)
+  setRepository(localRepository)
+  return { state, view }
+}
+
+function failingFolder() {
+  const state = { refuse: false }
+  const write = vi.fn(async (_file: StoredFile) => {
+    if (state.refuse) throw new Error('EPERM: operation not permitted')
+  })
+  setRepository(
+    createCachedRepository({
+      location: { kind: 'folder', path: '/test' },
+      files: [],
+      sink: { write, remove: async () => undefined },
+    }),
+  )
+  return { state, write }
+}
+
+describe('saves that fail', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('tries a failed browser save again on a timer, on flush and on the next change, until storage takes it', () => {
+    const { state } = browserStorage()
+    const diagram = stored('Shop')
+    openDiagramSession(diagram)
+    state.full = true
+    state.diagramWrites = 0
+
+    useDoc.setState({ name: 'Store' })
+    vi.advanceTimersByTime(400)
+    expect(state.diagramWrites).toBe(1)
+    expect(useUnsaved.getState().diagram).toMatchObject({ id: diagram.id, reason: 'quota' })
+    vi.advanceTimersByTime(SAVE_RETRY_DELAYS_MS[0]!)
+    expect(state.diagramWrites).toBe(2)
+    flushPendingSave()
+    expect(state.diagramWrites).toBe(3)
+    useDoc.setState({ name: 'Market' })
+    vi.advanceTimersByTime(400)
+    expect(state.diagramWrites).toBe(4)
+    expect(repository().load(diagram.id)?.name).toBe('Shop')
+
+    state.full = false
+    vi.advanceTimersByTime(SAVE_RETRY_DELAYS_MS.at(-1)!)
+    expect(state.diagramWrites).toBe(5)
+    expect(repository().load(diagram.id)?.name).toBe('Market')
+    expect(useUnsaved.getState().diagram).toBeNull()
+    vi.advanceTimersByTime(10 * SAVE_RETRY_DELAYS_MS.at(-1)!)
+    flushPendingSave()
+    expect(state.diagramWrites).toBe(5)
+  })
+
+  it('offers a change from another tab, and does not load it, while a change is not stored', async () => {
+    const { toast } = await import('sonner')
+    const warning = vi.spyOn(toast, 'warning')
+    const { state, view } = browserStorage()
+    const diagram = stored('Shop')
+    openDiagramSession(diagram)
+    state.full = true
+    useDoc.setState({ name: 'Store' })
+    flushPendingSave()
+    view.dispatchEvent(Object.assign(new Event('storage'), { key: `dg:diagram:${diagram.id}` }))
+    expect(useDoc.getState().name).toBe('Store')
+    expect(warning).toHaveBeenCalledWith('This diagram changed in another tab.', expect.anything())
+  })
+
+  it('keeps a change that did not reach storage when it merges a version from another tab', async () => {
+    const { toast } = await import('sonner')
+    const warning = vi.spyOn(toast, 'warning')
+    const { state, view } = browserStorage()
+    const diagram = stored('Shop')
+    openDiagramSession(diagram)
+    state.full = true
+    useDoc.setState({ name: 'Store' })
+    flushPendingSave()
+    expect(useUnsaved.getState().diagram).not.toBeNull()
+
+    state.full = false
+    const background = diagram.theme.background === 'grid' ? 'dots' : 'grid'
+    const theirs = { ...diagram, theme: { ...diagram.theme, background } }
+    localStorage.setItem(`dg:diagram:${diagram.id}`, JSON.stringify(theirs))
+    view.dispatchEvent(Object.assign(new Event('storage'), { key: `dg:diagram:${diagram.id}` }))
+    const notice = warning.mock.lastCall?.[1] as unknown as {
+      action: { label: string; onClick: (event: { preventDefault(): void }) => void }
+    }
+    expect(notice.action.label).toBe('Merge')
+    notice.action.onClick({ preventDefault: () => undefined })
+
+    expect(repository().load(diagram.id)).toMatchObject({ name: 'Store', theme: { background } })
+  })
+
+  it('tries a file write that fails later again, and ends the state after a write reaches the file', async () => {
+    const { state, write } = failingFolder()
+    const diagram = stored('Shop')
+    openDiagramSession(diagram)
+    await repository().settled()
+    write.mockClear()
+    state.refuse = true
+
+    useDoc.setState({ name: 'Store' })
+    expect(await saveAndSettle()).toMatchObject({ id: diagram.id, message: 'EPERM: operation not permitted' })
+    expect(write).toHaveBeenCalledOnce()
+    await vi.advanceTimersByTimeAsync(SAVE_RETRY_DELAYS_MS[0]!)
+    await repository().settled()
+    expect(write).toHaveBeenCalledTimes(2)
+    expect(useUnsaved.getState().diagram).not.toBeNull()
+
+    state.refuse = false
+    expect(await saveAndSettle()).toBeNull()
+    expect(write).toHaveBeenCalledTimes(3)
+    expect(write).toHaveBeenLastCalledWith(expect.objectContaining({ text: expect.stringContaining('"Store"') }))
+    await vi.advanceTimersByTimeAsync(10 * SAVE_RETRY_DELAYS_MS.at(-1)!)
+    expect(write).toHaveBeenCalledTimes(3)
+  })
+
+  it('drops the changes that are not in the file on request, and stops the tries', async () => {
+    const { state, write } = failingFolder()
+    const diagram = stored('Shop')
+    openDiagramSession(diagram)
+    await repository().settled()
+    state.refuse = true
+    useDoc.setState({ name: 'Store' })
+    await saveAndSettle()
+    write.mockClear()
+
+    discardUnsavedChanges()
+    expect(openDiagramId()).toBeNull()
+    expect(useUnsaved.getState().diagram).toBeNull()
+    expect(repository().load(diagram.id)?.name).toBe('Shop')
+    await vi.advanceTimersByTimeAsync(10 * SAVE_RETRY_DELAYS_MS.at(-1)!)
+    expect(write).not.toHaveBeenCalled()
+  })
+
+  it('ends the state and the tries when the editor closes', async () => {
+    const { state, write } = failingFolder()
+    const diagram = stored('Shop')
+    openDiagramSession(diagram)
+    state.refuse = true
+    useDoc.setState({ name: 'Store' })
+    await saveAndSettle()
+    closeDiagramSession(diagram.id, false)
+    write.mockClear()
+    expect(useUnsaved.getState().diagram).toBeNull()
+    await vi.advanceTimersByTimeAsync(10 * SAVE_RETRY_DELAYS_MS.at(-1)!)
+    expect(write).not.toHaveBeenCalled()
   })
 })
 
