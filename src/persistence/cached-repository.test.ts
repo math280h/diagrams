@@ -175,4 +175,57 @@ describe('createCachedRepository', () => {
     await repository.settled()
     expect(sink.write).not.toHaveBeenCalled()
   })
+
+  it('writes a linked file again after its write failed, also when the next save changes only the view', async () => {
+    const first = diagram('Linked', { id: 'link-1' })
+    const { repository, sink, events } = setup([
+      { id: 'link-1', text: serializeDiagram(first), path: '/repo/docs/a.diagram.json' },
+    ])
+    sink.write.mockRejectedValueOnce(new Error('EBUSY'))
+    repository.save({ ...first, name: 'Renamed' })
+    await repository.settled()
+    repository.save({ ...first, name: 'Renamed', viewport: { x: 9, y: 9, zoom: 2 }, rev: first.rev + 1 })
+    await repository.settled()
+    expect(sink.write).toHaveBeenCalledTimes(2)
+    expect(events.at(-1)).toEqual({ kind: 'saved', id: 'link-1' })
+  })
+
+  it('reports only the outcome of the last save of a diagram', async () => {
+    const { repository, sink, events } = setup()
+    let failFirst: (error: Error) => void = () => undefined
+    sink.write.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          failFirst = reject
+        }),
+    )
+    const saved = diagram('Saved')
+    repository.save(saved)
+    repository.save({ ...saved, name: 'Later' })
+    failFirst(new Error('locked'))
+    await repository.settled()
+    expect(events).toEqual([{ kind: 'saved', id: saved.id }])
+  })
+
+  it('drops saves that did not reach storage and loads the stored version again', async () => {
+    const stored = diagram('Stored', { id: 'a' })
+    const { repository, sink, events } = setup([{ id: 'a', text: serializeDiagram(stored) }])
+    sink.write.mockRejectedValue(new Error('EPERM'))
+    repository.save({ ...stored, name: 'Not stored' })
+    const fresh = diagram('Never stored')
+    repository.save(fresh)
+    await repository.settled()
+    events.length = 0
+
+    repository.discardUnstored('a')
+    repository.discardUnstored(fresh.id)
+    expect(repository.load('a')?.name).toBe('Stored')
+    expect(repository.list().map((meta) => meta.id)).toEqual(['a'])
+    expect(events).toEqual([
+      { kind: 'changed', id: 'a' },
+      { kind: 'changed', id: fresh.id },
+    ])
+    repository.discardUnstored('a')
+    expect(events).toHaveLength(2)
+  })
 })

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { homedir, hostname, userInfo } from 'node:os'
 import path from 'node:path'
-import { app, dialog, session, shell } from 'electron'
+import { app, type BrowserWindow, dialog, powerMonitor, session, shell } from 'electron'
 import electronUpdater from 'electron-updater'
 import { TOOL_DEFINITIONS } from '@/agent/tool-definitions'
 import {
@@ -13,7 +13,6 @@ import {
   CLAUDE_MARKETPLACE_FOLDER,
   DEEP_LINK_SCHEME,
   DEV_ORIGINS,
-  DIAGRAM_FILE_SUFFIX,
   FIRST_DEV_AGENT_PORT,
   HANDOFF_TTL_MS,
   PREVIEW_APP_LABEL,
@@ -50,7 +49,7 @@ import { createRendererRpc } from './renderer-rpc'
 import { setupReports, startCrashReporter } from './reports/setup'
 import { createGitHubAuth, GITHUB_SIGN_IN_FILE, secretFile, type GitHubAuth } from './github-auth'
 import { createDiagramFiles } from './storage/diagram-files'
-import { TrashError } from './storage/file-queue'
+import { TrashError, writeFileAtomic } from './storage/file-queue'
 import { committedText } from './storage/git'
 import { createLinkedFiles, isLinkedId } from './storage/linked-files'
 import { createThemeFiles, watchThemeFolder } from './storage/theme-files'
@@ -58,22 +57,27 @@ import { watchDiagramFolder, watchLinkedFiles } from './storage/watcher'
 import { checkUpdateRepository, repositoryFeed } from './update-repository'
 import { createUpdates, updatePolicy, type UpdatePolicy } from './updates'
 import { layoutGraphviz } from './graphviz'
+import { type CloseDialogs, confirmUnsavedClose, diagramFileName } from './unsaved-close'
 import {
   cancelQuit,
   closedUnseen,
   closeUnseenWindow,
   createMainWindow,
   currentWindow,
+  endSession,
   focusWindow,
   prepareAgentWindow,
   prepareQuit,
   rendererOrigin,
+  setRendererUnsaved,
   setWindowColors,
   setWindowHooks,
   windowHidden,
 } from './window'
 
 const FLUSH_TIMEOUT_MS = 3000
+const DIAGRAM_FILE_FILTERS = [{ name: 'Diagram files', extensions: ['json'] }]
+const COPY_FILE_MODE = 0o644
 /** The time limit of an agent call in the main process. */
 const AGENT_CALL_LIMIT_MS = 10 * 60_000
 const HANDOFF_OPEN_TIMEOUT_MS = 20_000
@@ -172,6 +176,25 @@ function systemNames(): string[] {
   return [homedir(), hostname(), user]
 }
 
+function nativeCloseDialogs(window: BrowserWindow, signal: AbortSignal): CloseDialogs {
+  return {
+    ask: async (question) =>
+      (await dialog.showMessageBox(window, { type: 'warning', noLink: true, signal, ...question })).response,
+    pickFile: async (defaultName) => {
+      const picked = await dialog.showSaveDialog(window, {
+        title: 'Save a copy of the diagram',
+        defaultPath: path.join(app.getPath('documents'), defaultName),
+        filters: DIAGRAM_FILE_FILTERS,
+      })
+      return picked.canceled || !picked.filePath ? null : picked.filePath
+    },
+    write: (file, text) => writeFileAtomic(file, text, COPY_FILE_MODE),
+    showError: async (message, detail) => {
+      await dialog.showMessageBox(window, { type: 'error', message, detail, signal })
+    },
+  }
+}
+
 function restrictPermissions() {
   session.defaultSession.setPermissionRequestHandler((_contents, permission, callback) =>
     callback(ALLOWED_PERMISSIONS.has(permission)),
@@ -197,6 +220,7 @@ async function start() {
   const followBackground = () => background?.follow(settings.get().keepRunning || atLogin)
   followBackground()
   if (atLogin) background?.hideDock()
+  powerMonitor.on('shutdown', endSession)
   app.on('window-all-closed', () => {
     if (closedUnseen()) return
     if (!settings.get().keepRunning) {
@@ -382,7 +406,7 @@ async function start() {
         const options = {
           title: 'Open diagram files',
           properties: ['openFile', 'multiSelections'] as ('openFile' | 'multiSelections')[],
-          filters: [{ name: 'Diagram files', extensions: ['json'] }],
+          filters: DIAGRAM_FILE_FILTERS,
         }
         const picked = window ? await dialog.showOpenDialog(window, options) : await dialog.showOpenDialog(options)
         if (picked.canceled) return []
@@ -394,8 +418,8 @@ async function start() {
         const window = currentWindow()
         const options = {
           title: 'Save the diagram as a file',
-          defaultPath: `${name.replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'Diagram'}${DIAGRAM_FILE_SUFFIX}`,
-          filters: [{ name: 'Diagram files', extensions: ['json'] }],
+          defaultPath: diagramFileName(name),
+          filters: DIAGRAM_FILE_FILTERS,
         }
         const picked = window ? await dialog.showSaveDialog(window, options) : await dialog.showSaveDialog(options)
         if (picked.canceled || !picked.filePath) return null
@@ -458,6 +482,10 @@ async function start() {
         setImmediate(() => app.quit())
         return null
       },
+      'app.setUnsaved': async ({ unsaved }) => {
+        setRendererUnsaved(unsaved)
+        return null
+      },
       'layout.graphviz': layoutGraphviz,
       'update.info': async () => updates.info(),
       'update.check': () => updates.check(),
@@ -494,9 +522,11 @@ async function start() {
   setWindowHooks({
     attach: (contents) => rpc.attach(contents),
     beforeClose: async () => {
-      await rpc.call('app.flush', null, { timeoutMs: FLUSH_TIMEOUT_MS }).catch(() => undefined)
+      const flushed = await rpc.call('app.flush', null, { timeoutMs: FLUSH_TIMEOUT_MS }).catch(() => null)
       await Promise.all([files.drain(), linked.drain()])
+      return flushed?.unsaved ?? null
     },
+    confirmUnsavedClose: (window, unsaved, signal) => confirmUnsavedClose(unsaved, nativeCloseDialogs(window, signal)),
     focused: () => {
       watcher.rescan()
       linkedWatcher.rescan()

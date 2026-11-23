@@ -62,6 +62,7 @@ const INPUTS = {
   'app.removeWebsite': z.object({ website: z.string().max(MAX_ADDRESS_CHARS) }),
   'app.setShareWebsite': z.object({ website: z.string().max(MAX_ADDRESS_CHARS) }),
   'app.quit': z.null(),
+  'app.setUnsaved': z.object({ unsaved: z.boolean() }),
   'update.info': z.null(),
   'update.check': z.null(),
   'update.install': z.null(),
