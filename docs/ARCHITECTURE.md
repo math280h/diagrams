@@ -517,6 +517,8 @@ A container of a diagram has its own samples:
 - Share links: `src/share/samples`, one sample for each prefix.
 - Images that hold a diagram: `src/export/samples/v<N>.png` and `v<N>.svg`. Each holds the first diagram of
   `v<N>.fields.json`.
+- Backups: `src/persistence/backups/v<N>.zip`, a zip file of diagram files. It holds the diagrams of
+  `v<N>.fields.json`.
 
 To drop old formats, start a new major version. Raise `RELEASE_MAJOR` and `OLDEST_FORMAT`, and remove the migration
 steps and samples of the old formats. The next release is then `v<RELEASE_MAJOR>.0.0`.
@@ -1766,5 +1768,10 @@ Icons logo that has its own licence.
 - `localStorage` holds about 5 MB per site; versions in IndexedDB do not count. The desktop app has no such limit. A
   typical diagram uses 20 to 80 KB. When storage is full, the app keeps the diagram in memory and asks the user to
   export JSON.
+- A browser can delete the storage of a site that is not persistent: Chromium and Firefox when the disk is almost
+  full, Safari after 7 days of use without a visit. The app calls `navigator.storage.persist()` at the first save of a
+  page load, at most once in 30 days, because Firefox shows a prompt. The library in browser storage offers one zip
+  file of all diagram files as a backup. Import keeps the id of a diagram when no stored diagram has it, so the links
+  between diagrams stay.
 - SVG export embeds HTML in `foreignObject`. Browsers show it; design tools can show it as one image.
 - Performance budget: about 150 nodes, 200 edges and 600 particles at 60 fps.

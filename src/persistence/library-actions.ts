@@ -75,7 +75,10 @@ export function duplicateDiagram(id: string): Diagram | null {
   try {
     source = repository().load(id)
   } catch (error) {
-    reportError('Could not duplicate the diagram.', error, { facts: [`Storage: ${repository().location.kind}`] })
+    reportError('Could not duplicate the diagram.', error, {
+      description: 'Export the diagram file to keep its data.',
+      facts: [`Storage: ${repository().location.kind}`],
+    })
     return null
   }
   if (!source) return null

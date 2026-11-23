@@ -54,14 +54,13 @@ function ImportResult({ report }: { report: ImportReport }) {
       <p>{imported.length > 0 ? `Imported ${plural(imported.length, 'diagram')}.` : 'No diagram was imported.'}</p>
       {copies.length > 0 && (
         <p className="text-muted-foreground">
-          {copies.length === 1 ? '1 is a copy with a new id' : `${copies.length} are copies with a new id`}, because
-          your library has a different diagram with the same id.
+          {copies.length === 1 ? '1 of them is a copy.' : `${copies.length} of them are copies.`}
         </p>
       )}
       {unchanged.length > 0 && (
         <p className="text-muted-foreground">
-          {plural(unchanged.length, 'diagram')} {unchanged.length === 1 ? 'is' : 'are'} already in your library, so
-          the import skipped {unchanged.length === 1 ? 'it' : 'them'}.
+          Skipped {plural(unchanged.length, 'diagram')} that {unchanged.length === 1 ? 'is' : 'are'} already in your
+          library.
         </p>
       )}
       {failed.length > 0 && (
@@ -201,7 +200,8 @@ export function ImportDialog({ open, onOpenChange, onImported, onOpen }: ImportD
               Choose .diagram.json files, a backup .zip file, or a PNG or SVG that holds a diagram
             </Button>
             <p className="mt-2 text-xs text-muted-foreground">
-              A diagram keeps its id. If your library has a different diagram with that id, the import adds a copy.
+              Import never replaces a diagram in your library. Another version of a diagram that you have comes in as a
+              copy.
             </p>
             {report && <ImportResult report={report} />}
           </TabsContent>

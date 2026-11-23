@@ -204,11 +204,11 @@ function BrowserStorageNote({ usageBytes, budgetBytes }: { usageBytes: number; b
         <span className="tabular-nums">
           {formatBytes(usageBytes)} of {formatBytes(budgetBytes)} used in this browser.{' '}
           {persisted
-            ? 'Clearing the site data of this browser deletes them.'
-            : 'The browser can delete them when the disk is almost full, and Safari deletes them after 7 days without a visit.'}
+            ? 'Clearing the site data of this browser deletes your diagrams.'
+            : 'This browser can delete your diagrams when the disk is almost full. Safari deletes them after 7 days without a visit.'}
         </span>
         <Button variant="link" size="xs" className="px-0" onClick={backUpAllDiagrams}>
-          <Download /> Back up all diagrams
+          Back up all diagrams
         </Button>
       </p>
       <FolderOffer />

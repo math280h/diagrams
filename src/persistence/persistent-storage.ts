@@ -29,7 +29,8 @@ export async function checkPersistentStorage(): Promise<boolean | null> {
 
 function askedRecently(now: number): boolean {
   try {
-    return now - Number(localStorage.getItem(ASKED_AT_KEY)) < ASK_AGAIN_MS
+    const askedAt = localStorage.getItem(ASKED_AT_KEY)
+    return askedAt !== null && now - Number(askedAt) < ASK_AGAIN_MS
   } catch {
     return true
   }
