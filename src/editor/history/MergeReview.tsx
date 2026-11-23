@@ -1,5 +1,5 @@
-import { ReactFlowProvider, useReactFlow, type Viewport } from '@xyflow/react'
-import { useEffect, useMemo, useState } from 'react'
+import { ReactFlowProvider, useNodesInitialized, useReactFlow, type Viewport } from '@xyflow/react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { DiagramCanvas } from '@/canvas/DiagramCanvas'
 import { useLocalNodes } from '@/canvas/use-local-nodes'
 import { Button } from '@/components/ui/button'
@@ -20,6 +20,7 @@ import {
 } from '@/store/document'
 import { reviewChosen, useOutsideReview, type OutsideReview } from '@/store/outside-review'
 import { useActiveTheme } from '@/themes/active'
+import { editorFit } from '../fit'
 import { Segmented } from '../inspector/controls'
 import { conflictDetail, conflictRect, conflictTitle } from './merge-words'
 
@@ -48,6 +49,14 @@ function MergeCanvas({ result, viewport }: { result: MergeResult; viewport: View
   const marked = useMemo(() => markedElements(result), [result])
   const [nodes, onNodesChange] = useLocalNodes(marked.nodes)
   const colorTheme = useActiveTheme()
+  const { fitView } = useReactFlow()
+  const measured = useNodesInitialized()
+  const fitted = useRef(false)
+  useEffect(() => {
+    if (!measured || fitted.current) return
+    fitted.current = true
+    void fitView(editorFit())
+  }, [measured, fitView])
   return (
     <DiagramCanvas
       nodes={nodes}
@@ -137,17 +146,19 @@ function MergePanel({ review }: { review: OutsideReview }) {
           <Legend fromOutside={copy.fromOutside} />
           {conflicts.length > 0 && (
             <section aria-labelledby="merge-conflicts" className="space-y-2">
-              <div className="flex flex-wrap items-center gap-1">
-                <h3 id="merge-conflicts" className="mr-auto text-xs text-muted-foreground">
-                  {conflicts.length === 1 ? '1 change needs a choice' : `${conflicts.length} changes need a choice`}
-                </h3>
-                <Button size="xs" variant="ghost" onClick={() => chooseMergeSide(keys, 'mine')}>
-                  All mine
-                </Button>
-                <Button size="xs" variant="ghost" onClick={() => chooseMergeSide(keys, 'theirs')}>
-                  All {copy.fromOutside}
-                </Button>
-              </div>
+              <h3 id="merge-conflicts" className="text-xs text-muted-foreground">
+                {conflicts.length === 1 ? '1 change needs a choice' : `${conflicts.length} changes need a choice`}
+              </h3>
+              {conflicts.length > 1 && (
+                <div className="grid grid-cols-2 gap-1.5">
+                  <Button size="xs" variant="outline" onClick={() => chooseMergeSide(keys, 'mine')}>
+                    All mine
+                  </Button>
+                  <Button size="xs" variant="outline" onClick={() => chooseMergeSide(keys, 'theirs')}>
+                    All {copy.fromOutside}
+                  </Button>
+                </div>
+              )}
               <ul className="space-y-2">
                 {conflicts.map((conflict) => (
                   <ConflictRow key={conflict.key} review={review} conflict={conflict} onChoose={choose} />
@@ -156,11 +167,11 @@ function MergePanel({ review }: { review: OutsideReview }) {
             </section>
           )}
           <section className="space-y-1">
-            <h3 className="text-xs text-muted-foreground">Changed {copy.fromOutside}</h3>
+            <h3 className="text-xs text-muted-foreground first-letter:uppercase">{copy.fromOutside}</h3>
             <p>{theirChanges}</p>
           </section>
           <section className="space-y-1">
-            <h3 className="text-xs text-muted-foreground">Changed here</h3>
+            <h3 className="text-xs text-muted-foreground">Here</h3>
             <p>{myChanges}</p>
           </section>
           {droppedEdges.length > 0 && (
@@ -179,18 +190,18 @@ function MergePanel({ review }: { review: OutsideReview }) {
           )}
         </div>
       </ScrollArea>
-      <footer className="flex shrink-0 flex-wrap gap-1.5 border-t p-3">
-        <Button size="sm" disabled={!reviewChosen(review)} onClick={applyOutsideReview}>
-          Apply
-        </Button>
-        <Button size="sm" variant="secondary" onClick={keepOpenVersion}>
+      <footer className="grid shrink-0 grid-cols-2 gap-1.5 border-t p-3">
+        <Button size="sm" variant="outline" onClick={keepOpenVersion}>
           Keep this version
         </Button>
-        <Button size="sm" variant="secondary" onClick={loadNewerVersion}>
+        <Button size="sm" variant="outline" onClick={loadNewerVersion}>
           Load newer
         </Button>
         <Button size="sm" variant="ghost" onClick={cancelOutsideReview}>
           Cancel
+        </Button>
+        <Button size="sm" disabled={!reviewChosen(review)} onClick={applyOutsideReview}>
+          Apply
         </Button>
       </footer>
     </aside>
