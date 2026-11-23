@@ -29,10 +29,16 @@ describe('createSaveReporter', () => {
 
   it('shows each failed remove and ignores outside changes', () => {
     const { show, report } = setup()
-    report({ kind: 'remove-failed', id: 'a', message: 'in use' })
-    report({ kind: 'remove-failed', id: 'b', message: 'in use' })
+    report({ kind: 'remove-failed', id: 'a', reason: 'unknown', message: 'in use' })
+    report({ kind: 'remove-failed', id: 'b', reason: 'unknown', message: 'in use' })
     report({ kind: 'changed', id: 'a' })
     expect(show.removeFailed).toHaveBeenCalledTimes(2)
     expect(show.saveFailed).not.toHaveBeenCalled()
+  })
+
+  it('leaves a failed trash to the caller of the delete', () => {
+    const { show, report } = setup()
+    report({ kind: 'remove-failed', id: 'a', reason: 'trash', message: 'No trash on this drive.' })
+    expect(show.removeFailed).not.toHaveBeenCalled()
   })
 })

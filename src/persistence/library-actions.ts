@@ -9,7 +9,7 @@ import { closeDiagramSession, openDiagramId } from '@/store/document'
 import { forgetVersions } from '@/store/versions'
 import { loadDiagramOrNull, repository } from './active-repository'
 import { DiagramFormatError, migrate } from './migrations'
-import type { RemoveOptions, SaveResult } from './repository'
+import type { RemoveOptions, RemoveResult, SaveResult } from './repository'
 
 export function withFreshIdentity(diagram: Diagram, name = diagram.name): Diagram {
   const now = Date.now()
@@ -60,7 +60,7 @@ export function discardUnusedBlankDiagrams() {
     if (openDiagramId() === id) continue
     newBlankIds.delete(id)
     const diagram = loadDiagramOrNull(id)
-    if (diagram && isUnused(diagram)) deleteDiagram(id, { trash: false })
+    if (diagram && isUnused(diagram)) void deleteDiagram(id, { trash: false })
   }
 }
 
@@ -82,11 +82,35 @@ export function renameDiagram(id: string, name: string) {
   repository().save({ ...diagram, name, rev: diagram.rev + 1, updatedAt: Date.now() })
 }
 
-export function deleteDiagram(id: string, options?: RemoveOptions) {
+/**
+ * Deletes a diagram and waits until storage takes the delete. The version history goes only after that.
+ *
+ * @returns The failure if storage keeps the diagram. Then the diagram and its versions stay.
+ */
+export async function deleteDiagram(id: string, options?: RemoveOptions): Promise<RemoveResult> {
   closeDiagramSession(id, false)
-  repository().remove(id, options)
-  forgetOpenedInApp(id)
-  forgetVersions(id)
+  const result = await removeFromRepository(id, options)
+  if (result.ok) {
+    forgetOpenedInApp(id)
+    forgetVersions(id)
+  }
+  return result
+}
+
+function removeFromRepository(id: string, options: RemoveOptions | undefined): Promise<RemoveResult> {
+  return new Promise((resolve) => {
+    const stop = repository().subscribe((event) => {
+      if (event.id !== id || (event.kind !== 'removed' && event.kind !== 'remove-failed')) return
+      stop()
+      resolve(event.kind === 'removed' ? { ok: true } : { ok: false, reason: event.reason, message: event.message })
+    })
+    try {
+      repository().remove(id, options)
+    } catch (error) {
+      stop()
+      throw error
+    }
+  })
 }
 
 export function exportDiagramJson(diagram: Diagram) {

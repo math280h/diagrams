@@ -11,6 +11,9 @@ export interface StoredFile {
 
 export type FileChange = { kind: 'changed'; id: string; text: string; path?: string } | { kind: 'removed'; id: string }
 
+/** The end of a file remove. After `trash-failed`, the file stays where it is. */
+export type FileRemoveOutcome = { kind: 'removed' } | { kind: 'trash-failed'; message: string }
+
 /** The text of a theme file, and its file name without `.theme.json`. */
 export interface ThemeSource {
   name: string
@@ -194,7 +197,8 @@ export interface CaptureRequest {
 export interface MainRequests {
   'files.list': { input: null; output: { folder: string; files: StoredFile[] } }
   'files.write': { input: StoredFile; output: null }
-  'files.remove': { input: { id: string; trash: boolean }; output: null }
+  /** Moves a diagram file to the trash, or deletes it if `trash` is false. A linked file only leaves the list. */
+  'files.remove': { input: { id: string; trash: boolean }; output: FileRemoveOutcome }
   'files.reveal': { input: null; output: null }
   /** Asks the user for diagram files anywhere and links them, so that the app saves them where they are. */
   'files.open': { input: null; output: StoredFile[] }
