@@ -1,7 +1,61 @@
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
+import type { Page } from '@playwright/test'
+import { DIAGRAM_VERSION } from '@/model/schema'
 import { diagramFile, expect, test } from './fixtures'
+
+const SAVE_WAIT_MS = 2000
+
+async function openWithPausedClock(window: Page, folder: string, name: string) {
+  const file = diagramFile(name)
+  const target = path.join(folder, `${file.id}.diagram.json`)
+  writeFileSync(target, file.text)
+  await window.clock.install()
+  await window.reload()
+  await expect(window.getByText(name)).toBeVisible({ timeout: 10_000 })
+  await window.evaluate((id) => {
+    location.hash = `#/d/${id}`
+  }, file.id)
+  await expect(window.getByLabel('Diagram name')).toHaveValue(name)
+  await window.clock.pauseAt((await window.evaluate(() => Date.now())) + 1000)
+  return { file, target }
+}
+
+const nameOnDisk = (target: string) => (JSON.parse(readFileSync(target, 'utf8')) as { name: string }).name
+
+test('keeps a file that changed on disk while an edit waits, until the user loads it', async ({ window, dirs }) => {
+  const { file, target } = await openWithPausedClock(window, dirs.data, 'Before the pull')
+  await window.getByLabel('Diagram name').fill('Edit that waits')
+  await window.getByLabel('Diagram name').press('Enter')
+  writeFileSync(target, JSON.stringify({ ...JSON.parse(file.text), name: 'After the pull' }))
+  await expect(window.getByText('This diagram changed on disk.')).toBeVisible({ timeout: 10_000 })
+
+  await window.clock.runFor(SAVE_WAIT_MS)
+  expect(nameOnDisk(target)).toBe('After the pull')
+  await window.getByRole('button', { name: 'Load newer' }).click()
+  await expect(window.getByLabel('Diagram name')).toHaveValue('After the pull')
+
+  await window.getByLabel('Diagram name').fill('Edited after the load')
+  await window.getByLabel('Diagram name').press('Enter')
+  await window.clock.runFor(SAVE_WAIT_MS)
+  await expect.poll(() => nameOnDisk(target)).toBe('Edited after the load')
+})
+
+test('never writes over a file from a newer version of the app', async ({ window, dirs }) => {
+  const { file, target } = await openWithPausedClock(window, dirs.data, 'Before the sync')
+  const newer = JSON.stringify({ ...JSON.parse(file.text), version: DIAGRAM_VERSION + 1, name: 'From a newer app' })
+  writeFileSync(target, newer)
+  await expect(window.getByText('The newer version cannot be read.')).toBeVisible({ timeout: 10_000 })
+  await expect(window.locator('[data-sonner-toast]').getByRole('button', { name: 'Export' })).toBeVisible()
+
+  await window.getByLabel('Diagram name').fill('Edit after the sync')
+  await window.getByLabel('Diagram name').press('Enter')
+  await window.clock.runFor(SAVE_WAIT_MS)
+  await window.getByRole('link', { name: 'All diagrams' }).click()
+  await expect(window.getByText('From a newer app')).toBeVisible()
+  expect(readFileSync(target, 'utf8')).toBe(newer)
+})
 
 function repoWithDiagram(root: string, name: string) {
   const repo = path.join(root, 'repo')

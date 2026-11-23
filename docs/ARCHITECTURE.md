@@ -1321,6 +1321,9 @@ with snapdom, because Chromium gives only pixels.
 - An unreadable diagrams folder at start shows the reason and "Try again"; agent calls fail at once with it.
 - A `changed` event for the open diagram (another tab or program) offers "Load newer". A diagram gone from storage stays
   open with a notice; the next change saves it. `rev` stays the diagram's save counter.
+- Until the user loads the newer version or keeps the open one, saves only record versions, so a due save cannot
+  replace the newer version. A version that the app cannot read, for example a newer format, gets no save. The notice
+  then offers an export.
 - On close, the window saves the open diagram and waits for queued writes. A crashed renderer delays the close by at
   most 3 seconds (the save limit includes the renderer start).
 - Electron cancels a quit when a window prevents its close, so the window quits again after the save. The agent server

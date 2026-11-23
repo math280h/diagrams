@@ -2,9 +2,12 @@ import { useEffect } from 'react'
 import { create } from 'zustand'
 import { toast } from 'sonner'
 import { errorMessage } from '@/lib/error-message'
-import { reportError } from './problem-store'
+import { errorProblem, type Problem } from '@/lib/problem-report'
+import { rememberProblem } from '@/reports/recent-problems'
+import { showProblem } from './problem-store'
 import type { Diagram } from '@/model/schema'
 import { repository } from '@/persistence/active-repository'
+import { exportDiagramJson } from '@/persistence/library-actions'
 import { fromDiagram, toDiagram } from '@/persistence/serialize'
 import { storageCopy } from '@/persistence/storage-copy'
 import { useDoc, type DocState } from './doc-store'
@@ -56,7 +59,13 @@ interface Session {
   reload(diagram: Diagram): void
   /** Stops the saves and the listeners. The session drops a due save. */
   stop(): void
+  /** Returns true while a version from outside waits for the choice of the user. */
+  held(): boolean
 }
+
+type OutsideVersion = { kind: 'newer' } | { kind: 'unreadable'; problem: Problem }
+
+const UNREADABLE_TITLE = 'The newer version cannot be read.'
 
 /**
  * Saves the changes of the open diagram until the session stops.
@@ -66,14 +75,17 @@ interface Session {
  * content in the form that a save writes. For example, a change of only the selection writes nothing.
  *
  * A change from outside loads at once, unless a change of the user waits for its save. A change of only the viewport
- * or the measured sizes does not count. Otherwise the session offers the newer version.
+ * or the measured sizes does not count. Otherwise the session offers the newer version. Until the user loads it or
+ * keeps the open version, a save only records a version. A version from outside that the app cannot read gets no save.
  */
 function startSession(diagram: Diagram): Session {
   const id = diagram.id
   let timer: ReturnType<typeof setTimeout> | undefined
   let lastSaved = savedContent(currentDiagram())
   let lastUserContent = userContent(currentDiagram())
-  const userChangeWaits = () => timer !== undefined && userContent(currentDiagram()) !== lastUserContent
+  let outside: OutsideVersion | null = null
+  const userChangeWaits = () =>
+    (timer !== undefined || outside !== null) && userContent(currentDiagram()) !== lastUserContent
 
   const save = () => {
     clearTimeout(timer)
@@ -81,6 +93,11 @@ function startSession(diagram: Diagram): Session {
     const state = useDoc.getState()
     if (state.id !== id) return
     const next = toDiagram({ ...state, rev: state.rev + 1 })
+    if (outside) {
+      recordVersion(next)
+      showOutside()
+      return
+    }
     const content = savedContent(next)
     if (content === lastSaved) return
     lastSaved = content
@@ -108,42 +125,103 @@ function startSession(diagram: Diagram): Session {
     clearTimeout(timer)
     timer = setTimeout(save, SAVE_DELAY_MS)
   })
-  const loadNewer = () => {
+  const noticeId = `changed:${id}`
+  let noticeShown = false
+  const dismissNotice = () => {
+    if (noticeShown) toast.dismiss(noticeId)
+    noticeShown = false
+  }
+  const takeNewer = (loaded: Diagram) => {
+    if (outside) recordVersion(currentDiagram())
+    outside = null
+    dismissNotice()
+    reload(loaded)
+  }
+  const holdUnreadable = (error: unknown) => {
+    const problem = errorProblem(UNREADABLE_TITLE, error)
+    rememberProblem(problem)
+    outside = { kind: 'unreadable', problem }
+    showOutside()
+  }
+  const readStored = () => {
     try {
-      const loaded = repository().load(id)
-      if (loaded) reload(loaded)
+      return repository().load(id)
     } catch (error) {
-      reportError('The newer version cannot be read.', error)
+      holdUnreadable(error)
+      return null
     }
   }
-  let noticeShown = false
+  const loadNewer = () => {
+    const loaded = readStored()
+    if (loaded) takeNewer(loaded)
+  }
+  const keepThisVersion = () => {
+    outside = null
+    noticeShown = false
+    lastSaved = ''
+    save()
+  }
+  const showOutside = () => {
+    if (!outside) return
+    noticeShown = true
+    if (outside.kind === 'newer') {
+      toast.warning(storageCopy().changedElsewhere, {
+        id: noticeId,
+        description:
+          'Load the newer version, or keep this version and save over it. Until you choose, your changes here do not save.',
+        duration: Infinity,
+        action: {
+          label: 'Load newer',
+          onClick: (event) => {
+            event.preventDefault()
+            loadNewer()
+          },
+        },
+        cancel: { label: 'Keep this version', onClick: keepThisVersion },
+      })
+      return
+    }
+    const { problem } = outside
+    toast.error(UNREADABLE_TITLE, {
+      id: noticeId,
+      description: 'Your changes do not save over it. Export the diagram to keep them in a file.',
+      duration: Infinity,
+      action: {
+        label: 'Export',
+        onClick: (event) => {
+          event.preventDefault()
+          exportDiagramJson(currentDiagram())
+        },
+      },
+      cancel: { label: 'More details', onClick: () => showProblem(problem) },
+    })
+  }
   const stopRepository = repository().subscribe((event) => {
     if (event.kind !== 'changed' || event.id !== id) return
     const stored = repository()
       .list()
       .some((meta) => meta.id === id)
     if (!stored) {
+      if (outside && timer === undefined) timer = setTimeout(save, SAVE_DELAY_MS)
+      outside = null
       noticeShown = true
       toast.warning(storageCopy().removedElsewhere, {
-        id: `changed:${id}`,
+        id: noticeId,
         description: 'The diagram stays open here, and your next change saves it again.',
         duration: Infinity,
+        action: undefined,
+        cancel: undefined,
       })
       return
     }
+    const loaded = readStored()
+    if (!loaded) return
     if (!userChangeWaits()) {
-      if (noticeShown) toast.dismiss(`changed:${id}`)
-      noticeShown = false
-      loadNewer()
+      takeNewer(loaded)
       return
     }
-    noticeShown = true
-    toast.warning(storageCopy().changedElsewhere, {
-      id: `changed:${id}`,
-      description: 'Load the newer version, or keep this version and save over it.',
-      duration: Infinity,
-      action: { label: 'Load newer', onClick: loadNewer },
-    })
+    outside = { kind: 'newer' }
+    showOutside()
   })
   const onVisibility = () => {
     if (document.visibilityState === 'hidden') flush()
@@ -157,9 +235,11 @@ function startSession(diagram: Diagram): Session {
     id,
     flush,
     reload,
+    held: () => outside !== null,
     stop() {
       clearTimeout(timer)
       timer = undefined
+      dismissNotice()
       stopDoc()
       stopRepository()
       if (typeof document !== 'undefined') {
@@ -195,6 +275,14 @@ export function closeDiagramSession(id: string, save = true) {
 
 export function flushPendingSave() {
   session?.flush()
+}
+
+/**
+ * Returns true while a version from outside waits for the choice of the user. Saves of the open diagram then write
+ * nothing.
+ */
+export function outsideVersionWaits(): boolean {
+  return session?.held() ?? false
 }
 
 /** Returns the id of the diagram whose changes the editor saves, or `null` while no editor shows one. */

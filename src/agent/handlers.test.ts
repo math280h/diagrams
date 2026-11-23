@@ -8,7 +8,7 @@ import { absolutePosition } from '@/model/graph'
 import { nodeLabel } from '@/model/labels'
 import { stepBody } from '@/model/payload'
 import { setRepository, repository } from '@/persistence/active-repository'
-import { createCachedRepository } from '@/persistence/cached-repository'
+import { createCachedRepository, type CachedRepository } from '@/persistence/cached-repository'
 import { useDoc } from '@/store/doc-store'
 import { closeDiagramSession, openDiagram, openDiagramId, openDiagramSession } from '@/store/document'
 import { resetHistory, undo, useHistory } from '@/store/history'
@@ -1010,6 +1010,8 @@ describe('changes that do not reach storage', () => {
   }
 
   beforeEach(() => {
+    // Sonner dismisses a toast in an animation frame. Node has no requestAnimationFrame.
+    vi.stubGlobal('requestAnimationFrame', (callback: () => void) => setTimeout(callback))
     failWrites = false
     setRepository(
       createCachedRepository({
@@ -1023,6 +1025,7 @@ describe('changes that do not reach storage', () => {
   afterEach(() => {
     const id = openDiagramId()
     if (id) closeDiagramSession(id, false)
+    vi.unstubAllGlobals()
   })
 
   it('tells the agent that a new diagram did not save', async () => {
@@ -1040,6 +1043,20 @@ describe('changes that do not reach storage', () => {
       'The change shows in the editor, but it did not save: disk full',
     )
     expect(useDoc.getState().nodes).toHaveLength(1)
+  })
+
+  it('makes no change while a version from outside waits for the choice of the user', async () => {
+    const ctx = sessionContext()
+    const [created] = await HANDLERS.create_diagram({ name: 'Shop' }, ctx)
+    const { diagramId } = JSON.parse(created && created.type === 'text' ? created.text : '{}') as { diagramId: string }
+    useDoc.setState({ name: 'Edit that waits' })
+    const folder = repository() as CachedRepository
+    const outside = { ...folder.load(diagramId), name: 'Edited outside' }
+    folder.applyExternal({ kind: 'changed', id: diagramId, text: JSON.stringify(outside) })
+    await expect(HANDLERS.add_elements({ nodes: [{ label: 'API' }] }, ctx)).rejects.toThrow(
+      'The diagram changed outside the editor, so the tool made no change.',
+    )
+    expect(useDoc.getState().nodes).toHaveLength(0)
   })
 
   it('tells the agent that a diagram could not be deleted', async () => {

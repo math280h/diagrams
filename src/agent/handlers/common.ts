@@ -3,7 +3,7 @@ import { repository } from '@/persistence/active-repository'
 import { fromDiagram } from '@/persistence/serialize'
 import { untilStored } from '@/persistence/until-stored'
 import { takeSnapshot, useDoc } from '@/store/doc-store'
-import { currentDiagram, flushPendingSave } from '@/store/document'
+import { currentDiagram, flushPendingSave, outsideVersionWaits } from '@/store/document'
 import { describeChange } from '@/model/diagram-diff'
 import { oneStep } from '@/store/history'
 import { asVersionAuthor } from '@/store/versions'
@@ -64,13 +64,18 @@ export function throwIfCancelled(ctx: HandlerContext) {
 /**
  * Applies a change to the open diagram as one undo step, saves it and waits until the save reaches storage.
  *
- * @throws ToolError If the client cancelled the call, if the editor no longer shows the diagram, or if the save failed. After
- *   a failed save the change stays in the editor.
+ * @throws ToolError If the client cancelled the call, if the editor no longer shows the diagram, if a version from
+ *   outside waits for the choice of the user, or if the save failed. After a failed save the change stays in the editor.
  */
 export async function commitEdit<T>(ctx: HandlerContext, diagramId: string, change: () => T): Promise<T> {
   throwIfCancelled(ctx)
   if (!editorShows(ctx, diagramId)) {
     throw new ToolError('The editor no longer shows this diagram, so the tool made no change. Call the tool again.')
+  }
+  if (outsideVersionWaits()) {
+    throw new ToolError(
+      'The diagram changed outside the editor, so the tool made no change. Ask the user to load the newer version or keep this one, then call the tool again.',
+    )
   }
   let result: T | undefined
   const before = currentDiagram()
