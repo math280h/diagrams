@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import { mkdir, readFile, rename, rm, stat, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import type { FileChange } from '@/desktop/contract'
+import { errorMessage } from '@/lib/error-message'
 
 /** Delays before each retry of a rename that another process blocks. */
 const RETRY_DELAYS_MS = [20, 50, 100, 200, 400]
@@ -13,6 +14,15 @@ export function digest(text: string) {
 
 export function errorCode(error: unknown) {
   return typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : null
+}
+
+async function exists(file: string) {
+  try {
+    await stat(file)
+    return true
+  } catch (error) {
+    return errorCode(error) !== 'ENOENT'
+  }
 }
 
 async function withRetry<T>(work: () => Promise<T>): Promise<T> {
@@ -43,6 +53,18 @@ export async function writeFileAtomic(file: string, data: string | Uint8Array, m
   }
 }
 
+/** Tells that the trash did not take a file. The file stays where it is. */
+export class TrashError extends Error {}
+
+async function removeFile(file: string, trash: ((file: string) => Promise<void>) | undefined) {
+  try {
+    await (trash ? trash(file) : unlink(file))
+  } catch (error) {
+    if (errorCode(error) === 'ENOENT' || !(await exists(file))) return
+    throw trash ? new TrashError(errorMessage(error), { cause: error }) : error
+  }
+}
+
 type Operation = { kind: 'write'; text: string } | { kind: 'remove'; trash: boolean }
 
 interface KnownFile {
@@ -58,6 +80,7 @@ export interface FileQueueOptions {
   accepts: (id: string) => boolean
   /** Makes sure that a file can be written. The queue calls it again after a write fails because a folder is gone. */
   prepare: (file: string, retry: boolean) => Promise<void>
+  /** Moves a file to the trash. If it fails and the file stays, the remove fails with a {@link TrashError}. */
   trash?: (file: string) => Promise<void>
 }
 
@@ -94,16 +117,7 @@ export function createFileQueue(options: FileQueueOptions) {
   async function perform(id: string, operation: Operation) {
     const target = options.pathOf(id)
     if (operation.kind === 'remove') {
-      const trash = operation.trash ? options.trash : undefined
-      try {
-        if (trash) await trash(target)
-        else await unlink(target)
-      } catch (error) {
-        if (errorCode(error) !== 'ENOENT') {
-          if (!trash) throw error
-          await unlink(target)
-        }
-      }
+      await removeFile(target, operation.trash ? options.trash : undefined)
       known.delete(id)
       return
     }

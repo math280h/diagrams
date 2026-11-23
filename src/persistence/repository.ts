@@ -18,6 +18,13 @@ export type DiagramMeta = z.infer<typeof diagramMetaSchema>
 export type SaveResult = { ok: true } | { ok: false; reason: 'quota' | 'unknown'; message: string }
 export type SaveFailure = Extract<SaveResult, { ok: false }>
 
+/** The end of a remove. After a failure, the diagram and its file stay. `trash` means that the trash failed. */
+export type RemoveResult = { ok: true } | { ok: false; reason: 'trash' | 'unknown'; message: string }
+export type RemoveFailure = Extract<RemoveResult, { ok: false }>
+
+/** Tells a repository that the trash did not take a diagram file. The file stays where it is. */
+export class TrashError extends Error {}
+
 export type StorageLocation =
   | { kind: 'browser'; budgetBytes: number }
   | { kind: 'folder'; path: string }
@@ -37,7 +44,7 @@ export type RepositoryEvent =
   | { kind: 'saved'; id: string }
   | ({ kind: 'save-failed'; id: string } & Omit<SaveFailure, 'ok'>)
   | { kind: 'removed'; id: string }
-  | { kind: 'remove-failed'; id: string; message: string }
+  | ({ kind: 'remove-failed'; id: string } & Omit<RemoveFailure, 'ok'>)
 
 export interface RemoveOptions {
   /** If false, the desktop deletes the file and does not move it to the trash. The default is true. */
@@ -49,6 +56,7 @@ export interface DiagramRepository {
   list(): DiagramMeta[]
   load(id: string): Diagram | null
   save(diagram: Diagram): SaveResult
+  /** Removes a diagram. If storage does not take the remove, the diagram comes back before `remove-failed`. */
   remove(id: string, options?: RemoveOptions): void
   /**
    * Drops the saves of a diagram that did not reach storage, so that the diagram loads as storage keeps it. A

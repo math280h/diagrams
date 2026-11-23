@@ -225,6 +225,14 @@ export async function prepareQuit() {
 }
 
 /**
+ * Cancels {@link prepareQuit} when the app does not quit. After it, a window runs {@link WindowHooks.beforeClose} again
+ * before it closes.
+ */
+export function cancelQuit() {
+  closedForQuit = false
+}
+
+/**
  * Shows the main window in front of other windows, and creates it if it does not exist. A window that closes now
  * closes first, and a new window shows after that.
  */

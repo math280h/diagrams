@@ -8,10 +8,12 @@ import {
   type DiagramRepository,
   type RepositoryEvent,
   type StorageLocation,
+  TrashError,
 } from './repository'
 
 export interface RepositorySink {
   write(file: StoredFile): Promise<unknown>
+  /** Rejects with a {@link TrashError} if the trash fails and the file stays. */
   remove(id: string, trash: boolean): Promise<unknown>
 }
 
@@ -127,14 +129,22 @@ export function createCachedRepository(options: {
     )
   }
 
-  const trackRemove = (id: string, work: Promise<unknown>) => {
+  const trackRemove = (id: string, work: Promise<unknown>, removed: Entry | undefined) => {
     settle(
       work.then(
         () => {
           stored.delete(id)
           emit({ kind: 'removed', id })
         },
-        (error: unknown) => emit({ kind: 'remove-failed', id, message: errorMessage(error) }),
+        (error: unknown) => {
+          if (removed && !entries.has(id)) entries.set(id, removed)
+          emit({
+            kind: 'remove-failed',
+            id,
+            reason: error instanceof TrashError ? 'trash' : 'unknown',
+            message: errorMessage(error),
+          })
+        },
       ),
     )
   }
@@ -165,8 +175,9 @@ export function createCachedRepository(options: {
     },
 
     remove(id, { trash = true } = {}) {
+      const removed = entries.get(id)
       entries.delete(id)
-      trackRemove(id, options.sink.remove(id, trash))
+      trackRemove(id, options.sink.remove(id, trash), removed)
     },
 
     discardUnstored(id) {

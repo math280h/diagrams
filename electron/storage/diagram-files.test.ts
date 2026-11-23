@@ -5,6 +5,7 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FileChange } from '@/desktop/contract'
 import { createDiagramFiles, idOfFile, isSafeId } from './diagram-files'
+import { TrashError } from './file-queue'
 import { watchDiagramFolder } from './watcher'
 
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -122,14 +123,23 @@ describe('createDiagramFiles', () => {
     expect(await files.inspect('d_one')).toBeNull()
   })
 
-  it('keeps a file it could not remove', async () => {
+  it('keeps a file that the trash does not take, and does not delete it', async () => {
     const trash = vi.fn(async () => {
       throw busy()
     })
     const files = createDiagramFiles(folder, { trash })
     await files.write('d_one', 'text')
-    vi.spyOn(fsPromises, 'unlink').mockRejectedValueOnce(busy())
-    await expect(files.remove('d_one')).rejects.toThrow('in use')
+    await expect(files.remove('d_one')).rejects.toThrow(TrashError)
+    expect(readdirSync(folder)).toEqual(['d_one.diagram.json'])
+    expect(await files.inspect('d_one')).toBeNull()
+  })
+
+  it('keeps a file it could not delete', async () => {
+    const files = createDiagramFiles(folder)
+    await files.write('d_one', 'text')
+    const unlink = vi.spyOn(fsPromises, 'unlink').mockRejectedValueOnce(busy())
+    await expect(files.remove('d_one', { trash: false })).rejects.toThrow('in use')
+    unlink.mockRestore()
     expect(await files.inspect('d_one')).toBeNull()
   })
 
