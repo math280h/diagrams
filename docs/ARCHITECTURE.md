@@ -1313,8 +1313,8 @@ with snapdom, because Chromium gives only pixels.
   - Id: `link-` and a path hash; list in `linked-files.json` in the user data folder. Remove from the library only
     unlinks.
   - `file-queue.ts` serves both kinds. Watchers on linked folders and the focus rescan report git or editor changes.
-  - A damaged list must not block the library. Main moves it to `linked-files-damaged-<time>.json`, keeps the entries
-    that it can read and tells the user once. The list write flushes the temporary file to disk before the rename.
+  - Main moves a damaged list to `linked-files-damaged-<time>.json`, keeps the entries that it can read and tells the
+    user once. The list write flushes the temporary file to disk before the rename.
 - Files use indented JSON with numbers to two decimals, for small diffs.
 - A linked file is not written when only the viewport, save counter, time or measured sizes change: a pan or zoom must
   not alter the repository file.
