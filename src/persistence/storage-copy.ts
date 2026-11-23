@@ -1,3 +1,4 @@
+import { toast } from 'sonner'
 import { reportError } from '@/store/problem-store'
 import { repository } from './active-repository'
 import type { StorageLocation } from './repository'
@@ -75,6 +76,10 @@ export function storageCopy(): StorageCopy {
 }
 
 const SAVE_FAILED_TOAST = 'save-failed'
+
+export function dismissSaveFailedNotice() {
+  toast.dismiss(SAVE_FAILED_TOAST)
+}
 
 /**
  * Shows failed saves and removes of the repository as toasts, for as long as the app runs.

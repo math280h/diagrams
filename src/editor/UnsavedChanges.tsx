@@ -21,7 +21,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { isDesktop } from '@/desktop/bridge'
 import { exportDiagramJson } from '@/persistence/library-actions'
-import { storageCopy } from '@/persistence/storage-copy'
+import { dismissSaveFailedNotice, storageCopy } from '@/persistence/storage-copy'
 import { currentDiagram, discardUnsavedChanges, flushPendingSave, saveAndSettle } from '@/store/document'
 import { useUnsaved, type UnsavedDiagram } from '@/store/unsaved'
 
@@ -36,7 +36,7 @@ export function UnsavedMark() {
   const unsaved = useUnsaved((state) => state.diagram)
   if (!unsaved) return null
   return (
-    <Popover>
+    <Popover onOpenChange={(open) => open && dismissSaveFailedNotice()}>
       <Tooltip>
         <TooltipTrigger
           render={
@@ -54,7 +54,9 @@ export function UnsavedMark() {
             {failureText(unsaved)} The app tries again. To keep your changes, export the diagram file.
           </PopoverDescription>
         </PopoverHeader>
-        <p className="font-mono text-xs break-words text-muted-foreground">{unsaved.message}</p>
+        {unsaved.reason !== 'quota' && (
+          <p className="font-mono text-xs break-words text-muted-foreground">{unsaved.message}</p>
+        )}
         <div className="flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={flushPendingSave}>
             Try again
