@@ -41,7 +41,7 @@ async function pageLoad(location: StorageLocation = { kind: 'browser', budgetByt
 }
 
 describe('askForPersistentStorage', () => {
-  it('asks once in a page load, and keeps the answer', async () => {
+  it('asks once within a day, and keeps the answer', async () => {
     const { askForPersistentStorage, usePersistentStorage } = await pageLoad()
     await askForPersistentStorage(1000)
     await askForPersistentStorage(2000)
@@ -58,13 +58,25 @@ describe('askForPersistentStorage', () => {
     expect(usePersistentStorage.getState().persisted).toBe(true)
   })
 
-  it('asks again only 30 days after the last request', async () => {
+  it('asks again one day after a refused request, in the same page load or a later one', async () => {
     persist.mockResolvedValue(false)
-    await (await pageLoad()).askForPersistentStorage(0)
-    await (await pageLoad()).askForPersistentStorage(29 * DAY_MS)
+    const { askForPersistentStorage } = await pageLoad()
+    await askForPersistentStorage(0)
+    await askForPersistentStorage(DAY_MS - 1)
     expect(persist).toHaveBeenCalledTimes(1)
-    await (await pageLoad()).askForPersistentStorage(30 * DAY_MS)
+    await askForPersistentStorage(DAY_MS)
     expect(persist).toHaveBeenCalledTimes(2)
+    await (await pageLoad()).askForPersistentStorage(2 * DAY_MS - 1)
+    expect(persist).toHaveBeenCalledTimes(2)
+    await (await pageLoad()).askForPersistentStorage(2 * DAY_MS)
+    expect(persist).toHaveBeenCalledTimes(3)
+  })
+
+  it('asks only once when several saves ask at the same time', async () => {
+    persist.mockResolvedValue(false)
+    const { askForPersistentStorage } = await pageLoad()
+    await Promise.all([askForPersistentStorage(0), askForPersistentStorage(0), askForPersistentStorage(0)])
+    expect(persist).toHaveBeenCalledTimes(1)
   })
 
   it('does not ask when it cannot remember the request', async () => {
@@ -116,5 +128,28 @@ describe('askForPersistentStorageOnSave', () => {
     repository().save(createDiagram())
     await repository().settled()
     expect(persist).toHaveBeenCalledTimes(1)
+  })
+
+  it('asks again at a save one day after a refused request', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      persist.mockResolvedValue(false)
+      vi.setSystemTime(0)
+      const { askForPersistentStorageOnSave, repository } = await pageLoad()
+      askForPersistentStorageOnSave()
+      repository().save(createDiagram())
+      await vi.waitFor(() => expect(persist).toHaveBeenCalledTimes(1))
+
+      vi.setSystemTime(DAY_MS - 1)
+      repository().save(createDiagram())
+      await repository().settled()
+      expect(persist).toHaveBeenCalledTimes(1)
+
+      vi.setSystemTime(DAY_MS)
+      repository().save(createDiagram())
+      await vi.waitFor(() => expect(persist).toHaveBeenCalledTimes(2))
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

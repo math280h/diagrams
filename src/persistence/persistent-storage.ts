@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { repository } from './active-repository'
 
 const ASKED_AT_KEY = 'dg:persist-asked-at'
-const ASK_AGAIN_MS = 30 * 24 * 60 * 60 * 1000
+const ASK_AGAIN_MS = 24 * 60 * 60 * 1000
 
 interface PersistentStorageState {
   /**
@@ -45,19 +45,23 @@ function rememberAsk(now: number): boolean {
   }
 }
 
-let askedThisLoad = false
+let asking = false
 
 /**
- * Asks the browser to keep the diagrams of the website until the user deletes them. It asks at most once in a page
- * load and once in 30 days, and only while the diagrams are in browser storage.
+ * Asks the browser to keep the diagrams of the website until the user deletes them, while the diagrams are in browser
+ * storage and the storage is not persistent. After a request, it asks again only when one day has passed.
  */
 export async function askForPersistentStorage(now = Date.now()): Promise<void> {
-  if (askedThisLoad || repository().location.kind !== 'browser') return
-  askedThisLoad = true
   const storage = storageManager()
-  if (!storage || (await checkPersistentStorage()) || askedRecently(now) || !rememberAsk(now)) return
-  const persisted = await storage.persist().catch(() => false)
-  usePersistentStorage.setState({ persisted })
+  if (!storage || asking || repository().location.kind !== 'browser' || askedRecently(now)) return
+  asking = true
+  try {
+    if ((await checkPersistentStorage()) || !rememberAsk(now)) return
+    const persisted = await storage.persist().catch(() => false)
+    usePersistentStorage.setState({ persisted })
+  } finally {
+    asking = false
+  }
 }
 
 /**
