@@ -9,6 +9,14 @@ export interface StoredFile {
   path?: string
 }
 
+/**
+ * Tells that the list of linked files was damaged, so the app made a new list from the entries that it could read.
+ * `copyKept` is true when a copy of the damaged list stays next to the new list.
+ */
+export interface LinkedFilesReset {
+  copyKept: boolean
+}
+
 export type FileChange = { kind: 'changed'; id: string; text: string; path?: string } | { kind: 'removed'; id: string }
 
 /** The end of a file remove. After `trash-failed`, the file stays where it is. */
@@ -195,7 +203,11 @@ export interface CaptureRequest {
 
 /** Requests from the renderer to the main process. */
 export interface MainRequests {
-  'files.list': { input: null; output: { folder: string; files: StoredFile[] } }
+  /** Returns the diagram files, and the reset of a damaged list of linked files once after the reset. */
+  'files.list': {
+    input: null
+    output: { folder: string; files: StoredFile[]; linkedFilesReset: LinkedFilesReset | null }
+  }
   'files.write': { input: StoredFile; output: null }
   /** Moves a diagram file to the trash, or deletes it if `trash` is false. A linked file only leaves the list. */
   'files.remove': { input: { id: string; trash: boolean }; output: FileRemoveOutcome }
@@ -206,6 +218,8 @@ export interface MainRequests {
   'files.saveAs': { input: { name: string; text: string }; output: StoredFile | null }
   /** Shows a linked file in the file manager. */
   'files.show': { input: { id: string }; output: null }
+  /** Shows the copy of the damaged list of linked files in the file manager. */
+  'files.showDamagedList': { input: null; output: null }
   /** Returns a linked file as the last commit of its git repository holds it. */
   'files.committed': { input: { id: string }; output: { text: string } }
   'app.about': { input: null; output: AppAbout }

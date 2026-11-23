@@ -1,4 +1,5 @@
 import { desktopApi } from '@/desktop/bridge'
+import { noticeLinkedFilesReset } from '@/desktop/linked-files-notice'
 import { followAgentSetting, restoreFolder } from '@/folder/folder-store'
 import { canOpenFolder } from '@/folder/support'
 import { startLibrary } from '@/store/library-store'
@@ -22,7 +23,8 @@ export function takeLinkedFiles(files: readonly StoredFile[]) {
 export async function bootstrapStorage() {
   const desktop = desktopApi()
   if (desktop) {
-    const { folder, files } = await desktop.request('files.list', null)
+    const { folder, files, linkedFilesReset } = await desktop.request('files.list', null)
+    if (linkedFilesReset) noticeLinkedFilesReset(linkedFilesReset)
     const folderRepository = createCachedRepository({
       location: { kind: 'folder', path: folder },
       files,
