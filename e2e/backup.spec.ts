@@ -130,8 +130,7 @@ test('backs up all diagrams to one zip file, and the import brings them back wit
   await expect(page.getByRole('link', { name: 'Order system, changed here', exact: true })).toBeVisible()
 
   await importFile(page, backup)
-  await expect(dialog.getByText('Imported 1 diagram.')).toBeVisible()
-  await expect(dialog.getByText('1 of them is a copy.')).toBeVisible()
+  await expect(dialog.getByText('Imported 1 diagram as a copy.')).toBeVisible()
   await expect(dialog.getByText(/^Skipped \d+ diagrams? that (is|are) already in your library\.$/)).toBeVisible()
   await dialog.getByRole('button', { name: 'Done' }).click()
   await expect(count).toHaveText(String(stored + 1))

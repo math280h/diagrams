@@ -42,21 +42,33 @@ interface ImportDialogProps {
   onOpen: (id: string) => void
 }
 
+async function importFileList(files: readonly File[]): Promise<{ report: ImportReport } | { error: string }> {
+  try {
+    const { importDiagramFiles } = await import('@/persistence/import-files')
+    return { report: await importDiagramFiles(files) }
+  } catch (cause) {
+    return { error: errorMessage(cause) }
+  }
+}
+
 function onlyDiagram(report: ImportReport): ImportedDiagram | null {
   const diagrams = [...report.imported, ...report.unchanged]
   return diagrams.length === 1 && report.failed.length === 0 ? diagrams[0]! : null
+}
+
+function importedText(importedCount: number, copyCount: number): string {
+  if (importedCount === 0) return 'No diagram was imported.'
+  const diagrams = `Imported ${plural(importedCount, 'diagram')}`
+  if (copyCount === 0) return `${diagrams}.`
+  const asCopies = copyCount === 1 ? 'as a copy' : 'as copies'
+  return copyCount === importedCount ? `${diagrams} ${asCopies}.` : `${diagrams}, ${copyCount} of them ${asCopies}.`
 }
 
 function ImportResult({ report }: { report: ImportReport }) {
   const { imported, copies, unchanged, failed } = report
   return (
     <div role="status" className="mt-3 space-y-1.5 text-sm">
-      <p>{imported.length > 0 ? `Imported ${plural(imported.length, 'diagram')}.` : 'No diagram was imported.'}</p>
-      {copies.length > 0 && (
-        <p className="text-muted-foreground">
-          {copies.length === 1 ? '1 of them is a copy.' : `${copies.length} of them are copies.`}
-        </p>
-      )}
+      <p>{importedText(imported.length, copies.length)}</p>
       {unchanged.length > 0 && (
         <p className="text-muted-foreground">
           Skipped {plural(unchanged.length, 'diagram')} that {unchanged.length === 1 ? 'is' : 'are'} already in your
@@ -102,19 +114,18 @@ export function ImportDialog({ open, onOpenChange, onImported, onOpen }: ImportD
     setError(null)
     setReport(null)
     setBusy(true)
-    try {
-      const { importDiagramFiles } = await import('@/persistence/import-files')
-      const result = await importDiagramFiles(files)
-      const only = onlyDiagram(result)
-      if (only) onOpen(only.id)
-      else if (files.length === 1 && result.failed.length === 1 && result.imported.length === 0) {
-        setError(result.failed[0]!.reason)
-      } else setReport(result)
-    } catch (cause) {
-      setError(errorMessage(cause))
-    } finally {
-      setBusy(false)
+    const outcome = await importFileList(files)
+    setBusy(false)
+    if ('error' in outcome) {
+      setError(outcome.error)
+      return
     }
+    const result = outcome.report
+    const only = onlyDiagram(result)
+    if (only) onOpen(only.id)
+    else if (files.length === 1 && result.failed.length === 1 && result.imported.length === 0) {
+      setError(result.failed[0]!.reason)
+    } else setReport(result)
   }
 
   const importMermaid = async () => {

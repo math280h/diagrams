@@ -203,9 +203,9 @@ function BrowserStorageNote({ usageBytes, budgetBytes }: { usageBytes: number; b
       <p className="flex flex-wrap items-center gap-x-3 text-[13px] text-muted-foreground">
         <span className="tabular-nums">
           {formatBytes(usageBytes)} of {formatBytes(budgetBytes)} used in this browser.{' '}
-          {persisted
-            ? 'Clearing the site data of this browser deletes your diagrams.'
-            : 'This browser can delete your diagrams when the disk is almost full. Safari deletes them after 7 days without a visit.'}
+          {persisted === true && 'Clearing the site data of this browser deletes your diagrams.'}
+          {(persisted === false || persisted === null) &&
+            'This browser can delete your diagrams when the disk is almost full. Safari deletes them after 7 days without a visit.'}
         </span>
         <Button variant="link" size="xs" className="px-0" onClick={backUpAllDiagrams}>
           Back up all diagrams
