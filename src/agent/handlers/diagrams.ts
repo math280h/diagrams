@@ -59,8 +59,13 @@ export const deleteDiagramHandler: ToolHandler<'delete_diagram'> = async ({ diag
   const meta = requireDiagram(diagramId)
   throwIfCancelled(ctx)
   if (ctx.openDiagramId() === diagramId) await ctx.goHome()
-  const failure = await untilStored(diagramId, () => deleteDiagram(diagramId))
-  if (failure !== null) throw new ToolError(`The diagram could not be deleted: ${failure}`)
+  const result = await deleteDiagram(diagramId)
+  if (!result.ok && result.reason === 'trash') {
+    throw new ToolError(
+      `The diagram file could not go to the trash (${result.message}), so the diagram and its file stay. The user can delete the file permanently in the library.`,
+    )
+  }
+  if (!result.ok) throw new ToolError(`The diagram could not be deleted: ${result.message}`)
   return json({ deleted: { id: diagramId, name: meta.name } })
 }
 

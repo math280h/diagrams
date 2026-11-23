@@ -1,9 +1,9 @@
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { Locator, Page } from '@playwright/test'
 import { DIAGRAM_VERSION } from '@/model/schema'
-import { diagramFile, expect, test } from './fixtures'
+import { diagramFile, expect, launchApp, test } from './fixtures'
 
 const SAVE_WAIT_MS = 2000
 const APP_SAVE_DELAY_MS = 400
@@ -120,6 +120,28 @@ test('opens a diagram file in a repository and saves it where it is', async ({ a
   await window.getByRole('button', { name: 'Remove from library' }).click()
   await expect(window.getByText('docs/orders.diagram.json')).toHaveCount(0)
   expect(JSON.parse(readFileSync(file, 'utf8')).name).toBe('Orders, renamed')
+})
+
+test('opens the library when the list of opened files is damaged, and tells the user', async ({ appEnv, dirs }) => {
+  mkdirSync(dirs.data, { recursive: true })
+  const inFolder = diagramFile('In the diagrams folder', 'd_in_folder')
+  writeFileSync(path.join(dirs.data, `${inFolder.id}.diagram.json`), inFolder.text)
+  mkdirSync(dirs.userData, { recursive: true })
+  writeFileSync(path.join(dirs.userData, 'linked-files.json'), '{"files": ["')
+
+  const { app, window } = await launchApp(appEnv)
+  try {
+    await expect(window.getByText('In the diagrams folder')).toBeVisible()
+    const notice = window.locator('[data-sonner-toast]').filter({ hasText: 'The list of opened files was reset' })
+    await expect(notice).toBeVisible()
+    await expect(notice.getByRole('button', { name: 'Show the old list' })).toBeVisible()
+    const copies = readdirSync(dirs.userData).filter((name) => name.startsWith('linked-files-damaged-'))
+    expect(copies).toHaveLength(1)
+    expect(readFileSync(path.join(dirs.userData, copies[0]!), 'utf8')).toBe('{"files": ["')
+    expect(JSON.parse(readFileSync(path.join(dirs.userData, 'linked-files.json'), 'utf8'))).toEqual({ files: [] })
+  } finally {
+    await app.close()
+  }
 })
 
 test('compares a diagram file with its last commit and restores it', async ({ app, window, dirs }) => {

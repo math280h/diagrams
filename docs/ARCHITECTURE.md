@@ -1300,6 +1300,9 @@ with snapdom, because Chromium gives only pixels.
 - Repositories send `saved`, `save-failed`, `removed` or `remove-failed` when a save or remove ends (desktop: after the
   write). The library list refreshes on them. `watchSaveOutcomes` shows a run of failed saves once, again after a save
   reaches storage, and each failed remove.
+- A delete never changes to a permanent delete without the user. If the trash fails, the file, the diagram and its
+  versions stay; the library asks for a permanent delete, and an agent call fails. Versions go only after storage
+  takes the delete.
 - `openDiagramSession` (`src/store/document.ts`) owns the open diagram's saves: 400 ms delay, save on page hide,
   `flushPendingSave`. Unchanged content, as after a selection, writes nothing. A delete closes the session without the
   due save, so the file stays deleted.
@@ -1313,6 +1316,8 @@ with snapdom, because Chromium gives only pixels.
   - Id: `link-` and a path hash; list in `linked-files.json` in the user data folder. Remove from the library only
     unlinks.
   - `file-queue.ts` serves both kinds. Watchers on linked folders and the focus rescan report git or editor changes.
+  - Main moves a damaged list to `linked-files-damaged-<time>.json`, keeps the entries that it can read and tells the
+    user once. The list write flushes the temporary file to disk before the rename.
 - Files use indented JSON with numbers to two decimals, for small diffs.
 - A linked file is not written when only the viewport, save counter, time or measured sizes change: a pan or zoom must
   not alter the repository file.

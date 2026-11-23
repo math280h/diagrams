@@ -493,7 +493,8 @@ export const TOOL_DEFINITIONS = {
   },
   delete_diagram: {
     title: 'Delete diagram',
-    description: 'Delete a diagram. On the desktop the file goes to the trash.',
+    description:
+      'Delete a diagram. On the desktop the file goes to the trash. If the trash fails, the call fails and the diagram stays.',
     input: z.object({ diagramId: z.string().describe('The diagram id.') }),
     annotations: CHANGE,
     timeoutMs: SHORT_MS,
