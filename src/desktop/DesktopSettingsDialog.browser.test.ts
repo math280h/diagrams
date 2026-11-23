@@ -187,6 +187,20 @@ describe('updates', () => {
     await expect.element(page.getByText('Cannot find latest.yml')).not.toBeInTheDocument()
   })
 
+  it('shows the reason why the install of a downloaded update failed', async () => {
+    show({
+      update: updateInfo({
+        state: 'install-failed',
+        version: '1.3.0',
+        message: 'Command pkexec exited with code 126\nstderr',
+      }),
+    })
+    await expect
+      .element(page.getByText('Could not install version 1.3.0. Command pkexec exited with code 126'))
+      .toBeVisible()
+    await expect.element(page.getByText('stderr')).not.toBeInTheDocument()
+  })
+
   it('changes the update source of a build that allows it', async () => {
     build.repositoryEditable = true
     answers['update.setRepository'] = () => {

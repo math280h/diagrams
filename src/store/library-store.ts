@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { repository } from '@/persistence/active-repository'
-import type { DiagramMeta } from '@/persistence/repository'
+import type { DiagramMeta, RepositoryEvent } from '@/persistence/repository'
 
 interface LibraryState {
   items: DiagramMeta[]
@@ -16,11 +16,13 @@ export const useLibrary = create<LibraryState>((set) => ({
 
 let stopLibrary: (() => void) | null = null
 
+const LIST_EVENTS = new Set<RepositoryEvent['kind']>(['changed', 'saved', 'removed', 'remove-failed'])
+
 /** Loads the diagram list and updates it when storage changes. Call it after {@link setRepository}. */
 export function startLibrary() {
   stopLibrary?.()
   useLibrary.getState().refresh()
   stopLibrary = repository().subscribe((event) => {
-    if (event.kind === 'changed' || event.kind === 'saved' || event.kind === 'removed') useLibrary.getState().refresh()
+    if (LIST_EVENTS.has(event.kind)) useLibrary.getState().refresh()
   })
 }

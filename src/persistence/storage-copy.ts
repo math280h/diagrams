@@ -39,7 +39,7 @@ const FOLDER_COPY: StorageCopy = {
   missingDetail: 'Someone moved or deleted the file. Import the diagram file to open it here.',
   stillSaved: 'Your saved diagrams are still in your diagrams folder.',
   deleteDetail: 'This moves the diagram file to the trash.',
-  removeFailed: 'Could not move the diagram file to the trash.',
+  removeFailed: 'Could not delete the diagram file.',
   versionsPlace: 'on this computer',
 }
 
@@ -48,7 +48,6 @@ const PICKED_FOLDER_COPY: StorageCopy = {
   missingTitle: 'This diagram is not in the open folder',
   stillSaved: 'Your saved diagrams are still in the open folder.',
   deleteDetail: 'This moves the diagram file to .diagrams/deleted in the folder, where you can get it back.',
-  removeFailed: 'Could not delete the diagram file.',
 }
 
 const FOLLOWED_FOLDER_COPY: StorageCopy = {

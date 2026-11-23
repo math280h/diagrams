@@ -8,10 +8,12 @@ import {
   type DiagramRepository,
   type RepositoryEvent,
   type StorageLocation,
+  TrashError,
 } from './repository'
 
 export interface RepositorySink {
   write(file: StoredFile): Promise<unknown>
+  /** Rejects with a {@link TrashError} if the trash fails and the file stays. */
   remove(id: string, trash: boolean): Promise<unknown>
 }
 
@@ -101,15 +103,10 @@ export function createCachedRepository(options: {
     for (const listener of listeners) listener(event)
   }
 
-  const track = (id: string, work: Promise<unknown>, kind: 'save' | 'remove') => {
+  const track = (work: Promise<unknown>, done: RepositoryEvent, failed: (error: unknown) => RepositoryEvent) => {
     const tracked = work.then(
-      () => emit({ kind: kind === 'save' ? 'saved' : 'removed', id }),
-      (error: unknown) =>
-        emit(
-          kind === 'save'
-            ? { kind: 'save-failed', id, reason: 'unknown', message: errorMessage(error) }
-            : { kind: 'remove-failed', id, message: errorMessage(error) },
-        ),
+      () => emit(done),
+      (error: unknown) => emit(failed(error)),
     )
     pending.add(tracked)
     void tracked.then(() => pending.delete(tracked))
@@ -135,13 +132,26 @@ export function createCachedRepository(options: {
       entries.set(diagram.id, { text, meta: { ...diagramMeta(diagram), ...(path ? { path } : {}) } })
       const projectFile = path !== undefined || options.location.kind === 'picked-folder'
       const unchanged = projectFile && current !== undefined && lastingContent(current.text) === lastingContent(text)
-      track(diagram.id, unchanged ? Promise.resolve() : options.sink.write({ id: diagram.id, text }), 'save')
+      track(
+        unchanged ? Promise.resolve() : options.sink.write({ id: diagram.id, text }),
+        { kind: 'saved', id: diagram.id },
+        (error) => ({ kind: 'save-failed', id: diagram.id, reason: 'unknown', message: errorMessage(error) }),
+      )
       return { ok: true }
     },
 
     remove(id, { trash = true } = {}) {
+      const removed = entries.get(id)
       entries.delete(id)
-      track(id, options.sink.remove(id, trash), 'remove')
+      track(options.sink.remove(id, trash), { kind: 'removed', id }, (error) => {
+        if (removed && !entries.has(id)) entries.set(id, removed)
+        return {
+          kind: 'remove-failed',
+          id,
+          reason: error instanceof TrashError ? 'trash' : 'unknown',
+          message: errorMessage(error),
+        }
+      })
     },
 
     usageBytes() {
