@@ -93,10 +93,7 @@ export function watchSaveOutcomes(): () => void {
           event.message,
           {
             id: SAVE_FAILED_TOAST,
-            description:
-              event.reason === 'quota'
-                ? 'Choose Export, then Diagram file (JSON), before you close the tab. Delete other diagrams to free space.'
-                : 'Choose Export, then Diagram file (JSON), to keep your changes.',
+            description: 'The app tries again. To keep your changes, choose Export, then Diagram file (JSON).',
             duration: 12_000,
             facts: [`Storage: ${repository().location.kind}`, `Save failure: ${event.reason}`, `Diagram: ${event.id}`],
           },

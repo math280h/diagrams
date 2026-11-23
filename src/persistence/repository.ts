@@ -50,6 +50,11 @@ export interface DiagramRepository {
   load(id: string): Diagram | null
   save(diagram: Diagram): SaveResult
   remove(id: string, options?: RemoveOptions): void
+  /**
+   * Drops the saves of a diagram that did not reach storage, so that the diagram loads as storage keeps it. A
+   * repository without this method never keeps such a save.
+   */
+  discardUnstored?(id: string): void
   /** Returns the size of all stored diagrams. */
   usageBytes(): number
   /**

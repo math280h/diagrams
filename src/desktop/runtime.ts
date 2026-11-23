@@ -6,14 +6,31 @@ import { parseDiagramJson } from '@/persistence/library-actions'
 import { untilStored } from '@/persistence/until-stored'
 import { watchCrashes } from '@/reports/crashes'
 import { router } from '@/router'
-import { flushPendingSave } from '@/store/document'
+import { serializeDiagram } from '@/persistence/cached-repository'
+import { currentDiagram, saveAndSettle } from '@/store/document'
+import { useUnsaved } from '@/store/unsaved'
 import { openConnectAgent, recordAgentCall, watchAgentInfo } from './agent-store'
 import { loadAppSettings } from './app-settings'
+import { desktopApi } from './bridge'
 import { watchGitHubSignIn } from './github-sign-in'
 import { serveMainRequests } from './serve'
 import { watchUpdates } from './updates'
 
 const ONLY_IN_CAPTURE_WINDOW = 'Only the capture window renders export stages.'
+
+function reportUnsaved() {
+  const report = (unsaved: boolean) =>
+    void desktopApi()
+      ?.request('app.setUnsaved', { unsaved })
+      .catch(() => undefined)
+  let reported = useUnsaved.getState().diagram !== null
+  report(reported)
+  useUnsaved.subscribe(({ diagram }) => {
+    if ((diagram !== null) === reported) return
+    reported = diagram !== null
+    report(reported)
+  })
+}
 
 /**
  * Answers the requests of the desktop main process: agent tools, browser handoffs and the save before close.
@@ -27,6 +44,7 @@ export function startDesktopRuntime(storageError: string | null = null) {
   watchGitHubSignIn()
   watchCrashes()
   loadAppSettings()
+  reportUnsaved()
   const unavailable = `The app could not open the diagrams folder: ${storageError}`
   return serveMainRequests({
     'agent.call': async ({ tool, args }, signal) => {
@@ -54,10 +72,10 @@ export function startDesktopRuntime(storageError: string | null = null) {
     },
 
     'app.flush': async () => {
-      if (storageError !== null) return null
-      flushPendingSave()
-      await repository().settled()
-      return null
+      if (storageError !== null) return { unsaved: null }
+      if ((await saveAndSettle()) === null) return { unsaved: null }
+      const diagram = currentDiagram()
+      return { unsaved: { name: diagram.name, text: serializeDiagram(diagram) } }
     },
 
     'app.connectAgent': async () => {

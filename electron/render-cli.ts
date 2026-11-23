@@ -115,6 +115,7 @@ export async function runRender(args: RenderArgs): Promise<number> {
       'app.removeWebsite': refuse,
       'app.setShareWebsite': refuse,
       'app.quit': refuse,
+      'app.setUnsaved': async () => null,
       'update.info': async () => UPDATES_OFF,
       'update.check': async () => UPDATES_OFF,
       'update.install': refuse,
