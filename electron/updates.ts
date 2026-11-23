@@ -85,7 +85,8 @@ function feedKey({ repository, token }: UpdateFeed) {
  * @param feed - Returns the feed for the next check, or `sign-in` while a private repository needs a GitHub sign-in.
  *   The updater keeps the feed of `app-update.yml` until it differs.
  * @param emit - Receives each change of the update state.
- * @param prepareQuit - Runs before the install. It saves the open work, so that the windows can close at once.
+ * @param prepareQuit - Runs before the install. It saves the open work, so that the windows can close at once. False
+ *   means that the user keeps the app open, and the install does not start.
  * @param cancelQuit - Cancels `prepareQuit` when the install fails and the app does not quit.
  */
 export function createUpdates(options: {
@@ -96,7 +97,7 @@ export function createUpdates(options: {
   repository: string
   feed: () => Promise<UpdateFeed | 'sign-in'>
   emit: (info: UpdateInfo) => void
-  prepareQuit: () => Promise<void>
+  prepareQuit: () => Promise<boolean>
   cancelQuit: () => void
   intervalMs?: number
 }): Updates {
@@ -181,7 +182,10 @@ export function createUpdates(options: {
       if (installStep !== 'none' || !downloaded()) return
       installStep = 'preparing'
       try {
-        await options.prepareQuit()
+        if (!(await options.prepareQuit())) {
+          installStep = 'none'
+          return
+        }
         installStep = 'started'
         updater.quitAndInstall()
       } catch (error) {

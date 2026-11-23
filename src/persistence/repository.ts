@@ -60,6 +60,11 @@ export interface DiagramRepository {
   save(diagram: Diagram): SaveResult
   /** Removes a diagram. If storage does not take the remove, the diagram comes back before `remove-failed`. */
   remove(id: string, options?: RemoveOptions): void
+  /**
+   * Drops the saves of a diagram that did not reach storage, so that the diagram loads as storage keeps it. A
+   * repository without this method never keeps such a save.
+   */
+  discardUnstored?(id: string): void
   /** Returns the size of all stored diagrams. */
   usageBytes(): number
   /**

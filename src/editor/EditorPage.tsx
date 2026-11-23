@@ -29,6 +29,7 @@ import { InsertMenu } from './InsertMenu'
 import { useEditorShortcuts } from './shortcuts'
 import { ShortcutsDialog } from './ShortcutsDialog'
 import { TopBar } from './TopBar'
+import { UnsavedLeaveGuard } from './UnsavedChanges'
 
 function useAmbientMotion() {
   const engine = useEngine()
@@ -113,6 +114,7 @@ function EditorShell() {
       <ExportDialog />
       <ShortcutsDialog />
       <TraceImportDialog />
+      <UnsavedLeaveGuard />
       <ImportDialog
         open={importOpen}
         onOpenChange={(open) => setUi({ importOpen: open })}

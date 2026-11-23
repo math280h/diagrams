@@ -19,6 +19,12 @@ export interface LinkedFilesReset {
 
 export type FileChange = { kind: 'changed'; id: string; text: string; path?: string } | { kind: 'removed'; id: string }
 
+/** The open diagram when its changes are not in storage: its name and the text of its diagram file. */
+export interface UnsavedFile {
+  name: string
+  text: string
+}
+
 /** The end of a file remove. After `trash-failed`, the file stays where it is. */
 export type FileRemoveOutcome = { kind: 'removed' } | { kind: 'trash-failed'; message: string }
 
@@ -244,6 +250,8 @@ export interface MainRequests {
   'app.setShareWebsite': { input: { website: string }; output: AppSettings }
   /** Quits the app after the window saves the open diagram. */
   'app.quit': { input: null; output: null }
+  /** Tells the main process if the open diagram has changes that are not in storage. */
+  'app.setUnsaved': { input: { unsaved: boolean }; output: null }
   'update.info': { input: null; output: UpdateInfo }
   /** Checks for an update and resolves when the check ends. A build that installs updates starts the download. */
   'update.check': { input: null; output: UpdateInfo }
@@ -307,7 +315,11 @@ export interface MainRequests {
 export interface RendererRequests {
   'agent.call': { input: { tool: string; args: unknown }; output: ToolOutcome }
   'handoff.open': { input: { text: string }; output: { diagramId: string; name: string } }
-  'app.flush': { input: null; output: null }
+  /**
+   * Saves the open diagram and waits for storage. `unsaved` is the open diagram as file text if its changes are still
+   * not in storage, else `null`.
+   */
+  'app.flush': { input: null; output: { unsaved: UnsavedFile | null } }
   /** Opens the "Connect an agent" dialog. */
   'app.connectAgent': { input: null; output: null }
   /** Renders a diagram file and returns the image or the video as base64. */
