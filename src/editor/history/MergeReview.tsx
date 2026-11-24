@@ -82,23 +82,23 @@ function PaneCanvas({
   const { fitView, setCenter, getZoom } = useReactFlow()
   const measured = useNodesInitialized()
   const reducedMotion = useReducedMotion()
-  const fitted = useRef(false)
-  useEffect(() => {
-    if (!measured || fitted.current) return
-    fitted.current = true
-    void fitView(editorFit())
-  }, [measured, fitView])
-
   const rect = focus ? conflictRect(diagram, focus) : null
   const focusX = rect ? rect.x + rect.width / 2 : null
   const focusY = rect ? rect.y + rect.height / 2 : null
+  const placed = useRef(false)
   useEffect(() => {
-    if (!measured || focusX === null || focusY === null) return
+    if (!measured) return
+    const first = !placed.current
+    placed.current = true
+    if (focusX === null || focusY === null) {
+      if (first) void fitView(editorFit())
+      return
+    }
     void setCenter(focusX, focusY, {
       zoom: Math.max(getZoom(), FOCUS_MIN_ZOOM),
-      duration: reducedMotion ? 0 : PAN_DURATION_MS,
+      duration: first || reducedMotion ? 0 : PAN_DURATION_MS,
     })
-  }, [measured, focusX, focusY, setCenter, getZoom, reducedMotion])
+  }, [measured, focusX, focusY, fitView, setCenter, getZoom, reducedMotion])
 
   return (
     <DiagramCanvas
@@ -426,7 +426,7 @@ type PaneId = 'mine' | 'theirs' | 'result'
 function ReviewLayout({ review }: { review: OutsideReview }) {
   const copy = storageCopy()
   const narrow = useWindowSize().width < NARROW_SCREEN_PX
-  const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  const [selectedKey, setSelectedKey] = useState<string | null>(() => review.result.conflicts[0]?.key ?? null)
   const [tab, setTab] = useState<PaneId>('result')
   const focus = review.result.conflicts.find((conflict) => conflict.key === selectedKey) ?? null
   const selectedElement = focus ? conflictElementKey(focus) : null
@@ -465,7 +465,7 @@ function ReviewLayout({ review }: { review: OutsideReview }) {
 
   if (narrow) {
     return (
-      <div className="absolute inset-0 z-[5] flex flex-col bg-background" data-merge-review>
+      <div className="absolute inset-0 z-[15] flex flex-col bg-background" data-merge-review>
         <Tabs value={tab} onValueChange={(value) => setTab(value as PaneId)} className="min-h-0 flex-1 gap-0">
           <TabsList aria-label="Versions" className="mx-3 my-2 w-[calc(100%-1.5rem)]">
             {(['mine', 'theirs', 'result'] as const).map((id) => (
@@ -485,7 +485,7 @@ function ReviewLayout({ review }: { review: OutsideReview }) {
     )
   }
   return (
-    <div className="absolute inset-0 z-[5] flex bg-background" data-merge-review>
+    <div className="absolute inset-0 z-[15] flex bg-background" data-merge-review>
       <div className="grid min-h-0 min-w-0 flex-1 grid-rows-[minmax(0,2fr)_minmax(0,3fr)] gap-px bg-border">
         <div className="grid min-h-0 grid-cols-2 gap-px">
           {pane('mine')}
