@@ -52,6 +52,7 @@ import { useWindowSize } from '@/lib/use-window-size'
 import { useSettings } from '@/store/settings-store'
 import { StepCount } from '@/components/StepCount'
 import { stepFlow } from '@/engine/flow/step'
+import { PLAYBACK_RATES, rateLabel } from '@/engine/playback-rate'
 import { flowToMermaidSequence } from '@/export/sequence'
 import { LogTable } from './LogTable'
 import { PathMenu } from './PathMenu'
@@ -185,14 +186,10 @@ function FlowSettings({ flow }: { flow: Flow }) {
           onChange={(follow) => engine.playback.setFollow(follow)}
         />
         <Field label="Speed">
-          <Segmented
-            value={String(playback.rate) as '0.5' | '1' | '2'}
+          <Choice
+            value={String(playback.rate)}
             onChange={(rate) => engine.playback.setRate(Number(rate))}
-            options={[
-              { value: '0.5', label: '½×' },
-              { value: '1', label: '1×' },
-              { value: '2', label: '2×' },
-            ]}
+            options={PLAYBACK_RATES.map((rate) => ({ value: String(rate), label: rateLabel(rate) }))}
           />
         </Field>
       </PopoverContent>
