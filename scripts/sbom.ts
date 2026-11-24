@@ -194,15 +194,32 @@ async function graphvizVersion(): Promise<string> {
   return (await Graphviz.load()).version()
 }
 
-async function llhttpVersion(undiciVersion: string): Promise<string> {
-  const url = `https://raw.githubusercontent.com/nodejs/undici/v${undiciVersion}/deps/llhttp/include/llhttp.h`
+async function fetchText(url: string): Promise<string> {
   const response = await fetch(url)
   if (!response.ok) throw new Error(`${url} answered with status ${response.status}.`)
-  const header = await response.text()
+  return response.text()
+}
+
+async function llhttpVersion(undiciVersion: string): Promise<string> {
+  const url = `https://raw.githubusercontent.com/nodejs/undici/v${undiciVersion}/deps/llhttp/include/llhttp.h`
+  const header = await fetchText(url)
   const parts = ['MAJOR', 'MINOR', 'PATCH'].map(
     (part) => header.match(new RegExp(`#define LLHTTP_VERSION_${part} (\\d+)`))?.[1],
   )
   if (parts.some((part) => part === undefined)) throw new Error(`${url} has no llhttp version.`)
+  return parts.join('.')
+}
+
+async function hashwxVersion(capVersion: string): Promise<string> {
+  const loaderUrl = `https://raw.githubusercontent.com/tiagozip/cap/capjs-core@${capVersion}/core/src/hashwx-wasm.js`
+  const commit = (await fetchText(loaderUrl)).match(/HASHWX_SOURCE_COMMIT = "([\da-f]{40})"/)?.[1]
+  if (!commit) throw new Error(`${loaderUrl} has no HashWX commit.`)
+  const buildUrl = `https://raw.githubusercontent.com/tevador/hashwx/${commit}/CMakeLists.txt`
+  const build = await fetchText(buildUrl)
+  const parts = ['', '_MINOR', '_PATCH'].map(
+    (suffix) => build.match(new RegExp(`set\\(HASHWX_VERSION${suffix} (\\d+)\\)`))?.[1],
+  )
+  if (parts.some((part) => part === undefined)) throw new Error(`${buildUrl} has no HashWX version.`)
   return parts.join('.')
 }
 
@@ -212,6 +229,7 @@ async function llhttpVersion(undiciVersion: string): Promise<string> {
  */
 export const EMBEDDED_VERSIONS: Record<string, (holderVersion: string) => Promise<string>> = {
   '@hpcc-js/wasm-graphviz': graphvizVersion,
+  'capjs-core': hashwxVersion,
   undici: llhttpVersion,
 }
 
