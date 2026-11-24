@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useActiveTheme } from '@/themes/active'
 import { useLocalNodes } from '@/canvas/use-local-nodes'
 import { DiagramCanvas } from '@/canvas/DiagramCanvas'
+import { useNoticesBelow } from '@/components/notice-space'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { EngineProvider } from '@/engine/context'
@@ -45,6 +46,7 @@ function PreviewLayer({ id }: { id: string }) {
   const preview = useVersions((state) => state.preview)
   const unreadable = useVersions((state) => state.previewFailed)
   const meta = useVersions((state) => state.items.find((item) => item.id === id))
+  const noticesBelow = useNoticesBelow()
   const loaded = preview?.id === id
 
   useEffect(() => {
@@ -69,6 +71,7 @@ function PreviewLayer({ id }: { id: string }) {
       {id === COMMIT_PREVIEW_ID && preview?.id === id && <CommitStatus diagram={preview.diagram} />}
       {meta && (
         <div
+          ref={noticesBelow}
           role="status"
           className="dg-chrome absolute inset-x-3 top-3 z-10 mx-auto flex w-fit max-w-full flex-wrap items-center gap-x-3 gap-y-2 py-1.5 pr-1.5 pl-3"
         >
@@ -94,6 +97,7 @@ function PreviewLayer({ id }: { id: string }) {
 
 function CommitStatus({ diagram }: { diagram: Diagram }) {
   const summary = useMemo(() => describeChange(diagram, currentDiagram()), [diagram])
+  const noticesBelow = useNoticesBelow()
   const restore = () => {
     asVersionAuthor({ author: 'restore' }, () => {
       restoreContent(diagram)
@@ -104,6 +108,7 @@ function CommitStatus({ diagram }: { diagram: Diagram }) {
   }
   return (
     <div
+      ref={noticesBelow}
       role="status"
       className="dg-chrome absolute inset-x-3 top-3 z-10 mx-auto flex w-fit max-w-full flex-wrap items-center gap-x-3 gap-y-2 py-1.5 pr-1.5 pl-3"
     >

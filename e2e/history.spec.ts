@@ -131,3 +131,38 @@ test('adds no version when a node is only selected after the diagram loads again
   await expect(versions.getByRole('option', { name: /First opened/ })).toBeVisible()
   await expect(versions.getByRole('option')).toHaveCount(3)
 })
+
+test('stacks a notice below the bar of an older version, so the bar stays usable', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'New diagram' }).first().click()
+  await expect(page.getByLabel('Diagram name')).toHaveValue('Untitled diagram')
+  await page.keyboard.press('n')
+  await page.getByPlaceholder('Insert a node').fill('database')
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.react-flow__node')).toHaveCount(1)
+  await page.evaluate(() => {
+    const setItem = Object.getOwnPropertyDescriptor(Storage.prototype, 'setItem')!.value as Storage['setItem']
+    Storage.prototype.setItem = function (this: Storage, key: string, value: string) {
+      if (key.startsWith('dg:diagram:')) throw new DOMException('The quota has been exceeded.', 'QuotaExceededError')
+      Reflect.apply(setItem, this, [key, value])
+    }
+  })
+  await page.getByLabel('Diagram name').fill('Changed while the storage is full')
+  await page.getByLabel('Diagram name').press('Enter')
+  const notice = page.locator('[data-sonner-toast]').filter({ hasText: 'Browser storage is full' })
+  await expect(notice).toBeVisible()
+
+  await page.getByRole('button', { name: 'Version history' }).click()
+  await page
+    .getByRole('listbox', { name: 'Versions' })
+    .getByRole('option', { name: /First opened/ })
+    .click()
+  const bar = page.locator('[data-history-preview]').getByRole('status')
+  await expect(bar).toBeVisible()
+  const barBottom = async () => {
+    const box = (await bar.boundingBox())!
+    return box.y + box.height
+  }
+  await expect.poll(async () => (await notice.boundingBox())!.y).toBeGreaterThanOrEqual(await barBottom())
+  await bar.getByRole('button', { name: 'Restore this version' }).click({ trial: true })
+})

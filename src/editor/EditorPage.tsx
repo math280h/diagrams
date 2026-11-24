@@ -2,6 +2,7 @@ import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { ReactFlowProvider } from '@xyflow/react'
 import { useEffect } from 'react'
 import { useReducedMotion } from '@/lib/motion'
+import { useNoticesBelow } from '@/components/notice-space'
 import { Button } from '@/components/ui/button'
 import { EngineProvider } from '@/engine/context'
 import { useEngine } from '@/engine/hooks'
@@ -43,9 +44,13 @@ function useAmbientMotion() {
 function RecordingHint() {
   const recording = useUi((state) => state.recording)
   const side = useRecordedSidePath()
+  const noticesBelow = useNoticesBelow()
   if (!recording) return null
   return (
-    <div className="dg-chrome pointer-events-none absolute top-3 left-1/2 z-10 -translate-x-1/2 px-3 py-1.5 text-xs">
+    <div
+      ref={noticesBelow}
+      className="dg-chrome pointer-events-none absolute top-3 left-1/2 z-10 -translate-x-1/2 px-3 py-1.5 text-xs"
+    >
       <span className="mr-2 inline-block size-2 rounded-full bg-destructive" />
       {side
         ? `Click the nodes that the side path “${side}” reaches, while the main steps go on.`

@@ -1,4 +1,5 @@
 import { Outlet } from '@tanstack/react-router'
+import { useNoticeOffsets } from '@/components/notice-space'
 import { ProblemDialog } from '@/components/ProblemDialog'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -13,6 +14,7 @@ import { useAppChrome } from './use-app-chrome'
 
 export function RootLayout() {
   const theme = useAppChrome()
+  const { offset, mobileOffset } = useNoticeOffsets()
 
   return (
     <TooltipProvider delay={350}>
@@ -32,7 +34,7 @@ export function RootLayout() {
       <ProblemDialog />
       <ProblemReportsDialog />
       <ReportDialog />
-      <Toaster theme={theme.base} position="top-center" offset={64} />
+      <Toaster theme={theme.base} position="top-center" offset={offset} mobileOffset={mobileOffset} />
     </TooltipProvider>
   )
 }
