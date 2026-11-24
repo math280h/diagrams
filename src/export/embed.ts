@@ -1,3 +1,4 @@
+import { crc32 } from '@/lib/crc32'
 import type { Diagram } from '@/model/schema'
 
 /** The media type of the diagram data in an exported image. It is also the keyword of the PNG text chunk. */
@@ -7,22 +8,6 @@ const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10]
 const ITXT = 'iTXt'
 const IEND = 'IEND'
 const SVG_METADATA = /<metadata data-type="application\/vnd\.diagrams\+json">([A-Za-z0-9+/=]*)<\/metadata>/
-
-const CRC_TABLE = (() => {
-  const table = new Uint32Array(256)
-  for (let n = 0; n < 256; n++) {
-    let c = n
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
-    table[n] = c >>> 0
-  }
-  return table
-})()
-
-function crc32(bytes: Uint8Array): number {
-  let crc = 0xffffffff
-  for (const byte of bytes) crc = CRC_TABLE[(crc ^ byte) & 0xff]! ^ (crc >>> 8)
-  return (crc ^ 0xffffffff) >>> 0
-}
 
 // The `deflate` format of the Compression Streams API is the zlib format, which PNG text chunks use.
 async function deflate(bytes: Uint8Array): Promise<Uint8Array> {

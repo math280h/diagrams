@@ -54,16 +54,11 @@ export const KNOWN_SKIPS: readonly CompilerSkips[] = [
     reason: "(BuildHIR::lowerStatement) Handle TryStatement with a finalizer ('finally') clause",
     count: 1,
   },
-  { file: 'src/io/ImportDialog.tsx', reason: '(BuildHIR::lowerExpression) Handle Import expressions', count: 5 },
+  { file: 'src/io/ImportDialog.tsx', reason: '(BuildHIR::lowerExpression) Handle Import expressions', count: 4 },
   {
     file: 'src/io/ImportDialog.tsx',
     reason: "(BuildHIR::lowerStatement) Handle TryStatement with a finalizer ('finally') clause",
     count: 2,
-  },
-  {
-    file: 'src/io/ImportDialog.tsx',
-    reason: '(BuildHIR::lowerStatement) Support ThrowStatement inside of try/catch',
-    count: 1,
   },
 ]
 

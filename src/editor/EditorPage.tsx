@@ -125,6 +125,10 @@ function EditorShell() {
           setUi({ importOpen: false })
           void navigate({ to: '/d/$diagramId', params: { diagramId: diagram.id } })
         }}
+        onOpen={(id) => {
+          setUi({ importOpen: false })
+          void navigate({ to: '/d/$diagramId', params: { diagramId: id } })
+        }}
       />
     </div>
   )
