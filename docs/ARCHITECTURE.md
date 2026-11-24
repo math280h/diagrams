@@ -148,6 +148,7 @@ The visual system is in `DESIGN.md` at the repository root.
   - 17, optional: `noReply` on edges; `concurrent` on paths (side paths).
   - 18, optional: `delayMs` on flow steps and on their `parallel` targets.
   - 19: no theme `mode` (removed: the colour theme of each reader colours the canvas).
+  - 20: `captionStyle` on flows (`bottom`), optional on flow steps.
 - Groups are boundaries. `kind` points into `src/model/boundaries.ts`: AWS, Azure, Google Cloud, Kubernetes, general
   and custom kinds.
   - Each kind has a family (scope, logical, location, zone, network, subnet, security, runtime) that sets the line
@@ -208,8 +209,13 @@ The visual system is in `DESIGN.md` at the repository root.
   - A double-click on an offset, or F2, changes when the step starts. A step stores a duration and no start, so the
     step before it on its track takes the difference (`startChanges`). The later steps move, as on the timeline; with
     Alt+Enter the step also takes the difference, so they stay.
-  - Present and video exports show the current line in a bottom strip; engine insets keep the camera target clear of
-    it.
+  - Present and video exports show the caption of each step in the caption style of the flow, or of the step: a callout
+    card next to the step, a subtitle, a bar at the bottom or the top, or none. New flows start with callouts, because
+    a reader looks at the token and not at the edge of the screen.
+  - Engine insets keep the camera target clear of the bars and the subtitle that the played steps use
+    (`captionSpace`). Callouts need no space.
+  - An overview step has no node or edge to point at, so its callout shows as a subtitle. A side step gets its own
+    callout at its own node or edge.
 - Flow panel views: log, sequence, timeline. `SequenceView` draws a lifeline for each node the flow reaches, in that
   order. Each step is a row: solid arrow for a call, dashed arrow for a response (`reversed`), note for a step on a
   node. Rows follow playback. `flowSequence` (`src/export/sequence.ts`) builds them for the view and the Mermaid
@@ -637,7 +643,13 @@ and statuses.
 - With `prefers-reduced-motion`, the camera cuts to each step frame. The canvas fades to 15 % and back in 360 ms
   around each cut (`viewOpacity`, `--dg-view-opacity`). Present does not start on its own. Exports always use full
   motion.
-- Present counts its top bar and caption strip as insets, so no frame puts the diagram title under the top bar.
+- Present counts its top bar and the caption space as insets, so no frame puts the diagram title under the top bar.
+- A callout card has a fixed text size and follows the camera. `placeCallout` (`src/engine/callout.ts`) tries the
+  sides of the node or edge in a fixed order, at three distances, inside the free view. When no place is free, it
+  ignores other edges, then other nodes and labels, then the ends of the edge and the other cards. It never covers the
+  nodes and edges of the steps that play.
+- The card place depends only on the viewport, the steps at the time and the card size, so a video export shows the
+  same place as Present. The engine writes it to the DOM in each frame, outside React.
 - In the editor, the preview and Present, play and seek glide from the current viewport to the flow camera in 700 ms
   of wall time. This glide is outside `evaluateFlow` and the export. In the editor the camera centres in the area free
   of panels.

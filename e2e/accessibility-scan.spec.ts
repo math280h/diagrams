@@ -80,7 +80,7 @@ for (const colorScheme of ['dark', 'light'] as const) {
       await page.keyboard.press('Escape')
 
       await page.getByRole('button', { name: 'Present' }).click()
-      await page.locator('.dg-caption').waitFor()
+      await page.locator('.dg-captions').waitFor()
       await expectNoViolations(page, 'present')
     })
 

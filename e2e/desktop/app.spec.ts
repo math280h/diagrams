@@ -310,7 +310,7 @@ test('holds the playing template while the window is minimized or hidden', async
         }),
       { channel: IPC_CHANNELS.event, value: visible },
     )
-  const caption = window.locator('.dg-caption').first()
+  const caption = window.locator('.dg-captions').first()
   await expect(caption).not.toHaveText('', { timeout: 10_000 })
   await report(false)
   const held = await caption.textContent()

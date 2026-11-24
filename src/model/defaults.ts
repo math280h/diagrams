@@ -150,6 +150,7 @@ export function createFlow(name = 'User flow'): Flow {
     cameraStyle: 'follow',
     stepNumbers: false,
     cameraMotion: 'gentle',
+    captionStyle: 'callout',
   }
 }
 

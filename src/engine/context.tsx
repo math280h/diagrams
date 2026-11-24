@@ -53,6 +53,28 @@ export function EngineBinding({ rootRef }: { rootRef: React.RefObject<HTMLElemen
   useEffect(() => {
     const root = rootRef.current
     if (!root) return
+    let labels: { key: unknown[]; rects: Rect[] } | null = null
+    const labelRects = (): Rect[] => {
+      const layer = root.querySelector<HTMLElement>('.react-flow__viewport')
+      if (!layer || layer.offsetWidth === 0) return []
+      const elements = layer.querySelectorAll('.dg-edge-label, .dg-group-label')
+      const { nodeLookup, edges } = store.getState()
+      const key = [nodeLookup, edges, elements.length, root.dataset.lod]
+      if (labels?.key.every((part, index) => part === key[index])) return labels.rects
+      const frame = layer.getBoundingClientRect()
+      const scale = frame.width / layer.offsetWidth
+      const rects = Array.from(elements, (element) => {
+        const box = element.getBoundingClientRect()
+        return {
+          x: (box.left - frame.left) / scale,
+          y: (box.top - frame.top) / scale,
+          width: box.width / scale,
+          height: box.height / scale,
+        }
+      })
+      labels = { key, rects }
+      return rects
+    }
     engine.attach({
       root,
       setViewport: (viewport) => void setViewport(viewport),
@@ -92,10 +114,20 @@ export function EngineBinding({ rootRef }: { rootRef: React.RefObject<HTMLElemen
           }
           return rects
         },
+        nodes() {
+          const rects: Rect[] = []
+          for (const node of store.getState().nodeLookup.values()) {
+            if (node.type === 'group' || node.hidden) continue
+            const { x, y } = node.internals.positionAbsolute
+            rects.push({ x, y, width: node.measured.width ?? 0, height: node.measured.height ?? 0 })
+          }
+          return [...rects, ...labelRects()]
+        },
       },
     })
     const unsubscribe = store.subscribe((state, previous) => {
       if (state.nodeLookup !== previous.nodeLookup || state.edges !== previous.edges) engine.invalidate()
+      if (state.transform !== previous.transform) engine.placeCallouts()
     })
     return () => {
       unsubscribe()

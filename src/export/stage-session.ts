@@ -1,3 +1,4 @@
+import { captionSpace } from '@/canvas/caption-space'
 import { desktopApi, isCaptureWindow } from '@/desktop/bridge'
 import type { CaptureMoment, DesktopApi } from '@/desktop/contract'
 import { compileFlow } from '@/engine/flow/compile'
@@ -64,6 +65,7 @@ export async function mountSpecStage(
     if (fitPadding !== undefined) await stage.fitView(fitPadding)
     if (flow) {
       const timeline = compileFlow(flow.flow, new Set(props.nodes.map((node) => node.id)), props.edges, flow.pathId)
+      stage.engine.setInsets({ ...captionSpace(timeline), left: 0, right: 0 })
       stage.engine.playback.load(flow.flow.id, timeline)
       stage.engine.playback.setFollow(true)
     }

@@ -17,7 +17,7 @@ test('lists the shortcuts of the editor, flows and Present, and shows keys in to
   await expect(page.locator('[data-slot="tooltip-content"]')).toHaveText(/Command menu\s*(⌘K|Ctrl\+K)/)
 
   await page.getByRole('button', { name: 'Present' }).click()
-  await page.locator('.dg-caption').waitFor()
+  await page.locator('.dg-captions').waitFor()
   await page.getByRole('button', { name: 'Next step' }).hover()
   await expect(page.locator('[data-slot="tooltip-content"]')).toHaveText(/Next step\s*→/)
 })

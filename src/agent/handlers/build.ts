@@ -41,7 +41,13 @@ import { nodeLabel } from '@/model/labels'
 import type { HandlerContext } from '@/agent/context'
 import { ToolError } from '@/agent/errors'
 import type { Resolver } from '@/agent/resolve'
-import type { EdgeInput, NodeInput, NodePatch, StepInput } from '@/agent/tool-definitions'
+import {
+  STEP_CAPTION_FROM_FLOW,
+  type EdgeInput,
+  type NodeInput,
+  type NodePatch,
+  type StepInput,
+} from '@/agent/tool-definitions'
 
 const OPPOSITE: Record<Side, Side> = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' }
 
@@ -404,8 +410,11 @@ export function buildEdge(input: EdgeInput, resolver: Resolver, warnings: string
 }
 
 export function applyStepInput(step: Step, input: Partial<StepInput>): Step {
-  const { target: _target, parallel: _parallel, overview: _overview, ...fields } = input
-  return { ...step, ...definedFields(fields) }
+  const { target: _target, parallel: _parallel, overview: _overview, captionStyle, ...fields } = input
+  const next: Step = { ...step, ...definedFields(fields) }
+  if (captionStyle === STEP_CAPTION_FROM_FLOW) delete next.captionStyle
+  else if (captionStyle !== undefined) next.captionStyle = captionStyle
+  return next
 }
 
 function withParallel(step: Step, targets: readonly ParallelTarget[]): Step {

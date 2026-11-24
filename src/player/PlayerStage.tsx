@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useActiveTheme } from '@/themes/active'
 import { useLocalNodes } from '@/canvas/use-local-nodes'
 import { DiagramCanvas } from '@/canvas/DiagramCanvas'
-import { CAPTION_HEIGHT_PX } from '@/canvas/FlowOverlay'
+import { captionSpace } from '@/canvas/caption-space'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -246,11 +246,10 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
       if (exploring) backFromExplore.current = true
       return
     }
-    engine.setInsets({ top: TOP_BAR_HEIGHT_PX, right: 0, bottom: CAPTION_HEIGHT_PX, left: 0 })
-    engine.playback.load(
-      flow.id,
-      compileFlow(flow, new Set(initial.nodes.map((node) => node.id)), initial.edges, pathId),
-    )
+    const timeline = compileFlow(flow, new Set(initial.nodes.map((node) => node.id)), initial.edges, pathId)
+    const space = captionSpace(timeline)
+    engine.setInsets({ top: TOP_BAR_HEIGHT_PX + space.top, right: 0, bottom: space.bottom, left: 0 })
+    engine.playback.load(flow.id, timeline)
     engine.playback.setFollow(true)
     if (backFromExplore.current) {
       backFromExplore.current = false
@@ -329,7 +328,7 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
         leaving && 'opacity-0',
       )}
     >
-      <main className="h-full w-full">
+      <main className="h-full w-full" style={{ '--dg-caption-top': `${TOP_BAR_HEIGHT_PX}px` } as React.CSSProperties}>
         <DiagramCanvas
           nodes={explore.nodes}
           edges={explore.edges}

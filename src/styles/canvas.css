@@ -1034,12 +1034,17 @@
   height: 12px;
 }
 
+.dg-captions {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
 .dg-caption {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 6;
   display: flex;
   align-items: baseline;
   gap: 12px;
@@ -1055,6 +1060,12 @@
   background: var(--dg-chrome);
   border-top: 1px solid var(--dg-line);
   pointer-events: none;
+}
+.dg-caption[data-place='top'] {
+  top: var(--dg-caption-top, 0px);
+  bottom: auto;
+  border-top: 0;
+  border-bottom: 1px solid var(--dg-line);
 }
 .dg-caption-step {
   flex: none;
@@ -1135,6 +1146,261 @@
   .dg-caption-text,
   .dg-caption:has(.dg-caption-side) .dg-caption-text {
     flex-basis: 100%;
+  }
+}
+
+.dg-subtitle {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(880px, calc(100% - 48px));
+  padding: 8px 18px;
+  border: 1px solid var(--dg-line);
+  border-radius: 8px;
+  text-align: center;
+  color: var(--dg-text);
+  background: color-mix(in oklab, var(--dg-chrome) 92%, transparent);
+  transform: translateX(-50%);
+}
+.dg-subtitle-head {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  margin: 0 0 2px;
+  font-size: 13px;
+  line-height: 18px;
+  white-space: nowrap;
+  color: var(--dg-muted);
+}
+.dg-subtitle-head .dg-caption-step {
+  flex: none;
+}
+.dg-subtitle-element {
+  flex: none;
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+  color: var(--dg-text);
+}
+.dg-subtitle-head .dg-subtitle-event {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
+.dg-subtitle-main {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.dg-subtitle-event {
+  margin-left: 0.5em;
+  font-size: 17px;
+  font-weight: 400;
+  color: var(--dg-muted);
+}
+.dg-subtitle-event[data-level='warn'] {
+  color: var(--dg-warn);
+}
+.dg-subtitle-event[data-level='error'] {
+  color: var(--dg-error);
+}
+.dg-subtitle-side {
+  margin: 2px 0 0;
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 22px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dg-muted);
+}
+@container (max-width: 560px) {
+  .dg-subtitle {
+    bottom: 12px;
+    max-width: calc(100% - 24px);
+    padding: 6px 12px;
+  }
+  .dg-subtitle-head {
+    font-size: 12px;
+  }
+  .dg-subtitle-main {
+    font-size: 17px;
+    line-height: 24px;
+    letter-spacing: normal;
+  }
+  .dg-subtitle-event {
+    font-size: 14px;
+  }
+  .dg-subtitle-side {
+    font-size: 13px;
+    line-height: 19px;
+  }
+}
+
+.dg-callout {
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-sizing: border-box;
+  width: max-content;
+  min-width: 140px;
+  max-width: min(300px, calc(100% - 24px));
+  padding: 9px 12px 10px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--dg-text);
+  background: var(--dg-chrome);
+  border: 1px solid var(--dg-line-strong);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.24);
+  pointer-events: none;
+}
+.dg-callout:not([data-side]) {
+  visibility: hidden;
+}
+.dg-callout::before {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--dg-chrome);
+  border: 1px solid transparent;
+  transform: rotate(45deg);
+}
+.dg-callout::after {
+  content: '';
+  position: absolute;
+  background: var(--dg-line-strong);
+}
+.dg-callout[data-side='none']::before,
+.dg-callout[data-side='none']::after {
+  display: none;
+}
+.dg-callout[data-side='right']::after,
+.dg-callout[data-side='left']::after {
+  top: calc(var(--dg-callout-tail, 0px) - 1px);
+  width: calc(var(--dg-callout-reach, 0px) - 7px);
+  height: 1px;
+}
+.dg-callout[data-side='right']::after {
+  right: calc(100% + 8px);
+}
+.dg-callout[data-side='left']::after {
+  left: calc(100% + 8px);
+}
+.dg-callout[data-side='top']::after,
+.dg-callout[data-side='bottom']::after {
+  left: calc(var(--dg-callout-tail, 0px) - 1px);
+  width: 1px;
+  height: calc(var(--dg-callout-reach, 0px) - 7px);
+}
+.dg-callout[data-side='top']::after {
+  top: calc(100% + 8px);
+}
+.dg-callout[data-side='bottom']::after {
+  bottom: calc(100% + 8px);
+}
+.dg-callout[data-side='right']::before {
+  left: -6px;
+  top: calc(var(--dg-callout-tail, 0px) - 6px);
+  border-bottom-color: var(--dg-line-strong);
+  border-left-color: var(--dg-line-strong);
+}
+.dg-callout[data-side='left']::before {
+  right: -6px;
+  top: calc(var(--dg-callout-tail, 0px) - 6px);
+  border-top-color: var(--dg-line-strong);
+  border-right-color: var(--dg-line-strong);
+}
+.dg-callout[data-side='bottom']::before {
+  top: -6px;
+  left: calc(var(--dg-callout-tail, 0px) - 6px);
+  border-top-color: var(--dg-line-strong);
+  border-left-color: var(--dg-line-strong);
+}
+.dg-callout[data-side='top']::before {
+  bottom: -6px;
+  left: calc(var(--dg-callout-tail, 0px) - 6px);
+  border-right-color: var(--dg-line-strong);
+  border-bottom-color: var(--dg-line-strong);
+}
+.dg-callout-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.dg-callout-step {
+  flex: none;
+  padding: 0 5px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 17px;
+  color: var(--dg-flow-ink);
+  background: var(--dg-flow);
+}
+.dg-callout-path {
+  flex: none;
+  max-width: 45%;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dg-muted);
+}
+.dg-callout-heading {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dg-callout-heading.dg-mono {
+  font-size: 12.5px;
+  font-weight: 400;
+}
+.dg-callout-heading[data-level='warn'] {
+  color: var(--dg-warn);
+}
+.dg-callout-heading[data-level='error'] {
+  color: var(--dg-error);
+}
+.dg-callout-text {
+  margin: 4px 0 0;
+  text-wrap: pretty;
+}
+.dg-callout-body {
+  margin: 4px 0 0;
+  overflow: hidden;
+  font-size: 11.5px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dg-muted);
+}
+@container (max-width: 560px) {
+  .dg-callout {
+    max-width: min(260px, calc(100% - 24px));
+    padding: 7px 10px 8px;
+    font-size: 13px;
+    line-height: 18px;
+  }
+  .dg-callout-body {
+    display: none;
   }
 }
 

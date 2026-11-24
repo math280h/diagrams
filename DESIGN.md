@@ -271,6 +271,18 @@ components:
     typography: '{typography.mono}'
     rounded: '{rounded.badge}'
     padding: '0 6px'
+  caption-callout:
+    backgroundColor: '{colors.chrome}'
+    textColor: '{colors.text}'
+    typography: '{typography.body}'
+    rounded: '{rounded.control}'
+    padding: '9px 12px 10px'
+  caption-subtitle:
+    backgroundColor: '{colors.chrome}'
+    textColor: '{colors.text}'
+    typography: '{typography.title}'
+    rounded: '{rounded.control}'
+    padding: '8px 18px'
 ---
 
 # Design System: Diagrams
@@ -404,7 +416,7 @@ Plex. Chrome stays on Host Grotesk.
 - **Section display** (500, 36px, 30px below 640px, 1.1, -0.03em, balanced wrap): first-run "What you can do", so
   features read as their own chapter under the stage.
 - **Headline** (500, 24px, -0.02em): returning library "Your diagrams".
-- **Title** (500, 20px, -0.015em): library section headings.
+- **Title** (500, 20px, -0.015em): library section headings; caption subtitle (28px line, 17px below 560px).
 - **Card name** (500, 15px, -0.01em): library card names; wordmark at -0.02em.
 - **Body** (400–500, 14px, 20px line): buttons, menus, panel text. Support copy under the display: 16px muted.
 - **Caption** (400, 15px, 22px line): caption strip; pretty wrap, max 72px tall.
@@ -435,7 +447,7 @@ above 500.
 - **Library, first run:** centred column, max 1152px.
   - Headline and support line; agent introduction beside them from 1280px (384px column, bottom-aligned; offer on top,
     stage above the fold), else under.
-  - Full-width stage, 16px corners: window height less 360px, clamped 360–620px, so stage and caption strip fit
+  - Full-width stage, 16px corners: window height less 360px, clamped 360–620px, so the stage and its captions fit
     1280×720. Loops the Order system flow with captions.
   - Features 80px under the stage.
   - Other templates as live cards under "More templates", two per row from 640px.
@@ -458,7 +470,10 @@ above 500.
 - **Editor:** canvas fills the space under the bar. With Flows open, the log pane docks below: transport row, sticky
   28px column header, 24px rows. Floating canvas chrome (zoom, hints, selection tools): chrome fill, hairline, 8px
   corners, 12px inset.
-- **Present:** full-screen canvas. Top bar docks top, fades after idle during playback; caption strip docks bottom.
+- **Present:** full-screen canvas. Top bar docks top, fades after idle during playback. Captions follow the caption
+  style of the flow or step: a callout card beside the node or edge (strong hairline, tail and line to the step), a
+  subtitle centred 18px above the bottom (a muted line with the step number and element above the text), or the
+  caption strip at the bottom or under the top bar.
   Playback starts after 700ms, unless reduced motion. Previous, Next and arrow keys move one step, also onto connection
   steps (paused token partway along). "Step n of N" beside the scrubber from 640px.
 

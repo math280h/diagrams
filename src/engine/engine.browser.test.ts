@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createFlow, DEFAULT_TRAFFIC } from '@/model/defaults'
 import type { Step, Target, Traffic } from '@/model/schema'
 import { cameraToViewport, type Rect, type ViewSize, type Viewport } from './camera'
-import { Engine, type Caption } from './engine'
+import { calloutKey, Engine, type Caption } from './engine'
 import { compileFlow } from './flow/compile'
 import { evaluateFlow, type FlowGeometry } from './flow/evaluate'
 import { buildArcTable } from './path-sampler'
@@ -81,6 +81,28 @@ function expectAt(target: HTMLElement, point: { x: number; y: number }) {
   const matrix = new DOMMatrixReadOnly(target.style.transform)
   expect(matrix.e).toBeCloseTo(point.x, 2)
   expect(matrix.f).toBeCloseTo(point.y, 2)
+}
+
+function calloutCard(): HTMLElement {
+  const card = document.createElement('div')
+  card.className = 'dg-callout'
+  card.style.cssText = 'position: absolute; left: 0; top: 0; width: 180px; height: 56px'
+  root.append(card)
+  return card
+}
+
+function cardBox(card: HTMLElement): Rect {
+  const matrix = new DOMMatrixReadOnly(card.style.transform)
+  return { x: matrix.e, y: matrix.f, width: card.offsetWidth, height: card.offsetHeight }
+}
+
+function screenRect(rect: Rect): Rect {
+  const { x, y, zoom } = viewport
+  return { x: rect.x * zoom + x, y: rect.y * zoom + y, width: rect.width * zoom, height: rect.height * zoom }
+}
+
+function overlaps(a: Rect, b: Rect) {
+  return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
 }
 
 function flowCamera(timeMs: number, view: ViewSize = VIEW, reducedMotion = false) {
@@ -196,6 +218,7 @@ describe('Engine flow state', () => {
         level: 'info',
         bodies: true,
         sides: [],
+        style: 'callout',
       },
     ])
     engine.renderFlow(3500)
@@ -272,6 +295,81 @@ describe('Engine flow state', () => {
     label.style.left = `${point.x + 500}px`
     engine.renderFlow(1500)
     expect(label.hasAttribute('data-covered')).toBe(false)
+  })
+
+  it('keeps a caption card next to the node of the step, clear of it and inside the free view', () => {
+    engine.manual = true
+    engine.setInsets({ top: 44, right: 0, bottom: 0, left: 0 })
+    const card = calloutCard()
+    engine.setCalloutElement(calloutKey(null), card)
+    engine.renderFlow(2500)
+    expect(card.dataset.side).toBeDefined()
+    const box = cardBox(card)
+    expect(overlaps(box, screenRect(rects.b!))).toBe(false)
+    expect(box.y).toBeGreaterThanOrEqual(44)
+    expect(box.x).toBeGreaterThanOrEqual(0)
+    expect(box.x + box.width).toBeLessThanOrEqual(VIEW.width)
+    expect(box.y + box.height).toBeLessThanOrEqual(VIEW.height)
+  })
+
+  it('moves a caption card with the viewport and hides it while its step is out of view', () => {
+    engine.manual = true
+    const card = calloutCard()
+    engine.setCalloutElement(calloutKey(null), card)
+    engine.renderFlow(2500)
+    const before = cardBox(card)
+
+    viewport = { ...viewport, x: viewport.x - 40, y: viewport.y + 30 }
+    engine.placeCallouts()
+    const after = cardBox(card)
+    expect(after.x).toBeCloseTo(before.x - 40, 0)
+    expect(after.y).toBeCloseTo(before.y + 30, 0)
+
+    viewport = { ...viewport, x: -5000 }
+    engine.placeCallouts()
+    expect(card.dataset.side).toBeUndefined()
+  })
+
+  it('places the card of an edge step across the edge, and the same way for the same time', () => {
+    engine.manual = true
+    const card = calloutCard()
+    engine.setCalloutElement(calloutKey(null), card)
+    engine.renderFlow(1500)
+    const first = card.style.transform
+    expect(card.dataset.side).toBe('top')
+    const line = screenRect({ x: 100, y: 25, width: 200, height: 0 })
+    expect(cardBox(card).y + cardBox(card).height).toBeLessThan(line.y)
+
+    engine.renderFlow(3500)
+    engine.renderFlow(1500)
+    expect(card.style.transform).toBe(first)
+  })
+
+  it('gives a side step its own card, clear of the card of the main step', () => {
+    const withSide = {
+      ...flow,
+      paths: [
+        {
+          id: 'p-side',
+          name: 'On its own',
+          fromStep: 'step-ab',
+          steps: [{ ...step({ kind: 'node', id: 'c' }, 'C works on its own'), id: 'side-c' }],
+          rejoinStep: null,
+          concurrent: true,
+        },
+      ],
+    }
+    engine.manual = true
+    engine.playback.load(flow.id, compileFlow(withSide, new Set(Object.keys(rects)), edgeEnds))
+    const main = calloutCard()
+    const side = calloutCard()
+    engine.setCalloutElement(calloutKey(null), main)
+    engine.setCalloutElement(calloutKey(0), side)
+    engine.renderFlow(2300)
+    expect(main.dataset.side).toBeDefined()
+    expect(side.dataset.side).toBeDefined()
+    expect(overlaps(cardBox(main), cardBox(side))).toBe(false)
+    expect(overlaps(cardBox(side), screenRect(rects.c!))).toBe(false)
   })
 
   it('reports the progress of the flow', () => {

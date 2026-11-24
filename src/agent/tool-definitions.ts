@@ -6,6 +6,7 @@ import { BUILT_IN_THEME_IDS } from '@/themes/tokens'
 import {
   CAMERA_MOTIONS,
   CAMERA_STYLES,
+  CAPTION_STYLES,
   CARD_FORMS,
   EDGE_PROTOCOLS,
   FONT_PAIRS,
@@ -232,6 +233,9 @@ const edgePatch = z.object({
   ...edgeFields,
 })
 
+/** The caption style of agent step input that removes the style of the step, so the step uses the style of its flow. */
+export const STEP_CAPTION_FROM_FLOW = 'flow'
+
 const laneDelay = z
   .number()
   .min(0)
@@ -252,6 +256,12 @@ const stepInput = z.object({
       'If true, the step shows the whole flow and needs no target: as the first step it is the introduction, as the last step the conclusion.',
     ),
   caption: z.string().optional().describe('One short sentence that the presenter shows for this step.'),
+  captionStyle: z
+    .enum([...CAPTION_STYLES, STEP_CAPTION_FROM_FLOW])
+    .optional()
+    .describe(
+      'Where the caption of this step shows, as for captionStyle on the flow. flow (the default) uses the style of the flow.',
+    ),
   event: z
     .string()
     .optional()
@@ -334,6 +344,12 @@ const flowOptions = {
     .enum(CAMERA_MOTIONS)
     .optional()
     .describe('With the frame camera, how the camera moves between step frames: gentle (the default), quick or slow.'),
+  captionStyle: z
+    .enum(CAPTION_STYLES)
+    .optional()
+    .describe(
+      'Where the step captions show: callout (the default for a new flow) in a card next to the node or edge of the step, subtitle in large text at the bottom of the view, bottom or top in a bar at that edge of the view, none to hide them. An overview step shows a callout as a subtitle.',
+    ),
   bodies: z
     .boolean()
     .optional()

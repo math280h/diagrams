@@ -1,7 +1,7 @@
 import { z } from '@/lib/zod'
 import { COLORS } from './colors'
 
-export const DIAGRAM_VERSION = 19
+export const DIAGRAM_VERSION = 20
 
 const colorSchema = z.enum(COLORS)
 
@@ -250,6 +250,17 @@ export const MAX_STEP_DURATION_MS = 60_000
 
 const laneDelaySchema = z.number().min(0).max(MAX_LANE_DELAY_MS)
 
+/**
+ * Where the caption of a step shows during playback.
+ *
+ * - `callout`: in a card next to the node or edge of the step.
+ * - `subtitle`: in large text near the bottom of the view.
+ * - `bottom` and `top`: in a bar at that edge of the view.
+ * - `none`: the caption does not show.
+ */
+export const CAPTION_STYLES = ['callout', 'subtitle', 'bottom', 'top', 'none'] as const
+export type CaptionStyle = (typeof CAPTION_STYLES)[number]
+
 /** A parallel target of a step. */
 export const parallelTargetSchema = targetSchema.extend({
   /** The time that the token of the target waits on its start node before it moves. See {@link Step.delayMs}. */
@@ -276,6 +287,8 @@ export const stepSchema = z.object({
    * and the step ends when the last token arrives.
    */
   delayMs: laneDelaySchema.optional(),
+  /** Where the caption of the step shows. Without it, the step uses {@link Flow.captionStyle}. */
+  captionStyle: z.enum(CAPTION_STYLES).optional(),
 })
 export type Step = z.infer<typeof stepSchema>
 
@@ -373,6 +386,8 @@ export const flowSchema = z.object({
   stepNumbers: z.boolean(),
   /** The speed and ease of the camera moves between step frames. */
   cameraMotion: z.enum(CAMERA_MOTIONS),
+  /** Where the captions of the steps show. A step can choose another style. */
+  captionStyle: z.enum(CAPTION_STYLES),
   paths: z.array(flowPathSchema).optional(),
 })
 export type Flow = z.infer<typeof flowSchema>

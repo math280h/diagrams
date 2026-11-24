@@ -14,7 +14,7 @@ test('shows the details of a node on hover and on click in Present', async ({ pa
   await copyTemplate(page, 'Order system')
   await page.getByRole('button', { name: 'Present' }).click()
   await expect(page).toHaveURL(/#\/p\//)
-  await expect(page.locator('.dg-caption')).toContainText('The shopper presses Pay.')
+  await expect(page.locator('.dg-captions')).toContainText('The shopper presses Pay.')
   await page.mouse.move(720, 450)
   await page.mouse.wheel(0, 1200)
 
@@ -57,7 +57,7 @@ test('edits the details of a node in the properties panel', async ({ page }) => 
   await expect(panel).not.toContainText('Use a web address')
 
   await page.getByRole('button', { name: 'Present' }).click()
-  await expect(page.locator('.dg-caption')).toContainText('The shopper presses Pay.')
+  await expect(page.locator('.dg-captions')).toContainText('The shopper presses Pay.')
   await page.mouse.move(720, 450)
   await page.mouse.wheel(0, 1200)
   await card(page, 'Auth').hover()

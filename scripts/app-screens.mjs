@@ -15,6 +15,7 @@ const SETTLE_MS = 400
 const STEADY_INTERVAL_MS = 150
 const STEADY_TIMEOUT_MS = 10_000
 const HIDE_TRAFFIC = '.dg-traffic { visibility: hidden !important; }'
+const SHOWN_CAPTION = '.dg-caption, .dg-subtitle, .dg-callout[data-side]'
 
 async function capture(page, name, theme) {
   await page.evaluate(() => document.fonts.ready)
@@ -94,7 +95,7 @@ async function desktopScreens(page, url, theme) {
   await page.keyboard.press('Escape')
 
   await page.getByRole('button', { name: 'Present' }).click()
-  await page.locator('.dg-caption').waitFor({ timeout: READY_MS })
+  await page.locator(SHOWN_CAPTION).first().waitFor({ timeout: READY_MS })
   await capture(page, 'present', theme)
   for (let press = 0; press < 5; press++) await page.keyboard.press('ArrowRight')
   await capture(page, 'present-step', theme)
@@ -122,7 +123,7 @@ async function phoneScreens(page, url, theme) {
   await capture(page, 'phone-editor', theme)
 
   await page.getByRole('button', { name: 'Present' }).click()
-  await page.locator('.dg-caption').waitFor({ timeout: READY_MS })
+  await page.locator(SHOWN_CAPTION).first().waitFor({ timeout: READY_MS })
   await capture(page, 'phone-present', theme)
 }
 

@@ -16,7 +16,7 @@ test('shares a diagram as a link that plays it and saves a copy', async ({ page 
   await viewer.goto(url)
   await expect(viewer.getByRole('heading', { name: 'Checkout flow' })).toBeVisible({ timeout: 15_000 })
   await expect(viewer.locator('.react-flow__node')).toHaveCount(nodeCount)
-  await expect(viewer.locator('.dg-caption')).toBeVisible()
+  await expect(viewer.locator('.dg-captions')).toBeVisible()
 
   await viewer.mouse.move(400, 300)
   await viewer.getByRole('button', { name: 'Save a copy' }).click()

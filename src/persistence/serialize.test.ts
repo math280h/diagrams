@@ -159,6 +159,33 @@ describe('migrate', () => {
     ])
   })
 
+  it('gives the flows of version 19 diagrams the caption bar at the bottom, and leaves their steps as they are', () => {
+    const { captionStyle: _style, ...flow } = createFlow('Checkout')
+    const step = {
+      id: 's1',
+      target: { kind: 'node', id: 'n1' },
+      caption: 'The shopper presses Pay.',
+      event: '',
+      latencyMs: null,
+      level: 'info',
+      durationMs: 1000,
+      camera: 'follow',
+      zoom: 1,
+    }
+    const path = { id: 'p1', name: 'Declined', fromStep: 's1', steps: [{ ...step, id: 's2' }], rejoinStep: null }
+    const set = { ...flow, id: 'set', captionStyle: 'subtitle' }
+    const v19 = { ...createDiagram(), version: 19, flows: [{ ...flow, steps: [step], paths: [path] }, set] }
+    const migrated = migrate(JSON.parse(JSON.stringify(v19)))
+    expect(migrated.flows.map((each) => each.captionStyle)).toEqual(['bottom', 'subtitle'])
+    expect(migrated.flows[0]!.steps).toEqual([step])
+    expect(migrated.flows[0]!.paths).toEqual([path])
+    expect(migrated.flows[0]!.steps[0]).not.toHaveProperty('captionStyle')
+  })
+
+  it('starts new flows with callouts', () => {
+    expect(createFlow().captionStyle).toBe('callout')
+  })
+
   it('drops the colour mode of version 18 themes, because the theme of the reader sets the colours', () => {
     const diagram = createDiagram()
     const v18 = { ...diagram, version: 18, theme: { ...diagram.theme, mode: 'dark' } }

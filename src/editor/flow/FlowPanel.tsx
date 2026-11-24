@@ -43,6 +43,7 @@ import { useDoc } from '@/store/doc-store'
 import { setUi, useUi } from '@/store/ui-store'
 import { Choice, Field, Segmented, SwitchField, TextInput } from '@/editor/inspector/controls'
 import { IconPicker } from '@/editor/inspector/IconPicker'
+import { CAPTION_STYLE_OPTIONS } from './caption-styles'
 import { appendNodeToFlow, createOverviewStep } from './record'
 import { FLOW_PANEL_HEIGHT } from './layout'
 import { ResizeHandle } from '@/components/ResizeHandle'
@@ -148,6 +149,13 @@ function FlowSettings({ flow }: { flow: Flow }) {
           checked={flow.bodies}
           onChange={(bodies) => set((draft) => void (draft.bodies = bodies))}
         />
+        <Field label="Captions">
+          <Choice
+            value={flow.captionStyle}
+            onChange={(captionStyle) => set((draft) => void (draft.captionStyle = captionStyle))}
+            options={CAPTION_STYLE_OPTIONS}
+          />
+        </Field>
         <Field label="Camera">
           <Segmented
             value={flow.cameraStyle}

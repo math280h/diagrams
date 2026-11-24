@@ -36,6 +36,6 @@ test('tells once that a dot marks a node with details', async ({ page }) => {
   await expect(hint).toBeVisible()
   await page.getByRole('button', { name: /Exit presentation/ }).click()
   await page.getByRole('button', { name: 'Present' }).click()
-  await expect(page.locator('.dg-caption')).toBeVisible()
+  await expect(page.locator('.dg-captions')).toBeVisible()
   await expect(hint).toHaveCount(0)
 })
