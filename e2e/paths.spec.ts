@@ -41,12 +41,12 @@ test('plays a fan-out with a token for each target, and an alternate path', asyn
   await expect(page.getByRole('button', { name: /Warehouse/ })).toHaveCount(0)
 
   await page.getByRole('button', { name: 'Present' }).click()
-  await expect(page.locator('.dg-caption')).toBeVisible()
+  await expect(page.locator('.dg-captions')).toBeVisible()
   await page.keyboard.press('Space')
   await page.getByRole('button', { name: /^Path: / }).click()
   await page.getByRole('menuitemradio', { name: 'High fraud score' }).click()
   for (let press = 0; press < 8; press++) await page.keyboard.press('ArrowRight')
-  await expect(page.locator('.dg-caption')).toContainText('The on-call engineer gets the alert')
+  await expect(page.locator('.dg-captions')).toContainText('The on-call engineer gets the alert')
 })
 
 test('records the replies of a fan-out at the same time, and turns one off', async ({ page }) => {
@@ -184,9 +184,11 @@ test('records a call with no reply in a fan-out, and a side path that plays at t
   await expect(page.getByRole('button', { name: /^Path: / })).toHaveCount(0)
   await expect(async () => {
     await page.keyboard.press('ArrowRight')
-    await expect(page.locator('.dg-caption-step')).toHaveText('4/5', { timeout: 500 })
+    await expect(page.locator('.dg-callout-step').first()).toHaveText('4/5', { timeout: 500 })
   }).toPass()
-  await expect(page.locator('.dg-caption-side')).toContainText('3.1 Side path 1: Fraud scoring → PagerDuty')
+  const side = page.locator('.dg-callout', { hasText: 'Side path 1' })
+  await expect(side.locator('.dg-callout-step')).toHaveText('3.1')
+  await expect(side).toContainText('Fraud scoring → PagerDuty')
 })
 
 test('records a fan-out with Shift-click and a path after a step', async ({ page }) => {

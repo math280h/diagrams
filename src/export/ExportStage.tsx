@@ -1,7 +1,6 @@
 import { ReactFlowProvider, useNodesInitialized, useReactFlow, type Viewport } from '@xyflow/react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { CAPTION_HEIGHT_PX } from '@/canvas/FlowOverlay'
 import { CANVAS_MIN_ZOOM, DiagramCanvas } from '@/canvas/DiagramCanvas'
 import { useLocalNodes } from '@/canvas/use-local-nodes'
 import { EngineProvider } from '@/engine/context'
@@ -90,7 +89,6 @@ export function ExportStage({ width, height, ...props }: ExportStageProps) {
   const [engine] = useState(() => {
     const created = new Engine()
     created.manual = true
-    created.setInsets({ top: 0, right: 0, bottom: CAPTION_HEIGHT_PX, left: 0 })
     return created
   })
   return createPortal(

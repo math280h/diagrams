@@ -194,6 +194,12 @@ function toVersion19(raw: Record<string, unknown>): Record<string, unknown> {
   return { ...raw, theme }
 }
 
+/** Version 20 adds `captionStyle` to flows and steps. Earlier flows keep the caption bar at the bottom. */
+function toVersion20(raw: Record<string, unknown>): Record<string, unknown> {
+  const flows = Array.isArray(raw.flows) ? raw.flows : []
+  return { ...raw, flows: flows.map((flow: Record<string, unknown>) => ({ captionStyle: 'bottom', ...flow })) }
+}
+
 /** The migration at index `n` converts a diagram from version `n + 1` to version `n + 2`. */
 const MIGRATIONS: Migration[] = [
   toVersion2,
@@ -214,6 +220,7 @@ const MIGRATIONS: Migration[] = [
   toVersion17,
   toVersion18,
   toVersion19,
+  toVersion20,
 ]
 
 /**

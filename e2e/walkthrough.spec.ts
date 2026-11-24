@@ -32,7 +32,7 @@ test('adds an introduction and a conclusion, and records new steps before the co
 
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Present' }).click()
-  await expect(page.locator('.dg-caption-element')).toHaveText('Introduction')
+  await expect(page.locator('.dg-subtitle')).toHaveText('Place an order')
   await expect(page.locator('.react-flow__node[data-flow="active"]').first()).toBeVisible()
 })
 

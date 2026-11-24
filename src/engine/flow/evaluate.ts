@@ -16,6 +16,11 @@ export interface FlowGeometry {
   bounds(): Rect | null
   /** The rectangles of the text nodes. A camera frame shows each text whole or not at all. */
   texts?(): Rect[]
+  /**
+   * The rectangles of the cards, shapes, text nodes, edge labels and boundary labels. Caption cards do not cover them
+   * when a free place exists.
+   */
+  nodes?(): Rect[]
 }
 
 export type ElementKey = `node:${string}` | `edge:${string}`

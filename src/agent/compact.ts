@@ -169,6 +169,7 @@ function compactSteps(steps: readonly Step[]) {
       : {}),
     ...(step.delayMs ? { delayMs: step.delayMs } : {}),
     ...(step.caption ? { caption: step.caption } : {}),
+    ...(step.captionStyle ? { captionStyle: step.captionStyle } : {}),
     ...(step.event ? { event: step.event } : {}),
     ...(step.latencyMs !== null ? { latencyMs: step.latencyMs } : {}),
     ...(step.level !== 'info' ? { level: step.level } : {}),
@@ -197,6 +198,7 @@ function compactFlow(flow: Flow, full: boolean) {
     stepNumbers: flow.stepNumbers,
     cameraStyle: flow.cameraStyle,
     cameraMotion: flow.cameraMotion,
+    captionStyle: flow.captionStyle,
     steps: compactSteps(flow.steps),
     ...(paths.length > 0
       ? {

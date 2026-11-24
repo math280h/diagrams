@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useActiveTheme } from '@/themes/active'
 import { useLocalNodes } from '@/canvas/use-local-nodes'
 import { DiagramCanvas } from '@/canvas/DiagramCanvas'
-import { CAPTION_HEIGHT_PX } from '@/canvas/FlowOverlay'
+import { captionSpace } from '@/canvas/caption-space'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { EngineProvider } from '@/engine/context'
@@ -38,8 +38,9 @@ function Preview({ template }: { template: Template }) {
       engine.playback.toggle()
       return
     }
-    engine.setInsets({ top: 0, right: 0, bottom: CAPTION_HEIGHT_PX, left: 0 })
-    engine.playback.load(flow.id, compileFlow(flow, new Set(initial.nodes.map((node) => node.id)), initial.edges))
+    const timeline = compileFlow(flow, new Set(initial.nodes.map((node) => node.id)), initial.edges)
+    engine.setInsets({ ...captionSpace(timeline), right: 0, left: 0 })
+    engine.playback.load(flow.id, timeline)
     engine.playback.setFollow(true)
     engine.playback.play()
     setActiveFlowId(flow.id)

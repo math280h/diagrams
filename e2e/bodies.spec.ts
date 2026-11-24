@@ -62,15 +62,15 @@ test('describes the bodies of a connection, fills them from JSON, copies the exa
   await expect(write).toContainText('INSERT orders')
 })
 
-test('shows the request and the response body in the presentation log line', async ({ page }) => {
+test('shows the request and the response body in the caption of an edge step', async ({ page }) => {
   await page.goto('/')
   await copyTemplate(page, 'Order system')
   await page.getByRole('button', { name: 'Present' }).click()
   await expect(page).toHaveURL(/#\/p\//)
-  const caption = page.locator('.dg-caption')
-  const body = page.locator('.dg-caption-body')
-  await expect(caption).toContainText('Browser → API gateway', { timeout: 10_000 })
+  const caption = page.locator('.dg-callout')
+  const body = page.locator('.dg-callout-body')
+  await expect(caption).toContainText('TLS 1.3', { timeout: 10_000 })
   await expect(body).toContainText('"sku":"LAMP-01"')
-  await expect(caption).toContainText('Stripe → Orders', { timeout: 15_000 })
+  await expect(caption).toContainText('200 succeeded', { timeout: 15_000 })
   await expect(body).toHaveText('{"id":"pi_3Nf","status":"succeeded"}')
 })

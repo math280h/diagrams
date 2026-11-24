@@ -3,7 +3,7 @@ import { useEffect, useMemo } from 'react'
 import { useActiveTheme } from '@/themes/active'
 import { useLocalNodes } from '@/canvas/use-local-nodes'
 import { DiagramCanvas } from '@/canvas/DiagramCanvas'
-import { CAPTION_HEIGHT_PX } from '@/canvas/FlowOverlay'
+import { captionSpace } from '@/canvas/caption-space'
 import { EngineProvider } from '@/engine/context'
 import { compileFlow } from '@/engine/flow/compile'
 import { useEngine } from '@/engine/hooks'
@@ -26,7 +26,7 @@ export interface LivePreviewProps {
   minZoom?: number
   maxZoom?: number
   paddingPx?: number
-  /** If true, the current log line shows in a strip at the bottom. */
+  /** If true, the caption of the current step shows in the caption style of the flow. */
   showCaption?: boolean
   /** The connections that carry sensitive data across a trust boundary, by edge id, to highlight. */
   threats?: ReadonlyMap<string, DataCrossing>
@@ -51,27 +51,43 @@ function PreviewCanvas({
   const [nodes, onNodesChange] = useLocalNodes(initial.nodes)
   const colorTheme = useActiveTheme()
   const flow = diagram.flows[0]
+  const timeline = useMemo(
+    () =>
+      flow
+        ? compileFlow(
+            { ...flow, loop: true, spotlight: false },
+            new Set(initial.nodes.map((node) => node.id)),
+            initial.edges,
+          )
+        : null,
+    [flow, initial],
+  )
+  const space = showCaption ? captionSpace(timeline) : { top: 0, bottom: 0 }
   const framed = useReadableFraming({
     edges: initial.edges,
     paddingPx,
     minZoom,
     maxZoom,
-    bottomInsetPx: showCaption ? CAPTION_HEIGHT_PX : 0,
+    bottomInsetPx: space.bottom,
+    topInsetPx: space.top,
   })
+
+  useEffect(() => {
+    engine.setInsets({ top: space.top, right: 0, bottom: space.bottom, left: 0 })
+  }, [engine, space.top, space.bottom])
 
   useEffect(() => {
     engine.ambient.setRunning(playing && !paused && !reducedMotion)
   }, [engine, playing, paused, reducedMotion])
 
   useEffect(() => {
-    if (!playing || !flow) {
+    if (!playing || !timeline) {
       engine.playback.load(null, null)
       return
     }
-    const looping = { ...flow, loop: true, spotlight: false }
-    engine.playback.load(flow.id, compileFlow(looping, new Set(initial.nodes.map((node) => node.id)), initial.edges))
+    engine.playback.load(timeline.flow.id, timeline)
     engine.playback.setFollow(false)
-  }, [engine, playing, flow, initial])
+  }, [engine, playing, timeline])
 
   useEffect(() => {
     if (!playing || !flow) return

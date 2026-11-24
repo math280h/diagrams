@@ -1,4 +1,4 @@
-import type { Flow, FlowPath, Step, Target } from './schema'
+import type { CaptionStyle, Flow, FlowPath, Step, Target } from './schema'
 
 export interface StepLane {
   target: Target
@@ -35,6 +35,15 @@ export function overviewName(index: number, total: number): string {
   if (index === 0) return 'Introduction'
   if (index === total - 1) return 'Conclusion'
   return 'Overview'
+}
+
+/**
+ * Returns where the caption of a step shows: the style of the step, else the style of the flow. An overview step has
+ * no node or edge for a callout, so a callout becomes a subtitle.
+ */
+export function stepCaptionStyle(flow: Pick<Flow, 'captionStyle'>, step: Step): CaptionStyle {
+  const style = step.captionStyle ?? flow.captionStyle
+  return style === 'callout' && isOverview(step) ? 'subtitle' : style
 }
 
 /** Finds a path or a side path of a flow by its id. */

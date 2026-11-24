@@ -1,10 +1,12 @@
 import { motionValue } from 'motion'
-import type { LogLevel, StepTarget, Target, Traffic, XY } from '@/model/schema'
+import { stepCaptionStyle } from '@/model/flow'
+import type { CaptionStyle, LogLevel, StepTarget, Target, Traffic, XY } from '@/model/schema'
 import { applyFlowFrame, flowStateKey } from './apply'
+import { placeCallout, type CalloutAnchor, type CalloutPlacement } from './callout'
 import { blendCameras, cameraToViewport, viewportToCamera, type Rect, type ViewSize, type Viewport } from './camera'
 import { createClock } from './clock'
 import { clamp01, easeInOutCubic } from './easing'
-import type { Timeline } from './flow/compile'
+import type { Lane, Timeline } from './flow/compile'
 import { evaluateFlow, type FlowFrame, type FlowGeometry } from './flow/evaluate'
 import { sideView } from './flow/sides'
 import { pointAt, type ArcTable, type PathPoint } from './path-sampler'
@@ -59,6 +61,7 @@ export interface SideCaption {
   /** The main target first, then the parallel targets. */
   lanes: CaptionLane[]
   event: string
+  style: CaptionStyle
 }
 
 export interface Caption extends Omit<CaptionLane, 'target'> {
@@ -75,6 +78,17 @@ export interface Caption extends Omit<CaptionLane, 'target'> {
   bodies: boolean
   /** The side steps that play at the time. */
   sides: SideCaption[]
+  /** Where the caption shows, see {@link stepCaptionStyle}. */
+  style: CaptionStyle
+}
+
+/**
+ * Returns the key of the caption card of the main step, or of the current step of a side path.
+ *
+ * @param track - The index of the side path in {@link Timeline.sides}, or `null` for the main step.
+ */
+export function calloutKey(track: number | null): string {
+  return track === null ? 'main' : `side-${track}`
 }
 
 const MAX_FRAME_DELTA_MS = 1000
@@ -84,6 +98,22 @@ const LABEL_VISIBLE = 0.05
 const DOT_CLEAR_PX = 6
 const IDLE_COVER_INTERVAL_MS = 100
 const HANDOFF_MS = 700
+/** The height in canvas pixels above a node that the token label uses on the top edge of the node. */
+const TOKEN_LABEL_CLEAR_PX = 32
+const CALLOUT_MARGIN_PX = 12
+/** Half the height of an edge label and a gap, in canvas pixels. */
+const EDGE_LABEL_CLEAR_PX = 12
+const MIN_EDGE_LABEL_CLEAR_PX = 8
+
+interface CalloutTarget {
+  key: string
+  lanes: readonly Lane[]
+}
+
+interface Size {
+  width: number
+  height: number
+}
 
 function sideCaptions(timeline: Timeline, sideIndices: readonly number[]): SideCaption[] {
   return sideIndices.flatMap((index, track) => {
@@ -99,6 +129,7 @@ function sideCaptions(timeline: Timeline, sideIndices: readonly number[]): SideC
         text: segment.step.caption,
         lanes: segment.lanes.map(({ target, reversed }) => ({ target, reversed })),
         event: segment.step.event,
+        style: stepCaptionStyle(timeline.flow, segment.step),
       },
     ]
   })
@@ -240,6 +271,15 @@ export class Engine {
   private trafficScale = new Map<string, number>()
   private caption: Caption | null = null
   private captionListeners = new Set<() => void>()
+  private callouts = new Map<string, HTMLElement>()
+  private calloutSizes = new Map<string, Size>()
+  /** The main step and the side steps at the time of the last flow frame. */
+  private calloutTargets: CalloutTarget[] = []
+  private calloutTargetsKey = ''
+  /** The inputs of the caption card places in the DOM, or an empty string if the next placement must write them. */
+  private shownCallouts = ''
+  private calloutObserver: ResizeObserver | null = null
+  private timelineCount = 0
   private flowShown = false
   private flowDirty = true
   private lastFlowMs = -1
@@ -280,6 +320,8 @@ export class Engine {
   setView(view: ViewSize) {
     this.viewSize = view
     this.flowDirty = true
+    this.calloutSizes.clear()
+    this.shownCallouts = ''
   }
 
   /**
@@ -290,6 +332,7 @@ export class Engine {
   setInsets(insets: Insets) {
     this.insets = insets
     this.flowDirty = true
+    this.shownCallouts = ''
   }
 
   setReducedMotion(reducedMotion: boolean) {
@@ -336,6 +379,159 @@ export class Engine {
   }
 
   getCaption = () => this.caption
+
+  /**
+   * Connects a caption card to the engine. The engine keeps the card next to the node or edge of its step, inside the
+   * free area of the view.
+   *
+   * @param key - The step of the card, from {@link calloutKey}.
+   */
+  setCalloutElement(key: string, element: HTMLElement | null) {
+    const previous = this.callouts.get(key)
+    if (previous === element) return
+    if (previous) this.calloutObserver?.unobserve(previous)
+    this.calloutSizes.delete(key)
+    this.shownCallouts = ''
+    if (!element) {
+      this.callouts.delete(key)
+      return
+    }
+    this.callouts.set(key, element)
+    if (!this.calloutObserver && typeof ResizeObserver !== 'undefined') {
+      this.calloutObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          for (const [cardKey, card] of this.callouts) if (card === entry.target) this.calloutSizes.delete(cardKey)
+        }
+        this.shownCallouts = ''
+        this.placeCallouts()
+      })
+    }
+    this.calloutObserver?.observe(element)
+    this.placeCallouts()
+  }
+
+  /** Measures the caption cards again and places them. Call it after their content changes. */
+  refreshCallouts() {
+    this.calloutSizes.clear()
+    this.shownCallouts = ''
+    this.placeCallouts()
+  }
+
+  private measureCallouts() {
+    for (const [key, element] of this.callouts) {
+      if (!this.calloutSizes.has(key)) {
+        this.calloutSizes.set(key, { width: element.offsetWidth, height: element.offsetHeight })
+      }
+    }
+  }
+
+  private calloutAnchor(lane: Lane): CalloutAnchor | null {
+    if (lane.target.kind === 'node') {
+      const rect = this.geometry?.nodeRect(lane.target.id)
+      return rect ? { kind: 'rect', rect, topClear: TOKEN_LABEL_CLEAR_PX } : null
+    }
+    const path = this.edgePath(lane.target.id)
+    return path ? { kind: 'path', path } : null
+  }
+
+  private nodeWithTokenLabel(id: string): Rect | null {
+    const rect = this.geometry?.nodeRect(id)
+    return rect ? { ...rect, y: rect.y - TOKEN_LABEL_CLEAR_PX, height: rect.height + TOKEN_LABEL_CLEAR_PX } : null
+  }
+
+  private edgePath(id: string): ArcTable | null {
+    const table = this.geometry?.edgeTable(id)
+    return table && table.lengthPx > 0 ? table : null
+  }
+
+  /**
+   * Places the caption cards next to their steps for the viewport. The places depend only on the viewport, the view,
+   * the steps at the time of the last flow frame and the card sizes.
+   */
+  placeCallouts(viewport: Viewport | null = this.getViewport?.() ?? null) {
+    if (this.callouts.size === 0 || !this.geometry || !viewport) return
+    if (this.manual) this.calloutSizes.clear()
+    this.measureCallouts()
+    const { width, height } = this.viewSize
+    const { top, right, bottom, left } = this.insets
+    const sizes = [...this.callouts.keys()].map((key) => {
+      const size = this.calloutSizes.get(key)
+      return `${key}:${size?.width}x${size?.height}`
+    })
+    const inputs = [viewport.x, viewport.y, viewport.zoom, width, height, top, right, bottom, left]
+    const key = `${inputs.join(',')}|${this.calloutTargetsKey}|${sizes.join(',')}`
+    if (key === this.shownCallouts) return
+    this.shownCallouts = key
+
+    const hard: { rects: Rect[]; paths: ArcTable[] } = { rects: [], paths: [] }
+    const near: { rects: Rect[]; paths: ArcTable[] } = { rects: [], paths: [] }
+    const laneEdges = new Set<string>()
+    for (const lane of this.calloutTargets.flatMap((target) => target.lanes)) {
+      if (lane.target.kind === 'node') {
+        const rect = this.nodeWithTokenLabel(lane.target.id)
+        if (rect) hard.rects.push(rect)
+        continue
+      }
+      laneEdges.add(lane.target.id)
+      const path = this.edgePath(lane.target.id)
+      if (path) hard.paths.push(path)
+      for (const end of [lane.fromNode, lane.toNode]) {
+        const rect = end ? this.geometry.nodeRect(end) : null
+        if (rect) near.rects.push(rect)
+      }
+    }
+    const nodes = { rects: this.geometry.nodes?.() ?? [], paths: [] }
+    const edges = { rects: [], paths: [...this.tables].flatMap(([id, table]) => (laneEdges.has(id) ? [] : [table])) }
+    const bounds = {
+      x: left + CALLOUT_MARGIN_PX,
+      y: top + CALLOUT_MARGIN_PX,
+      width: Math.max(0, width - left - right - CALLOUT_MARGIN_PX * 2),
+      height: Math.max(0, height - top - bottom - CALLOUT_MARGIN_PX * 2),
+    }
+    const lineClearPx = Math.max(MIN_EDGE_LABEL_CLEAR_PX, EDGE_LABEL_CLEAR_PX * viewport.zoom)
+    const placed = new Set<string>()
+    for (const target of this.calloutTargets) {
+      const element = this.callouts.get(target.key)
+      if (!element) continue
+      const size = this.calloutSizes.get(target.key)
+      const lane = target.lanes[0]
+      const anchor = lane ? this.calloutAnchor(lane) : null
+      const placement =
+        anchor && size && size.width > 0
+          ? placeCallout({
+              anchor,
+              viewport,
+              width: size.width,
+              height: size.height,
+              bounds,
+              tiers: [hard, near, nodes, edges],
+              lineClearPx,
+            })
+          : null
+      this.showCallout(element, placement)
+      if (placement && size) {
+        near.rects.push({
+          x: (placement.x - viewport.x) / viewport.zoom,
+          y: (placement.y - viewport.y) / viewport.zoom,
+          width: size.width / viewport.zoom,
+          height: size.height / viewport.zoom,
+        })
+      }
+      placed.add(target.key)
+    }
+    for (const [cardKey, element] of this.callouts) if (!placed.has(cardKey)) this.showCallout(element, null)
+  }
+
+  private showCallout(element: HTMLElement, placement: CalloutPlacement | null) {
+    if (!placement) {
+      delete element.dataset.side
+      return
+    }
+    element.dataset.side = placement.side ?? 'none'
+    element.style.transform = `translate(${Math.round(placement.x)}px, ${Math.round(placement.y)}px)`
+    element.style.setProperty('--dg-callout-tail', `${Math.round(placement.tailPx)}px`)
+    element.style.setProperty('--dg-callout-reach', `${Math.round(placement.reachPx)}px`)
+  }
 
   start() {
     if (this.frameRequest) return
@@ -441,6 +637,7 @@ export class Engine {
       previous?.event === next?.event &&
       previous?.level === next?.level &&
       previous?.bodies === next?.bodies &&
+      previous?.style === next?.style &&
       JSON.stringify(previous?.sides) === JSON.stringify(next?.sides)
     ) {
       return
@@ -458,6 +655,7 @@ export class Engine {
     for (const element of this.parallelTokenElements) element.style.display = 'none'
     this.trafficScale.clear()
     this.setCaption(null)
+    this.setCalloutTargets([], '')
     this.flowShown = false
     this.lastTimeline = null
     this.shownState = null
@@ -553,7 +751,15 @@ export class Engine {
   invalidate() {
     this.flowDirty = true
     this.shownState = null
+    this.shownCallouts = ''
     this.edgeProtocols.clear()
+  }
+
+  private setCalloutTargets(targets: CalloutTarget[], key: string) {
+    if (key === this.calloutTargetsKey) return
+    this.calloutTargets = targets
+    this.calloutTargetsKey = key
+    this.shownCallouts = ''
   }
 
   renderFlow(timeMs: number): FlowFrame | null {
@@ -584,6 +790,7 @@ export class Engine {
     this.lastFlowMs = timeMs
     if (timeline !== this.lastTimeline) {
       this.shownState = null
+      this.timelineCount++
       this.removeParallelTokens()
     }
     this.lastTimeline = timeline
@@ -597,7 +804,10 @@ export class Engine {
     })
     this.flowShown = true
     // A layout read after a DOM write makes the browser compute style and layout again within the frame.
-    if (!this.manual) this.coverEdgeLabels(this.tokenShown, this.tokenLabelShown)
+    if (!this.manual) {
+      this.coverEdgeLabels(this.tokenShown, this.tokenLabelShown)
+      this.measureCallouts()
+    }
     const state = flowStateKey(result, timeline.flow.spotlight)
     if (state !== this.shownState) {
       applyFlowFrame(this.root, result, timeline.flow.spotlight)
@@ -632,6 +842,7 @@ export class Engine {
     else this.labelCoverStale = true
 
     const moveCamera = this.playback.playing || this.manual || this.playback.cameraRequest || this.handoff !== null
+    let shownViewport = this.getViewport?.() ?? null
     if (result.camera && this.setViewport && moveCamera) {
       let camera = result.camera
       if (this.handoff) {
@@ -648,7 +859,8 @@ export class Engine {
         }
       }
       const viewport = cameraToViewport(camera, freeView)
-      this.setViewport({ x: viewport.x + this.insets.left, y: viewport.y + this.insets.top, zoom: viewport.zoom })
+      shownViewport = { x: viewport.x + this.insets.left, y: viewport.y + this.insets.top, zoom: viewport.zoom }
+      this.setViewport(shownViewport)
     } else {
       this.handoff = null
     }
@@ -668,9 +880,19 @@ export class Engine {
             level: segment.step.level,
             bodies: timeline.flow.bodies,
             sides: sideCaptions(timeline, result.sideIndices),
+            style: stepCaptionStyle(timeline.flow, segment.step),
           }
         : null,
     )
+    const sideTargets = timeline.sides.flatMap((side, track): CalloutTarget[] => {
+      const current = side.segments[result.sideIndices[track] ?? -1]
+      return current ? [{ key: calloutKey(track), lanes: current.lanes }] : []
+    })
+    this.setCalloutTargets(
+      [...(segment ? [{ key: calloutKey(null), lanes: segment.lanes }] : []), ...sideTargets],
+      `${this.timelineCount}:${result.segmentIndex}:${result.sideIndices.join(',')}`,
+    )
+    this.placeCallouts(shownViewport)
     return result
   }
 

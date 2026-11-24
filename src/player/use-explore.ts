@@ -1,6 +1,6 @@
 import { useReactFlow, useStoreApi, type NodeMouseHandler } from '@xyflow/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CAPTION_HEIGHT_PX } from '@/canvas/FlowOverlay'
+import { CAPTION_HEIGHT_PX } from '@/canvas/caption-space'
 import { prefersReducedMotion } from '@/lib/motion'
 import { unionRects, type Rect } from '@/model/rect'
 import type { DiagramEdge, DiagramNode } from '@/model/types'

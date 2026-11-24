@@ -855,6 +855,29 @@ describe('agent tools', () => {
     expect(useDoc.getState().flows[0]!.bodies).toBe(false)
   })
 
+  it('sets the caption style of a flow and of its steps, and shows them to agents', async () => {
+    await call('create_diagram', { name: 'Shop' })
+    await call('add_elements', { nodes: [{ label: 'API' }, { label: 'DB' }] })
+    await call('add_flow', { name: 'Ping', steps: [{ target: 'API' }, { target: 'DB', captionStyle: 'top' }] })
+    const added = useDoc.getState().flows[0]!
+    expect(added.captionStyle).toBe('callout')
+    expect(added.steps.map((step) => step.captionStyle)).toEqual([undefined, 'top'])
+
+    await call('update_flow', {
+      flow: 'Ping',
+      captionStyle: 'subtitle',
+      steps: { update: [{ index: 0, captionStyle: 'none' }] },
+    })
+    const changed = useDoc.getState().flows[0]!
+    expect(changed.captionStyle).toBe('subtitle')
+    expect(changed.steps[0]!.captionStyle).toBe('none')
+    const read = await call('get_diagram', { detail: 'full' })
+    expect(read.flows[0]).toMatchObject({ captionStyle: 'subtitle', steps: [{ captionStyle: 'none' }, {}] })
+
+    await call('update_flow', { flow: 'Ping', steps: { update: [{ index: 0, captionStyle: 'flow' }] } })
+    expect(useDoc.getState().flows[0]!.steps[0]).not.toHaveProperty('captionStyle')
+  })
+
   it('reports flow steps that lost their node', async () => {
     await call('create_diagram', { name: 'Shop' })
     await call('add_elements', { nodes: [{ label: 'API' }] })

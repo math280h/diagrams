@@ -9,14 +9,17 @@ import { usePlaybackState } from '@/engine/hooks'
 import { findStep, overviewName, removeStep } from '@/model/flow'
 import { nodeTitle } from '@/model/labels'
 import { payloadJson } from '@/model/payload'
-import { MAX_LANE_DELAY_MS, type Flow, type Step, type Target } from '@/model/schema'
+import { MAX_LANE_DELAY_MS, type CaptionStyle, type Flow, type Step, type Target } from '@/model/schema'
 import { updateFlow } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
 import { setUi } from '@/store/ui-store'
+import { CAPTION_STYLE_NAMES, CAPTION_STYLE_OPTIONS } from '@/editor/flow/caption-styles'
 import { targetName } from '@/editor/flow/names'
 import { deleteSelectedSteps } from '@/editor/flow/step-selection'
 import { IS_MAC } from '@/lib/shortcut-keys'
-import { Field, Section, Segmented, SliderField, SwitchField, TextInput } from './controls'
+import { Choice, Field, Section, Segmented, SliderField, SwitchField, TextInput } from './controls'
+
+const FLOW_STYLE = 'flow'
 
 function StepBody({ flow, step }: { flow: Flow; step: Step }) {
   const playback = usePlaybackState()
@@ -227,6 +230,13 @@ export function StepInspector({ flow, step }: { flow: Flow; step: Step }) {
       },
       key,
     )
+  const setCaptionStyle = (captionStyle: CaptionStyle | undefined) =>
+    updateFlow(flow.id, (draft) => {
+      const target = findStep(draft, step.id)?.step
+      if (!target) return
+      if (captionStyle) target.captionStyle = captionStyle
+      else delete target.captionStyle
+    })
   const move = (delta: number) =>
     updateFlow(flow.id, (draft) => {
       const list = findStep(draft, step.id)?.list
@@ -323,6 +333,23 @@ export function StepInspector({ flow, step }: { flow: Flow; step: Step }) {
           className="min-h-16 text-xs"
         />
       </Field>
+      <div className="space-y-1.5">
+        <span className="text-xs text-muted-foreground">Caption style</span>
+        <Choice
+          label="Caption style"
+          value={step.captionStyle ?? FLOW_STYLE}
+          onChange={(style) => setCaptionStyle(style === FLOW_STYLE ? undefined : style)}
+          options={[
+            { value: FLOW_STYLE, label: `Same as the flow (${CAPTION_STYLE_NAMES[flow.captionStyle]})` },
+            ...CAPTION_STYLE_OPTIONS,
+          ]}
+        />
+        {overview && (step.captionStyle ?? flow.captionStyle) === 'callout' && (
+          <p className="text-xs text-muted-foreground">
+            An overview has no node or connection to point at, so its callout shows as a subtitle.
+          </p>
+        )}
+      </div>
       <SliderField
         label="Duration"
         value={step.durationMs}

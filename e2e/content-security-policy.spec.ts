@@ -102,7 +102,7 @@ test('edits, tidies up, exports and presents a diagram under the policy', async 
   await page.keyboard.press('Escape')
 
   await page.getByRole('button', { name: 'Present' }).click()
-  await expect(page.locator('.dg-caption')).toBeVisible()
+  await expect(page.locator('.dg-captions')).toBeVisible()
   expect(violations).toEqual([])
 })
 

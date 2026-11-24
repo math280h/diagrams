@@ -3,7 +3,7 @@ import { HEADLINE_FEATURES, MORE_FEATURES } from '@/library/feature-list'
 
 test('pauses and plays the template on the first-run stage', async ({ page }) => {
   await page.goto('/')
-  const caption = page.locator('.dg-caption').first()
+  const caption = page.locator('.dg-captions').first()
   await expect(caption).not.toHaveText('', { timeout: 10_000 })
   const pause = page.getByRole('button', { name: 'Pause', exact: true })
   await pause.click()
@@ -20,7 +20,7 @@ test('waits for Play on the first-run stage when the user asks for reduced motio
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
   await page.getByRole('button', { name: 'Play', exact: true }).click()
-  await expect(page.locator('.dg-caption').first()).not.toHaveText('', { timeout: 10_000 })
+  await expect(page.locator('.dg-captions').first()).not.toHaveText('', { timeout: 10_000 })
   await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
 })
 
@@ -34,7 +34,7 @@ test('holds the playing template while the tab is in the background', async ({ p
       document.dispatchEvent(new Event('visibilitychange'))
     }, hidden)
   await page.goto('/')
-  const caption = page.locator('.dg-caption').first()
+  const caption = page.locator('.dg-captions').first()
   await expect(caption).not.toHaveText('', { timeout: 10_000 })
   await setHidden(true)
   const held = await caption.textContent()
@@ -51,7 +51,7 @@ test('offers the desktop app beside the headline and keeps the stage on a 1280 Ã
   const offer = (await page.getByRole('region', { name: 'Let an AI agent draw with you' }).boundingBox())!
   expect(offer.x).toBeGreaterThanOrEqual(headline.x + headline.width)
   expect(offer.y).toBeLessThan(headline.y + headline.height)
-  const caption = page.locator('.dg-caption').first()
+  const caption = page.locator('.dg-captions').first()
   await expect(caption).not.toHaveText('', { timeout: 10_000 })
   const captionBox = (await caption.boundingBox())!
   expect(captionBox.y + captionBox.height).toBeLessThanOrEqual(720)

@@ -175,7 +175,7 @@ export function DiagramCanvas({
             {children}
           </ReactFlow>
           {description && <CanvasDescription description={description} />}
-          {showCaption && <FlowCaption />}
+          {showCaption && <FlowCaption exportMode={exportMode} />}
           {overlay}
         </div>
       </RouteStoreContext>

@@ -8,8 +8,10 @@ export interface FramingOptions {
   paddingPx: number
   minZoom: number
   maxZoom: number
-  /** The screen pixels at the bottom of the view that a caption strip covers. */
+  /** The screen pixels at the bottom of the view that a caption covers. */
   bottomInsetPx?: number
+  /** The screen pixels at the top of the view that a caption bar covers. */
+  topInsetPx?: number
   /** If true, the hook frames the diagram one time and does not follow later size changes. */
   once?: boolean
   /** If true, the whole diagram includes its text nodes, such as the title. */
@@ -28,6 +30,7 @@ export function useReadableFraming({
   minZoom,
   maxZoom,
   bottomInsetPx = 0,
+  topInsetPx = 0,
   once = false,
   withText = false,
 }: FramingOptions) {
@@ -68,17 +71,16 @@ export function useReadableFraming({
         height: node.measured.height ?? 0,
       })
     }
-    void setViewport(
-      readableViewport({
-        bounds,
-        rects,
-        edges,
-        view: { width, height: height - bottomInsetPx },
-        paddingPx,
-        minZoom,
-        maxZoom,
-      }),
-    )
+    const viewport = readableViewport({
+      bounds,
+      rects,
+      edges,
+      view: { width, height: height - bottomInsetPx - topInsetPx },
+      paddingPx,
+      minZoom,
+      maxZoom,
+    })
+    void setViewport({ ...viewport, y: viewport.y + topInsetPx })
     const frame = requestAnimationFrame(() => setFramed(true))
     return () => cancelAnimationFrame(frame)
   }, [
@@ -94,6 +96,7 @@ export function useReadableFraming({
     minZoom,
     maxZoom,
     bottomInsetPx,
+    topInsetPx,
     once,
     withText,
     framed,

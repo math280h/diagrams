@@ -1,6 +1,6 @@
 import { ArrowLeft, ArrowRight, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { CAPTION_HEIGHT_PX } from '@/canvas/FlowOverlay'
+import { CAPTION_HEIGHT_PX } from '@/canvas/caption-space'
 import { nodeTitle } from '@/model/labels'
 import { explorable, type useExplore } from './use-explore'
 
