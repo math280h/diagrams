@@ -1446,7 +1446,7 @@ setting turns this off.
     Ubuntu 22.04 and later do not install.
 - Fuses turn off `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS`, inspect flags and extra `file://` rights, and allow only the
   checked asar archive.
-- Release (`docs/RELEASING.md`): a `v*` tag starts `.github/workflows/release.yml` and sets the version
+- Release (`docs/RELEASING.md`): a `v*.*.*` tag starts `.github/workflows/release.yml` and sets the version
   (`-c.extraMetadata.version`); a release needs no commit. `pnpm release:tag` calculates the tag. One job creates
   the draft, because parallel electron-builder jobs could each create one. Platform jobs package, drive the app
   through the agent server (`scripts/smoke-package.mjs`) and upload. The maintainer publishes the draft.
@@ -1586,11 +1586,19 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
 ### Render action
 
 `actions/render` is a composite GitHub Action that keeps diagram images current with the command-line render.
-`main.mjs` runs in Node; `lib.mjs` holds the tested parts (file patterns, image paths, the comment).
+`main.mjs` runs in Node; `lib.mjs` holds the tested parts (file patterns, image paths, the comment, the release).
 
 - App: the action downloads the Linux AppImage of a release with `gh` and the job token. Runners have no libfuse2,
   which the AppImageKit runtime of older releases needs, so the action unpacks the AppImage. The app runs under
   `xvfb-run` without a display, and with `--no-sandbox` without unprivileged user namespaces. The `app` input replaces the download (this CI: the build from source).
+- Version: without the `version` input, the ref of the action (`github.action_ref`) selects the release. If a release
+  tag is at the commit of the ref, that release matches. If not, the newest stable release that the commit contains
+  matches (compare API). A release does not change `package.json`, so the files of the action do not hold the
+  version. A version tag without a published release stops the action with an error, because other repositories
+  cannot download a draft.
+- Major tag: after a stable release is live, an admin runs `pnpm release:major-tag` (`scripts/release-major-tag.ts`).
+  It moves `v<major>` to the newest stable release of that major version, so a pin to `@v1` never gets a 2.x app. Only
+  admins can move `v*` tags, so no workflow moves it, and the Release workflow starts only for `v*.*.*` tags.
 - Files: only tracked files (`git ls-files` with glob pathspecs), so no `node_modules` or build output.
 - Write mode renders each file next to it and outputs the image paths. The workflow commits them with its own branch
   and message.
@@ -1600,13 +1608,16 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
   - `?raw=true` links work in private repositories for people who can read them.
   - One comment, found by a marker, updates at each push.
   - The token goes to git through `GIT_CONFIG_*` variables, not the command line; the log masks it.
+- `.github/actions/display-previews` runs the same `main.mjs` with the inputs `base-app`, `base-root`, `screens` and
+  `base-screens`. These inputs exist only for the previews of this repository, so the public action does not show
+  them.
 - `base-app`: both apps render every matched diagram, also untracked files. Only diagrams with different images stay.
   One runner and a fixed render time make an exact byte compare enough. A diagram that the base app cannot open gets a
   note in place of its old image. With no difference, the comment says so, to show that the check ran.
 - `base-root`: the base app renders the files at the same paths in that folder. Files on one side only show as new or
   removed. An app refuses a newer format, so without this input a format change gets no old images.
-- `.github/workflows/display-previews.yml` runs the action for a pull request from this repository that changes drawing
-  code, templates or dependencies. It builds the app of both commits. The base commit is the first parent of the merge
+- `.github/workflows/display-previews.yml` runs `.github/actions/display-previews` for a pull request from this
+  repository that changes drawing code, templates or dependencies. It builds the app of both commits. The base commit is the first parent of the merge
   commit, not `pull_request.base.sha`, which stays old when `main` moves. `scripts/template-files.mjs` of each commit
   writes each template as a diagram file in `.diagram-previews/` and `base/.diagram-previews/`, and the action renders
   each file in the Dark and the Light theme (`theme: dark light`). Template changes then show. A template gets new random ids at each build, so the script numbers the ids in order. Particle
