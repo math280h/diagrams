@@ -86,13 +86,14 @@ export async function runRender(args: RenderArgs): Promise<number> {
     const capture = createCaptureService()
     const handlers: MainHandlers = {
       ...capture.handlers,
-      'files.list': async () => ({ folder: path.dirname(args.input), files: [] }),
+      'files.list': async () => ({ folder: path.dirname(args.input), files: [], linkedFilesReset: null }),
       'files.write': refuse,
       'files.remove': refuse,
       'files.reveal': refuse,
       'files.open': refuse,
       'files.saveAs': refuse,
       'files.show': refuse,
+      'files.showDamagedList': refuse,
       'files.committed': refuse,
       'app.about': async () => appAbout(),
       'agent.info': async () => AGENT_OFF,
@@ -115,6 +116,7 @@ export async function runRender(args: RenderArgs): Promise<number> {
       'app.removeWebsite': refuse,
       'app.setShareWebsite': refuse,
       'app.quit': refuse,
+      'app.setUnsaved': async () => null,
       'update.info': async () => UPDATES_OFF,
       'update.check': async () => UPDATES_OFF,
       'update.install': refuse,

@@ -54,6 +54,32 @@ describe('desktop updates', () => {
     expect(request).toHaveBeenCalledWith('update.install', null)
   })
 
+  it('tells the user about each failed install, and offers to try again', async () => {
+    const { request, emit } = installDesktop(BASE)
+    watchUpdates()
+    await Promise.resolve()
+    emit({ ...BASE, state: 'ready', version: '0.2.0' })
+    toast.info.mock.calls[0]![1].action.onClick()
+    const failed: UpdateInfo = {
+      ...BASE,
+      state: 'install-failed',
+      version: '0.2.0',
+      message: 'Command pkexec exited with code 126\nstderr',
+    }
+    emit(failed)
+    emit(failed)
+    expect(toast.error).toHaveBeenCalledOnce()
+    const [title, options] = toast.error.mock.calls[0]!
+    expect(title).toBe('Could not install version 0.2.0')
+    expect(options.description).toBe('Command pkexec exited with code 126')
+    expect(options.action.label).toBe('Try again')
+
+    options.action.onClick()
+    expect(request).toHaveBeenLastCalledWith('update.install', null)
+    emit(failed)
+    expect(toast.error).toHaveBeenCalledTimes(2)
+  })
+
   it('links to the release in the repository of the updates when the build may only notify', async () => {
     const { emit } = installDesktop(BASE)
     watchUpdates()

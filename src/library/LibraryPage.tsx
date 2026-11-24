@@ -20,14 +20,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { isDesktop } from '@/desktop/bridge'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,18 +53,20 @@ import { dataCrossings } from '@/model/threats'
 import { fromDiagram } from '@/persistence/serialize'
 import {
   createBlankDiagram,
-  deleteDiagram,
   discardUnusedBlankDiagrams,
   duplicateDiagram,
   exportDiagramJson,
+  exportStoredDiagram,
   renameDiagram,
   saveImported,
 } from '@/persistence/library-actions'
 import { loadDiagramOrNull, repository } from '@/persistence/active-repository'
+import { checkPersistentStorage, usePersistentStorage } from '@/persistence/persistent-storage'
 import type { DiagramMeta } from '@/persistence/repository'
 import { storageCopy } from '@/persistence/storage-copy'
 import { useLibrary } from '@/store/library-store'
 import { TEMPLATES, type Template } from '@/templates'
+import { DeleteDiagramDialog } from './DeleteDiagramDialog'
 import { Features } from './Features'
 import { PrivacySection } from './PrivacySection'
 import { LivePreview } from './LivePreview'
@@ -170,7 +165,7 @@ function DiagramCard({ meta, onRename, onDelete }: { meta: DiagramMeta; onRename
             <DropdownMenuItem onClick={() => duplicateDiagram(meta.id)}>
               <Copy /> Duplicate
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => diagram && exportDiagramJson(diagram)} disabled={!diagram}>
+            <DropdownMenuItem onClick={() => (diagram ? exportDiagramJson(diagram) : exportStoredDiagram(meta))}>
               <Download /> Export diagram file
             </DropdownMenuItem>
             {canOpenInApp() && (
@@ -194,18 +189,37 @@ function DiagramCard({ meta, onRename, onDelete }: { meta: DiagramMeta; onRename
   )
 }
 
+function backUpAllDiagrams() {
+  void import('@/persistence/backup')
+    .then(({ downloadBackup }) => downloadBackup())
+    .catch((error: unknown) => reportError('Could not make the backup.', error))
+}
+
+function BrowserStorageNote({ usageBytes, budgetBytes }: { usageBytes: number; budgetBytes: number }) {
+  const persisted = usePersistentStorage((state) => state.persisted)
+  useEffect(() => void checkPersistentStorage(), [])
+  return (
+    <div className="mt-4">
+      <p className="flex flex-wrap items-center gap-x-3 text-[13px] text-muted-foreground">
+        <span className="tabular-nums">
+          {formatBytes(usageBytes)} of {formatBytes(budgetBytes)} used in this browser.{' '}
+          {persisted === true && 'Clearing the site data of this browser deletes your diagrams.'}
+          {(persisted === false || persisted === null) &&
+            'This browser can delete your diagrams when the disk is almost full. Safari deletes them after 7 days without a visit.'}
+        </span>
+        <Button variant="link" size="xs" className="px-0" onClick={backUpAllDiagrams}>
+          Back up all diagrams
+        </Button>
+      </p>
+      <FolderOffer />
+    </div>
+  )
+}
+
 function StorageNote({ usageBytes }: { usageBytes: number }) {
   const location = repository().location
   if (location.kind === 'browser') {
-    return (
-      <div className="mt-4">
-        <p className="text-[13px] text-muted-foreground tabular-nums">
-          {formatBytes(usageBytes)} of {formatBytes(location.budgetBytes)} used in this browser. Clearing the site data
-          of this browser deletes them, so export a diagram file to keep a copy.
-        </p>
-        <FolderOffer />
-      </div>
-    )
+    return <BrowserStorageNote usageBytes={usageBytes} budgetBytes={location.budgetBytes} />
   }
   if (location.kind === 'picked-folder') return <FolderStorageNote name={location.name} />
   if (location.kind === 'followed-folder') return <FollowedFolderNote name={location.name} />
@@ -540,6 +554,10 @@ export function LibraryPage() {
             open(diagram.id)
           }
         }}
+        onOpen={(id) => {
+          setImportOpen(false)
+          open(id)
+        }}
       />
 
       <Dialog open={renaming !== null} onOpenChange={(value) => !value && setRenaming(null)}>
@@ -571,32 +589,7 @@ export function LibraryPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={deleting !== null} onOpenChange={(value) => !value && setDeleting(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>
-              {deleting?.path ? `Remove “${deleting.name}” from the library?` : `Delete “${deleting?.name}”?`}
-            </DialogTitle>
-            <DialogDescription>
-              {deleting?.path ? `The file stays where it is: ${deleting.path}` : storageCopy().deleteDetail}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setDeleting(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                if (deleting) deleteDiagram(deleting.id)
-                setDeleting(null)
-              }}
-            >
-              {deleting?.path ? 'Remove from library' : 'Delete diagram'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteDiagramDialog diagram={deleting} onClose={() => setDeleting(null)} />
     </div>
   )
 }

@@ -9,7 +9,24 @@ export interface StoredFile {
   path?: string
 }
 
+/**
+ * Tells that the list of linked files was damaged, so the app made a new list from the entries that it could read.
+ * `copyKept` is true when a copy of the damaged list stays next to the new list.
+ */
+export interface LinkedFilesReset {
+  copyKept: boolean
+}
+
 export type FileChange = { kind: 'changed'; id: string; text: string; path?: string } | { kind: 'removed'; id: string }
+
+/** The open diagram when its changes are not in storage: its name and the text of its diagram file. */
+export interface UnsavedFile {
+  name: string
+  text: string
+}
+
+/** The end of a file remove. After `trash-failed`, the file stays where it is. */
+export type FileRemoveOutcome = { kind: 'removed' } | { kind: 'trash-failed'; message: string }
 
 /** The text of a theme file, and its file name without `.theme.json`. */
 export interface ThemeSource {
@@ -87,7 +104,8 @@ export interface AgentInfo {
  * The state of app updates. `unsupported` means a build that does not update itself, such as a build from source.
  * `sign-in` means a build that gets its updates from a private repository, while the user is not signed in to
  * GitHub. `available` means a new version that the user must download. `ready` means a downloaded update waits for a
- * restart.
+ * restart. `install-failed` means that the install of the downloaded update failed and the app did not quit. The update
+ * waits for a restart again, and `message` gives the reason.
  */
 export type UpdateState =
   | 'unsupported'
@@ -97,6 +115,7 @@ export type UpdateState =
   | 'available'
   | 'downloading'
   | 'ready'
+  | 'install-failed'
   | 'failed'
 
 /**
@@ -190,9 +209,14 @@ export interface CaptureRequest {
 
 /** Requests from the renderer to the main process. */
 export interface MainRequests {
-  'files.list': { input: null; output: { folder: string; files: StoredFile[] } }
+  /** Returns the diagram files, and the reset of a damaged list of linked files once after the reset. */
+  'files.list': {
+    input: null
+    output: { folder: string; files: StoredFile[]; linkedFilesReset: LinkedFilesReset | null }
+  }
   'files.write': { input: StoredFile; output: null }
-  'files.remove': { input: { id: string; trash: boolean }; output: null }
+  /** Moves a diagram file to the trash, or deletes it if `trash` is false. A linked file only leaves the list. */
+  'files.remove': { input: { id: string; trash: boolean }; output: FileRemoveOutcome }
   'files.reveal': { input: null; output: null }
   /** Asks the user for diagram files anywhere and links them, so that the app saves them where they are. */
   'files.open': { input: null; output: StoredFile[] }
@@ -200,6 +224,8 @@ export interface MainRequests {
   'files.saveAs': { input: { name: string; text: string }; output: StoredFile | null }
   /** Shows a linked file in the file manager. */
   'files.show': { input: { id: string }; output: null }
+  /** Shows the copy of the damaged list of linked files in the file manager. */
+  'files.showDamagedList': { input: null; output: null }
   /** Returns a linked file as the last commit of its git repository holds it. */
   'files.committed': { input: { id: string }; output: { text: string } }
   'app.about': { input: null; output: AppAbout }
@@ -224,10 +250,15 @@ export interface MainRequests {
   'app.setShareWebsite': { input: { website: string }; output: AppSettings }
   /** Quits the app after the window saves the open diagram. */
   'app.quit': { input: null; output: null }
+  /** Tells the main process if the open diagram has changes that are not in storage. */
+  'app.setUnsaved': { input: { unsaved: boolean }; output: null }
   'update.info': { input: null; output: UpdateInfo }
   /** Checks for an update and resolves when the check ends. A build that installs updates starts the download. */
   'update.check': { input: null; output: UpdateInfo }
-  /** Quits the app, installs the downloaded update and starts the app again. */
+  /**
+   * Quits the app, installs the downloaded update and starts the app again. When the install fails, the app does not
+   * quit and the update state becomes `install-failed`.
+   */
   'update.install': { input: null; output: null }
   /**
    * Sets the GitHub repository of updates in a build that allows it, after a check that the repository has a release
@@ -284,7 +315,11 @@ export interface MainRequests {
 export interface RendererRequests {
   'agent.call': { input: { tool: string; args: unknown }; output: ToolOutcome }
   'handoff.open': { input: { text: string }; output: { diagramId: string; name: string } }
-  'app.flush': { input: null; output: null }
+  /**
+   * Saves the open diagram and waits for storage. `unsaved` is the open diagram as file text if its changes are still
+   * not in storage, else `null`.
+   */
+  'app.flush': { input: null; output: { unsaved: UnsavedFile | null } }
   /** Opens the "Connect an agent" dialog. */
   'app.connectAgent': { input: null; output: null }
   /** Renders a diagram file and returns the image or the video as base64. */

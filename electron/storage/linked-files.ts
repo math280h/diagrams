@@ -1,9 +1,9 @@
 import { createHash, randomBytes } from 'node:crypto'
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, open, readFile, rename, rm } from 'node:fs/promises'
 import path from 'node:path'
-import type { FileChange, StoredFile } from '@/desktop/contract'
+import type { FileChange, LinkedFilesReset, StoredFile } from '@/desktop/contract'
 import { LINKED_ID_PREFIX } from '@/desktop/constants'
-import { createFileQueue } from './file-queue'
+import { createFileQueue, errorCode } from './file-queue'
 
 /** Returns the id of a linked file. The same file always gets the same id. */
 export function linkedIdOf(file: string): string {
@@ -18,15 +18,54 @@ export function isLinkedId(id: string) {
 
 export type LinkedFiles = ReturnType<typeof createLinkedFiles>
 
+function parseRegistry(text: string): { files: string[]; damaged: boolean } {
+  let data: unknown
+  try {
+    data = JSON.parse(text)
+  } catch {
+    return { files: [], damaged: true }
+  }
+  const list: unknown = typeof data === 'object' && data !== null && 'files' in data ? data.files : undefined
+  if (!Array.isArray(list)) return { files: [], damaged: true }
+  const files = list.filter((file): file is string => typeof file === 'string' && path.isAbsolute(file))
+  return { files, damaged: files.length !== list.length }
+}
+
+async function writeFlushed(file: string, text: string) {
+  await mkdir(path.dirname(file), { recursive: true })
+  const temp = `${file}.tmp-${randomBytes(4).toString('hex')}`
+  try {
+    const handle = await open(temp, 'w')
+    try {
+      await handle.writeFile(text, 'utf8')
+      await handle.sync()
+    } finally {
+      await handle.close()
+    }
+    await rename(temp, file)
+  } catch (error) {
+    await rm(temp, { force: true })
+    throw error
+  }
+}
+
+function damagedCopyOf(registryFile: string) {
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+  return path.join(path.dirname(registryFile), `${path.basename(registryFile, '.json')}-damaged-${stamp}.json`)
+}
+
 /**
  * Keeps diagram files that live outside the diagrams folder, for example in a repository, where they are.
  *
  * The list of files lives in `registryFile`. Removing a linked diagram only takes it off the list; the file stays.
+ * A damaged list does not stop the app: the app moves it to a copy next to it and keeps the entries that it can read.
  */
 export function createLinkedFiles(registryFile: string) {
   const links = new Map<string, string>()
   let loaded: Promise<void> | null = null
   let saving: Promise<unknown> = Promise.resolve()
+  let reset: LinkedFilesReset | null = null
+  let damagedCopy: string | null = null
 
   const queue = createFileQueue({
     pathOf: (id) => {
@@ -40,31 +79,45 @@ export function createLinkedFiles(registryFile: string) {
     },
   })
 
+  const persist = () => {
+    const text = `${JSON.stringify({ files: [...links.values()] }, null, 2)}\n`
+    saving = saving.catch(() => undefined).then(() => writeFlushed(registryFile, text))
+    return saving
+  }
+
+  const keepDamagedCopy = async () => {
+    const copy = damagedCopyOf(registryFile)
+    try {
+      await rename(registryFile, copy)
+    } catch {
+      return false
+    }
+    damagedCopy = copy
+    return true
+  }
+
+  const load = async () => {
+    let text: string
+    try {
+      text = await readFile(registryFile, 'utf8')
+    } catch (error) {
+      if (errorCode(error) === 'ENOENT') return
+      loaded = null
+      throw error
+    }
+    const { files, damaged } = parseRegistry(text)
+    for (const file of files) links.set(linkedIdOf(file), path.resolve(file))
+    if (!damaged) return
+    reset = { copyKept: await keepDamagedCopy() }
+    await persist().catch(() => undefined)
+  }
+
   const ready = () => {
-    loaded ??= readFile(registryFile, 'utf8').then(
-      (text) => {
-        const data = JSON.parse(text) as { files?: unknown }
-        for (const file of Array.isArray(data.files) ? data.files : []) {
-          if (typeof file === 'string') links.set(linkedIdOf(file), path.resolve(file))
-        }
-      },
-      () => undefined,
-    )
+    loaded ??= load()
     return loaded
   }
 
-  const persist = () => {
-    const text = `${JSON.stringify({ files: [...links.values()] }, null, 2)}\n`
-    saving = saving
-      .catch(() => undefined)
-      .then(async () => {
-        await mkdir(path.dirname(registryFile), { recursive: true })
-        const temp = `${registryFile}.tmp-${randomBytes(4).toString('hex')}`
-        await writeFile(temp, text, 'utf8')
-        await rename(temp, registryFile)
-      })
-    return saving
-  }
+  const readyOrEmpty = () => ready().catch(() => undefined)
 
   async function read(id: string): Promise<StoredFile | null> {
     const file = links.get(id)
@@ -79,12 +132,22 @@ export function createLinkedFiles(registryFile: string) {
   }
 
   return {
+    /** Returns every linked file that can be read. A list that cannot be read gives no files until a later call. */
     async readAll(): Promise<StoredFile[]> {
-      await ready()
+      await readyOrEmpty()
       await queue.drain()
       const files = await Promise.all([...links.keys()].map(read))
       return files.filter((file): file is StoredFile => file !== null)
     },
+
+    /** Returns the reset of a damaged list once, and then `null`. */
+    takeReset(): LinkedFilesReset | null {
+      const taken = reset
+      reset = null
+      return taken
+    },
+
+    damagedCopy: () => damagedCopy,
 
     /**
      * Adds a file to the list and reads it.
@@ -133,7 +196,7 @@ export function createLinkedFiles(registryFile: string) {
 
     /** Checks every linked file again and returns every change since the last check. */
     async rescan(): Promise<FileChange[]> {
-      await ready()
+      await readyOrEmpty()
       const changes = await Promise.all([...links.keys()].map(queue.inspect))
       return changes
         .filter((change): change is FileChange => change !== null)

@@ -8,7 +8,8 @@ import { absolutePosition } from '@/model/graph'
 import { nodeLabel } from '@/model/labels'
 import { stepBody } from '@/model/payload'
 import { setRepository, repository } from '@/persistence/active-repository'
-import { createCachedRepository } from '@/persistence/cached-repository'
+import { createCachedRepository, type CachedRepository } from '@/persistence/cached-repository'
+import { TrashError } from '@/persistence/repository'
 import { useDoc } from '@/store/doc-store'
 import { closeDiagramSession, openDiagram, openDiagramId, openDiagramSession } from '@/store/document'
 import { resetHistory, undo, useHistory } from '@/store/history'
@@ -993,6 +994,7 @@ describe('runAgentTool time limits', () => {
 
 describe('changes that do not reach storage', () => {
   let failWrites = false
+  let trashFails = false
   const failing = (message: string) => async () => {
     if (failWrites) throw new Error(message)
   }
@@ -1010,12 +1012,22 @@ describe('changes that do not reach storage', () => {
   }
 
   beforeEach(() => {
+    // Sonner dismisses a toast in an animation frame. Node has no requestAnimationFrame.
+    vi.stubGlobal('requestAnimationFrame', (callback: () => void) => setTimeout(callback))
     failWrites = false
+    trashFails = false
+    const removeFile = failing('file in use')
     setRepository(
       createCachedRepository({
         location: { kind: 'folder', path: '/test' },
         files: [],
-        sink: { write: failing('disk full'), remove: failing('file in use') },
+        sink: {
+          write: failing('disk full'),
+          remove: async () => {
+            if (trashFails) throw new TrashError('No trash on this drive.')
+            await removeFile()
+          },
+        },
       }),
     )
   })
@@ -1023,6 +1035,7 @@ describe('changes that do not reach storage', () => {
   afterEach(() => {
     const id = openDiagramId()
     if (id) closeDiagramSession(id, false)
+    vi.unstubAllGlobals()
   })
 
   it('tells the agent that a new diagram did not save', async () => {
@@ -1042,6 +1055,20 @@ describe('changes that do not reach storage', () => {
     expect(useDoc.getState().nodes).toHaveLength(1)
   })
 
+  it('makes no change while a version from outside waits for the choice of the user', async () => {
+    const ctx = sessionContext()
+    const [created] = await HANDLERS.create_diagram({ name: 'Shop' }, ctx)
+    const { diagramId } = JSON.parse(created && created.type === 'text' ? created.text : '{}') as { diagramId: string }
+    useDoc.setState({ name: 'Edit that waits' })
+    const folder = repository() as CachedRepository
+    const outside = { ...folder.load(diagramId), name: 'Edited outside' }
+    folder.applyExternal({ kind: 'changed', id: diagramId, text: JSON.stringify(outside) })
+    await expect(HANDLERS.add_elements({ nodes: [{ label: 'API' }] }, ctx)).rejects.toThrow(
+      'The diagram changed outside the editor, so the tool made no change.',
+    )
+    expect(useDoc.getState().nodes).toHaveLength(0)
+  })
+
   it('tells the agent that a diagram could not be deleted', async () => {
     const ctx = sessionContext()
     const [created] = await HANDLERS.create_diagram({ name: 'Shop' }, ctx)
@@ -1050,5 +1077,16 @@ describe('changes that do not reach storage', () => {
     await expect(HANDLERS.delete_diagram({ diagramId }, ctx)).rejects.toThrow(
       'The diagram could not be deleted: file in use',
     )
+  })
+
+  it('tells the agent that the trash failed, and keeps the diagram', async () => {
+    const ctx = sessionContext()
+    const [created] = await HANDLERS.create_diagram({ name: 'Shop' }, ctx)
+    const { diagramId } = JSON.parse(created && created.type === 'text' ? created.text : '{}') as { diagramId: string }
+    trashFails = true
+    await expect(HANDLERS.delete_diagram({ diagramId }, ctx)).rejects.toThrow(
+      'The diagram file could not go to the trash (No trash on this drive.), so the diagram and its file stay.',
+    )
+    expect(repository().load(diagramId)?.name).toBe('Shop')
   })
 })

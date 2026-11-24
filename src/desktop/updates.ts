@@ -3,12 +3,20 @@ import { create } from 'zustand'
 import { reportError } from '@/store/problem-store'
 import { desktopApi, requestErrorMessage } from './bridge'
 import { releaseLinks } from './build-config'
-import type { UpdateInfo } from './contract'
+import type { UpdateInfo, UpdateState } from './contract'
 import { openDesktopSettings } from './settings-dialog'
 
 const UPDATE_TOAST_ID = 'update'
+const NOTICE_STATES: ReadonlySet<UpdateState> = new Set(['available', 'ready', 'install-failed'])
 
 export const useUpdateInfo = create<{ info: UpdateInfo | null }>(() => ({ info: null }))
+
+let shownNotice: string | null = null
+
+function installUpdate() {
+  shownNotice = null
+  void desktopApi()?.request('update.install', null)
+}
 
 function showUpdate(info: UpdateInfo) {
   if (!info.version) return
@@ -27,22 +35,29 @@ function showUpdate(info: UpdateInfo) {
         ? 'Restart the app to use it, or it installs when you quit.'
         : 'Restart the app to install it.',
       duration: Infinity,
-      action: { label: 'Restart', onClick: () => void desktopApi()?.request('update.install', null) },
+      action: { label: 'Restart', onClick: installUpdate },
+    })
+  } else if (info.state === 'install-failed') {
+    toast.error(`Could not install version ${info.version}`, {
+      id: UPDATE_TOAST_ID,
+      description: info.message?.split('\n', 1)[0] ?? 'Try again to install it.',
+      duration: Infinity,
+      action: { label: 'Try again', onClick: installUpdate },
     })
   }
 }
 
-/** Tells the user about a new version that is ready to install or to download. */
+/** Tells the user about a new version that is ready to install or to download, and about an install that failed. */
 export function watchUpdates(): () => void {
   const desktop = desktopApi()
   if (!desktop) return () => undefined
-  let shown: string | null = null
+  shownNotice = null
   const follow = (info: UpdateInfo) => {
     useUpdateInfo.setState({ info })
-    if (info.state !== 'available' && info.state !== 'ready') return
+    if (!NOTICE_STATES.has(info.state)) return
     const key = `${info.state}:${info.version}`
-    if (key === shown) return
-    shown = key
+    if (key === shownNotice) return
+    shownNotice = key
     showUpdate(info)
   }
   void desktop.request('update.info', null).then(follow)
@@ -76,6 +91,7 @@ export async function checkForUpdates() {
       return
     case 'available':
     case 'ready':
+    case 'install-failed':
       showUpdate(info)
       return
     case 'downloading':

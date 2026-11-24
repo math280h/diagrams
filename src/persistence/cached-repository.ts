@@ -8,16 +8,19 @@ import {
   type DiagramRepository,
   type RepositoryEvent,
   type StorageLocation,
+  TrashError,
 } from './repository'
 
 export interface RepositorySink {
   write(file: StoredFile): Promise<unknown>
+  /** Rejects with a {@link TrashError} if the trash fails and the file stays. */
   remove(id: string, trash: boolean): Promise<unknown>
 }
 
 export interface CachedRepository extends DiagramRepository {
   /** Takes a change that happened outside this window, for example a file that an editor or git changed. */
   applyExternal(change: FileChange): void
+  discardUnstored(id: string): void
 }
 
 interface Entry {
@@ -85,8 +88,9 @@ function lastingContent(text: string): string {
  * Creates a repository that keeps every diagram in memory and writes changes through to a sink.
  *
  * Reads are synchronous. The id of a diagram is its file name, so a copied file never saves under the id inside it.
- * A linked file and a file in a picked folder are project files: a save that changes only the viewport, the save
- * counter, the time or measured sizes does not write them.
+ * Only the last save of a diagram sends `saved` or `save-failed`. A linked file and a file in a picked folder are
+ * project files: a save that changes only the viewport, the save counter, the time or measured sizes does not write
+ * them, when storage has the other content already.
  */
 export function createCachedRepository(options: {
   location: StorageLocation
@@ -94,6 +98,8 @@ export function createCachedRepository(options: {
   sink: RepositorySink
 }): CachedRepository {
   const entries = new Map(options.files.map((file) => [file.id, entryFromText(file.id, file.text, file.path)]))
+  const stored = new Map(options.files.map((file) => [file.id, file.text]))
+  const latestSave = new Map<string, number>()
   const listeners = new Set<(event: RepositoryEvent) => void>()
   const pending = new Set<Promise<void>>()
 
@@ -101,18 +107,47 @@ export function createCachedRepository(options: {
     for (const listener of listeners) listener(event)
   }
 
-  const track = (id: string, work: Promise<unknown>, kind: 'save' | 'remove') => {
-    const tracked = work.then(
-      () => emit({ kind: kind === 'save' ? 'saved' : 'removed', id }),
-      (error: unknown) =>
-        emit(
-          kind === 'save'
-            ? { kind: 'save-failed', id, reason: 'unknown', message: errorMessage(error) }
-            : { kind: 'remove-failed', id, message: errorMessage(error) },
-        ),
+  const settle = (work: Promise<void>) => {
+    pending.add(work)
+    void work.then(() => pending.delete(work))
+  }
+
+  const trackSave = (id: string, text: string, work: Promise<unknown>) => {
+    const seq = (latestSave.get(id) ?? 0) + 1
+    latestSave.set(id, seq)
+    const isLatest = () => latestSave.get(id) === seq
+    settle(
+      work.then(
+        () => {
+          if (!isLatest()) return
+          stored.set(id, text)
+          emit({ kind: 'saved', id })
+        },
+        (error: unknown) => {
+          if (isLatest()) emit({ kind: 'save-failed', id, reason: 'unknown', message: errorMessage(error) })
+        },
+      ),
     )
-    pending.add(tracked)
-    void tracked.then(() => pending.delete(tracked))
+  }
+
+  const trackRemove = (id: string, work: Promise<unknown>, removed: Entry | undefined) => {
+    settle(
+      work.then(
+        () => {
+          stored.delete(id)
+          emit({ kind: 'removed', id })
+        },
+        (error: unknown) => {
+          if (removed && !entries.has(id)) entries.set(id, removed)
+          emit({
+            kind: 'remove-failed',
+            id,
+            reason: error instanceof TrashError ? 'trash' : 'unknown',
+            message: errorMessage(error),
+          })
+        },
+      ),
+    )
   }
 
   return {
@@ -128,20 +163,34 @@ export function createCachedRepository(options: {
       return { ...migrate(JSON.parse(entry.text)), id }
     },
 
+    storedText: (id) => entries.get(id)?.text ?? null,
+
     save(diagram) {
       const text = serializeDiagram(diagram)
       const current = entries.get(diagram.id)
       const path = current?.meta.path
       entries.set(diagram.id, { text, meta: { ...diagramMeta(diagram), ...(path ? { path } : {}) } })
       const projectFile = path !== undefined || options.location.kind === 'picked-folder'
-      const unchanged = projectFile && current !== undefined && lastingContent(current.text) === lastingContent(text)
-      track(diagram.id, unchanged ? Promise.resolve() : options.sink.write({ id: diagram.id, text }), 'save')
+      const storedText = stored.get(diagram.id)
+      const unchanged = projectFile && storedText !== undefined && lastingContent(storedText) === lastingContent(text)
+      trackSave(diagram.id, text, unchanged ? Promise.resolve() : options.sink.write({ id: diagram.id, text }))
       return { ok: true }
     },
 
     remove(id, { trash = true } = {}) {
+      const removed = entries.get(id)
       entries.delete(id)
-      track(id, options.sink.remove(id, trash), 'remove')
+      trackRemove(id, options.sink.remove(id, trash), removed)
+    },
+
+    discardUnstored(id) {
+      const text = stored.get(id)
+      const entry = entries.get(id)
+      if (entry?.text === text) return
+      latestSave.set(id, (latestSave.get(id) ?? 0) + 1)
+      if (text === undefined) entries.delete(id)
+      else entries.set(id, entryFromText(id, text, entry?.meta.path))
+      emit({ kind: 'changed', id })
     },
 
     usageBytes() {
@@ -160,11 +209,13 @@ export function createCachedRepository(options: {
     applyExternal(change) {
       const current = entries.get(change.id)
       if (change.kind === 'removed') {
+        stored.delete(change.id)
         if (!current) return
         entries.delete(change.id)
         emit({ kind: 'changed', id: change.id })
         return
       }
+      stored.set(change.id, change.text)
       if (current?.text === change.text) return
       entries.set(change.id, entryFromText(change.id, change.text, change.path ?? current?.meta.path))
       emit({ kind: 'changed', id: change.id })
