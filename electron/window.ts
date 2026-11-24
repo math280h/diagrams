@@ -1,5 +1,5 @@
 import { app, BrowserWindow, Menu, nativeTheme, shell, type WebContents } from 'electron'
-import type { WindowColors } from '@/desktop/contract'
+import type { UnsavedFile, WindowColors } from '@/desktop/contract'
 import { APP_ORIGIN, originOf } from './app-protocol'
 import { APP_NAME, devServerUrl, iconPath, preloadPath } from './paths'
 import { isCrashReason } from './reports/crash-store'
@@ -28,8 +28,19 @@ export const windowHidden = HIDE_WINDOW === 'offscreen' || HIDE_WINDOW === 'nati
 export interface WindowHooks {
   /** Runs for the renderer of each new window. */
   attach(contents: WebContents): void
-  /** Runs before a window closes. The window closes when the promise settles. */
-  beforeClose(): Promise<void>
+  /**
+   * Runs before a window closes. It saves the open diagram and waits for storage.
+   *
+   * @returns The open diagram if its changes are still not in storage, else `null`.
+   */
+  beforeClose(): Promise<UnsavedFile | null>
+  /**
+   * Asks the user before a window closes while its diagram is not saved.
+   *
+   * @param signal - Aborts when the system session ends. The question then closes.
+   * @returns True if the window can close.
+   */
+  confirmUnsavedClose(window: BrowserWindow, unsaved: UnsavedFile, signal: AbortSignal): Promise<boolean>
   focused(): void
   /** Runs when the page moves in its history. */
   navigated(state: { canGoBack: boolean; canGoForward: boolean }): void
@@ -54,6 +65,8 @@ let main: MainWindow | null = null
 let lastClosedUnseen = false
 let quitting = false
 let closedForQuit = false
+let rendererUnsaved = false
+const sessionEnd = new AbortController()
 
 app.on('before-quit', () => {
   quitting = true
@@ -63,8 +76,26 @@ export function setWindowHooks(next: WindowHooks) {
   hooks = next
 }
 
+/** Takes the state that the renderer reports: true while the open diagram has changes that are not in storage. */
+export function setRendererUnsaved(unsaved: boolean) {
+  rendererUnsaved = unsaved
+}
+
+/** Tells that the system shuts down, restarts or signs the user out. After it, windows close without a question. */
+export function endSession() {
+  sessionEnd.abort()
+}
+
 function currentMain(): MainWindow | null {
   return main && !main.window.isDestroyed() ? main : null
+}
+
+async function closeAllowed(entry: MainWindow | null): Promise<boolean> {
+  const unsaved = (await hooks?.beforeClose().catch(() => null)) ?? null
+  if (!unsaved || !entry || !hooks || sessionEnd.signal.aborted) return true
+  present(entry, 'focus')
+  const close = await hooks.confirmUnsavedClose(entry.window, unsaved, sessionEnd.signal).catch(() => true)
+  return close || sessionEnd.signal.aborted
 }
 
 export function currentWindow() {
@@ -190,18 +221,32 @@ export function createMainWindow(show: WindowShow | null = 'focus'): BrowserWind
   window.webContents.on('did-finish-load', reportVisibility)
 
   window.on('close', (event) => {
-    if (entry.closed || closedForQuit || !hooks) return
+    if (closedForQuit || !hooks) return
     // Electron cancels the quit when a window prevents its close.
     event.preventDefault()
-    entry.closed = new Promise((resolve) => window.once('closed', () => resolve()))
-    void hooks
-      .beforeClose()
-      .catch(() => undefined)
-      .then(() => {
+    if (entry.closed) return
+    let keptOpen: () => void = () => undefined
+    entry.closed = new Promise((resolve) => {
+      keptOpen = resolve
+      window.once('closed', () => resolve())
+    })
+    void closeAllowed(entry).then((close) => {
+      if (close) {
         window.destroy()
         if (quitting) app.quit()
-      })
+        return
+      }
+      quitting = false
+      entry.closed = null
+      keptOpen()
+    })
   })
+  window.on('query-session-end', (event) => {
+    if (!rendererUnsaved) return
+    event.preventDefault()
+    present(entry, 'focus')
+  })
+  window.on('session-end', endSession)
   window.on('focus', () => {
     restoreSavedState(entry)
     hooks?.focused()
@@ -218,10 +263,16 @@ export function createMainWindow(show: WindowShow | null = 'focus'): BrowserWind
   return window
 }
 
-/** Runs {@link WindowHooks.beforeClose} now. After it, the windows close at once when the app quits. */
-export async function prepareQuit() {
-  await hooks?.beforeClose().catch(() => undefined)
+/**
+ * Runs {@link WindowHooks.beforeClose} now, and asks the user first if the open diagram is not saved. After it, the
+ * windows close at once when the app quits.
+ *
+ * @returns False if the user keeps the window open. Then the app must not quit.
+ */
+export async function prepareQuit(): Promise<boolean> {
+  if (!(await closeAllowed(currentMain()))) return false
   closedForQuit = true
+  return true
 }
 
 /**
