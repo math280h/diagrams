@@ -31,6 +31,7 @@ import { KEYS } from '@/lib/shortcut-keys'
 import { useEngine, usePlaybackState } from '@/engine/hooks'
 import { compileFlow } from '@/engine/flow/compile'
 import { stepFlow } from '@/engine/flow/step'
+import { nextRate, PLAYBACK_RATES, rateLabel } from '@/engine/playback-rate'
 import { StepCount } from '@/components/StepCount'
 import { hasDetails } from '@/model/details'
 import { toast } from 'sonner'
@@ -96,6 +97,38 @@ function FlowPicker({
           {flows.map((candidate) => (
             <DropdownMenuRadioItem key={candidate.id} value={candidate.id}>
               <span className="truncate">{candidate.name}</span>
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function SpeedPicker() {
+  const engine = useEngine()
+  const { rate } = usePlaybackState()
+  return (
+    <DropdownMenu>
+      <ShortcutTooltip label="Speed" keys={`${KEYS.slower} ${KEYS.faster}`}>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={`Speed ${rateLabel(rate)}`}
+              className="min-w-10 tabular-nums"
+            />
+          }
+        >
+          {rateLabel(rate)}
+        </DropdownMenuTrigger>
+      </ShortcutTooltip>
+      <DropdownMenuContent className="w-28" align="end">
+        <DropdownMenuRadioGroup value={String(rate)} onValueChange={(value) => engine.playback.setRate(Number(value))}>
+          {PLAYBACK_RATES.map((option) => (
+            <DropdownMenuRadioItem key={option} value={String(option)}>
+              {rateLabel(option)}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
@@ -260,6 +293,8 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
         engine.playback.toggle()
       } else if (event.key === 'ArrowRight') step(1)
       else if (event.key === 'ArrowLeft') step(-1)
+      else if (event.key === KEYS.slower) engine.playback.setRate(nextRate(engine.playback.rate, -1))
+      else if (event.key === KEYS.faster) engine.playback.setRate(nextRate(engine.playback.rate, 1))
       else if (event.key === 'Escape' && exploring) explore.stop()
       else if (event.key === 'Escape' && !document.fullscreenElement) onExit?.()
       else if (shortcutLetter(event) === 'f') void toggleFullscreen()
@@ -381,6 +416,7 @@ export function PlayerStage({ diagram, flowId, onFlowChange, onExit, actions, on
             <div className="mx-2 flex min-w-16 flex-1 sm:min-w-24">
               <Scrubber />
             </div>
+            <SpeedPicker />
           </>
         ) : (
           <span className="flex-1 px-2 text-sm text-muted-foreground">

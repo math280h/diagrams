@@ -34,6 +34,8 @@ export const KEYS = {
   shortcuts: '?',
   previousStep: '←',
   nextStep: '→',
+  slower: '<',
+  faster: '>',
   fullScreen: 'F',
   explore: 'E',
   exitPresent: 'Esc',
@@ -88,6 +90,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     shortcuts: [
       { keys: KEYS.playPause, label: 'Play or pause' },
       { keys: `${KEYS.previousStep} ${KEYS.nextStep}`, label: 'Previous or next step' },
+      { keys: `${KEYS.slower} ${KEYS.faster}`, label: 'Slower or faster' },
       { keys: KEYS.fullScreen, label: 'Full screen' },
       { keys: KEYS.explore, label: 'Explore a node and its neighbours' },
       { keys: KEYS.exitPresent, label: 'Stop exploring, or leave Present' },
