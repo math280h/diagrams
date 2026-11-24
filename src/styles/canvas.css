@@ -1164,6 +1164,37 @@
   background: color-mix(in oklab, var(--dg-chrome) 92%, transparent);
   transform: translateX(-50%);
 }
+.dg-subtitle-head {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  margin: 0 0 2px;
+  font-size: 13px;
+  line-height: 18px;
+  white-space: nowrap;
+  color: var(--dg-muted);
+}
+.dg-subtitle-head .dg-caption-step {
+  flex: none;
+}
+.dg-subtitle-element {
+  flex: none;
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+  color: var(--dg-text);
+}
+.dg-subtitle-head .dg-subtitle-event {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
 .dg-subtitle-main {
   display: -webkit-box;
   margin: 0;
@@ -1202,6 +1233,9 @@
     bottom: 12px;
     max-width: calc(100% - 24px);
     padding: 6px 12px;
+  }
+  .dg-subtitle-head {
+    font-size: 12px;
   }
   .dg-subtitle-main {
     font-size: 17px;

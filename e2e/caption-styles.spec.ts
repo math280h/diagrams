@@ -68,7 +68,8 @@ test('picks a caption style for a flow and another for one step, and Present sho
 
   await page.getByRole('button', { name: 'Present' }).click()
   await stepTo(page, 1, 13)
-  await expect(page.locator('.dg-subtitle')).toHaveText('The shopper presses Pay.')
+  await expect(page.locator('.dg-subtitle-main')).toHaveText('The shopper presses Pay.')
+  await expect(page.locator('.dg-subtitle-head')).toHaveText(/^1\/13\s*Browser/)
   await expect(page.locator('.dg-callout')).toHaveCount(0)
 
   await stepTo(page, 3, 13)

@@ -4,8 +4,8 @@ import { stepCaptionStyle } from '@/model/flow'
 /** The height of the caption bar in screen pixels. */
 export const CAPTION_HEIGHT_PX = 48
 
-/** The height in screen pixels at the bottom of the view for a subtitle of one line, with its margin. */
-export const SUBTITLE_SPACE_PX = 72
+/** The height in screen pixels at the bottom of the view for a subtitle with one line of text, with its margin. */
+export const SUBTITLE_SPACE_PX = 92
 
 /** The screen pixels at the top and at the bottom of the view that captions cover. */
 export interface CaptionSpace {

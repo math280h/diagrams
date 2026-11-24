@@ -162,18 +162,31 @@ export function FlowCaption({ exportMode = false }: { exportMode?: boolean }) {
       {(caption.style === 'subtitle' || subtitleSides.length > 0) && (
         <div className="dg-subtitle">
           {caption.style === 'subtitle' && (
-            <p className="dg-subtitle-main">
-              {caption.text || (
-                <>
-                  {element}
-                  {event && (
-                    <span className="dg-subtitle-event dg-mono" data-level={caption.level}>
-                      {event}
-                    </span>
-                  )}
-                </>
-              )}
-            </p>
+            <>
+              <p className="dg-subtitle-head">
+                <span className="dg-caption-step dg-mono">
+                  {caption.index + 1}/{caption.total}
+                </span>
+                {caption.text && <span className="dg-subtitle-element">{element}</span>}
+                {caption.text && event && (
+                  <span className="dg-subtitle-event dg-mono" data-level={caption.level}>
+                    {event}
+                  </span>
+                )}
+              </p>
+              <p className="dg-subtitle-main">
+                {caption.text || (
+                  <>
+                    {element}
+                    {event && (
+                      <span className="dg-subtitle-event dg-mono" data-level={caption.level}>
+                        {event}
+                      </span>
+                    )}
+                  </>
+                )}
+              </p>
+            </>
           )}
           {subtitleSides.map((side) => (
             <p key={side.track} className="dg-subtitle-side">

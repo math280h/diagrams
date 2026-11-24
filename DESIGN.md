@@ -472,7 +472,8 @@ above 500.
   corners, 12px inset.
 - **Present:** full-screen canvas. Top bar docks top, fades after idle during playback. Captions follow the caption
   style of the flow or step: a callout card beside the node or edge (strong hairline, tail and line to the step), a
-  subtitle centred 18px above the bottom, or the caption strip at the bottom or under the top bar.
+  subtitle centred 18px above the bottom (a muted line with the step number and element above the text), or the
+  caption strip at the bottom or under the top bar.
   Playback starts after 700ms, unless reduced motion. Previous, Next and arrow keys move one step, also onto connection
   steps (paused token partway along). "Step n of N" beside the scrubber from 640px.
 
