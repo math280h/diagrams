@@ -5,10 +5,12 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { page } from 'vitest/browser'
 import '@/index.css'
 import { Toaster } from '@/components/ui/sonner'
-import { useNoticeOffsets, useNoticesBelow } from './notice-space'
+import { TITLE_BAR_HEIGHT_PX, useNoticeOffsets, useNoticesBelow } from './notice-space'
 
 const BAR_TOP_PX = 56
 const BAR_HEIGHT_PX = 120
+// Sonner keeps notices 16 px from the sides of a narrow window.
+const SONNER_MOBILE_SIDE_PX = 16
 
 function Bar() {
   const noticesBelow = useNoticesBelow()
@@ -46,6 +48,19 @@ async function noticeTop() {
 }
 
 describe('notices and bars at the top of the window', () => {
+  it('shows notices below the title bar on a narrow screen, as wide as before', async () => {
+    await page.viewport(390, 700)
+    const container = document.createElement('div')
+    document.body.append(container)
+    root = createRoot(container)
+    root.render(createElement(App, { bar: false }))
+    toast.error('Saved somewhere else', { duration: Infinity })
+    expect(await noticeTop()).toBeGreaterThanOrEqual(TITLE_BAR_HEIGHT_PX)
+    expect(document.querySelector('[data-sonner-toast]')!.getBoundingClientRect().left).toBeLessThanOrEqual(
+      SONNER_MOBILE_SIDE_PX,
+    )
+  })
+
   it('shows notices below a bar while it shows, and at the usual place after', async () => {
     await page.viewport(1200, 700)
     const container = document.createElement('div')

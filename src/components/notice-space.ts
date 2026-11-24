@@ -2,8 +2,10 @@ import { useCallback, useId } from 'react'
 import { create } from 'zustand'
 
 const NOTICE_TOP_PX = 64
-const MOBILE_NOTICE_TOP_PX = 16
 const NOTICE_GAP_PX = 8
+/** The height of the title bar at the top of each page (`dg-titlebar`). */
+export const TITLE_BAR_HEIGHT_PX = 44
+const MOBILE_NOTICE_TOP_PX = TITLE_BAR_HEIGHT_PX + NOTICE_GAP_PX
 
 const useBarBottoms = create<{ bottoms: ReadonlyMap<string, number> }>(() => ({ bottoms: new Map() }))
 
@@ -40,13 +42,16 @@ export function useNoticesBelow(): (element: HTMLElement | null) => (() => void)
   )
 }
 
-/** Returns the distances of the first notice from the top of the window, on wide and on narrow screens. */
-export function useNoticeOffsets(): { offset: number; mobileOffset: number } {
+/**
+ * Returns the distances of the first notice from the top of the window, on wide and on narrow screens. The notices keep
+ * the side distances of the notice library.
+ */
+export function useNoticeOffsets(): { offset: { top: number }; mobileOffset: { top: number } } {
   const belowBarsPx = useBarBottoms(({ bottoms }) =>
     bottoms.size === 0 ? 0 : Math.max(...bottoms.values()) + NOTICE_GAP_PX,
   )
   return {
-    offset: Math.max(NOTICE_TOP_PX, belowBarsPx),
-    mobileOffset: Math.max(MOBILE_NOTICE_TOP_PX, belowBarsPx),
+    offset: { top: Math.max(NOTICE_TOP_PX, belowBarsPx) },
+    mobileOffset: { top: Math.max(MOBILE_NOTICE_TOP_PX, belowBarsPx) },
   }
 }
