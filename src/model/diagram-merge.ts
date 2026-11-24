@@ -2,32 +2,49 @@ import type { Diagram, DiagramTheme, Flow, StoredEdge, StoredNode } from './sche
 
 export type MergeSide = 'mine' | 'theirs'
 
+/**
+ * The choice of the user for a conflict: one side, a merge of the items of both sides of a list, or a text that the
+ * user types.
+ */
+export type MergeChoice = { kind: 'mine' } | { kind: 'theirs' } | { kind: 'both' } | { kind: 'custom'; value: string }
+export type MergeChoiceKind = MergeChoice['kind']
+
 /** Where a node, an edge or a flow of a merge result changed since the base. */
 export type MergeOrigin = MergeSide | 'both' | 'conflict'
 
 export type MergeConflictKind = 'node' | 'edge' | 'flow' | 'name' | 'theme'
 
 /**
- * A part of the diagram that the two sides changed in different ways.
- *
- * `fields` names the fields that both sides changed, for example `position` or `data.label`. It is empty when one
- * side deleted the element (`deletedBy`) or when both sides added an element with the same id.
+ * A field that the two sides changed in different ways, or an element that one side deleted and the other side
+ * changed, or that both sides added in different ways.
  */
 export interface MergeConflict {
-  /** The key of the choice: `node:<id>`, `edge:<id>`, `flow:<id>`, `name` or `theme`. */
+  /**
+   * The key of the choice. A field has `node:<id>:<field>`, `edge:<id>:<field>`, `flow:<id>:<field>`, `name` or
+   * `theme:<field>`, for example `node:n_1:data.title`. A whole element has `node:<id>`, `edge:<id>` or `flow:<id>`.
+   */
   key: string
   kind: MergeConflictKind
   /** The id of the node, edge or flow, or an empty string for the name and the theme. */
   id: string
-  fields: string[]
+  /** The path of the field in the element, for example `position` or `data.details.owner`, or empty for an element. */
+  field: string
+  /** The name of the field in words, for example `Title`. */
+  label: string
+  base: unknown
+  mine: unknown
+  theirs: unknown
+  /** The choices that apply. `both` applies to lists, `custom` to text fields. */
+  choices: readonly MergeChoiceKind[]
+  /** The side that deleted the element, for a conflict of a whole element. */
   deletedBy?: MergeSide
 }
 
 export interface MergeResult {
-  /** The merged diagram. A conflict without a choice takes the side `mine`. */
+  /** The merged diagram. A conflict without a choice that applies takes the side `mine`. */
   diagram: Diagram
   conflicts: MergeConflict[]
-  /** The origin of each changed node, edge and flow of the result, by its conflict key. */
+  /** The origin of each changed node, edge and flow of the result, by `node:<id>`, `edge:<id>` or `flow:<id>`. */
   origins: ReadonlyMap<string, MergeOrigin>
   /** The edges that the result does not have, because their source or target node is not in the result. */
   droppedEdges: StoredEdge[]
@@ -37,11 +54,69 @@ export interface MergeResult {
 
 type Fields = Record<string, unknown>
 type Element = StoredNode | StoredEdge
+type Choices = ReadonlyMap<string, MergeChoice>
 
-interface Merged<T> {
-  item: T
-  conflicts: string[]
-  origin: MergeOrigin | undefined
+const TEXT_FIELDS = new Set([
+  'title',
+  'label',
+  'detail',
+  'text',
+  'name',
+  'description',
+  'owner',
+  'badge',
+  'meterText',
+  'caption',
+])
+
+const FIELD_LABELS: Record<string, string> = {
+  position: 'Position',
+  width: 'Width',
+  height: 'Height',
+  parentId: 'Boundary',
+  zIndex: 'Order',
+  source: 'Start node',
+  target: 'End node',
+  sourceHandle: 'Start side',
+  targetHandle: 'End side',
+  data: 'Kind and content',
+  'data.color': 'Colour',
+  'data.form': 'Kind',
+  'data.kind': 'Boundary kind',
+  'data.size': 'Text size',
+  'data.align': 'Alignment',
+  'data.mono': 'Monospace',
+  'data.details.links': 'Links',
+  'data.path': 'Line shape',
+  'data.stroke': 'Line style',
+  'data.width': 'Line width',
+  'data.markerStart': 'Start marker',
+  'data.markerEnd': 'End marker',
+  'data.route': 'Route',
+  'data.bends': 'Route',
+  'data.request': 'Request body',
+  'data.request.fields': 'Request body',
+  'data.response': 'Response body',
+  'data.response.fields': 'Response body',
+  'data.noReply': 'No reply',
+  cameraStyle: 'Camera',
+  fonts: 'Fonts',
+  snap: 'Snap to grid',
+  boundaryColors: 'Boundary colours',
+  protocolColors: 'Protocol colours',
+  routeAround: 'Route around nodes',
+}
+
+/** Returns the name of a field in words, for example `Meter text` for `data.meterText`. */
+export function fieldLabel(field: string): string {
+  const known = FIELD_LABELS[field]
+  if (known) return known
+  const words = field
+    .split('.')
+    .filter((part) => part !== 'data')
+    .join(' ')
+    .replaceAll(/[A-Z]/g, (letter) => ` ${letter.toLowerCase()}`)
+  return words.charAt(0).toUpperCase() + words.slice(1)
 }
 
 function deepEqual(a: unknown, b: unknown): boolean {
@@ -68,122 +143,250 @@ function sameContent(a: unknown, b: unknown) {
   return deepEqual(withoutMeasured(a), withoutMeasured(b))
 }
 
-function mergeFields(base: Fields, mine: Fields, theirs: Fields, choice: MergeSide | undefined, prefix = '') {
-  const value: Fields = {}
-  const conflicts: string[] = []
-  let fromMine = false
-  let fromTheirs = false
-  for (const key of new Set([...Object.keys(mine), ...Object.keys(theirs), ...Object.keys(base)])) {
-    const mineChanged = !deepEqual(base[key], mine[key])
-    const theirsChanged = !deepEqual(base[key], theirs[key])
-    let field = mine[key]
-    if (theirsChanged && !mineChanged) {
-      field = theirs[key]
-      fromTheirs = true
-    } else if (mineChanged && theirsChanged && !deepEqual(mine[key], theirs[key])) {
-      conflicts.push(`${prefix}${key}`)
-      if (choice === 'theirs') field = theirs[key]
-    } else if (mineChanged) {
-      fromMine = true
-      fromTheirs ||= theirsChanged
-    }
-    if (field !== undefined) value[key] = field
+function isPlainObject(value: unknown): value is Fields {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function hasId(item: unknown): item is { id: string } {
+  return isPlainObject(item) && typeof item.id === 'string'
+}
+
+function isPrimitive(item: unknown) {
+  return item === null || (typeof item !== 'object' && typeof item !== 'function')
+}
+
+function listKind(lists: readonly unknown[][]): 'ids' | 'values' | null {
+  const items = lists.flat()
+  if (items.every(hasId)) return 'ids'
+  if (items.every(isPrimitive)) return 'values'
+  return null
+}
+
+/**
+ * Merges the items of two lists that both started from `base`.
+ *
+ * Items with ids keep the order of `base`, then the items that `mine` added, then the items that `theirs` added. An
+ * item that one side deleted and the other side did not change goes away. An item that both sides changed takes
+ * `mine`. A list of plain values gives the values of `mine` and then the other values of `theirs`.
+ *
+ * @returns The merged list, or `null` if the lists hold objects without ids.
+ */
+export function mergeLists(base: unknown, mine: readonly unknown[], theirs: readonly unknown[]): unknown[] | null {
+  const from = Array.isArray(base) ? (base as unknown[]) : []
+  const kind = listKind([from, [...mine], [...theirs]])
+  if (kind === 'values') return [...mine, ...theirs.filter((item) => !mine.includes(item))]
+  if (kind !== 'ids') return null
+  const byId = (list: readonly unknown[]) => new Map((list as { id: string }[]).map((item) => [item.id, item]))
+  const baseById = byId(from)
+  const mineById = byId(mine)
+  const theirsById = byId(theirs)
+  const ids = [
+    ...baseById.keys(),
+    ...[...mineById.keys()].filter((id) => !baseById.has(id)),
+    ...[...theirsById.keys()].filter((id) => !baseById.has(id) && !mineById.has(id)),
+  ]
+  return ids.flatMap((id) => {
+    const b = baseById.get(id)
+    const m = mineById.get(id)
+    const t = theirsById.get(id)
+    if (!b) return [m ?? t]
+    if (!m && !t) return []
+    if (!m) return deepEqual(b, t) ? [] : [t]
+    if (!t) return deepEqual(b, m) ? [] : [m]
+    return [deepEqual(m, b) ? t : m]
+  })
+}
+
+function choiceKinds(field: string, mine: unknown, theirs: unknown, base: unknown): MergeChoiceKind[] {
+  const kinds: MergeChoiceKind[] = ['mine', 'theirs']
+  if (Array.isArray(mine) && Array.isArray(theirs) && mergeLists(base, mine, theirs) !== null) kinds.push('both')
+  const last = field.split('.').at(-1) ?? ''
+  if (typeof mine === 'string' && typeof theirs === 'string' && TEXT_FIELDS.has(last)) kinds.push('custom')
+  return kinds
+}
+
+/** Returns true if the choice applies to the conflict. */
+export function allowsChoice(conflict: Pick<MergeConflict, 'choices'>, choice: MergeChoice): boolean {
+  return conflict.choices.includes(choice.kind)
+}
+
+function resolve(conflict: MergeConflict, choice: MergeChoice | undefined): unknown {
+  if (!choice || !allowsChoice(conflict, choice)) return conflict.mine
+  switch (choice.kind) {
+    case 'mine':
+      return conflict.mine
+    case 'theirs':
+      return conflict.theirs
+    case 'both':
+      return mergeLists(conflict.base, conflict.mine as unknown[], conflict.theirs as unknown[])
+    case 'custom':
+      return choice.value
   }
-  return { value, conflicts, fromMine, fromTheirs }
 }
 
-function originOf(conflicts: readonly string[], fromMine: boolean, fromTheirs: boolean): MergeOrigin | undefined {
-  if (conflicts.length > 0) return 'conflict'
-  if (fromMine && fromTheirs) return 'both'
-  if (fromMine) return 'mine'
-  return fromTheirs ? 'theirs' : undefined
+interface Scope {
+  kind: MergeConflictKind
+  id: string
+  keyOf: (field: string) => string
+  choices: Choices
+  conflicts: MergeConflict[]
 }
 
-function fieldsAndData(element: Element, withData: boolean): { fields: Fields; data: Fields } {
-  const { data, measured: _measured, ...fields } = element as StoredNode
-  return withData ? { fields: { ...fields, data }, data: {} } : { fields, data }
+interface FieldMerge {
+  value: Fields
+  fromMine: boolean
+  fromTheirs: boolean
+  conflicted: boolean
 }
 
-function mergeElement<T extends Element>(base: T, mine: T, theirs: T, choice: MergeSide | undefined): Merged<T> {
+function mergeFields(
+  scope: Scope,
+  base: Fields,
+  mine: Fields,
+  theirs: Fields,
+  prefix = '',
+  nested = false,
+): FieldMerge {
+  const result: FieldMerge = { value: {}, fromMine: false, fromTheirs: false, conflicted: false }
+  for (const key of new Set([...Object.keys(mine), ...Object.keys(theirs), ...Object.keys(base)])) {
+    const field = `${prefix}${key}`
+    const [b, m, t] = [base[key], mine[key], theirs[key]]
+    const mineChanged = !deepEqual(b, m)
+    const theirsChanged = !deepEqual(b, t)
+    let value = m
+    if (theirsChanged && !mineChanged) {
+      value = t
+      result.fromTheirs = true
+    } else if (mineChanged && theirsChanged && !deepEqual(m, t)) {
+      if (nested && isPlainObject(b) && isPlainObject(m) && isPlainObject(t)) {
+        const inner = mergeFields(scope, b, m, t, `${field}.`, true)
+        value = inner.value
+        result.conflicted = result.conflicted || inner.conflicted
+        result.fromMine = result.fromMine || inner.fromMine
+        result.fromTheirs = result.fromTheirs || inner.fromTheirs
+      } else {
+        const conflict: MergeConflict = {
+          key: scope.keyOf(field),
+          kind: scope.kind,
+          id: scope.id,
+          field,
+          label: scope.kind === 'name' ? 'Diagram name' : fieldLabel(field),
+          base: b,
+          mine: m,
+          theirs: t,
+          choices: choiceKinds(field, m, t, b),
+        }
+        scope.conflicts.push(conflict)
+        value = resolve(conflict, scope.choices.get(conflict.key))
+        result.conflicted = true
+      }
+    } else if (mineChanged) {
+      result.fromMine = true
+      result.fromTheirs = result.fromTheirs || theirsChanged
+    }
+    if (value !== undefined) result.value[key] = value
+  }
+  return result
+}
+
+function originOf(merge: Pick<FieldMerge, 'conflicted' | 'fromMine' | 'fromTheirs'>): MergeOrigin | undefined {
+  if (merge.conflicted) return 'conflict'
+  if (merge.fromMine && merge.fromTheirs) return 'both'
+  if (merge.fromMine) return 'mine'
+  return merge.fromTheirs ? 'theirs' : undefined
+}
+
+interface Merged<T> {
+  item: T
+  origin: MergeOrigin | undefined
+}
+
+function parts(element: Element) {
+  const { type, data, measured: _measured, ...fields } = element as StoredNode
+  return { fields: fields as Fields, kind: { type, data } as Fields }
+}
+
+function mergeElement<T extends Element>(scope: Scope, base: T, mine: T, theirs: T): Merged<T> {
   if (sameContent(base, theirs) || sameContent(mine, theirs)) {
     const fromTheirs = !sameContent(base, theirs)
-    return { item: mine, conflicts: [], origin: originOf([], !sameContent(base, mine), fromTheirs) }
+    return { item: mine, origin: originOf({ conflicted: false, fromMine: !sameContent(base, mine), fromTheirs }) }
   }
+  const [b, m, t] = [parts(base), parts(mine), parts(theirs)]
+  const fields = mergeFields(scope, b.fields, m.fields, t.fields)
   const sameType = base.type === mine.type && base.type === theirs.type
-  const [b, m, t] = [base, mine, theirs].map((element) => fieldsAndData(element, !sameType)) as [
-    ReturnType<typeof fieldsAndData>,
-    ReturnType<typeof fieldsAndData>,
-    ReturnType<typeof fieldsAndData>,
-  ]
-  const fields = mergeFields(b.fields, m.fields, t.fields, choice)
-  const data = sameType ? mergeFields(b.data, m.data, t.data, choice, 'data.') : null
+  const content = sameType
+    ? mergeFields(scope, b.kind, m.kind, t.kind, '', true)
+    : mergeFields(scope, { data: b.kind }, { data: m.kind }, { data: t.kind })
+  const kind = sameType ? content.value : (content.value.data as Fields)
   const { measured } = mine as StoredNode
-  const item = {
-    ...fields.value,
-    ...(data ? { data: data.value } : {}),
-    ...(measured ? { measured } : {}),
-  } as unknown as T
-  const conflicts = [...fields.conflicts, ...(data?.conflicts ?? [])]
-  return {
-    item,
-    conflicts,
-    origin: originOf(conflicts, fields.fromMine || !!data?.fromMine, fields.fromTheirs || !!data?.fromTheirs),
+  const item = { ...fields.value, ...kind, ...(measured ? { measured } : {}) }
+  const merged = {
+    conflicted: fields.conflicted || content.conflicted,
+    fromMine: fields.fromMine || content.fromMine,
+    fromTheirs: fields.fromTheirs || content.fromTheirs,
   }
+  return { item: item as unknown as T, origin: originOf(merged) }
 }
 
-function mergeFlow(base: Flow, mine: Flow, theirs: Flow, choice: MergeSide | undefined): Merged<Flow> {
-  const mineChanged = !deepEqual(base, mine)
-  const theirsChanged = !deepEqual(base, theirs)
-  if (!theirsChanged || deepEqual(mine, theirs)) {
-    return { item: mine, conflicts: [], origin: originOf([], mineChanged, theirsChanged) }
-  }
-  if (!mineChanged) return { item: theirs, conflicts: [], origin: 'theirs' }
-  return { item: choice === 'theirs' ? theirs : mine, conflicts: ['steps'], origin: 'conflict' }
+function mergeFlow(scope: Scope, base: Flow, mine: Flow, theirs: Flow): Merged<Flow> {
+  const merged = mergeFields(scope, base, mine, theirs)
+  return { item: merged.value as unknown as Flow, origin: originOf(merged) }
 }
 
 function mergeCollection<T extends { id: string }>(
   kind: 'node' | 'edge' | 'flow',
   [base, mine, theirs]: readonly [readonly T[], readonly T[], readonly T[]],
-  choices: ReadonlyMap<string, MergeSide>,
-  mergeCommon: (base: T, mine: T, theirs: T, choice: MergeSide | undefined) => Merged<T>,
+  choices: Choices,
+  conflicts: MergeConflict[],
+  mergeCommon: (scope: Scope, base: T, mine: T, theirs: T) => Merged<T>,
 ) {
   const baseById = new Map(base.map((item) => [item.id, item]))
   const mineById = new Map(mine.map((item) => [item.id, item]))
   const theirsById = new Map(theirs.map((item) => [item.id, item]))
   const result = new Map<string, T>()
-  const conflicts: MergeConflict[] = []
   const origins = new Map<string, MergeOrigin>()
 
   for (const id of new Set([...mineById.keys(), ...theirsById.keys(), ...baseById.keys()])) {
     const key = `${kind}:${id}`
-    const choice = choices.get(key)
     const b = baseById.get(id)
     const m = mineById.get(id)
     const t = theirsById.get(id)
-    const conflict = (deletedBy?: MergeSide) => {
-      conflicts.push({ key, kind, id, fields: [], ...(deletedBy ? { deletedBy } : {}) })
+    const elementConflict = (deletedBy?: MergeSide) => {
+      const conflict: MergeConflict = {
+        key,
+        kind,
+        id,
+        field: '',
+        label: deletedBy ? 'Deleted' : 'Added on both sides',
+        base: b,
+        mine: m,
+        theirs: t,
+        choices: ['mine', 'theirs'],
+        ...(deletedBy ? { deletedBy } : {}),
+      }
+      conflicts.push(conflict)
       origins.set(key, 'conflict')
+      return resolve(conflict, choices.get(key)) as T | undefined
     }
     if (!b) {
-      if (m && t && !sameContent(m, t)) conflict()
-      else origins.set(key, m && t ? 'both' : m ? 'mine' : 'theirs')
-      const chosen = m && t && choice === 'theirs' ? t : (m ?? t)
+      const chosen = m && t && !sameContent(m, t) ? elementConflict() : (m ?? t)
+      if (!origins.has(key)) origins.set(key, m && t ? 'both' : m ? 'mine' : 'theirs')
       if (chosen) result.set(id, chosen)
     } else if (!m || !t) {
       const kept = m ?? t
       if (!kept || sameContent(b, kept)) continue
-      conflict(m ? 'theirs' : 'mine')
-      if ((choice ?? 'mine') === (m ? 'mine' : 'theirs')) result.set(id, kept)
+      const chosen = elementConflict(m ? 'theirs' : 'mine')
+      if (chosen) result.set(id, chosen)
     } else {
-      const merged = mergeCommon(b, m, t, choice)
-      if (merged.conflicts.length > 0) conflicts.push({ key, kind, id, fields: merged.conflicts })
+      const scope: Scope = { kind, id, keyOf: (field) => `${key}:${field}`, choices, conflicts }
+      const merged = mergeCommon(scope, b, m, t)
       if (merged.origin) origins.set(key, merged.origin)
       result.set(id, merged.item)
     }
   }
 
   const order = [...mineById.keys(), ...[...theirsById.keys()].filter((id) => !mineById.has(id))]
-  return { items: order.flatMap((id) => result.get(id) ?? []), conflicts, origins }
+  return { items: order.flatMap((id) => result.get(id) ?? []), origins }
 }
 
 function canvasPosition(node: StoredNode, maps: readonly ReadonlyMap<string, StoredNode>[]) {
@@ -245,31 +448,51 @@ function parentsFirst(nodes: readonly StoredNode[]): StoredNode[] {
 }
 
 /**
+ * Returns the keys of the nodes and edges that a side changed, added or deleted since the base, for example
+ * `node:n_1`. A change of only the measured size does not count.
+ */
+export function changedElements(base: Diagram, side: Diagram): Set<string> {
+  const changed = new Set<string>()
+  const compare = (kind: 'node' | 'edge', before: readonly Element[], after: readonly Element[]) => {
+    const old = new Map(before.map((item) => [item.id, item]))
+    const now = new Map(after.map((item) => [item.id, item]))
+    for (const id of new Set([...old.keys(), ...now.keys()])) {
+      if (!sameContent(old.get(id), now.get(id))) changed.add(`${kind}:${id}`)
+    }
+  }
+  compare('node', base.nodes, side.nodes)
+  compare('edge', base.edges, side.edges)
+  return changed
+}
+
+/**
  * Merges two versions of a diagram that both started from `base`, for example the open diagram and the version that
  * changed on disk.
  *
- * Nodes and edges merge field by field, and their data merges data field by data field. A flow merges as one unit.
- * A change on one side takes that side, and the same change on both sides counts once. A field that the two sides
- * changed in different ways, and an element that one side deleted and the other side changed, are conflicts. The
- * viewport, the measured sizes, the rev and the save time come from `mine`.
+ * Nodes, edges and flows merge field by field. Node and edge data merges data field by data field, also inside the
+ * details, the traffic and the bodies. A change on one side takes that side, and the same change on both sides
+ * counts once. A field that the two sides changed in different ways is a conflict of its own. An element that one
+ * side deleted and the other side changed, and an element that both sides added in different ways, are conflicts of
+ * the whole element. The viewport, the measured sizes, the rev and the save time come from `mine`.
  *
- * @param choices - The side for each conflict, by {@link MergeConflict.key}. A conflict without a choice takes `mine`.
+ * @param choices - The choice for each conflict, by {@link MergeConflict.key}. A conflict without a choice, or with a
+ *   choice that does not apply, takes `mine`.
  */
 export function mergeDiagrams(
   base: Diagram,
   mine: Diagram,
   theirs: Diagram,
-  choices: ReadonlyMap<string, MergeSide> = new Map(),
+  choices: Choices = new Map(),
 ): MergeResult {
-  const nodes = mergeCollection('node', [base.nodes, mine.nodes, theirs.nodes], choices, mergeElement)
-  const edges = mergeCollection('edge', [base.edges, mine.edges, theirs.edges], choices, mergeElement)
-  const flows = mergeCollection('flow', [base.flows, mine.flows, theirs.flows], choices, mergeFlow)
-  const conflicts = [...nodes.conflicts, ...edges.conflicts, ...flows.conflicts]
+  const conflicts: MergeConflict[] = []
+  const nodes = mergeCollection('node', [base.nodes, mine.nodes, theirs.nodes], choices, conflicts, mergeElement)
+  const edges = mergeCollection('edge', [base.edges, mine.edges, theirs.edges], choices, conflicts, mergeElement)
+  const flows = mergeCollection('flow', [base.flows, mine.flows, theirs.flows], choices, conflicts, mergeFlow)
 
-  const name = mergeFields({ name: base.name }, { name: mine.name }, { name: theirs.name }, choices.get('name'))
-  if (name.conflicts.length > 0) conflicts.push({ key: 'name', kind: 'name', id: '', fields: ['name'] })
-  const theme = mergeFields(base.theme, mine.theme, theirs.theme, choices.get('theme'))
-  if (theme.conflicts.length > 0) conflicts.push({ key: 'theme', kind: 'theme', id: '', fields: theme.conflicts })
+  const nameScope: Scope = { kind: 'name', id: '', keyOf: () => 'name', choices, conflicts }
+  const name = mergeFields(nameScope, { name: base.name }, { name: mine.name }, { name: theirs.name })
+  const themeScope: Scope = { kind: 'theme', id: '', keyOf: (field) => `theme:${field}`, choices, conflicts }
+  const theme = mergeFields(themeScope, base.theme, mine.theme, theirs.theme)
 
   const sides = [mine, theirs, base].map((diagram) => new Map(diagram.nodes.map((node) => [node.id, node])))
   const { nodes: attached, detached } = detachOrphans(nodes.items, sides)

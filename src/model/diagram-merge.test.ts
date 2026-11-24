@@ -2,7 +2,7 @@ import * as fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 import { COLORS } from './colors'
 import { createEdge, defaultCardData } from './defaults'
-import { mergeDiagrams, type MergeSide } from './diagram-merge'
+import { allowsChoice, mergeDiagrams, mergeLists, type MergeChoice, type MergeConflict } from './diagram-merge'
 import { sortParentsFirst } from './graph'
 import { diagramSchema, type Diagram, type StoredEdge, type StoredNode } from './schema'
 import { DiagramBuilder, nodeStep } from '@/templates/builder'
@@ -56,10 +56,18 @@ function newEdge(source: string, target: string, id: string): StoredEdge {
   return { ...toStoredEdge(createEdge(source, target))!, id }
 }
 
-function merged(mine: Diagram, theirs: Diagram, choices = new Map<string, MergeSide>()) {
-  const result = mergeDiagrams(base, mine, theirs, choices)
+function merged(mine: Diagram, theirs: Diagram, choices: Record<string, MergeChoice> = {}) {
+  const result = mergeDiagrams(base, mine, theirs, new Map(Object.entries(choices)))
   expect(diagramSchema.safeParse(result.diagram).success).toBe(true)
   return result
+}
+
+const MINE: MergeChoice = { kind: 'mine' }
+const THEIRS: MergeChoice = { kind: 'theirs' }
+const BOTH: MergeChoice = { kind: 'both' }
+
+function keys(conflicts: readonly MergeConflict[]) {
+  return conflicts.map((conflict) => conflict.key)
 }
 
 describe('mergeDiagrams', () => {
@@ -104,12 +112,88 @@ describe('mergeDiagrams', () => {
       card(draft, api).data.color = 'pink'
     })
     const result = merged(mine, theirs)
-    expect(result.conflicts).toEqual([{ key: `node:${api}`, kind: 'node', id: api, fields: ['data.title'] }])
+    expect(result.conflicts).toEqual([
+      {
+        key: `node:${api}:data.title`,
+        kind: 'node',
+        id: api,
+        field: 'data.title',
+        label: 'Title',
+        base: 'API',
+        mine: 'Gateway',
+        theirs: 'Edge API',
+        choices: ['mine', 'theirs', 'custom'],
+      },
+    ])
     expect(card(result.diagram, api).data).toMatchObject({ title: 'Gateway', color: 'pink' })
     expect(result.origins.get(`node:${api}`)).toBe('conflict')
 
-    const chosen = merged(mine, theirs, new Map([[`node:${api}`, 'theirs']]))
+    const chosen = merged(mine, theirs, { [`node:${api}:data.title`]: THEIRS })
     expect(card(chosen.diagram, api).data).toMatchObject({ title: 'Edge API', color: 'pink' })
+  })
+
+  it('makes each field that both sides changed its own conflict with its own choice', () => {
+    const mine = edited(base, (draft) => {
+      card(draft, api).data.title = 'Gateway'
+      node(draft, api).position = { x: 10, y: 10 }
+    })
+    const theirs = edited(base, (draft) => {
+      card(draft, api).data.title = 'Edge API'
+      node(draft, api).position = { x: 90, y: 90 }
+    })
+    const result = merged(mine, theirs, { [`node:${api}:data.title`]: THEIRS, [`node:${api}:position`]: MINE })
+    expect(keys(result.conflicts)).toEqual([`node:${api}:position`, `node:${api}:data.title`])
+    expect(card(result.diagram, api)).toMatchObject({ position: { x: 10, y: 10 }, data: { title: 'Edge API' } })
+    expect(result.conflicts.find((conflict) => conflict.field === 'position')?.choices).toEqual(['mine', 'theirs'])
+  })
+
+  it('takes a text that the user types for a text field', () => {
+    const mine = edited(base, (draft) => void (card(draft, api).data.title = 'Gateway'))
+    const theirs = edited(base, (draft) => void (card(draft, api).data.title = 'Edge API'))
+    const result = merged(mine, theirs, { [`node:${api}:data.title`]: { kind: 'custom', value: 'Edge gateway' } })
+    expect(card(result.diagram, api).data.title).toBe('Edge gateway')
+  })
+
+  it('ignores a choice that does not apply to the field', () => {
+    const mine = edited(base, (draft) => void (node(draft, api).position = { x: 10, y: 10 }))
+    const theirs = edited(base, (draft) => void (node(draft, api).position = { x: 90, y: 90 }))
+    const result = merged(mine, theirs, { [`node:${api}:position`]: BOTH })
+    expect(node(result.diagram, api).position).toEqual({ x: 10, y: 10 })
+    expect(allowsChoice(result.conflicts[0]!, BOTH)).toBe(false)
+    expect(allowsChoice(result.conflicts[0]!, { kind: 'custom', value: '1, 2' })).toBe(false)
+  })
+
+  it('merges the lines of a card from both sides', () => {
+    const line = (id: string, text: string) => ({ id, text })
+    const start = edited(
+      base,
+      (draft) => void (card(draft, api).data.lines = [line('l_1', 'GET /a'), line('l_2', 'GET /b')]),
+    )
+    const mine = edited(start, (draft) => {
+      card(draft, api).data.lines.push(line('l_mine', 'POST /c'))
+      card(draft, api).data.lines.splice(1, 1)
+    })
+    const theirs = edited(start, (draft) => void card(draft, api).data.lines.push(line('l_theirs', 'PUT /d')))
+    const result = mergeDiagrams(start, mine, theirs, new Map([[`node:${api}:data.lines`, BOTH]]))
+    expect(result.conflicts.map((conflict) => conflict.choices)).toEqual([['mine', 'theirs', 'both']])
+    expect(card(result.diagram, api).data.lines.map((item) => item.text)).toEqual(['GET /a', 'POST /c', 'PUT /d'])
+  })
+
+  it('merges lists of plain values in order, and gives no merge of objects without ids', () => {
+    expect(mergeLists(['a'], ['a', 'b'], ['c', 'a'])).toEqual(['a', 'b', 'c'])
+    expect(mergeLists([], [{ x: 1, y: 2 }], [{ x: 3, y: 4 }])).toBeNull()
+    expect(mergeLists(undefined, [{ id: 'a' }], [{ id: 'b' }])).toEqual([{ id: 'a' }, { id: 'b' }])
+  })
+
+  it('merges the details of a node field by field', () => {
+    const mine = edited(base, (draft) => void (card(draft, api).data.details.owner = 'Payments team'))
+    const theirs = edited(base, (draft) => void (card(draft, api).data.details.description = 'Takes orders'))
+    const result = merged(mine, theirs)
+    expect(result.conflicts).toEqual([])
+    expect(card(result.diagram, api).data.details).toMatchObject({
+      owner: 'Payments team',
+      description: 'Takes orders',
+    })
   })
 
   it('keeps nodes, edges and flows that either side added, in the order of mine and then theirs', () => {
@@ -149,24 +233,42 @@ describe('mergeDiagrams', () => {
     const mine = edited(base, (draft) => void (draft.nodes = draft.nodes.filter((item) => item.id !== web)))
     const theirs = edited(base, (draft) => void (card(draft, web).data.title = 'Web app'))
     const result = merged(mine, theirs)
-    expect(result.conflicts).toEqual([{ key: `node:${web}`, kind: 'node', id: web, fields: [], deletedBy: 'mine' }])
+    expect(result.conflicts).toMatchObject([
+      { key: `node:${web}`, kind: 'node', id: web, field: '', choices: ['mine', 'theirs'], deletedBy: 'mine' },
+    ])
     expect(result.diagram.nodes.some((item) => item.id === web)).toBe(false)
 
-    const chosen = merged(mine, theirs, new Map([[`node:${web}`, 'theirs']]))
+    const chosen = merged(mine, theirs, { [`node:${web}`]: THEIRS })
     expect(card(chosen.diagram, web).data.title).toBe('Web app')
   })
 
-  it('merges a flow as one unit', () => {
+  it('merges a flow field by field, with its steps as one list', () => {
+    const flowId = base.flows[0]!.id
     const rename = (name: string) => (draft: Diagram) => void (draft.flows[0]!.name = name)
     const loop = (draft: Diagram) => void (draft.flows[0]!.loop = true)
-    expect(merged(edited(base, rename('Buy')), base).diagram.flows[0]!.name).toBe('Buy')
-    expect(merged(base, edited(base, loop)).diagram.flows[0]!.loop).toBe(true)
-
     const result = merged(edited(base, rename('Buy')), edited(base, loop))
-    const flowId = base.flows[0]!.id
-    expect(result.conflicts).toEqual([{ key: `flow:${flowId}`, kind: 'flow', id: flowId, fields: ['steps'] }])
-    const chosen = merged(edited(base, rename('Buy')), edited(base, loop), new Map([[`flow:${flowId}`, 'theirs']]))
-    expect(chosen.diagram.flows[0]).toMatchObject({ name: 'Checkout', loop: true })
+    expect(result.conflicts).toEqual([])
+    expect(result.diagram.flows[0]).toMatchObject({ name: 'Buy', loop: true })
+
+    const addStep = (id: string, caption: string) => (draft: Diagram) =>
+      void draft.flows[0]!.steps.push({ ...structuredClone(draft.flows[0]!.steps[0]!), id, caption })
+    const mine = edited(base, (draft) => {
+      rename('Buy')(draft)
+      addStep('s_mine', 'Pays')(draft)
+    })
+    const theirs = edited(base, (draft) => {
+      rename('Order')(draft)
+      addStep('s_theirs', 'Gets a receipt')(draft)
+    })
+    const both = merged(mine, theirs, { [`flow:${flowId}:steps`]: BOTH, [`flow:${flowId}:name`]: THEIRS })
+    expect(keys(both.conflicts)).toEqual([`flow:${flowId}:name`, `flow:${flowId}:steps`])
+    expect(both.conflicts.map((conflict) => conflict.label)).toEqual(['Name', 'Steps'])
+    expect(both.diagram.flows[0]!.name).toBe('Order')
+    expect(both.diagram.flows[0]!.steps.map((step) => step.caption)).toEqual([
+      'Opens the shop',
+      'Pays',
+      'Gets a receipt',
+    ])
   })
 
   it('merges the name and the theme field by field', () => {
@@ -186,8 +288,22 @@ describe('mergeDiagrams', () => {
         draft.theme.snap = !base.theme.snap
       }),
     )
-    expect(both.conflicts).toEqual([{ key: 'name', kind: 'name', id: '', fields: ['name'] }])
+    expect(both.conflicts).toMatchObject([
+      { key: 'name', kind: 'name', id: '', field: 'name', label: 'Diagram name', mine: 'Shop v2', theirs: 'Store' },
+    ])
     expect(both.diagram.name).toBe('Shop v2')
+
+    const style = merged(
+      mine,
+      edited(base, (draft) => void (draft.theme.snap = base.theme.snap)),
+    )
+    expect(style.conflicts).toEqual([])
+    const theme = mergeDiagrams(
+      base,
+      edited(base, (draft) => void (draft.theme.background = 'grid')),
+      edited(base, (draft) => void (draft.theme.background = 'none')),
+    )
+    expect(theme.conflicts).toMatchObject([{ key: 'theme:background', kind: 'theme', label: 'Background' }])
   })
 
   it('drops edges whose node is not in the result, and lists them', () => {
@@ -210,7 +326,7 @@ describe('mergeDiagrams', () => {
       node(draft, vpc).position = { x: 100, y: 50 }
       draft.nodes.push(newCard('n_inside', 'Worker', vpc))
     })
-    const result = merged(mine, theirs, new Map([[`node:${vpc}`, 'mine']]))
+    const result = merged(mine, theirs, { [`node:${vpc}`]: MINE })
     const inside = node(result.diagram, 'n_inside')
     expect(inside.parentId).toBeUndefined()
     expect(inside.position).toEqual({ x: 120, y: 70 })
@@ -288,6 +404,9 @@ type Edit =
   | { kind: 'flow'; name: string }
   | { kind: 'name'; name: string }
   | { kind: 'snap' }
+  | { kind: 'line'; at: number; id: string; text: string }
+  | { kind: 'unline'; at: number }
+  | { kind: 'step'; id: string; caption: string }
 
 const words = fc.constantFrom('A', 'B', 'C')
 const index = fc.nat({ max: 9 })
@@ -308,6 +427,9 @@ const editArbitrary: fc.Arbitrary<Edit> = fc.oneof(
   fc.record({ kind: fc.constant('flow'), name: words }),
   fc.record({ kind: fc.constant('name'), name: words }),
   fc.record({ kind: fc.constant('snap') }),
+  fc.record({ kind: fc.constant('line'), at: index, id: fc.constantFrom('l_x', 'l_y'), text: words }),
+  fc.record({ kind: fc.constant('unline'), at: index }),
+  fc.record({ kind: fc.constant('step'), id: fc.constantFrom('s_x', 's_y'), caption: words }),
 )
 
 function descendants(nodes: readonly StoredNode[], id: string): Set<string> {
@@ -378,6 +500,20 @@ function applyEdit(diagram: Diagram, edit: Edit) {
       return
     case 'snap':
       diagram.theme.snap = !diagram.theme.snap
+      return
+    case 'line':
+      if (target?.type === 'card' && !target.data.lines.some((item) => item.id === edit.id)) {
+        target.data.lines.push({ id: edit.id, text: edit.text })
+      }
+      return
+    case 'unline':
+      if (target?.type === 'card') target.data.lines.shift()
+      return
+    case 'step': {
+      const flow = diagram.flows[0]
+      if (!flow || flow.steps.some((step) => step.id === edit.id)) return
+      flow.steps.push({ ...structuredClone(flow.steps[0]!), id: edit.id, caption: edit.caption })
+    }
   }
 }
 
@@ -400,7 +536,18 @@ function content(diagram: Diagram) {
 }
 
 const edits = fc.array(editArbitrary, { maxLength: 6 })
-const sides = fc.record({ start: edits, mine: edits, theirs: edits, pick: fc.array(fc.boolean(), { maxLength: 20 }) })
+const choiceArbitrary: fc.Arbitrary<MergeChoice> = fc.oneof(
+  fc.constant(MINE),
+  fc.constant(THEIRS),
+  fc.constant(BOTH),
+  fc.record({ kind: fc.constant('custom' as const), value: words }),
+)
+const sides = fc.record({
+  start: edits,
+  mine: edits,
+  theirs: edits,
+  pick: fc.array(choiceArbitrary, { maxLength: 20 }),
+})
 
 function scenario({ start, mine, theirs }: { start: Edit[]; mine: Edit[]; theirs: Edit[] }) {
   const from = withEdits(base, start)
@@ -441,14 +588,13 @@ describe('mergeDiagrams properties', () => {
     )
   })
 
-  it('always gives a valid diagram with parents before their children', () => {
+  it('always gives a valid diagram with parents before their children, for any choices', () => {
     fc.assert(
       fc.property(sides, (input) => {
         const { from, mine, theirs } = scenario(input)
         const conflicts = mergeDiagrams(from, mine, theirs).conflicts
-        const choices = new Map(
-          conflicts.map((conflict, at): [string, MergeSide] => [conflict.key, input.pick[at] ? 'theirs' : 'mine']),
-        )
+        expect(new Set(keys(conflicts)).size).toBe(conflicts.length)
+        const choices = new Map(conflicts.map((conflict, at) => [conflict.key, input.pick[at] ?? MINE]))
         const { diagram } = mergeDiagrams(from, mine, theirs, choices)
         expect(diagramSchema.safeParse(diagram).success).toBe(true)
         const seen = new Set<string>()

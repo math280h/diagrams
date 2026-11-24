@@ -138,16 +138,75 @@ test('reviews a conflict with a file that changed on disk, and applies the side 
   await expectNoticeBeforeSave(window, window.getByText('1 change needs a choice before your changes save.'))
   await window.locator('[data-sonner-toast]').getByRole('button', { name: 'Review' }).click()
 
+  for (const pane of ['Yours', 'On disk', 'Result'])
+    await expect(window.getByRole('region', { name: pane })).toBeVisible()
   const panel = window.getByRole('complementary', { name: 'Review the changes' })
-  await expect(panel.getByText('1 change needs a choice')).toBeVisible()
+  await expect(panel.getByText('1 of 1 need a choice')).toBeVisible()
   await expect(panel.getByRole('button', { name: 'Apply' })).toBeDisabled()
-  await panel.getByRole('button', { name: 'Use the disk version' }).click()
+  await panel.getByRole('group', { name: 'Choice for Gateway, title' }).getByRole('button', { name: 'Disk' }).click()
+  await expect(panel.getByText('All chosen')).toBeVisible()
   await panel.getByRole('button', { name: 'Apply' }).click()
   await expect(panel).toHaveCount(0)
 
   await window.clock.runFor(SAVE_WAIT_MS)
   await expect.poll(() => nodeOnDisk(target, api)).toMatchObject({ data: { title: 'Edge API' } })
   expect(nodeOnDisk(target, db)?.position).toEqual({ x: 400, y: 200 })
+})
+
+async function openReview(window: Page) {
+  await expectNoticeBeforeSave(window, window.getByText('1 change needs a choice before your changes save.'))
+  await window.locator('[data-sonner-toast]').getByRole('button', { name: 'Review' }).click()
+  return window.getByRole('complementary', { name: 'Review the changes' })
+}
+
+test('applies a name that the user types for a node that both sides renamed', async ({ window, dirs }) => {
+  const { diagram, file, api } = twoCards('Shop before the rename')
+  const { target } = await openWithPausedClock(window, dirs.data, diagram.name, file)
+  await renameCard(window, 'API', 'Gateway')
+  writeFileSync(
+    target,
+    pulled(diagram, (draft) => {
+      const card = draft.nodes.find((node) => node.id === api)
+      if (card?.type === 'card') card.data.title = 'Edge API'
+    }),
+  )
+  const panel = await openReview(window)
+  await panel.getByRole('group', { name: 'Choice for Gateway, title' }).getByRole('button', { name: 'Edit' }).click()
+  const typed = panel.getByRole('textbox', { name: 'New title for Gateway' })
+  await expect(typed).toHaveValue('Gateway')
+  await typed.fill('Edge gateway')
+  await typed.press('Enter')
+  await panel.getByRole('button', { name: 'Apply' }).click()
+
+  await window.clock.runFor(SAVE_WAIT_MS)
+  await expect.poll(() => nodeOnDisk(target, api)).toMatchObject({ data: { title: 'Edge gateway' } })
+})
+
+test('keeps the lines that both sides added to a card', async ({ window, dirs }) => {
+  const { diagram, file, api } = twoCards('Shop before the lines')
+  const { target } = await openWithPausedClock(window, dirs.data, diagram.name, file)
+  await window.locator('[data-editor-canvas]').locator('[aria-label="API, service"]').click()
+  const detail = window.getByRole('complementary', { name: 'Properties' }).getByRole('textbox', { name: 'Detail' })
+  await detail.fill('GET /orders')
+  await detail.press('Tab')
+  writeFileSync(
+    target,
+    pulled(diagram, (draft) => {
+      const card = draft.nodes.find((node) => node.id === api)
+      if (card?.type === 'card') card.data.lines = [{ id: 'l_disk', text: 'POST /pay' }]
+    }),
+  )
+  const panel = await openReview(window)
+  await panel.getByRole('group', { name: 'Choice for API, lines' }).getByRole('button', { name: 'Both' }).click()
+  await panel.getByRole('button', { name: 'Apply' }).click()
+
+  await window.clock.runFor(SAVE_WAIT_MS)
+  await expect
+    .poll(() => {
+      const card = nodeOnDisk(target, api)
+      return card?.type === 'card' ? card.data.lines.map((line) => line.text) : []
+    })
+    .toEqual(['GET /orders', 'POST /pay'])
 })
 
 function repoWithDiagram(root: string, name: string) {

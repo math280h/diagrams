@@ -5,7 +5,7 @@ import { errorMessage } from '@/lib/error-message'
 import { errorProblem, type Problem } from '@/lib/problem-report'
 import { rememberProblem } from '@/reports/recent-problems'
 import { showProblem } from './problem-store'
-import { mergeDiagrams, type MergeSide } from '@/model/diagram-merge'
+import { mergeDiagrams, type MergeChoice } from '@/model/diagram-merge'
 import type { Diagram } from '@/model/schema'
 import { repository } from '@/persistence/active-repository'
 import { exportDiagramJson } from '@/persistence/library-actions'
@@ -73,7 +73,7 @@ interface Session {
   /** Puts the merge of the version from outside into the editor, if it has no conflict. */
   merge(): void
   review(): void
-  choose(keys: readonly string[], side: MergeSide): void
+  choose(keys: readonly string[], choice: MergeChoice): void
   /** Puts the merge of the review into the editor, if the review has a choice for each conflict. */
   applyReview(): void
 }
@@ -342,11 +342,11 @@ function startSession(diagram: Diagram): Session {
     keepThisVersion,
     merge,
     review,
-    choose(keys, side) {
+    choose(keys, choice) {
       const current = useOutsideReview.getState().review
       if (!current) return
       const choices = new Map(current.choices)
-      for (const key of keys) choices.set(key, side)
+      for (const key of keys) choices.set(key, choice)
       useOutsideReview.setState({ review: { ...current, choices } })
       refreshReview()
     },
@@ -422,8 +422,9 @@ export function reviewOutsideVersion() {
   session?.review()
 }
 
-export function chooseMergeSide(keys: readonly string[], side: MergeSide) {
-  session?.choose(keys, side)
+/** Sets the choice for conflicts of the review. A choice that does not apply to a conflict goes away. */
+export function chooseMerge(keys: readonly string[], choice: MergeChoice) {
+  session?.choose(keys, choice)
 }
 
 /**

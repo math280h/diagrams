@@ -14,7 +14,7 @@ import { undo, useHistory } from './history'
 import {
   applyOutsideReview,
   cancelOutsideReview,
-  chooseMergeSide,
+  chooseMerge,
   closeDiagramSession,
   currentDiagram,
   discardUnsavedChanges,
@@ -476,38 +476,46 @@ describe('changes from outside the editor', () => {
     }
   })
 
-  it('applies a reviewed merge as one undo step, once each conflict has a choice', async () => {
+  it('applies a reviewed merge with mixed choices as one undo step, once each conflict has a choice', async () => {
     const notice = await noticeButtons()
     const { diagram, api, db } = storedShop()
     openDiagramSession(diagram)
     titleHere(api, 'Gateway')
+    useDoc.setState((state) => ({
+      nodes: state.nodes.map((item) => (item.id === api ? { ...item, position: { x: 40, y: 40 } } : item)),
+    }))
     changeOutside(diagram, (draft) => {
       titleThere(api, 'Edge API')(draft)
+      storedNode(draft, api)!.position = { x: 80, y: 80 }
       moveThere(db)(draft)
     })
     expect(notice.warning().action.label).toBe('Load newer')
-    expect(notice.warning()).toMatchObject({ description: '1 change needs a choice before your changes save.' })
+    expect(notice.warning()).toMatchObject({ description: '2 changes need a choice before your changes save.' })
 
     notice.warning().cancel.onClick()
     expect(useVersions.getState().previewId).toBe(MERGE_PREVIEW_ID)
     const review = useOutsideReview.getState().review!
-    expect(review.result.conflicts.map((conflict) => conflict.key)).toEqual([`node:${api}`])
+    expect(review.result.conflicts.map((conflict) => conflict.key)).toEqual([
+      `node:${api}:position`,
+      `node:${api}:data.title`,
+    ])
+    chooseMerge([`node:${api}:data.title`], { kind: 'custom', value: 'Edge gateway' })
     applyOutsideReview()
     expect(outsideVersionWaits()).toBe(true)
     expect(saves).toBe(0)
 
-    chooseMergeSide([`node:${api}`], 'theirs')
+    chooseMerge([`node:${api}:position`], { kind: 'mine' })
     applyOutsideReview()
     expect(useVersions.getState().previewId).toBeNull()
     expect(useOutsideReview.getState().review).toBeNull()
     expect(outsideVersionWaits()).toBe(false)
     expect(saves).toBe(1)
     const saved = repository().load(diagram.id)
-    expect(storedNode(saved, api)).toMatchObject({ data: { title: 'Edge API' } })
+    expect(storedNode(saved, api)).toMatchObject({ position: { x: 40, y: 40 }, data: { title: 'Edge gateway' } })
     expect(storedNode(saved, db)?.position).toEqual({ x: 400, y: 200 })
 
     undo()
-    expect(storedNode(currentDiagram(), api)).toMatchObject({ data: { title: 'Gateway' } })
+    expect(storedNode(currentDiagram(), api)).toMatchObject({ position: { x: 40, y: 40 }, data: { title: 'Gateway' } })
     expect(storedNode(currentDiagram(), db)?.position).toEqual({ x: 400, y: 0 })
   })
 
@@ -540,14 +548,14 @@ describe('changes from outside the editor', () => {
     titleHere(api, 'Gateway')
     changeOutside(diagram, titleThere(api, 'Edge API'))
     notice.warning().cancel.onClick()
-    chooseMergeSide([`node:${api}`], 'theirs')
+    chooseMerge([`node:${api}:data.title`], { kind: 'theirs' })
 
     changeOutside(diagram, (draft) => {
       titleThere(api, 'Edge API')(draft)
       moveThere(db)(draft)
     })
     let review = useOutsideReview.getState().review!
-    expect(review.choices.get(`node:${api}`)).toBe('theirs')
+    expect(review.choices.get(`node:${api}:data.title`)).toEqual({ kind: 'theirs' })
     expect(storedNode(review.result.diagram, db)?.position).toEqual({ x: 400, y: 200 })
     expect(useVersions.getState().preview?.diagram).toBe(review.result.diagram)
 

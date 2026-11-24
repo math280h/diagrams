@@ -1333,8 +1333,9 @@ with snapdom, because Chromium gives only pixels.
   replace the newer version. A version that the app cannot read, for example a newer format, gets no save. The notice
   then offers an export.
   - A readable newer version can merge with the open diagram (`src/model/diagram-merge.ts`). The base is the version
-    that the session saved or loaded last, so the merge sees which side changed each field. Nodes and edges merge by
-    field and flows as one unit; the review shows the result in the preview layer of the version history.
+    that the session saved or loaded last, so the merge sees which side changed each field. Nodes, edges and flows
+    merge by field, and each field that both sides changed is a conflict with its own choice. The review shows the
+    two sides and the result as three canvases in the preview layer of the version history.
 - On close, the window saves the open diagram and waits for queued writes. A crashed renderer delays the close by at
   most 3 seconds (the save limit includes the renderer start).
 - If that save also fails, the window asks first: save a copy, close without saving, or keep the window open. At the
