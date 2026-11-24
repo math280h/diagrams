@@ -652,6 +652,31 @@
   outline-offset: 3px;
 }
 
+.react-flow__node:is(.dg-merge-changed, .dg-merge-done, .dg-merge-open, .dg-merge-selected) {
+  border-radius: 10px;
+  outline: 2px solid var(--dg-text);
+  outline-offset: 6px;
+}
+.react-flow__node.dg-merge-open {
+  outline-color: var(--dg-error);
+}
+.react-flow__node.dg-merge-selected {
+  outline: 3px solid var(--dg-flow);
+  outline-offset: 8px;
+}
+.react-flow__edge:is(.dg-merge-changed, .dg-merge-done) .dg-edge-path {
+  stroke: var(--dg-text);
+  stroke-width: 2px;
+}
+.react-flow__edge.dg-merge-open .dg-edge-path {
+  stroke: var(--dg-error);
+  stroke-width: 2px;
+}
+.react-flow__edge.dg-merge-selected .dg-edge-path {
+  stroke: var(--dg-flow);
+  stroke-width: 3px;
+}
+
 [data-editor-canvas][data-dragging] .dg-canvas .react-flow {
   --dg-grid: var(--dg-grid-active);
   --dg-grid-line: var(--dg-grid-line-active);

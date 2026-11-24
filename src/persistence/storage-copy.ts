@@ -1,3 +1,4 @@
+import { toast } from 'sonner'
 import { reportError } from '@/store/problem-store'
 import { repository } from './active-repository'
 import type { StorageLocation } from './repository'
@@ -15,6 +16,12 @@ export interface StorageCopy {
   removeFailed: string
   /** Where the version history keeps its versions, to end a sentence. */
   versionsPlace: string
+  /** The name of the version from outside on its pane in a merge, for example "On disk". */
+  outsidePane: string
+  /** The short name of the version from outside on a choice button in a merge, for example "Disk". */
+  outsideChoice: string
+  /** Where the version from outside in a merge comes from, after "All", for example "from disk". */
+  fromOutside: string
 }
 
 const BROWSER_COPY: StorageCopy = {
@@ -28,6 +35,9 @@ const BROWSER_COPY: StorageCopy = {
   deleteDetail: 'This removes the diagram and its flows from this browser. You cannot undo it.',
   removeFailed: 'Could not delete the diagram from this browser.',
   versionsPlace: 'in this browser',
+  outsidePane: 'Other tab',
+  outsideChoice: 'Other tab',
+  fromOutside: 'from the other tab',
 }
 
 const FOLDER_COPY: StorageCopy = {
@@ -39,8 +49,11 @@ const FOLDER_COPY: StorageCopy = {
   missingDetail: 'Someone moved or deleted the file. Import the diagram file to open it here.',
   stillSaved: 'Your saved diagrams are still in your diagrams folder.',
   deleteDetail: 'This moves the diagram file to the trash.',
-  removeFailed: 'Could not move the diagram file to the trash.',
+  removeFailed: 'Could not delete the diagram file.',
   versionsPlace: 'on this computer',
+  outsidePane: 'On disk',
+  outsideChoice: 'Disk',
+  fromOutside: 'from disk',
 }
 
 const PICKED_FOLDER_COPY: StorageCopy = {
@@ -48,7 +61,6 @@ const PICKED_FOLDER_COPY: StorageCopy = {
   missingTitle: 'This diagram is not in the open folder',
   stillSaved: 'Your saved diagrams are still in the open folder.',
   deleteDetail: 'This moves the diagram file to .diagrams/deleted in the folder, where you can get it back.',
-  removeFailed: 'Could not delete the diagram file.',
 }
 
 const FOLLOWED_FOLDER_COPY: StorageCopy = {
@@ -62,6 +74,9 @@ const FOLLOWED_FOLDER_COPY: StorageCopy = {
   deleteDetail: 'This removes the diagram from this tab. The file stays in the folder.',
   removeFailed: 'Could not remove the diagram from this tab.',
   versionsPlace: 'in this browser',
+  outsidePane: 'In the folder',
+  outsideChoice: 'Folder',
+  fromOutside: 'from the folder',
 }
 
 const COPIES: Record<StorageLocation['kind'], StorageCopy> = {
@@ -76,6 +91,10 @@ export function storageCopy(): StorageCopy {
 }
 
 const SAVE_FAILED_TOAST = 'save-failed'
+
+export function dismissSaveFailedNotice() {
+  toast.dismiss(SAVE_FAILED_TOAST)
+}
 
 /**
  * Shows failed saves and removes of the repository as toasts, for as long as the app runs.
@@ -93,10 +112,7 @@ export function watchSaveOutcomes(): () => void {
           event.message,
           {
             id: SAVE_FAILED_TOAST,
-            description:
-              event.reason === 'quota'
-                ? 'Choose Export, then Diagram file (JSON), before you close the tab. Delete other diagrams to free space.'
-                : 'Choose Export, then Diagram file (JSON), to keep your changes.',
+            description: 'The app tries again while the diagram is open.',
             duration: 12_000,
             facts: [`Storage: ${repository().location.kind}`, `Save failure: ${event.reason}`, `Diagram: ${event.id}`],
           },

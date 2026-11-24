@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createDiagram, createFlow } from '@/model/defaults'
 import type { Diagram } from '@/model/schema'
 import { createCachedRepository, serializeDiagram } from './cached-repository'
-import type { RepositoryEvent, StorageLocation } from './repository'
+import { TrashError, type RepositoryEvent, type StorageLocation } from './repository'
 
 function diagram(name: string, patch: Partial<Diagram> = {}): Diagram {
   return { ...createDiagram(name), ...patch }
@@ -92,8 +92,20 @@ describe('createCachedRepository', () => {
     expect(sink.remove).toHaveBeenCalledWith('a', true)
     expect(events).toEqual([
       { kind: 'removed', id: 'a' },
-      { kind: 'remove-failed', id: 'b', message: 'in use' },
+      { kind: 'remove-failed', id: 'b', reason: 'unknown', message: 'in use' },
     ])
+  })
+
+  it('keeps a diagram whose remove fails, and tells a failed trash from other failures', async () => {
+    const kept = diagram('Kept')
+    const { repository, sink, events } = setup([{ id: 'a', text: serializeDiagram(kept) }])
+    sink.remove.mockRejectedValueOnce(new TrashError('No trash on this drive.'))
+    repository.remove('a')
+    expect(repository.list()).toEqual([])
+    await repository.settled()
+    expect(events).toEqual([{ kind: 'remove-failed', id: 'a', reason: 'trash', message: 'No trash on this drive.' }])
+    expect(repository.list().map((meta) => meta.name)).toEqual(['Kept'])
+    expect(repository.load('a')?.name).toBe('Kept')
   })
 
   it('keeps list entries stable while their diagram does not change', () => {
@@ -162,5 +174,58 @@ describe('createCachedRepository', () => {
     repository.save({ ...first, rev: first.rev + 1, flows: parsedFlows })
     await repository.settled()
     expect(sink.write).not.toHaveBeenCalled()
+  })
+
+  it('writes a linked file again after its write failed, also when the next save changes only the view', async () => {
+    const first = diagram('Linked', { id: 'link-1' })
+    const { repository, sink, events } = setup([
+      { id: 'link-1', text: serializeDiagram(first), path: '/repo/docs/a.diagram.json' },
+    ])
+    sink.write.mockRejectedValueOnce(new Error('EBUSY'))
+    repository.save({ ...first, name: 'Renamed' })
+    await repository.settled()
+    repository.save({ ...first, name: 'Renamed', viewport: { x: 9, y: 9, zoom: 2 }, rev: first.rev + 1 })
+    await repository.settled()
+    expect(sink.write).toHaveBeenCalledTimes(2)
+    expect(events.at(-1)).toEqual({ kind: 'saved', id: 'link-1' })
+  })
+
+  it('reports only the outcome of the last save of a diagram', async () => {
+    const { repository, sink, events } = setup()
+    let failFirst: (error: Error) => void = () => undefined
+    sink.write.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          failFirst = reject
+        }),
+    )
+    const saved = diagram('Saved')
+    repository.save(saved)
+    repository.save({ ...saved, name: 'Later' })
+    failFirst(new Error('locked'))
+    await repository.settled()
+    expect(events).toEqual([{ kind: 'saved', id: saved.id }])
+  })
+
+  it('drops saves that did not reach storage and loads the stored version again', async () => {
+    const stored = diagram('Stored', { id: 'a' })
+    const { repository, sink, events } = setup([{ id: 'a', text: serializeDiagram(stored) }])
+    sink.write.mockRejectedValue(new Error('EPERM'))
+    repository.save({ ...stored, name: 'Not stored' })
+    const fresh = diagram('Never stored')
+    repository.save(fresh)
+    await repository.settled()
+    events.length = 0
+
+    repository.discardUnstored('a')
+    repository.discardUnstored(fresh.id)
+    expect(repository.load('a')?.name).toBe('Stored')
+    expect(repository.list().map((meta) => meta.id)).toEqual(['a'])
+    expect(events).toEqual([
+      { kind: 'changed', id: 'a' },
+      { kind: 'changed', id: fresh.id },
+    ])
+    repository.discardUnstored('a')
+    expect(events).toHaveLength(2)
   })
 })

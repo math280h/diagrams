@@ -50,7 +50,7 @@ export function startCaptureWindow(): () => void {
     'agent.call': refuse,
     'handoff.open': refuse,
     'render.file': refuse,
-    'app.flush': async () => null,
+    'app.flush': async () => ({ unsaved: null }),
     'app.connectAgent': refuse,
     'capture.mount': async ({ stage, viewportScale }) => {
       mounted?.dispose()

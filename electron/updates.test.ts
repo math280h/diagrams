@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { UpdateInfo } from '@/desktop/contract'
-import { createUpdates, updatePolicy, type UpdateFeed, type UpdatePolicy, type Updater } from './updates'
+import { createUpdates, updatePolicy, type UpdateFeed, type UpdatePolicy, type Updater, type Updates } from './updates'
 
 class FakeUpdater extends EventEmitter implements Updater {
   autoDownload = false
@@ -20,6 +20,17 @@ function setup(
   feed: () => Promise<UpdateFeed | 'sign-in'> = async () => ({ repository: BUILD_REPOSITORY, token: null }),
 ) {
   const emitted: UpdateInfo[] = []
+  const steps: string[] = []
+  const prepareQuit = vi.fn(async () => {
+    steps.push('prepareQuit')
+    return true
+  })
+  const cancelQuit = vi.fn(() => {
+    steps.push('cancelQuit')
+  })
+  updater?.quitAndInstall.mockImplementation(() => {
+    steps.push('quitAndInstall')
+  })
   const updates = createUpdates({
     updater,
     policy,
@@ -28,8 +39,20 @@ function setup(
     repository: BUILD_REPOSITORY,
     feed,
     emit: (info) => emitted.push(info),
+    prepareQuit,
+    cancelQuit,
   })
-  return { updater, updates, emitted }
+  return { updater, updates, emitted, steps, prepareQuit, cancelQuit }
+}
+
+async function downloadUpdate(updater: FakeUpdater, updates: Updates) {
+  updater.checkForUpdates.mockImplementation(async () => {
+    updater.emit('update-available', { version: '0.2.0' })
+    updater.emit('update-downloaded', { version: '0.2.0' })
+    return null
+  })
+  await updates.check()
+  updater.checkForUpdates.mockClear()
 }
 
 describe('updatePolicy', () => {
@@ -113,8 +136,88 @@ describe('createUpdates', () => {
     expect(updater!.checkForUpdates).toHaveBeenCalledTimes(1)
     updater!.emit('error', new Error('Network down'))
     expect(updates.info().state).toBe('ready')
-    updates.install()
+    await updates.install()
     expect(updater!.quitAndInstall).toHaveBeenCalledOnce()
+    updates.stop()
+  })
+
+  it('saves before the install, and runs one install for parallel calls', async () => {
+    const { updater, updates, steps, cancelQuit } = setup()
+    await downloadUpdate(updater!, updates)
+    await Promise.all([updates.install(), updates.install()])
+    expect(steps).toEqual(['prepareQuit', 'quitAndInstall'])
+    await updates.install()
+    expect(updater!.quitAndInstall).toHaveBeenCalledOnce()
+    expect(cancelQuit).not.toHaveBeenCalled()
+    updates.stop()
+  })
+
+  it('does not install while the user keeps the app open, and installs on a later call', async () => {
+    const { updater, updates, steps, prepareQuit, cancelQuit } = setup()
+    await downloadUpdate(updater!, updates)
+    prepareQuit.mockImplementationOnce(async () => {
+      steps.push('prepareQuit')
+      return false
+    })
+    await updates.install()
+    expect(steps).toEqual(['prepareQuit'])
+    expect(updates.info().state).toBe('ready')
+    expect(cancelQuit).not.toHaveBeenCalled()
+    await updates.install()
+    expect(steps).toEqual(['prepareQuit', 'prepareQuit', 'quitAndInstall'])
+    updates.stop()
+  })
+
+  it('keeps the update ready and undoes the quit preparation when the install fails without a quit', async () => {
+    const { updater, updates, steps } = setup({ kind: 'install', onQuit: false })
+    await downloadUpdate(updater!, updates)
+    updater!.quitAndInstall.mockImplementation(() => {
+      steps.push('quitAndInstall')
+      updater!.emit('error', new Error('Command pkexec exited with code 126'))
+    })
+    await updates.install()
+    expect(steps).toEqual(['prepareQuit', 'quitAndInstall', 'cancelQuit'])
+    expect(updates.info()).toMatchObject({
+      state: 'install-failed',
+      version: '0.2.0',
+      message: 'Command pkexec exited with code 126',
+    })
+
+    expect(await updates.check()).toMatchObject({ state: 'install-failed' })
+    expect(updater!.checkForUpdates).not.toHaveBeenCalled()
+    updater!.emit('error', new Error('Network down'))
+    expect(updates.info().message).toBe('Command pkexec exited with code 126')
+
+    await updates.install()
+    expect(steps).toEqual([
+      'prepareQuit',
+      'quitAndInstall',
+      'cancelQuit',
+      'prepareQuit',
+      'quitAndInstall',
+      'cancelQuit',
+    ])
+    updates.stop()
+  })
+
+  it('reports an install that throws, and an install error that comes later', async () => {
+    const { updater, updates, cancelQuit } = setup()
+    await downloadUpdate(updater!, updates)
+    updater!.quitAndInstall.mockImplementationOnce(() => {
+      throw new Error('No update filepath provided')
+    })
+    await updates.install()
+    expect(cancelQuit).toHaveBeenCalledOnce()
+    expect(updates.info()).toMatchObject({ state: 'install-failed', message: 'No update filepath provided' })
+
+    await updates.install()
+    expect(updates.info().state).toBe('install-failed')
+    updater!.emit('error', new Error('Could not relaunch to install the update'))
+    expect(cancelQuit).toHaveBeenCalledTimes(2)
+    expect(updates.info()).toMatchObject({
+      state: 'install-failed',
+      message: 'Could not relaunch to install the update',
+    })
     updates.stop()
   })
 
@@ -125,7 +228,7 @@ describe('createUpdates', () => {
       return null
     })
     expect(await updates.check()).toMatchObject({ state: 'available', version: '0.2.0' })
-    updates.install()
+    await updates.install()
     expect(updater!.quitAndInstall).not.toHaveBeenCalled()
     updates.stop()
   })
@@ -195,6 +298,8 @@ describe('createUpdates', () => {
       repository: BUILD_REPOSITORY,
       feed: async () => ({ repository: BUILD_REPOSITORY, token: null }),
       emit: () => undefined,
+      prepareQuit: async () => true,
+      cancelQuit: () => undefined,
       intervalMs: 1000,
     })
     await vi.advanceTimersByTimeAsync(2500)

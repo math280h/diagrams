@@ -90,7 +90,7 @@ export function watchLinkedFiles(linked: LinkedFiles, onChange: (change: FileCha
       id,
       setTimeout(() => {
         timers.delete(id)
-        void linked.inspect(id).then(report)
+        void linked.inspect(id).then(report, () => undefined)
       }, DEBOUNCE_MS),
     )
   }
@@ -124,7 +124,11 @@ export function watchLinkedFiles(linked: LinkedFiles, onChange: (change: FileCha
 
   return {
     sync,
-    rescan: () => void linked.rescan().then((changes) => changes.forEach(onChange)),
+    rescan: () =>
+      void linked.rescan().then(
+        (changes) => changes.forEach(onChange),
+        () => undefined,
+      ),
     stop() {
       for (const timer of timers.values()) clearTimeout(timer)
       for (const watcher of watchers.values()) watcher.close()

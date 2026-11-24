@@ -55,6 +55,7 @@ import { setUi, useUi } from '@/store/ui-store'
 import { useVersions } from '@/store/versions'
 import { SettingsPanel } from './inspector/DiagramInspector'
 import { openInsertAtCenter } from './insert'
+import { UnsavedMark } from './UnsavedChanges'
 import { IS_MAC, KEYS } from '@/lib/shortcut-keys'
 import { reportError } from '@/store/problem-store'
 import { isDesktop } from '@/desktop/bridge'
@@ -265,6 +266,7 @@ export function TopBar() {
       </div>
 
       <div className="ml-auto flex items-center gap-1">
+        <UnsavedMark />
         <AgentButton shortLabel />
         <div inert={previewing} className="hidden items-center gap-1 sm:flex inert:opacity-50">
           <IconButton label="Command menu" shortcut={KEYS.commandMenu} onClick={() => setUi({ commandOpen: true })}>

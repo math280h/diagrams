@@ -23,7 +23,7 @@ test('exports a PNG that holds the diagram, and imports it again', async ({ page
   await page.getByRole('button', { name: 'Import' }).click()
   await page.getByRole('tab', { name: 'Diagram file' }).click()
   const chooserOpens = page.waitForEvent('filechooser')
-  await page.getByRole('button', { name: /Choose a \.diagram\.json file/ }).click()
+  await page.getByRole('button', { name: /Choose \.diagram\.json files/ }).click()
   await (await chooserOpens).setFiles({ name: 'order-system.png', mimeType: 'image/png', buffer: readFileSync(file) })
   await expect(page).toHaveURL(/#\/d\//)
   await expect(page.locator('[data-editor-canvas] .react-flow__node')).toHaveCount(nodes)
@@ -34,7 +34,7 @@ test('says so when an image holds no diagram', async ({ page }) => {
   await page.getByRole('button', { name: 'Import' }).click()
   await page.getByRole('tab', { name: 'Diagram file' }).click()
   const chooserOpens = page.waitForEvent('filechooser')
-  await page.getByRole('button', { name: /Choose a \.diagram\.json file/ }).click()
+  await page.getByRole('button', { name: /Choose \.diagram\.json files/ }).click()
   await (
     await chooserOpens
   ).setFiles({
