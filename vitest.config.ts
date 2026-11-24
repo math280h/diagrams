@@ -9,6 +9,7 @@ const { warmup: _warmup, ...server } = viteConfig.server ?? {}
 export default mergeConfig(
   { ...viteConfig, server },
   defineConfig({
+    assetsInclude: ['**/*.zip'],
     test: {
       coverage: {
         provider: 'v8',

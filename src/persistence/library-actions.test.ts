@@ -1,10 +1,18 @@
+import { toast } from 'sonner'
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { createDiagram, createFlow } from '@/model/defaults'
+import { DIAGRAM_VERSION } from '@/model/schema'
 import { closeDiagramSession, openDiagramId, openDiagramSession } from '@/store/document'
 import { repository, setRepository } from './active-repository'
 import { createCachedRepository, type RepositorySink } from './cached-repository'
 import { versionsSettled } from '@/store/versions'
-import { createBlankDiagram, deleteDiagram, discardUnusedBlankDiagrams, renameDiagram } from './library-actions'
+import {
+  createBlankDiagram,
+  deleteDiagram,
+  discardUnusedBlankDiagrams,
+  duplicateDiagram,
+  renameDiagram,
+} from './library-actions'
 import { TrashError } from './repository'
 import { memoryVersionStore, setVersionStore, versionStore } from './version-store'
 
@@ -114,5 +122,29 @@ describe('discardUnusedBlankDiagrams', () => {
     repository().save(diagram)
     discardUnusedBlankDiagrams()
     expect(storedIds()).toEqual([diagram.id])
+  })
+})
+
+describe('duplicateDiagram', () => {
+  it('shows an error and saves nothing when the stored data cannot be read', () => {
+    const error = vi.spyOn(toast, 'error')
+    setRepository(
+      createCachedRepository({
+        location: { kind: 'folder', path: '/test' },
+        files: [{ id: 'd_newer', text: JSON.stringify({ ...createDiagram(), version: DIAGRAM_VERSION + 1 }) }],
+        sink: { write: async () => undefined, remove: removeFile },
+      }),
+    )
+    expect(duplicateDiagram('d_newer')).toBeNull()
+    expect(error).toHaveBeenCalledWith('Could not duplicate the diagram.', expect.anything())
+    expect(storedIds()).toEqual(['d_newer'])
+  })
+
+  it('saves a copy with a new id', () => {
+    const diagram = createDiagram('Shop')
+    repository().save(diagram)
+    const copy = duplicateDiagram(diagram.id)
+    expect(copy).toMatchObject({ name: 'Shop copy' })
+    expect(storedIds().toSorted()).toEqual([diagram.id, copy!.id].toSorted())
   })
 })

@@ -8,7 +8,7 @@ test('shows a page with a way home for an address that does not exist', async ({
   await expect(page).toHaveURL(/#\/$/)
 })
 
-test('points a blank diagram to flows and templates, and says that site data holds the diagrams', async ({ page }) => {
+test('points a blank diagram to flows and templates, and offers a backup of the diagrams', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'New diagram' }).first().click()
   await expect(page.getByText(/record a flow that plays a request/)).toBeVisible()
@@ -17,7 +17,8 @@ test('points a blank diagram to flows and templates, and says that site data hol
 
   await copyTemplate(page, 'Order system')
   await page.getByRole('link', { name: 'All diagrams' }).click()
-  await expect(page.getByText(/Clearing the site data of this browser deletes them/)).toBeVisible()
+  await expect(page.getByText(/used in this browser\./)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Back up all diagrams' })).toBeVisible()
 })
 
 test('inserts a node from the canvas menu, and suggests a detail that fits the kind of node', async ({ page }) => {

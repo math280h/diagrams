@@ -76,10 +76,19 @@ describe('sampleProblems', () => {
     const changes = [
       'D\tsrc/persistence/formats/v6.json',
       'D\tsrc/export/samples/v16.png',
+      'D\tsrc/persistence/backups/v16.zip',
       'D\tsrc/persistence/formats/v17.json',
+      'D\tsrc/persistence/backups/v19.zip',
     ]
     expect(sampleProblems(changes, 17, true)).toEqual([
       expect.stringContaining('deletes src/persistence/formats/v17.json'),
+      expect.stringContaining('deletes src/persistence/backups/v19.zip'),
+    ])
+  })
+
+  it('refuses a change to a backup sample', () => {
+    expect(sampleProblems(['M\tsrc/persistence/backups/v19.zip'], 6, false)).toEqual([
+      expect.stringContaining('changes src/persistence/backups/v19.zip'),
     ])
   })
 })

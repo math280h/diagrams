@@ -517,6 +517,8 @@ A container of a diagram has its own samples:
 - Share links: `src/share/samples`, one sample for each prefix.
 - Images that hold a diagram: `src/export/samples/v<N>.png` and `v<N>.svg`. Each holds the first diagram of
   `v<N>.fields.json`.
+- Backups: `src/persistence/backups/v<N>.zip`, a zip file of diagram files. It holds the diagrams of
+  `v<N>.fields.json`.
 
 To drop old formats, start a new major version. Raise `RELEASE_MAJOR` and `OLDEST_FORMAT`, and remove the migration
 steps and samples of the old formats. The next release is then `v<RELEASE_MAJOR>.0.0`.
@@ -1329,6 +1331,13 @@ with snapdom, because Chromium gives only pixels.
 - An unreadable diagrams folder at start shows the reason and "Try again"; agent calls fail at once with it.
 - A `changed` event for the open diagram (another tab or program) offers "Load newer". A diagram gone from storage stays
   open with a notice; the next change saves it. `rev` stays the diagram's save counter.
+- Until the user loads the newer version or keeps the open one, saves only record versions, so a due save cannot
+  replace the newer version. A version that the app cannot read, for example a newer format, gets no save. The notice
+  then offers an export.
+  - A readable newer version can merge with the open diagram (`src/model/diagram-merge.ts`). The base is the version
+    that the session saved or loaded last, so the merge sees which side changed each field. Nodes, edges and flows
+    merge by field, and each field that both sides changed is a conflict with its own choice. The review shows the
+    two sides and the result as three canvases in the preview layer of the version history.
 - On close, the window saves the open diagram and waits for queued writes. A crashed renderer delays the close by at
   most 3 seconds (the save limit includes the renderer start).
 - If that save also fails, the window asks first: save a copy, close without saving, or keep the window open. At the
@@ -1772,5 +1781,10 @@ Icons logo that has its own licence.
 - `localStorage` holds about 5 MB per site; versions in IndexedDB do not count. The desktop app has no such limit. A
   typical diagram uses 20 to 80 KB. When storage is full, the app keeps the diagram in memory and asks the user to
   export JSON.
+- A browser can delete the storage of a site that is not persistent: Chromium and Firefox when the disk is almost
+  full, Safari after 7 days of use without a visit. The app calls `navigator.storage.persist()` at a save while the
+  storage is not persistent, at most once a day, because Firefox shows a prompt. The library in browser storage offers one zip
+  file of all diagram files as a backup. Import keeps the id of a diagram when no stored diagram has it, so the links
+  between diagrams stay.
 - SVG export embeds HTML in `foreignObject`. Browsers show it; design tools can show it as one image.
 - Performance budget: about 150 nodes, 200 edges and 600 particles at 60 fps.

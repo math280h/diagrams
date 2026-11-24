@@ -15,8 +15,10 @@ import { describeChange } from '@/model/diagram-diff'
 import { restoreContent } from '@/store/actions'
 import { currentDiagram, flushPendingSave } from '@/store/document'
 import { undo } from '@/store/history'
+import { MERGE_PREVIEW_ID } from '@/store/outside-review'
 import { asVersionAuthor, COMMIT_PREVIEW_ID, previewVersion, useVersions } from '@/store/versions'
 import { versionAuthor, versionMoment } from './format'
+import { MergeReview } from './MergeReview'
 import { restoreVersion } from './restore'
 
 function VersionCanvas({ diagram, viewport }: { diagram: Diagram; viewport: Viewport }) {
@@ -129,8 +131,12 @@ function CommitStatus({ diagram }: { diagram: Diagram }) {
   )
 }
 
-/** Covers the editor canvas with a read-only copy of the version that the user selects in the history panel. */
+/**
+ * Covers the editor canvas with a read-only copy of the version that the user selects in the history panel, or with
+ * the review of a merge.
+ */
 export function HistoryPreview() {
   const previewId = useVersions((state) => state.previewId)
+  if (previewId === MERGE_PREVIEW_ID) return <MergeReview />
   return previewId ? <PreviewLayer id={previewId} /> : null
 }

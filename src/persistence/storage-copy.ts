@@ -16,6 +16,12 @@ export interface StorageCopy {
   removeFailed: string
   /** Where the version history keeps its versions, to end a sentence. */
   versionsPlace: string
+  /** The name of the version from outside on its pane in a merge, for example "On disk". */
+  outsidePane: string
+  /** The short name of the version from outside on a choice button in a merge, for example "Disk". */
+  outsideChoice: string
+  /** Where the version from outside in a merge comes from, after "All", for example "from disk". */
+  fromOutside: string
 }
 
 const BROWSER_COPY: StorageCopy = {
@@ -29,6 +35,9 @@ const BROWSER_COPY: StorageCopy = {
   deleteDetail: 'This removes the diagram and its flows from this browser. You cannot undo it.',
   removeFailed: 'Could not delete the diagram from this browser.',
   versionsPlace: 'in this browser',
+  outsidePane: 'Other tab',
+  outsideChoice: 'Other tab',
+  fromOutside: 'from the other tab',
 }
 
 const FOLDER_COPY: StorageCopy = {
@@ -42,6 +51,9 @@ const FOLDER_COPY: StorageCopy = {
   deleteDetail: 'This moves the diagram file to the trash.',
   removeFailed: 'Could not delete the diagram file.',
   versionsPlace: 'on this computer',
+  outsidePane: 'On disk',
+  outsideChoice: 'Disk',
+  fromOutside: 'from disk',
 }
 
 const PICKED_FOLDER_COPY: StorageCopy = {
@@ -62,6 +74,9 @@ const FOLLOWED_FOLDER_COPY: StorageCopy = {
   deleteDetail: 'This removes the diagram from this tab. The file stays in the folder.',
   removeFailed: 'Could not remove the diagram from this tab.',
   versionsPlace: 'in this browser',
+  outsidePane: 'In the folder',
+  outsideChoice: 'Folder',
+  fromOutside: 'from the folder',
 }
 
 const COPIES: Record<StorageLocation['kind'], StorageCopy> = {
