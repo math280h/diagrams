@@ -26,7 +26,7 @@ describe('noticeLinkedFilesReset', () => {
     const [title, options] = toast.warning.mock.calls[0]!
     expect(title).toBe('The list of opened files was reset')
     expect(options.description).toBe(
-      'The app could not read the whole list. Use Open file to open the missing diagram files again. The old list shows where they are.',
+      'The app could not read the list. Use Open file to open the missing diagrams again.',
     )
     options.action.onClick()
     expect(request).toHaveBeenCalledWith('files.showDamagedList', null)
@@ -37,7 +37,7 @@ describe('noticeLinkedFilesReset', () => {
     noticeLinkedFilesReset({ copyKept: false })
     const [, options] = toast.warning.mock.calls[0]!
     expect(options.description).toBe(
-      'The app could not read the whole list. Use Open file to open the missing diagram files again.',
+      'The app could not read the list. Use Open file to open the missing diagrams again.',
     )
     expect(options.action).toBeUndefined()
   })
