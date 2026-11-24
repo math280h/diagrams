@@ -871,7 +871,7 @@ describe('agent tools', () => {
     const changed = useDoc.getState().flows[0]!
     expect(changed.captionStyle).toBe('subtitle')
     expect(changed.steps[0]!.captionStyle).toBe('none')
-    const read = await call('get_diagram', { detail: 'full' })
+    const read = (await call('get_diagram', { detail: 'full' })) as { flows: Record<string, unknown>[] }
     expect(read.flows[0]).toMatchObject({ captionStyle: 'subtitle', steps: [{ captionStyle: 'none' }, {}] })
 
     await call('update_flow', { flow: 'Ping', steps: { update: [{ index: 0, captionStyle: 'flow' }] } })
