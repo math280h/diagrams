@@ -1465,7 +1465,8 @@ setting turns this off.
   - The script fails when a bundled package gets no component. CI runs the same check on each pull request.
   - The script adds each program in `EMBEDDED_SOFTWARE` inside the package version that holds it, with a purl and a
     CPE. `EMBEDDED_VERSIONS` finds the program versions: Graphviz from the loaded module, llhttp from
-    `deps/llhttp/include/llhttp.h` at the undici release tag on GitHub.
+    `deps/llhttp/include/llhttp.h` at the undici release tag on GitHub, and HashWX from the HashWX commit that
+    capjs-core names at its release tag on GitHub.
   - Electron is a dev dependency, so the script adds it. The script starts the Electron binary with
     `ELECTRON_RUN_AS_NODE` and reads `process.versions`. Chromium, V8 and Node.js go inside Electron. The projects of
     Node.js, such as c-ares, nghttp2, SQLite and libuv, go inside Node.js.
@@ -1765,7 +1766,7 @@ The plugin reads the rules of each style sheet in the bundle and adds those pack
 and shadcn.
 
 Some packages hold another program in compiled form, with its own licence: Graphviz in `@hpcc-js/wasm-graphviz`
-(web worker and main), llhttp in undici (main). `EMBEDDED_SOFTWARE` names each one with its licence text. The build
+(web worker and main), llhttp in undici (main), HashWX in capjs-core (report server). `EMBEDDED_SOFTWARE` names each one with its licence text. The build
 fails when a bundled module loads WebAssembly or holds a base64 WebAssembly module, and its package has no entry.
 
 The report server build writes `report-server/dist/third-party-licenses.txt`, which the image holds next to the server
