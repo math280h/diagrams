@@ -32,6 +32,12 @@ export const EMBEDDED_SOFTWARE: Record<string, { name: string; license: string; 
       source: 'https://gitlab.com/graphviz/graphviz',
       licenseText: 'node_modules/elkjs/LICENSE.md',
     },
+    'capjs-core': {
+      name: 'HashWX',
+      license: 'LGPL-3.0-or-later',
+      source: 'https://github.com/tevador/hashwx',
+      licenseText: 'scripts/licenses/hashwx.txt',
+    },
     undici: {
       name: 'llhttp',
       license: 'MIT',
