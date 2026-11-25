@@ -1,6 +1,7 @@
 import { create } from 'zustand'
-import { createJSONStorage, persist } from 'zustand/middleware'
+import { persist } from 'zustand/middleware'
 import { browserDeviceKind } from '@/lib/device'
+import { localPersistStorage } from '@/lib/persist-storage'
 import type { Diagram } from '@/model/schema'
 import { isDesktop } from './bridge'
 import {
@@ -131,7 +132,7 @@ async function sendToApp(diagram: Diagram, code: string, signal: AbortSignal): P
 }
 
 export const useOpenedInApp = create<{ opened: Record<string, number> }>()(
-  persist(() => ({ opened: {} }), { name: 'dg:opened-in-app', storage: createJSONStorage(() => localStorage) }),
+  persist(() => ({ opened: {} }), { name: 'dg:opened-in-app', storage: localPersistStorage() }),
 )
 
 export function forgetOpenedInApp(id: string) {
@@ -150,7 +151,7 @@ interface DesktopAppSeen {
 export const useDesktopAppSeen = create<DesktopAppSeen>()(
   persist((): DesktopAppSeen => ({ seenAt: null }), {
     name: 'dg:desktop-app-seen',
-    storage: createJSONStorage(() => localStorage),
+    storage: localPersistStorage(),
   }),
 )
 
