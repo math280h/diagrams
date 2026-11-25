@@ -1,4 +1,5 @@
 import type { FileChange } from '@/desktop/contract'
+import { FileLoadError, workerError } from '@/new-version/file-load'
 import { createCachedRepository, type CachedRepository } from '@/persistence/cached-repository'
 import { createFolderFiles, type FolderFiles } from './folder-files'
 import type { FolderWatchReply, FolderWatchRequest } from './folder-watch.worker'
@@ -40,6 +41,11 @@ export async function openFolderSession(folder: FileSystemDirectoryHandle): Prom
     name: 'folder-watch',
   })
   const send = (request: FolderWatchRequest) => worker.postMessage(request, [])
+  worker.onerror = (event) => {
+    const error = workerError(event, 'The folder watcher stopped.', 'The folder watcher did not load.')
+    if (!(error instanceof FileLoadError)) return
+    for (const listener of problemListeners) listener(error.message)
+  }
   worker.onmessage = ({ data }: MessageEvent<FolderWatchReply>) => {
     if (data.kind === 'files') {
       reading = reading

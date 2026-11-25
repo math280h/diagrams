@@ -1,3 +1,4 @@
+import { fetchAppFile } from '@/new-version/file-load'
 import type { StageSession } from './stage-session'
 
 export type VideoFormat = 'mp4' | 'webm' | 'gif'
@@ -63,6 +64,8 @@ export async function recordStage(session: StageSession, options: RecordOptions)
       import('modern-gif'),
       import('modern-gif/worker?url'),
     ])
+    // The encoder of modern-gif waits without end when the script of its worker does not load.
+    await fetchAppFile(workerUrl)
     const encoder = new Encoder({ width, height, workerUrl, maxColors: 255 })
     await renderFrames(session, options, async (frame) => {
       context.drawImage(frame, 0, 0, width, height)

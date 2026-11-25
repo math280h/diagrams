@@ -6,6 +6,7 @@ import {
   lazyRouteComponent,
 } from '@tanstack/react-router'
 import { z } from '@/lib/zod'
+import { pageImport } from '@/new-version/new-version'
 import { LibraryPage } from './library/LibraryPage'
 import { RootLayout } from './RootLayout'
 import { RouteError, RouteNotFound } from './RouteError'
@@ -21,32 +22,47 @@ const libraryRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', c
 const editorRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/d/$diagramId',
-  component: lazyRouteComponent(() => import('./editor/EditorPage'), 'EditorPage'),
+  component: lazyRouteComponent(
+    pageImport(() => import('./editor/EditorPage')),
+    'EditorPage',
+  ),
 })
 
 const playerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/p/$diagramId',
   validateSearch: z.object({ flow: z.string().optional(), from: z.string().optional() }),
-  component: lazyRouteComponent(() => import('./player/PlayerPage'), 'PlayerPage'),
+  component: lazyRouteComponent(
+    pageImport(() => import('./player/PlayerPage')),
+    'PlayerPage',
+  ),
 })
 
 const templateRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/t/$templateId',
-  component: lazyRouteComponent(() => import('./library/TemplatePreview'), 'TemplatePreviewPage'),
+  component: lazyRouteComponent(
+    pageImport(() => import('./library/TemplatePreview')),
+    'TemplatePreviewPage',
+  ),
 })
 
 const releasesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/releases',
-  component: lazyRouteComponent(() => import('./releases/ReleasesPage'), 'ReleasesPage'),
+  component: lazyRouteComponent(
+    pageImport(() => import('./releases/ReleasesPage')),
+    'ReleasesPage',
+  ),
 })
 
 const shareRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/s/$data',
-  component: lazyRouteComponent(() => import('./share/SharePage'), 'SharePage'),
+  component: lazyRouteComponent(
+    pageImport(() => import('./share/SharePage')),
+    'SharePage',
+  ),
 })
 
 const renderRoute = createRoute({ getParentRoute: () => rootRoute, path: '/render', component: () => null })
