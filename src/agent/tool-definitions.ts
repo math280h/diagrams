@@ -1,5 +1,5 @@
 import { z } from '@/lib/zod'
-import { graphvizStyleOfEngine, LAYOUT_DIRECTIONS, LAYOUT_STYLES } from '@/layout/types'
+import { graphvizStyleOfEngine, isLayoutDirection, LAYOUT_DIRECTIONS, LAYOUT_STYLES } from '@/layout/types'
 import { BOUNDARY_PROVIDER_IDS } from '@/model/boundaries'
 import { COLORS } from '@/model/colors'
 import { BUILT_IN_THEME_IDS } from '@/themes/tokens'
@@ -28,6 +28,17 @@ const diagramId = z
 
 const nodeRef = (what: string) =>
   z.string().describe(`${what}: a node id, a ref from this call, or the node label if no other node has it.`)
+
+const layoutDirection = (description: string) =>
+  z
+    .enum(LAYOUT_DIRECTIONS, {
+      error: ({ input }) =>
+        typeof input === 'string' && isLayoutDirection(input.toLowerCase())
+          ? `Write the direction in lowercase: "${input.toLowerCase()}", not "${input}". The directions are ${LAYOUT_DIRECTIONS.join(', ')}.`
+          : undefined,
+    })
+    .optional()
+    .describe(description)
 
 const edgeRef = z
   .string()
@@ -565,10 +576,9 @@ export const TOOL_DEFINITIONS = {
       diagramId,
       nodes: z.array(nodeInput).optional(),
       edges: z.array(edgeInput).optional(),
-      direction: z
-        .enum(LAYOUT_DIRECTIONS)
-        .optional()
-        .describe('The direction of automatic placement for new connected nodes. The default is RIGHT.'),
+      direction: layoutDirection(
+        'The direction of automatic placement for new connected nodes: right, down, left or up. The default is right.',
+      ),
     }),
     annotations: ADD,
     timeoutMs: LONG_MS,
@@ -606,10 +616,9 @@ export const TOOL_DEFINITIONS = {
         .describe(
           'flow (the default) puts layers along the direction, for request paths and layered architectures, and lines up nodes across groups. tree: a hierarchy from one root. hub: one central node, such as an event bus or a gateway, with the others around it. network: a mesh with many connections and no main direction. grid: compact rows for an inventory with few connections. lanes: each top-level group becomes a lane, such as a team or a tier (clients, edge, services, data); columns follow the edges and line up across lanes. The Graphviz layouts: graphviz-layers (layers along the direction, as in flow), graphviz-spring (a network in which each edge gets about the same length), graphviz-force (a network in which the nodes push apart and the edges pull them together), graphviz-circle (nodes on a circle, for rings and cycles), graphviz-radial (rings around center), graphviz-packed (boxes packed in rows). Except flow and lanes, each group is arranged on its own. network uses grid in a group with more than 80 nodes.',
         ),
-      direction: z
-        .enum(LAYOUT_DIRECTIONS)
-        .optional()
-        .describe('The main direction of the edges, for flow, tree, lanes and graphviz-layers. The default is RIGHT.'),
+      direction: layoutDirection(
+        'The main direction of the edges, for flow, tree, lanes and graphviz-layers: right, down, left or up. The default is right.',
+      ),
       center: nodeRef(
         'The node in the middle of a hub or graphviz-radial layout. The default is the node with the most edges',
       ).optional(),

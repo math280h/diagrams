@@ -192,10 +192,10 @@ export function CommandMenu() {
           >
             <Pin /> Pin or unpin the selection
           </CommandItem>
-          <CommandItem onSelect={run(() => void tidyUp('RIGHT', fit))}>
+          <CommandItem onSelect={run(() => void tidyUp('right', fit))}>
             <LayoutGrid /> Tidy up, left to right
           </CommandItem>
-          <CommandItem onSelect={run(() => void tidyUp('DOWN', fit))}>
+          <CommandItem onSelect={run(() => void tidyUp('down', fit))}>
             <LayoutList /> Tidy up, top to bottom
           </CommandItem>
           <CommandItem

@@ -2,7 +2,14 @@ import type { ELK, ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk-api'
 import { GROUP_PADDING_PX } from '@/model/graph'
 import type { XY } from '@/model/schema'
 import type { LayoutTree } from './tree'
-import { roundHalf, type LayoutDirection, type LayoutRequest, type LayoutResponse, type PlacedNode } from './types'
+import {
+  ELK_DIRECTIONS,
+  roundHalf,
+  type LayoutDirection,
+  type LayoutRequest,
+  type LayoutResponse,
+  type PlacedNode,
+} from './types'
 
 /** Returns spacing options for the root and for each group. ELK reads spacing from the parent of each node. */
 export function spacingOptions(layerGapPx: number) {
@@ -29,7 +36,7 @@ const ELK_GROUP_PADDING = `[top=${GROUP_PADDING_PX.top},left=${GROUP_PADDING_PX.
 function groupOptions(minWidth: number, direction: LayoutDirection, layerGapPx: number) {
   return {
     ...spacingOptions(layerGapPx),
-    'elk.direction': direction,
+    'elk.direction': ELK_DIRECTIONS[direction],
     'elk.padding': ELK_GROUP_PADDING,
     'elk.nodeSize.constraints': 'MINIMUM_SIZE',
     'elk.nodeSize.minimum': `(${minWidth}, 0)`,
@@ -68,7 +75,7 @@ export async function layoutHierarchy(elk: ELK, request: LayoutRequest, tree: La
       'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
       'elk.json.edgeCoords': 'ROOT',
       ...spacingOptions(request.layerGapPx),
-      'elk.direction': request.direction,
+      'elk.direction': ELK_DIRECTIONS[request.direction],
     },
     children: [],
     edges: request.edges.map((edge): ElkExtendedEdge => ({

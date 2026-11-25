@@ -1,7 +1,7 @@
 import type { ELK, ElkExtendedEdge, LayoutOptions } from 'elkjs/lib/elk-api'
 import type { XY } from '@/model/schema'
 import { graphvizPositions, type GraphvizRunner } from './graphviz'
-import { GRAPHVIZ_STYLE_ENGINES, isGraphvizStyle, type LayoutRequest, type LayoutStyle } from './types'
+import { ELK_DIRECTIONS, GRAPHVIZ_STYLE_ENGINES, isGraphvizStyle, type LayoutRequest, type LayoutStyle } from './types'
 
 export interface LevelBox {
   id: string
@@ -24,7 +24,7 @@ const GRID_ASPECT = 1.6
 function treeOptions(request: LayoutRequest): LayoutOptions {
   return {
     'elk.algorithm': 'mrtree',
-    'elk.direction': request.direction,
+    'elk.direction': ELK_DIRECTIONS[request.direction],
     'elk.spacing.nodeNode': String(Math.max(BOX_GAP_PX, request.layerGapPx / 2)),
   }
 }

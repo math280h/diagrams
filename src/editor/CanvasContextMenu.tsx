@@ -184,10 +184,10 @@ export function CanvasContextMenu({ target, children }: { target: ContextTarget;
               <MousePointerSquareDashed /> Select all <ContextMenuShortcut>{KEYS.selectAll}</ContextMenuShortcut>
             </ContextMenuItem>
             <ContextMenuSeparator />
-            <ContextMenuItem onClick={() => tidyUp('RIGHT', fitToScreen)}>
+            <ContextMenuItem onClick={() => tidyUp('right', fitToScreen)}>
               <LayoutGrid /> Tidy up, left to right
             </ContextMenuItem>
-            <ContextMenuItem onClick={() => tidyUp('DOWN', fitToScreen)}>
+            <ContextMenuItem onClick={() => tidyUp('down', fitToScreen)}>
               <LayoutGrid className="rotate-90" /> Tidy up, top to bottom
             </ContextMenuItem>
             <ContextMenuItem onClick={fitToScreen}>

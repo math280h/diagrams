@@ -24,7 +24,7 @@ export async function traceToDiagram(
   name?: string,
 ): Promise<Diagram> {
   const plan = planTraceFlow(walkTrace(trace), { nodes: [], edges: [] }, iconSets)
-  const laidOut = await layout(plan.nodes, plan.edges, 'RIGHT')
+  const laidOut = await layout(plan.nodes, plan.edges, 'right')
   return {
     ...createDiagram(name || plan.flow.name),
     nodes: laidOut.nodes.map(toStoredNode),
@@ -44,7 +44,7 @@ export async function placeTraceFlow(
     added: plan.nodes,
     fixed: new Set(),
     edges: [...diagram.edges, ...plan.edges],
-    direction: 'RIGHT',
+    direction: 'right',
     layout,
   })
   const edges = plan.edges.map((edge): DiagramEdge => {

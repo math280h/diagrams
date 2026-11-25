@@ -65,7 +65,7 @@ function hub(): LayoutRequest {
     if (previous) b.edge(previous, api)
     previous = api
   }
-  return { nodes: b.nodes, edges: b.edges, direction: 'DOWN', layerGapPx: 120, style: 'flow' }
+  return { nodes: b.nodes, edges: b.edges, direction: 'down', layerGapPx: 120, style: 'flow' }
 }
 
 /** A tiered flow: a client, then edge, app and data groups. */
@@ -81,7 +81,7 @@ function tiers(): LayoutRequest {
   b.edge(client, lb)
   b.edge(lb, api)
   b.edge(api, db)
-  return { nodes: b.nodes, edges: b.edges, direction: 'RIGHT', layerGapPx: 120, style: 'flow' }
+  return { nodes: b.nodes, edges: b.edges, direction: 'right', layerGapPx: 120, style: 'flow' }
 }
 
 describe('computeLayout', () => {
@@ -179,7 +179,7 @@ function orgChart(): LayoutRequest {
     b.edge(root, lead)
     for (const report of ['a', 'b']) b.edge(lead, b.card(`${lead}-${report}`))
   }
-  return { nodes: b.nodes, edges: b.edges, direction: 'DOWN', layerGapPx: 120, style: 'tree' }
+  return { nodes: b.nodes, edges: b.edges, direction: 'down', layerGapPx: 120, style: 'tree' }
 }
 
 /** A bus with eight spokes, two of which also talk to each other. */
@@ -191,7 +191,7 @@ function star(center?: string): LayoutRequest {
   return {
     nodes: b.nodes,
     edges: b.edges,
-    direction: 'RIGHT',
+    direction: 'right',
     layerGapPx: 120,
     style: 'hub',
     ...(center ? { center } : {}),
@@ -214,7 +214,7 @@ describe('layout styles', () => {
   it.each(['flow', 'tree', 'hub', 'network', 'grid'] as const)(
     'lays out a diagram without nodes with %s',
     async (style) => {
-      const request: LayoutRequest = { nodes: [], edges: [], direction: 'RIGHT', layerGapPx: 120, style }
+      const request: LayoutRequest = { nodes: [], edges: [], direction: 'right', layerGapPx: 120, style }
       expect(await computeLayout(elk, request)).toEqual({ nodes: [], routes: {} })
     },
   )
@@ -249,7 +249,7 @@ describe('layout styles', () => {
   it('packs unconnected cards into a compact grid', async () => {
     const b = builder()
     for (let card = 0; card < 12; card++) b.card(`c${card}`)
-    const request: LayoutRequest = { nodes: b.nodes, edges: [], direction: 'RIGHT', layerGapPx: 120, style: 'grid' }
+    const request: LayoutRequest = { nodes: b.nodes, edges: [], direction: 'right', layerGapPx: 120, style: 'grid' }
     const rects = [...absolute((await computeLayout(elk, request)).nodes, request).values()]
     const width = Math.max(...rects.map((rect) => rect.x + rect.width)) - Math.min(...rects.map((rect) => rect.x))
     const height = Math.max(...rects.map((rect) => rect.y + rect.height)) - Math.min(...rects.map((rect) => rect.y))
@@ -263,7 +263,7 @@ describe('layout styles', () => {
     const request: LayoutRequest = {
       nodes: b.nodes,
       edges: b.edges,
-      direction: 'RIGHT',
+      direction: 'right',
       layerGapPx: 120,
       style: 'network',
     }
@@ -281,7 +281,7 @@ describe('layout styles', () => {
     const request: LayoutRequest = {
       nodes: b.nodes,
       edges: b.edges,
-      direction: 'RIGHT',
+      direction: 'right',
       layerGapPx: 120,
       style: 'network',
     }
@@ -374,7 +374,7 @@ describe('Graphviz layouts', () => {
     const request: LayoutRequest = {
       nodes: b.nodes,
       edges: b.edges,
-      direction: 'RIGHT',
+      direction: 'right',
       layerGapPx: 120,
       style: 'graphviz-circle',
     }
@@ -425,7 +425,7 @@ function lanesRequest(direction: LayoutRequest['direction']): LayoutRequest {
 
 describe('lanes', () => {
   it('stacks the top-level groups as lanes of one width, with columns that follow the edges', async () => {
-    const request = lanesRequest('RIGHT')
+    const request = lanesRequest('right')
     const rects = absolute((await computeLayout(elk, request)).nodes, request)
     const lanes = ['clients', 'services', 'data'].map((id) => rects.get(id)!)
     expect(new Set(lanes.map((lane) => Math.round(lane.width))).size).toBe(1)
@@ -441,7 +441,7 @@ describe('lanes', () => {
   })
 
   it('turns the lanes into columns with DOWN', async () => {
-    const request = lanesRequest('DOWN')
+    const request = lanesRequest('down')
     const rects = absolute((await computeLayout(elk, request)).nodes, request)
     const lanes = ['clients', 'services', 'data'].map((id) => rects.get(id)!)
     expect(new Set(lanes.map((lane) => Math.round(lane.height))).size).toBe(1)

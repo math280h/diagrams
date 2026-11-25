@@ -45,15 +45,15 @@ export function laneColumns(units: readonly string[], links: readonly [string, s
 /**
  * Arranges the top-level groups as lanes. Each box in a lane gets a column from the edges, the columns line up across
  * all lanes, and all lanes get the same length. Top-level nodes outside every group get a band before the first lane.
- * The direction runs along the lanes; with RIGHT or LEFT the lanes are rows, with DOWN or UP they are columns.
+ * The direction runs along the lanes; with right or left the lanes are rows, with down or up they are columns.
  *
  * @param placed - A flow layout of the whole request, which gives the sizes and the inside of each box.
  * @returns The nodes with new positions for the lanes and their boxes, and new sizes for the lanes.
  */
 export function laneLayout(request: LayoutRequest, tree: LayoutTree, placed: readonly PlacedNode[]): PlacedNode[] {
   const byId = new Map(placed.map((node) => [node.id, node]))
-  const rows = request.direction === 'RIGHT' || request.direction === 'LEFT'
-  const reversed = request.direction === 'LEFT' || request.direction === 'UP'
+  const rows = request.direction === 'right' || request.direction === 'left'
+  const reversed = request.direction === 'left' || request.direction === 'up'
   const lanes = (tree.children.get(null) ?? []).filter((id) => tree.isContainer(id))
   const laneSet = new Set(lanes)
   const unitOf = (id: string) => {

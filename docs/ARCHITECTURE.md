@@ -665,6 +665,9 @@ clear routes. Agent placement snaps a new block's origin, not each node, to the 
 ### Layout styles
 
 `layout_diagram` takes a `layout` (`LAYOUT_STYLES` in `src/layout/types.ts`). Tidy up and Mermaid import use `flow`.
+The `direction` of a layout is `right`, `down`, `left` or `up`, in lowercase as the edge sides. A direction tells where
+the edges go, so it uses `down` and `up`, not the side names `bottom` and `top`. Only `ELK_DIRECTIONS` changes it to
+the ELK value. The tools reject an uppercase ELK value with an error that names the lowercase value.
 
 | Style             | Use                                                        | Engine                                       |
 | ----------------- | ---------------------------------------------------------- | -------------------------------------------- |
@@ -693,7 +696,7 @@ clear routes. Agent placement snaps a new block's origin, not each node, to the 
 - `lanes` uses a `flow` layout for the inside of each box. Then each top-level group becomes a lane, in the order of the
   diagram, with the same length for all lanes. Each box in a lane gets a column from the longest path in the edges
   (`laneColumns`); the columns are the same in all lanes. Top-level nodes outside every group get a band before the
-  first lane. With `RIGHT` or `LEFT` the lanes are rows; with `DOWN` or `UP` they are columns.
+  first lane. With `right` or `left` the lanes are rows; with `down` or `up` they are columns.
 - Graphviz comes from `@hpcc-js/wasm-graphviz`, with the WebAssembly module inline. Each level is a flat graph with
   fixed node sizes in points; `neato` and `fdp` get `start=1` for the same result each time.
 - The name of a Graphviz style tells the shape of the result, because many users do not know the engine names. Only
@@ -704,7 +707,7 @@ clear routes. Agent placement snaps a new block's origin, not each node, to the 
   page, and the page sends it to the main process (`layout.graphviz`, `electron/graphviz.ts`), where Node runs Graphviz.
   The website has no such policy; its worker loads the Graphviz chunk (about 820 kB) only for a Graphviz layout.
 - Graphviz is EPL-2.0, so `third-party-licenses.txt` and `third-party-licenses.main.txt` list it with the licence text.
-- The style is a parameter of the request. The diagram does not store it.
+- The style and the direction are parameters of the request. The diagram does not store them.
 - Rejected engines: ELK `force` gave worse results than `stress`; dagre repeats `layered` and has open bugs with
   nested groups; cytoscape fCoSE is not deterministic; WebCola has no maintenance; MSAGL and libavoid failed earlier
   (see "Stack and why").
