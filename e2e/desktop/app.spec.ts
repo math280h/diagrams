@@ -1,10 +1,11 @@
+import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { Client } from '@modelcontextprotocol/client'
 import type { ElectronApplication, Page } from '@playwright/test'
 import { AUTOSTART_FILE, BACKGROUND_ARG } from '@/desktop/constants'
 import { IPC_CHANNELS } from '@/desktop/contract'
-import { OPEN_AT_LOGIN_LABEL } from '@/desktop/keep-running'
+import { keepRunningHint, OPEN_AT_LOGIN_LABEL } from '@/desktop/keep-running'
 import { copyTemplate } from '../helpers'
 import { callTool, connectAgent, diagramFile, expect, launchElectron, test, untilExit } from './fixtures'
 
@@ -95,6 +96,70 @@ test('answers an agent call that comes while the window closes, in a new window'
   expect(JSON.stringify(json)).toContain('Before the close')
   await closed
   await reopened
+})
+
+test('opens the window again when the user starts the app again after the window closes', async ({
+  app,
+  window,
+  launchWithArgs,
+}) => {
+  const closed = window.waitForEvent('close')
+  await closeWindow(app, window)
+  await closed
+  expect(app.process().exitCode).toBeNull()
+
+  const reopened = app.waitForEvent('window')
+  await launchWithArgs([])
+  const page = await reopened
+  await expect(page.locator('header').first()).toBeVisible({ timeout: 30_000 })
+  expect(app.process().exitCode).toBeNull()
+})
+
+function hasProgram(command: string) {
+  const { error } = spawnSync(command, ['--help'], { stdio: 'ignore' })
+  return !(error && 'code' in error && error.code === 'ENOENT')
+}
+
+/** Starts a session bus of its own, on which no program owns the name of a tray host. */
+function privateSessionBus(): Promise<{ address: string; stop: () => void } | null> {
+  if (!hasProgram('gdbus') && !hasProgram('dbus-send')) return Promise.resolve(null)
+  const daemon = spawn('dbus-daemon', ['--session', '--nofork', '--print-address=1'], {
+    stdio: ['ignore', 'pipe', 'ignore'],
+  })
+  return new Promise((resolve) => {
+    let output = ''
+    daemon.once('error', () => resolve(null))
+    daemon.once('exit', () => resolve(null))
+    daemon.stdout.on('data', (chunk: Buffer) => {
+      output += chunk.toString()
+      const address = output.split('\n', 1)[0]
+      if (output.includes('\n') && address) resolve({ address, stop: () => daemon.kill() })
+    })
+  })
+}
+
+test('tells how to get the window back on Linux without a tray host, and quits from the app settings', async ({
+  appEnv,
+}) => {
+  test.skip(process.platform !== 'linux', 'Only Linux desktops can have no tray host.')
+  const bus = await privateSessionBus()
+  if (!bus) {
+    test.skip(true, 'This system has no dbus-daemon, or neither gdbus nor dbus-send.')
+    return
+  }
+  const app = await launchElectron({ args: ['.'], env: { ...appEnv, DBUS_SESSION_BUS_ADDRESS: bus.address } })
+  try {
+    const window = await app.firstWindow()
+    await window.getByRole('banner').getByRole('button', { name: 'App settings' }).click()
+    const dialog = window.getByRole('dialog', { name: 'App settings' })
+    await expect(dialog.getByText(keepRunningHint('linux', 'missing'))).toBeVisible({ timeout: 30_000 })
+    const exit = untilExit(app)
+    await dialog.getByRole('button', { name: 'Quit', exact: true }).click()
+    await exit
+  } finally {
+    if (app.process().exitCode === null) await app.close()
+    bus.stop()
+  }
 })
 
 test('quits when the window closes after the user turns off keep running', async ({ appEnv, dirs }) => {

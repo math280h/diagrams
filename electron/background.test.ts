@@ -8,7 +8,7 @@ const electron = vi.hoisted(() => {
     destroy: vi.fn(),
     displayBalloon: vi.fn(),
   }
-  const notification = { show: vi.fn() }
+  const notification = { show: vi.fn(), close: vi.fn(), on: vi.fn() }
   const image = { resize: vi.fn(() => ({ toPNG: () => new Uint8Array() })), addRepresentation: vi.fn() }
   return {
     tray,
@@ -113,6 +113,76 @@ describe('createBackground', () => {
     expect(electron.notification.show).toHaveBeenCalledTimes(1)
     electron.Notification.isSupported.mockReturnValue(false)
     expect(background.notify()).toBe(false)
+  })
+
+  it('keeps the one-time notice of the tray on Linux with a tray host, without a click action', async () => {
+    const { createBackground } = await loadBackground('linux')
+    const background = createBackground({ open: vi.fn(), quit: vi.fn(), host: 'present' })
+    background.follow(true)
+    expect(background.notify()).toBe(true)
+    expect(electron.Notification).toHaveBeenCalledWith({
+      title: 'Diagrams is still running',
+      body: 'Agents can still connect. To quit, use the Diagrams icon in the system tray.',
+    })
+    expect(electron.notification.on).not.toHaveBeenCalled()
+    expect(electron.notification.close).not.toHaveBeenCalled()
+  })
+
+  it('tells how to get the window back on Linux without a tray host, and opens the window on a click', async () => {
+    const { createBackground } = await loadBackground('linux')
+    const open = vi.fn()
+    const background = createBackground({ open, quit: vi.fn(), host: 'missing' })
+    background.follow(true)
+    expect(background.notify()).toBe(true)
+    expect(electron.Notification).toHaveBeenCalledWith({
+      title: 'Diagrams is still running',
+      body: expect.stringContaining('start Diagrams again'),
+    })
+    const [event, onClick] = electron.notification.on.mock.calls[0] as [string, () => void]
+    expect(event).toBe('click')
+    onClick()
+    expect(open).toHaveBeenCalledTimes(1)
+    expect(electron.notification.close).not.toHaveBeenCalled()
+
+    expect(background.notify()).toBe(true)
+    expect(electron.notification.close).toHaveBeenCalledTimes(1)
+    expect(electron.notification.show).toHaveBeenCalledTimes(2)
+
+    expect(background.notify('started')).toBe(true)
+    expect(electron.Notification).toHaveBeenLastCalledWith({
+      title: 'Diagrams is running',
+      body: expect.stringContaining('click this notice'),
+    })
+    expect(electron.notification.on).toHaveBeenCalledTimes(3)
+  })
+
+  it('makes the tray icon again when a tray host starts after the icon', async () => {
+    const { createBackground } = await loadBackground('linux')
+    const background = createBackground({ open: vi.fn(), quit: vi.fn(), host: 'missing' })
+    background.setHost('missing')
+    background.follow(true)
+    expect(electron.Tray).toHaveBeenCalledTimes(1)
+
+    background.setHost('present')
+    expect(electron.tray.destroy).toHaveBeenCalledTimes(1)
+    expect(electron.Tray).toHaveBeenCalledTimes(2)
+    expect(electron.tray.setContextMenu).toHaveBeenCalledTimes(2)
+    background.setHost('present')
+    expect(electron.Tray).toHaveBeenCalledTimes(2)
+
+    background.setHost('missing')
+    expect(electron.tray.destroy).toHaveBeenCalledTimes(1)
+    background.notify()
+    expect(electron.notification.on).toHaveBeenCalledWith('click', expect.any(Function))
+  })
+
+  it('makes no tray icon for a host that starts while the app shows none', async () => {
+    const { createBackground } = await loadBackground('linux')
+    const background = createBackground({ open: vi.fn(), quit: vi.fn(), host: 'missing' })
+    background.setHost('present')
+    expect(electron.Tray).not.toHaveBeenCalled()
+    background.follow(true)
+    expect(electron.Tray).toHaveBeenCalledTimes(1)
   })
 
   it('uses the menu bar on macOS: a template icon, the menu on a click, and no Dock icon without a window', async () => {
