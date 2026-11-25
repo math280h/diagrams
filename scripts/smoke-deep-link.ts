@@ -102,8 +102,9 @@ async function openLink(appImage: string, temp: string) {
   const entry = readFileSync(linkEntryFile(temp), 'utf8')
   if (!entry.includes(`\nTryExec=${appImage}\n`)) throw new Error(`The entry does not name ${appImage}:\n${entry}`)
   const env = await appEnv(temp, 'link')
-  console.log(`Opening ${CONNECT_AGENT_LINK} with xdg-open. The handler is ${linkHandler(env)}.`)
-  const opener = startGroup('xdg-open', [CONNECT_AGENT_LINK], { ...env, XDG_UTILS_DEBUG_LEVEL: '3' })
+  console.log(`Opening ${CONNECT_AGENT_LINK} with xdg-open. The handler is ${linkHandler(env)}.\n${entry}`)
+  const xdgOpen = execFileSync('sh', ['-c', 'command -v xdg-open'], { env }).toString().trim()
+  const opener = startGroup('sh', ['-x', xdgOpen, CONNECT_AGENT_LINK], { ...env, XDG_UTILS_DEBUG_LEVEL: '3' })
   const failed = () =>
     opener.exitCode !== null && opener.exitCode !== 0 ? `xdg-open stopped with exit code ${opener.exitCode}` : null
   try {
