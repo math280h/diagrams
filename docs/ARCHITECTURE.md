@@ -1325,6 +1325,10 @@ with snapdom, because Chromium gives only pixels.
   background.
 - Main writes atomically (temporary file, then rename) and retries the rename: Windows antivirus and OneDrive can hold
   a file.
+- A write that fails removes its temporary file, because a full disk otherwise gets one more partial file at each save.
+  The file list and the rescan remove temporary files that a crash left (`temp-files.ts`). They remove only the names
+  that main makes for a known file. A second app or computer can write in the same folder, so a file must be one hour
+  old.
 - A file list waits for queued writes, so a reload after a change cannot read the old file.
 - A folder watcher and a focus rescan report outside changes. A digest, size and change time per file tell outside
   changes from app writes. A known size and change time skip the read.

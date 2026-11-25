@@ -1,9 +1,10 @@
-import { createHash, randomBytes } from 'node:crypto'
-import { mkdir, open, readFile, rename, rm } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { mkdir, open, readFile, rename } from 'node:fs/promises'
 import path from 'node:path'
 import type { FileChange, LinkedFilesReset, StoredFile } from '@/desktop/contract'
 import { LINKED_ID_PREFIX } from '@/desktop/constants'
 import { createFileQueue, errorCode } from './file-queue'
+import { removeStaleTempFilesOf, writeThroughTemp } from './temp-files'
 
 /** Returns the id of a linked file. The same file always gets the same id. */
 export function linkedIdOf(file: string): string {
@@ -33,8 +34,7 @@ function parseRegistry(text: string): { files: string[]; damaged: boolean } {
 
 async function writeFlushed(file: string, text: string) {
   await mkdir(path.dirname(file), { recursive: true })
-  const temp = `${file}.tmp-${randomBytes(4).toString('hex')}`
-  try {
+  await writeThroughTemp(file, async (temp) => {
     const handle = await open(temp, 'w')
     try {
       await handle.writeFile(text, 'utf8')
@@ -43,10 +43,7 @@ async function writeFlushed(file: string, text: string) {
       await handle.close()
     }
     await rename(temp, file)
-  } catch (error) {
-    await rm(temp, { force: true })
-    throw error
-  }
+  })
 }
 
 function damagedCopyOf(registryFile: string) {
@@ -59,6 +56,7 @@ function damagedCopyOf(registryFile: string) {
  *
  * The list of files lives in `registryFile`. Removing a linked diagram only takes it off the list; the file stays.
  * A damaged list does not stop the app: the app moves it to a copy next to it and keeps the entries that it can read.
+ * `readAll` and `rescan` also remove old temporary files that this app made for the list or for a linked file.
  */
 export function createLinkedFiles(registryFile: string) {
   const links = new Map<string, string>()
@@ -136,7 +134,10 @@ export function createLinkedFiles(registryFile: string) {
     async readAll(): Promise<StoredFile[]> {
       await readyOrEmpty()
       await queue.drain()
-      const files = await Promise.all([...links.keys()].map(read))
+      const [files] = await Promise.all([
+        Promise.all([...links.keys()].map(read)),
+        removeStaleTempFilesOf([registryFile, ...links.values()]),
+      ])
       return files.filter((file): file is StoredFile => file !== null)
     },
 
@@ -197,7 +198,10 @@ export function createLinkedFiles(registryFile: string) {
     /** Checks every linked file again and returns every change since the last check. */
     async rescan(): Promise<FileChange[]> {
       await readyOrEmpty()
-      const changes = await Promise.all([...links.keys()].map(queue.inspect))
+      const [changes] = await Promise.all([
+        Promise.all([...links.keys()].map(queue.inspect)),
+        removeStaleTempFilesOf([...links.values()]),
+      ])
       return changes
         .filter((change): change is FileChange => change !== null)
         .map((change) => (change.kind === 'changed' ? { ...change, path: links.get(change.id) } : change))
