@@ -53,6 +53,7 @@ Each pull request becomes one commit on `main`, with the pull request title as i
 ## How the code is written
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) explains the parts of the app and why they work as they do.
+- [docs/BUILD.md](docs/BUILD.md) explains the build, the package rules, the tests, CI and the release tooling.
 - [DESIGN.md](DESIGN.md) is the design system: colours, type, components and the rules for each.
 - [CLAUDE.md](CLAUDE.md) holds the project conventions. It is written for AI coding agents, but the rules are the same
   for people. Read its section on code comments: the default is no comment, and a comment that only repeats the code

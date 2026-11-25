@@ -305,9 +305,14 @@ only on wires.
 
 ### Primary
 
-- **Signal Blue** (signal): walkthrough on edges without a protocol; token dot and chip before the first protocol hop;
-  active node ring; active and hovered boundary outline (2 px); active log dot; caption step badge; library stage header
-  flow dot; focus outline; caret; selection tint (34% mix); token in the app mark and favicon.
+- **Signal Blue** (signal):
+  - Walkthrough: edges without a protocol; token dot and chip before the first protocol hop; active node ring; active
+    and hovered boundary outline (2 px); step badge of the caption bar, subtitle and callout; flow dot in the library
+    stage header and the theme swatch; token in the app mark and favicon.
+  - Flow panel: active log dot; 2 px bar on log rows of a path; selected log rows (12% tint, 18% on hover); overview
+    steps on the timeline (15% tint).
+  - Other: the current conflict in the merge review; latency bars in the trace picture of the Features section.
+  - Keyboard and text: focus outline; caret; text selection (34% mix).
 - **Signal Ink** (signal-ink): text on Signal Blue; white in both themes, black in the dark high-contrast canvas.
 
 ### Secondary
@@ -355,19 +360,18 @@ colours" off: all wires neutral edge grey.
 
 ### Themes
 
-Per viewer, not per diagram: Mode (System, Light, Dark), a light theme and a dark theme on the App tab of Settings, and
-in the library theme menu and the command menu. Exports use the theme on screen, or a theme that the export dialog
-picks. Built-in themes: `src/themes/built-in/*.theme.json`; users add `.theme.json` files.
+A theme belongs to the viewer, not to the diagram. The viewer picks a mode (System, Light, Dark), a light theme and a
+dark theme. Exports use the theme on screen, or a theme that the export dialog picks. Built-in themes are in
+`src/themes/built-in/*.theme.json`; users add `.theme.json` files.
 
 - Light and Dark: the system on this page. The other themes keep its structure and roles, with their own neutrals and
   their own signal colour:
-  - Graphite (dark): soft pencil grey in place of pure black, for long sessions. Signal #5b93ff.
-  - Blueprint (dark): a cyanotype drawing, Prussian blue sheet and white lines. Signal: highlighter yellow #ffd84a; warn
-    moves to orange.
-  - Circuit (dark): solder-mask green, copper traces for plain connections, white print. Signal: LED blue #63b3ff.
-  - Dusk (dark): violet evening. Signal: apricot #ffa36c; warn moves to yellow.
-  - Graph paper (light): pale green paper with a green grid, pencil text. Signal: pen blue #1f4fd1.
-  - Fog (light): overcast grey, less glare than white. Signal: indigo #4a46d8.
+  - Graphite (dark): soft pencil grey in place of pure black. Signal #5b93ff.
+  - Blueprint (dark): Prussian blue sheet, white lines. Signal: yellow #ffd84a; warn moves to orange.
+  - Circuit (dark): solder-mask green, copper traces for plain connections, white print. Signal #63b3ff.
+  - Dusk (dark): violet. Signal: apricot #ffa36c; warn moves to yellow.
+  - Graph paper (light): pale green paper with a green grid, pencil text. Signal #1f4fd1.
+  - Fog (light): overcast grey. Signal: indigo #4a46d8.
 - A palette hue that is near the signal colour gets less chroma, as boundary blue does in Light and Dark.
 
 ### High contrast
@@ -379,7 +383,8 @@ asks for more contrast, the app shows the high contrast theme of the base, as Se
 - Node Line, Strong Line, Edge, Edge Strong, Signal Blue, protocol wires, coloured card outlines: 4.5:1 on Ground and
   Node Fill. Dim Line: 3:1, so idle flow nodes still show.
 - Node Fill moves closer to Ground; outlines separate nodes. App text, borders and inputs get stronger too.
-- Same hues; light values at lower OKLCH lightness. Dark: Signal Blue lighter (#5e97ff), Signal Ink black.
+- Same hues; light values at lower OKLCH lightness. Light: Signal Blue darker (#0046d8). Dark: Signal Blue lighter
+  (#5e97ff), Signal Ink black.
 - Dimmed opacity (standard in parentheses): nodes outside the explored neighbourhood 45% (16%); threat view connections
   without sensitive data 50% (25%); idle node art in a flow 70% (40%).
 - `src/styles/contrast.browser.test.ts` checks every pair of every built-in theme, at 7:1 and 4.5:1 for a high contrast
@@ -387,9 +392,11 @@ asks for more contrast, the app shows the high contrast theme of the base, as Se
 
 ### Named Rules
 
-**The One Signal Rule.** Signal Blue: walkthrough or keyboard only; never a button, link, badge, chart, node kind or
-boundary style. Neither boundary nor protocol palette has a saturated blue. Another theme keeps the rule with its own
-signal colour.
+**The One Signal Rule.** Signal Blue marks the current position. In the walkthrough, that is the token, the active
+elements, the step badges and the flow steps in the log and the timeline. In the merge review, it is the current
+conflict. For the keyboard, it is the focus, the caret and the text selection. The trace picture of the Features
+section also uses it for latency bars. It is never a button, link, node kind, boundary style or status. Neither
+boundary nor protocol palette has a saturated blue. Another theme keeps the rule with its own signal colour.
 
 **The Protocol Owns the Wire Rule.** A protocol hue colours only its wire: line, arrowhead, traffic, label, and the
 token on or just off that wire. Visited and active edges: 2 px, protocol text colour. HTTP is lime, not amber, so it
@@ -413,8 +420,8 @@ Plex. Chrome stays on Host Grotesk.
 ### Hierarchy
 
 - **Display** (500, 48px, 36px below 640px, 1.04, -0.03em, balanced wrap): first-run library headline.
-- **Section display** (500, 36px, 30px below 640px, 1.1, -0.03em, balanced wrap): first-run "What you can do", so
-  features read as their own chapter under the stage.
+- **Section display** (500, 36px, 30px below 640px, 1.1, -0.03em, balanced wrap): the first-run sections under the
+  stage ("What you can do", privacy).
 - **Headline** (500, 24px, -0.02em): returning library "Your diagrams".
 - **Title** (500, 20px, -0.015em): library section headings; caption subtitle (28px line, 17px below 560px).
 - **Card name** (500, 15px, -0.01em): library card names; wordmark at -0.02em.
@@ -434,56 +441,43 @@ Plex. Chrome stays on Host Grotesk.
 Card detail lines use mono only as identifiers (no spaces and a non-letter, a path, or a port); prose like "Go, 3
 replicas" stays sans.
 
-**The Tight From Twenty Rule.** From 20px: weight 500, negative tracking (-0.015em at 20px, -0.03em from 28px). Never
-above 500.
+**The Tight From Twenty Rule.** From 20px: weight 500, negative tracking (-0.015em at 20px, -0.03em from 28px).
+
+**The Two Weights Rule.** App chrome and canvas text use 400 and 500 only. Emphasis inside body text is 500. The canvas
+step number is the one exception, at 11px and 600 in a 20px badge.
 
 **The Sentence Case Rule.** Sentence case, plain words. No uppercase labels or letter-spaced headings.
 
 ## Layout
 
-- **Top bar:** 44px, chrome fill, hairline below; side padding 6px (editor, Present), 12px (library). Library: mark,
-  wordmark, agent button (desktop app, and website with a folder), GitHub link, theme, Import (ghost), New diagram
-  (primary).
-- **Library, first run:** centred column, max 1152px.
-  - Headline and support line; agent introduction beside them from 1280px (384px column, bottom-aligned; offer on top,
-    stage above the fold), else under.
-  - Full-width stage, 16px corners: window height less 360px, clamped 360–620px, so the stage and its captions fit
-    1280×720. Loops the Order system flow with captions.
-  - Features 80px under the stage.
-  - Other templates as live cards under "More templates", two per row from 640px.
-  - Install offer on tablets.
-- **Library, returning:** agent introduction; "Your diagrams" with count and 256px search; 1–3 column card grid;
-  storage line (on the website also the folder: open, close, or show only to read); live template cards (1–3 columns)
-  under "Templates" with the first-run hint.
-- **Footer (website, both library views):** hairline above, 64px under the content. Brand column (mark, name, one 13px
-  muted line), then three link groups with a 13px medium title: App, Open source, Trust. 13px muted links, text
-  colour and underline on hover; external links open a new tab and end in a small up-right arrow. One column on
-  phones, two from 640px, four from 1024px.
-- **Previews:** read-only 16:10 canvases, no grid.
-  - Cards fit the whole diagram with 16px padding at any zoom. Low zoom: less detail, larger titles, boundary
-    labels: name only.
-  - Oversized templates (Multi-cloud platform, Collaborative editor) show a cover: about 13 of their nodes at normal
-    card scale.
-  - Stage and template page use `readableViewport`: whole diagram if it fits at zoom 0.5, else a crop around the most
-    connected node and its neighbours.
-  - Cards play their first flow on hover or focus.
-- **Editor:** canvas fills the space under the bar. With Flows open, the log pane docks below: transport row, sticky
-  28px column header, 24px rows. Floating canvas chrome (zoom, hints, selection tools): chrome fill, hairline, 8px
-  corners, 12px inset.
-- **Present:** full-screen canvas. Top bar docks top, fades after idle during playback. Captions follow the caption
-  style of the flow or step: a callout card beside the node or edge (strong hairline, tail and line to the step), a
-  subtitle centred 18px above the bottom (a muted line with the step number and element above the text), or the
-  caption strip at the bottom or under the top bar.
-  Playback starts after 700ms, unless reduced motion. Previous, Next and arrow keys move one step, also onto connection
-  steps (paused token partway along). "Step n of N" beside the scrubber from 640px.
+- **Top bar:** 44px, chrome fill, hairline below; side padding 6px (editor, Present, template page), 12px (library).
+  At most one primary button.
+- **Library:** centred column, max 1152px. First visit: headline, then a full-width featured stage (16px corners;
+  window height less 360px, clamped 360–620px, so the stage and its captions fit 1280×720). The Features section, the
+  privacy section and More templates follow, 80px apart. From 1280px, the agent introduction sits in a 384px column
+  beside the headline. Card grids: one column, two from 640px; "Your diagrams" and "Templates" three from 1024px.
+- **Footer (website):** hairline above, 64px under the content; 13px muted links. External links open a new tab and
+  end in a small up-right arrow.
+- **Previews:** read-only 16:10 canvases, no grid. Cards fit the whole diagram with 16px padding. Templates too large
+  for a card show a cover, a smaller diagram from their parts. Cards play their first flow on hover or focus.
+- **Editor:** the canvas fills the space under the bar. Side panels (properties, version history, sensitive data)
+  dock at the side of the canvas, and the flow panel docks below it. No panel covers the canvas. Side panels default
+  to 288px. Floating canvas chrome
+  (zoom, hints, selection tools): chrome fill, hairline, 8px corners, 12px inset.
+- **Present:** full-screen canvas. The top bar fades after idle during playback. Playback starts after 700ms, unless
+  reduced motion.
+- **Narrow screens:** below 768px, side panels stack above and below the canvas. Below 640px, the top bar keeps the
+  name, Present and Export, and the other controls go into a More menu.
 
 Spacing: 4px step. 4px between toolbar items; 8px and 12px in panels and cards; 16px grid gaps and card side padding;
 24px page side padding from 640px.
 
 ### Motion
 
-- Flow camera: 1000ms position and 1600ms zoom windows; max 1.35 zoom ratio per step; within diagram bounds plus 48px.
-- Reduced motion: camera cuts to each step; library stage waits for Play.
+- Follow camera: 1000ms position and 1600ms zoom windows; max 1.35 zoom ratio per step. Frame camera moves: gentle
+  1s, quick 550ms, slow 1.6s. The camera stays within the diagram bounds plus 48px.
+- Reduced motion: the camera cuts to each step, and the canvas fades to 15% and back in 360ms around each cut. The
+  library stage and Present wait for Play.
 - Between edges at different points of one node, the token follows its outline.
 - After manual pan or zoom, the camera hands back over 700ms.
 - Node drops glide to the 16px grid in 140ms; colour changes ease over 160–200ms.
@@ -496,7 +490,9 @@ on canvas nodes.
 ### Shadow Vocabulary
 
 - **Menu lift** (`box-shadow: 0 12px 32px -12px rgb(0 0 0 / 0.45)` on the insert menu; shadcn popovers and menus:
-  medium shadow plus 1px ring at 10% text colour): floating menus, popovers, dialogs; the only ambient shadow.
+  medium shadow plus 1px ring at 10% text colour): floating menus, popovers, dialogs.
+- **Overlay lift** (`box-shadow: 0 8px 24px rgb(0 0 0 / 0.24)`): caption callouts and the node details card, which
+  float over the canvas. Never on nodes.
 - **Knockout ring** (`box-shadow: 0 0 0 2px <ground>`): token dots, token chips, ports, to cut through lines.
 - **Active ring** (`box-shadow: 0 0 0 1px <signal>`): doubles the border of an active or hovered node.
 
@@ -504,11 +500,21 @@ on canvas nodes.
 
 **The Fill Not Outline Rule.** Nodes separate from the ground by fill; the hairline outline never does it alone.
 
-**The Tone Not Opacity Rule.** Elements the flow has not reached: ground fill, dim outline, faint text, grey official
-icons. No fading.
+**The Tone First Rule.** A node that the flow has not reached changes tone, not opacity: ground fill, Dim Line
+outline, faint text and line icons, Node Line on idle edges. The node stays opaque, so lines behind it do not show
+through, and the contrast check can measure its colours. Opacity is for the cases that tone cannot cover:
 
-**The One Focus Rule.** Keyboard focus: one 2px Signal Blue outline, offset 2px (6px on canvas nodes). Text fields:
-Signal Blue border.
+- Official cloud icons in an idle node: 40% (70% in high contrast). Their terms forbid a colour change.
+- Explore in Present: nodes and edges outside the focus and its neighbours, 16% (45%).
+- Sensitive data view: connections without marked fields and their labels, 25% (50%).
+- Disabled controls: 50%.
+- Fades in time: the token label near edge ends, the 15% canvas fade around a reduced-motion camera cut, and show and
+  hide transitions.
+
+Themes set the three dim values (`dim-art`, `dim-explore`, `dim-threats`).
+
+**The One Focus Rule.** Keyboard focus: one 2px Signal Blue outline, offset 2px (6px on canvas nodes). A focused
+edge draws 3px wide in the selection colour. Text fields: Signal Blue border.
 
 ## Shapes
 
@@ -553,32 +559,14 @@ App mark: text-colour square, 6px corners; right-angled rounded ground-colour wi
 
 - **Library card:** chrome fill, hairline, 12px corners; 16:10 live preview over a hairline, name (card name type),
   13px muted meta line with tabular figures, flow count only when flows exist. Hover, focus: border 25% text colour.
-- **Agent introduction:** chrome fill, hairline, 12px corners, 16px by 20px padding; card-name title "Let an AI agent
-  draw with you", 13px muted example request, secondary action, ghost close top right. Actions right of the text from
-  576px strip width, else below.
-  - Desktop: action opens agent setup; strip shows until the first agent call, then the bar's agent button shows
-    "Connect an agent".
-  - Website, computers only: "Download for Windows" (or macOS, Linux) starts the latest release's installer, plus 13px
-    muted "All downloads" link; unknown system: "Get the desktop app", to the release page. In a browser that can use a
-    folder, the text ends with a medium-weight link "a folder of your project" that opens the folder setup.
-  - Tablets: website install instead: "Install this website as an app", 13px muted line, secondary Install button (or
-    13px muted steps without a browser install prompt).
-  - Not on phones or in the installed app. Closing hides a strip permanently.
-- **Featured stage:** ground fill, hairline, 16px corners; 48px chrome header: template name, Signal Blue dot, flow
-  name, small ghost Pause/Play, small secondary "Open {template name}" with arrow; live canvas and caption strip below.
-- **Features section:** 80px under the featured stage, before More templates. Section display heading, 16px muted
-  support line, six headline cards (card fill, hairline, 12px corners): 144px ground picture over a hairline; 16px
-  padding, 16px muted icon, card-name title, 13px muted summary, optional bottom action.
-  - Pictures (featured template where possible): the first captioned steps with caption-strip step badges (first Signal
-    Blue); latency bars on operations; first sensitive-data trust-boundary crossing (dashed boundary at inside end, line
-    and field chip in the data's warn or error colour, crossing as text under it); sequence diagram start. Agent card:
-    example request, "Agent editing" chip, three sketched nodes, last dashed. Share card: export format chips.
-  - "Also in the app", after a hairline: 13px muted label left; other features right in columns with hairlines between:
-    15px names at 80% text colour, muted plus. Selected: 13px muted one-line summary below, plus becomes cross; only
-    that column grows. Three columns from 1024px, two from 768px, else one.
+- **Introduction strip** (agent introduction, tablet install offer): chrome fill, hairline, 12px corners, card-name
+  title, 13px muted text, secondary actions, ghost close at the top right. Not on phones or in the installed app;
+  a closed strip stays closed.
+- **Featured stage:** ground fill, hairline, 16px corners; 48px chrome header with the template name, a Signal Blue
+  dot and the flow name; live canvas and caption strip below.
+- **Feature card:** card fill, hairline, 12px corners; a 144px ground picture over a hairline, then a card-name title
+  and a 13px muted summary. Pictures come from the featured template where they can, so they match the stage.
 - **Dialogs:** popover fill, 12px corners, 16px padding, 1px ring at 10% text colour.
-  - Desktop "Connect an agent": after the setup tabs, a hairline and the row "Keep running when the window closes":
-    13px medium title, 13px muted line on agents and how to quit, switch right.
 
 ### Navigation
 
@@ -586,14 +574,14 @@ Top bar is the navigation; mark returns to library. Phones: icons only.
 
 ### Version history
 
-- **Panel:** replaces the properties panel (288px, chrome fill, hairline left; below 768px a 55%-height bottom sheet).
-  40px header "Version history" with close button, version listbox, 12px muted footer: where versions stay, how many.
-- **Row:** 8px corners, 8px by 10px padding; 16px muted author icon (pen: you; robot: agent; rotate: restore; file plus:
-  first state; file diff: change outside the editor), author 13px medium; time (tabular figures) and summary (max two
-  lines) 12px muted. First row "Current version". Day headings ("Today", "Yesterday", a date) 12px muted. Selection:
-  accent fill; arrow keys, Home, End move it.
-- **Preview:** selected version covers the canvas, read-only, same viewport. Floating chrome bar top centre: author,
-  time, "Restore this version" (primary), "Back to current" (ghost). Esc returns to current.
+- **Panel:** a side panel, chrome fill, hairline on the canvas side. A listbox of versions under day headings.
+- **Row:** 8px corners; a 16px muted icon for the author (user, agent, restore, first state, outside change), the
+  author at 13px medium, time (tabular figures) and summary (at most two lines) at 12px muted. Selection: accent fill.
+- **Preview:** the selected version covers the canvas, read-only, at the same viewport. A floating chrome bar at the
+  top centre holds "Restore this version" (primary) and "Back to current" (ghost).
+- **Merge review:** the same preview layer with three canvases: the open version and the outside version on top, the
+  result below. Changed elements get a 2px text-colour outline, open conflicts the error colour, and the selected
+  conflict a 3px Signal Blue outline.
 
 ### Log row (signature)
 
@@ -603,7 +591,8 @@ Top bar is the navigation; mark returns to library. Phones: icons only.
 - **Active:** Raised row, 9px Signal Blue dot, caption in text colour.
 - **Pending or skipped:** muted text, hollow faint dot.
 - **Levels:** warn and error colour the event; info stays text colour.
-- **Selected:** 1px dashed text-colour outline.
+- **Path step:** 2px Signal Blue bar on the inner left edge.
+- **Selected:** 12% Signal Blue tint, 18% on hover.
 
 ### Node card (signature)
 
@@ -612,7 +601,7 @@ Top bar is the navigation; mark returns to library. Phones: icons only.
   word to text colour.
 - **Zoomed out:** icon at least 10px on screen, up to 36px, grows around its centre; title moves right, card size stays.
 - **Active or hovered:** Node Fill Active, Signal Blue border and 1px ring.
-- **Idle in a flow:** ground fill, dim outline, faint text, grey icons.
+- **Idle in a flow:** ground fill, Dim Line outline, faint text and line icons; official icons at 40% opacity.
 - **Selected:** 1px dashed text-colour outline offset 4px; 8px handles with 2px corners on hover.
 - **Coloured:** neutral by default. A boundary-palette hue mixes 12% into Node Fill (8% light), 50% into the outline
   (45% light); caps 18% into Canvas Raised. Line icon and meter fill take the hue; title stays text colour. External
@@ -623,11 +612,9 @@ Top bar is the navigation; mark returns to library. Phones: icons only.
 
 - Default routing `smooth` (right-angled, rounded); 1.25px round-capped stroke, Edge grey or protocol wire colour;
   dashed 5 4 and dotted variants.
-- Diagram switch "Route connections around nodes" (default off): `smooth` and `step` edges avoid every node between
-  their ends, 20px clearance, 12px apart in shared channels, reroute during node drag.
-- Switch on: selected `smooth` or `step` edges in the editor get a 12px handle per middle segment (ground-coloured ring
-  in selection colour, filled on hover, axis resize cursor). Dragging sets the route by hand; properties panel: "Route
-  set by hand." and Reset route button.
+- Diagram switch "Route connections around nodes" (default off): `smooth` and `step` edges go around the nodes between
+  their ends and reroute during a node drag. A selected edge then gets a 12px handle on each middle segment
+  (ground-coloured ring in the selection colour, filled on hover) to set its route by hand.
 - Labels: 11px mono knockouts on the ground, 4px side padding, muted or protocol text colour; hidden while the token
   passes.
 - Visited and active edges: 2px, protocol text colour, or Signal Blue without protocol. Idle edges in a flow: Node Line.
@@ -665,10 +652,18 @@ boundary, data center, on-premises, team, application) or custom.
 - **Selected:** as nodes.
 - **Active in a flow or hovered from the log:** Signal Blue outline, 2px.
 
-### Caption strip
+### Captions
 
-Present, library stage and video export only. Docked to the canvas bottom, 48px to 72px, chrome fill, Node Line top
-border: Signal Blue mono step badge, element at 500, event in mono (warn and error in level colour), caption muted.
+Captions show in Present, the library stage, share links, web page exports and video exports. The flow sets the style,
+and a step can choose another. Each style except None starts with a Signal Blue mono step badge (4px corners).
+
+- **Callout** (default for new flows): a chrome card next to the node or edge, 14px text, Strong Line border, 8px
+  corners, overlay lift, with a tail and a line to the step. Fixed text size at any zoom.
+- **Subtitle:** centred 18px above the bottom; a 13px muted line with the step badge and element above 20px title
+  text, at most two lines.
+- **Bar** (bottom or top): docked to that edge, 48px to 72px, chrome fill, Node Line border. Step badge, element at
+  500, event in mono (warn and error in level colour), caption muted.
+- **None:** no caption.
 
 ## Do's and Don'ts
 
@@ -678,7 +673,7 @@ border: Signal Blue mono step badge, element at 500, event in mono (warn and err
   (team, part kind).
 - **Do** route new edges `smooth` (right angles, rounded corners), not bezier; colour wires by protocol, tokens by
   current or last hop.
-- **Do** reserve Signal Blue for walkthrough, focus, caret, selection tint, the mark.
+- **Do** reserve Signal Blue for the uses in The One Signal Rule.
 - **Do** set copyable values in Fragment Mono, slashed zero, tabular figures.
 - **Do** mark boundary tiers by line pattern; boundary colours can be off.
 - **Do** show previews as live read-only canvases, no grid; cards fit the diagram (or a large template's cover), stage
@@ -691,6 +686,6 @@ border: Signal Blue mono step badge, element at 500, event in mono (warn and err
 - **Don't** use `backdrop-filter` on canvas nodes or edges.
 - **Don't** add saturated blue to boundary or protocol palettes, amber to HTTP, or ok/warn/error colours to info events,
   decoration or node kinds.
-- **Don't** shadow docked panels or canvas nodes; only the menu lift casts ambient shadow.
-- **Don't** fade idle elements with opacity; use tone.
-- **Don't** exceed weight 500 or uppercase interface labels.
+- **Don't** shadow docked panels or canvas nodes; only the menu lift and the overlay lift cast ambient shadow.
+- **Don't** dim an idle flow node with opacity; use tone. Use opacity only in the cases that The Tone First Rule lists.
+- **Don't** go above weight 500 (except the canvas step number) or uppercase interface labels.

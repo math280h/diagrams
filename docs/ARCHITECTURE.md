@@ -5,15 +5,13 @@
 A free, frontend-only tool for animated diagrams of software systems and user flows, for talks and READMEs. Traffic
 moves along connections; a flow walks a user through the system while the camera follows.
 
+[BUILD.md](BUILD.md) covers the build, the package rules, the tests, CI, the installers and their signatures, the
+container images and the supply chain.
+
 ## Stack and why
 
 - **Build**: Vite 8 (Rolldown, Oxc), `@vitejs/plugin-react` 6, React Compiler 1.0. HMR; the compiler removes manual
   memoization.
-  - React Compiler does not compile a function that it cannot handle, and at the default `panicThreshold` the build
-    shows no warning. `scripts/react-compiler.ts` collects these functions from the app build and the player build.
-    The build fails when they differ from `KNOWN_SKIPS`, or when the compiler fails.
-  - The `icons` chunk group holds the Lucide icons that the first page imports. Without it, Rolldown makes one chunk
-    for each icon that two chunks share: about 80 files of less than 2 kB on the first page.
 - **Language**: TypeScript 7. Native compiler for `tsc -b`.
 - **Canvas**: `@xyflow/react` 12 (MIT). Plain React and HTML nodes, full CSS control. Not tldraw (paid licence or
   watermark) or Excalidraw (hand-drawn).
@@ -30,80 +28,13 @@ moves along connections; a flow walks a user through the system while the camera
 - **Image export**: `@zumer/snapdom` 3.7. DOM capture that embeds fonts. The website uses it for all images and video
   frames. The desktop app uses it for SVG, and for images and video frames that the capture window cannot make (see
   "Capture window").
-- **Video export**: mediabunny 1.65 (MP4 H.264, WebM VP9), a WebCodecs muxer. `creationTime: null` keeps the export
+- **Video export**: mediabunny 1.66 (MP4 H.264, WebM VP9), a WebCodecs muxer. `creationTime: null` keeps the export
   time out of the file, because mediabunny writes the current time by default.
 - **GIF export**: modern-gif 2.1, a maintained encoder with a worker.
 - **Mermaid import**: `mermaid` 12, which the app loads on demand. `getDiagramFromText` + `db.getData()` parse
   flowcharts without a render.
-- **Lint and format**: oxlint (type-aware), oxfmt. create-vite default.
-- **Packages**: pnpm 12. `pnpm-workspace.yaml` sets what pnpm accepts when it resolves a version. At each
-  install, also with `--frozen-lockfile`, pnpm checks every lockfile entry against the age and trust rules again.
-  - `minimumReleaseAge`: only versions that are at least one day old. Registries often remove a malicious version
-    in that time.
-  - `trustPolicy: no-downgrade`: pnpm stops when a version has less proof of origin than an earlier version, for
-    example no provenance after releases with provenance.
-  - `blockExoticSubdeps`: no git or tarball sources in sub-dependencies.
-  - `strictDepBuilds`: pnpm stops at an install script that `allowBuilds` does not list.
-  - `overrides`: minimatch 7.0 to 11.0.0 becomes 11 (GHSA-g3hv-75wg-m249). glob 9 to 14.0.1 becomes 14
-    (GHSA-3g3m-2fjr-6pw4). Only `@electron/asar` uses glob, and it calls only the `glob()` function, which glob
-    14 keeps. semver 5 and 6 become 7, because their last releases have no provenance and fail the trust check. Their
-    callers use only functions that semver 7 keeps.
-  - `overrides` for electron-builder 26: `@electron/asar` becomes 4 and `@electron/universal` becomes 3, the versions
-    that the electron-builder 27 alpha uses. app-builder-lib loads them with `import()` and calls
-    `createPackageFromStreams` and `makeUniversalApp`, which have the same signatures as in the earlier versions.
-    `filelist` becomes 2 for jake, which only the ejs command line uses.
-  - `electron-builder-squirrel-windows: '-'` removes that package and the packages that only it needs. That package
-    is a peer dependency of app-builder-lib, and pnpm installs it. app-builder-lib loads that package only for the
-    `squirrel` target, which `electron-builder.ts` does not use. Together, these overrides remove minimatch 3 and 5,
-    glob 7, dir-compare, rimraf 2 and temp.
-  - `osv-scanner.toml` tells OSV-Scanner to ignore the deepmerge advisory (GHSA-gcqx-w48m-w2h4), with a reason and
-    an `ignoreUntil` date. The advisory has no fix, and deepmerge is only in the shadcn CLI. OpenSSF Scorecard reads
-    this file for its Vulnerabilities check. Dependabot does not read it.
-  - `patchedDependencies`: `patches/@zumer__snapdom@3.7.0.patch` changes how snapdom removes pseudo-elements from a
-    selector before `matches()`. Without the patch, snapdom 3.7.0 removes an escaped `\:after` inside a class name by
-    mistake, for example in `group-data-horizontal/tabs:after:h-0.5` of the tabs component. Then the selector list that
-    snapdom tests on each SVG element is not valid. Each test throws an error, and snapdom treats each element as a
-    match. With 3,094 nodes and without the patch, `render_image` took 20 % to 25 % longer than with snapdom 3.3.6. In
-    the packaged app, it took 45 % to 50 % longer. pnpm stops when no installed version matches the patch, so a snapdom
-    update must update or remove the patch. `src/export/capture.browser.test.ts` fails without it.
-  - `ajv`, `ajv-formats` and `jose` are dependencies of the app. `@vitemcp/server` loads them as optional peers, and
-    the main bundle holds them. Without these entries in `package.json`, pnpm takes the peers from the packages of the
-    dev dependencies. When no package has a version in the peer range, the bundler takes a hoisted copy that the SBOM
-    does not list.
-  - A Dependabot security update to a version that is less than one day old can fail. Wait one day, or add the
-    package to `minimumReleaseAgeExclude`. A version that fails the trust check for a known reason goes in
-    `trustPolicyExclude`.
-  - `pmOnFail: ignore`: pnpm does not switch to the `packageManager` version. With any other value, pnpm writes
-    that version as a first YAML document in `pnpm-lock.yaml`. The GitHub dependency graph reads only the first
-    document, so Dependabot alerts and the dependency review see no packages. CI installs the `packageManager`
-    version with `pnpm/action-setup`, and a CI step fails when the lockfile has more than one document.
-- **Tests**: Vitest 5 (node and Chromium browser mode), Playwright. Real browser for Mermaid and export.
-  - `pnpm test:coverage` measures the coverage of the unit and browser tests (V8) for `src`, `electron`, `scripts`
-    and `actions`. Each threshold in `vitest.config.ts` is the value of 2026-11-01, rounded down to a whole number,
-    minus 1. Vitest fails the run when a value is below its threshold. CI shows the values in the job summary.
-  - When you set `E2E_COVERAGE`, the web end-to-end tests record the V8 coverage of the app scripts in Chromium
-    (`e2e/fixtures.ts`). The web specs import `test` from that file, and a lint rule blocks an import from
-    `@playwright/test`.
-  - `scripts/coverage.ts` converts that coverage with `ast-v8-to-istanbul`, the converter of `@vitest/coverage-v8`.
-    The script also uses `@vitest/istanbul-lib-coverage` and `@vitest/istanbul-lib-report`, the coverage libraries of
-    Vitest. Then the script adds the converted coverage to the unit coverage.
-  - The React Compiler runs only for the client (`applyToEnvironmentHook`), so a component has more statements in
-    the browser than in the unit tests. The script keeps the statements, functions and branches of the unit coverage.
-    The script adds to each one the counts of the end-to-end entries that start at the same line and column.
-  - `pnpm coverage:all` needs `coverage/coverage-final.json` from `pnpm test:coverage`. `pnpm coverage:all` runs
-    the web end-to-end tests with coverage and writes `coverage-all/`. In CI, the "Coverage of all tests" job merges
-    the coverage of the four web shards with the unit coverage. Its thresholds follow the same rule. The desktop
-    end-to-end tests do not count.
-  - The "Coverage of all tests" job writes the line coverage to a shields.io badge file on each run. The badge shows
-    the percentage, rounded down to a whole number. On a push to `main`, the "Coverage badge" job pushes the file to
-    the `coverage-badge` branch, and the README badge shows it. In `ci.yml`, only this job has write permission for the
-    contents of the repository. It does not install packages or run code from the repository.
-  - Fuzz tests (`*.fuzz.test.ts`, `*.fuzz.browser.test.ts`) use fast-check. They give random and changed input to
-    each reader of untrusted data.
-  - The readers are for diagram files and migrations, copied nodes, share links, trace files, images with a
-    diagram, `diagrams://` links and release notes HTML.
-  - Each test checks the contract of the reader: a valid result, or the error class of that reader. Any other error
-    or unsafe output fails the test.
+- **Packages, lint and tests**: pnpm 12, oxlint, oxfmt, Vitest 5 (node and Chromium browser mode), Playwright. See
+  [BUILD.md](BUILD.md).
 - **Desktop**: Electron 45. Vite builds main and preload. It uses the same Chromium as the tests, so export and capture
   match the browser. Node runs the agent server.
 - **Agent server**: `@vitemcp/server` (MCP over HTTP), hono. Tools come from the zod schemas; the same loopback server
@@ -129,27 +60,6 @@ The visual system is in `DESIGN.md` at the repository root.
 
 - Node kinds (card field `form`) show in the outline: service, data store, queue or stream, client, external system,
   function.
-- Schema versions of the visual model (migration in parentheses):
-  - 2: `form` on cards, not `variant` (`form` from the icon).
-  - 3: default font pair `geist` renamed `atkinson`.
-  - 4: `event`, `latencyMs`, `level` on flow steps, for log lines.
-  - 5: `kind`, `detail`, `color` on groups; theme `boundaryColors`.
-  - 6: default font pair `host` (Host Grotesk, Fragment Mono) (`atkinson` to `host`); `protocol` on edges; theme
-    `protocolColors`.
-  - 7: `request` and `response` bodies on edges; `bodies` on flows (on).
-  - 8: `color` on cards and shapes, not `accent` (never drawn).
-  - 9: `details` (description, owner, links) on cards, shapes, groups.
-  - 10 to 13, optional: `pinned` on node data (10); `opens` (another diagram id) on cards and groups (11); `parallel`
-    targets on flow steps and `paths` on flows (12); `sensitive` (`personal` or `secret`) on body fields (13).
-  - 14: `cameraStyle` (`frame`, `follow`, `still`) and `cameraMotion` (`gentle`, `quick`, `slow`) on flows (`follow`,
-    `gentle`).
-  - 15: overview steps (`target` of kind `flow`, empty id); `stepNumbers` on flows (off).
-  - 16: theme `routeAround`, default off (off); optional hand-drawn edge `bends`.
-  - 17, optional: `noReply` on edges; `concurrent` on paths (side paths).
-  - 18, optional: `delayMs` on flow steps and on their `parallel` targets.
-  - 19: no theme `mode` (removed: the colour theme of each reader colours the canvas).
-  - 20: `captionStyle` on flows (`bottom`), optional on flow steps.
-  - 21, optional: `$schema` (the address of the JSON Schema of a diagram file).
 - Groups are boundaries. `kind` points into `src/model/boundaries.ts`: AWS, Azure, Google Cloud, Kubernetes, general
   and custom kinds.
   - Each kind has a family (scope, logical, location, zone, network, subnet, security, runtime) that sets the line
@@ -175,7 +85,8 @@ The visual system is in `DESIGN.md` at the repository root.
   - Token dot and label take the colour of the current hop, or the last hop while the token rests on a node.
   - Signal blue: edges without a protocol, the token before its first hop. In a spotlight flow, idle edges recede to
     the neutral line.
-- The grid is an editing aid. Present and library previews do not draw it; exports draw it only when the user turns it on.
+- The grid is an editing aid. Present and library previews do not draw it; exports draw it only when the user turns it
+  on.
 - Details on cards, shapes and boundaries: owner, plain-text description, links to code, docs or dashboards. The
   canvas does not draw them, so a diagram stays readable.
   - Present and exported web pages (`DiagramCanvas` with `details`): a dot marks nodes with details. A card shows on
@@ -210,9 +121,9 @@ The visual system is in `DESIGN.md` at the repository root.
   - A double-click on an offset, or F2, changes when the step starts. A step stores a duration and no start, so the
     step before it on its track takes the difference (`startChanges`). The later steps move, as on the timeline; with
     Alt+Enter the step also takes the difference, so they stay.
-  - Present and video exports show the caption of each step in the caption style of the flow, or of the step: a callout
-    card next to the step, a subtitle, a bar at the bottom or the top, or none. New flows start with callouts, because
-    a reader looks at the token and not at the edge of the screen.
+  - Present, the player pages and video exports show the caption of each step in the caption style of the flow or the
+    step. The styles are a callout card next to the step, a subtitle, a bar at the bottom or the top, and none. New
+    flows start with callouts, because a reader looks at the token and not at the edge of the screen.
   - Engine insets keep the camera target clear of the bars and the subtitle that the played steps use
     (`captionSpace`). Callouts need no space.
   - An overview step has no node or edge to point at, so its callout shows as a subtitle. A side step gets its own
@@ -231,6 +142,7 @@ The visual system is in `DESIGN.md` at the repository root.
   - A template too large for a card shows a `cover`: a smaller diagram from its parts, with a flow.
   - The template page opens on the whole diagram with text nodes (`withText`): the system and title show first.
   - The first flow plays on hover and focus.
+  - The featured stage and the template cards frame their diagram after the fonts load and after node sizes change.
 - First visit, under the featured stage: what Diagrams does (`Features`), then the other templates.
   - Six headline features have a picture from the featured template at page load, so the pictures stay in step with it:
     - first flow steps
@@ -262,7 +174,7 @@ The visual system is in `DESIGN.md` at the repository root.
   - A loop restart resets its frame clock, so a flow continues where it stopped.
   - Agent renders use an export stage for each frame, not the frame loop.
 - The canvas comes first. Panels open on demand: insert menu on `N` or double-click, properties panel for a selection,
-  style menu in the top bar.
+  diagram settings in the top bar.
 - Panels dock next to the canvas, so the canvas, its fit and the flow camera get only the free area.
   - Side panels (`SidePanel`: properties, version history, sensitive data) share one width; the flow panel has its own
     height.
@@ -328,9 +240,9 @@ Icon names are Lucide names (`database`) or prefixed set icons: `aws:`, `azure:`
   - The Mermaid import matches these objects only by names like "Salesforce account", so a node named "Order" gets no
     Salesforce icon.
   - `pnpm icons salesforce` builds only this set.
-- `node scripts/template-icons.mjs` writes about 50 template set icons to `src/canvas/icons/data/templates.json`. A unit
-  test fails when the file no longer matches the templates or the sets.
-- `loadSetOfIcon` reads that file before the full set. Library previews load about 35 KB gzip, not 270 KB. The editor
+- `node scripts/template-icons.mjs` writes about 70 template set icons to `src/canvas/icons/data/templates.json`. A unit
+  test fails when the file does not match the templates or the sets.
+- `loadSetOfIcon` reads that file before the full set. Library previews load about 45 KB gzip, not 270 KB. The editor
   loads full sets for search.
 - `scripts/icons/catalog.mjs` lists curated entries: product name, source image, card form, import aliases, search
   keywords.
@@ -367,7 +279,9 @@ src/
   agent/        agent tool definitions, handlers, references, placement, compact diagram form
   desktop/      IPC contract and bridge, title bar, agent and handoff dialogs, desktop runtime
   folder/       folder storage on the website, its file watcher worker and the agent folder
-  model/        zod schema (version 6), boundary kinds, protocols, defaults, presets, graph and rect helpers
+  install/      the offer to install the website on a tablet
+  sw/           the service worker of the installed website
+  model/        zod schema of the diagram format, boundary kinds, protocols, defaults, presets, graph helpers, merge
   store/        doc store, actions, undo history, version history, persistence hook, UI and settings stores
   persistence/  localStorage repository, version store (IndexedDB), serialize, migrations, library actions
   canvas/       React Flow canvas, node and edge components, icon sets and cache, flow overlay
@@ -396,20 +310,22 @@ build/          app icon sources and renders
 
 ### Data model
 
-A `Diagram` holds nodes (`card`, `shape`, `text`, `group`), edges (`flow`), flows, a theme and the viewport.
+A `Diagram` holds nodes (`card`, `shape`, `text`, `group`), edges (`flow`), flows, the diagram settings and the
+viewport. The settings (`theme`) hold the font pair, the background, snap and the colour and routing switches. The
+settings hold no colours, because the colour theme belongs to the viewer (see "Themes").
 
 - Web: `dg:diagram:<id>` per diagram, plus `dg:index`.
-- Desktop: `Documents/Diagrams/<id>.diagram.json`.
+- Desktop: `Documents/Diagrams/<id>.diagram.json`. A folder on the website uses the same file names.
 - Theme files of the user: `themes/<name>.theme.json` in the diagrams folder (see "Themes").
 - `rev` detects edits from another tab or program.
 - `repository()` returns the store of the build; callers do not know which.
 
-A `Flow` is an ordered list of steps (node or edge, caption, duration, camera mode) plus optional keyframe tracks
-(camera, opacity, traffic). The app computes the timeline from the steps and never stores it.
+A `Flow` is an ordered list of steps (node, edge or the whole flow; caption, duration, camera mode). It can also have
+paths and keyframe tracks (camera, opacity, traffic). The app computes the timeline from the steps and never stores it.
 
 ### Themes
 
-A colour theme is a setting of the reader. A diagram has no colours, so each reader sees it in their own theme, and an
+A colour theme is a setting of the viewer. A diagram has no colours, so each viewer sees it in their own theme, and an
 export uses the theme of the person who exports.
 
 - A theme (`src/themes/schema.ts`) has a `base` (`dark` or `light`) and colours for the app, the canvas and the desktop
@@ -418,6 +334,10 @@ export uses the theme of the person who exports.
 - The stylesheet accepts only hex colours and numbers, so a theme file cannot add other CSS.
 - The theme files of the user are in `themes/` of the diagrams folder. The desktop app and the website with an open
   folder read the same files. A browser without a folder keeps imported files in `localStorage`.
+- `public/theme.schema.json` is the JSON Schema of a theme file, for text editors. `src/themes/schema.test.ts` writes
+  it from the zod schema. A copy of a theme (`fullThemeFile`) names this schema in `$schema` and holds every colour,
+  also the colours from the base.
+- The app reads at most 200 theme files from a folder, each at most 256 KiB.
 - `public/theme-boot.js` applies the last theme before the app script loads, so the first frame has its colours.
 - The desktop window takes its button, border and background colours from the theme and keeps them for the next start.
   macOS draws its own window buttons.
@@ -503,7 +423,7 @@ new version, also for an optional field or enum value:
 1. Raise `DIAGRAM_VERSION` and add `toVersion<N>` to `MIGRATIONS`. The step fills new fields with defaults, maps
    changed values and removes old fields. It must not fail on data that already has the change.
 2. Keep each stored value. If the step must remove or change a value, add its path to `REWRITTEN_FIELDS`.
-3. Test the step in `src/persistence/serialize.test.ts`. Add the version to "Visual language" above.
+3. Test the step in `src/persistence/serialize.test.ts`. Add the version to "Format versions" below.
 4. Run `node scripts/format-sample.mjs`. It writes only the files that do not exist, in `src/persistence/formats`:
    - `v<N>.schema.json`: the JSON Schema.
    - `v<N>.json`: the Order system and Checkout flow templates; from format 12 also Event pipeline.
@@ -550,6 +470,31 @@ steps and samples of the old formats. The next release is then `v<RELEASE_MAJOR>
 
 An older app refuses a newer format and asks the user to update, because its next save would drop unknown fields.
 
+#### Format versions
+
+The change of each format, with the migration value in parentheses:
+
+- 2: `form` on cards, not `variant` (`form` from the icon).
+- 3: default font pair `geist` renamed `atkinson`.
+- 4: `event`, `latencyMs`, `level` on flow steps, for log lines.
+- 5: `kind`, `detail`, `color` on groups; theme `boundaryColors`.
+- 6: default font pair `host` (Host Grotesk, Fragment Mono) (`atkinson` to `host`); `protocol` on edges; theme
+  `protocolColors`.
+- 7: `request` and `response` bodies on edges; `bodies` on flows (on).
+- 8: `color` on cards and shapes, not `accent` (never drawn).
+- 9: `details` (description, owner, links) on cards, shapes, groups.
+- 10 to 13, optional: `pinned` on node data (10); `opens` (another diagram id) on cards and groups (11); `parallel`
+  targets on flow steps and `paths` on flows (12); `sensitive` (`personal` or `secret`) on body fields (13).
+- 14: `cameraStyle` (`frame`, `follow`, `still`) and `cameraMotion` (`gentle`, `quick`, `slow`) on flows (`follow`,
+  `gentle`).
+- 15: overview steps (`target` of kind `flow`, empty id); `stepNumbers` on flows (off).
+- 16: theme `routeAround`, default off (off); optional hand-drawn edge `bends`.
+- 17, optional: `noReply` on edges; `concurrent` on paths (side paths).
+- 18, optional: `delayMs` on flow steps and on their `parallel` targets.
+- 19: theme has no `mode` (the migration deletes the value; the colour theme of each viewer colours the canvas).
+- 20: `captionStyle` on flows (`bottom`), optional on flow steps.
+- 21, optional: `$schema` (the address of the JSON Schema of a diagram file).
+
 ### Request and response bodies
 
 An edge can carry a `request` body (what the source sends) and a `response` body (what comes back). Rules:
@@ -563,8 +508,8 @@ An edge can carry a `request` body (what the source sends) and a `response` body
 - Edit as JSON reads fields, types and examples from a pasted body. Array items share their fields; a key in only some
   items is optional. A field with the same path keeps its id and description.
 - `fieldIssues` reports paths that the body cannot hold (a field inside a string), for the panel and agent calls.
-- Edge labels show `{n}` for request fields and `→ {n}` for response fields, so a reader sees a body without a table on
-  the canvas.
+- Edge labels show `{n}` for request fields and `→ {n}` for response fields, so a reader sees a body without a table
+  on the canvas.
 - In playback, the log line of an edge step shows the request body as compact JSON, or the response body when the
   token goes back (`reversed` in the timeline). The flow setting `bodies` turns this off.
 - An edge with `noReply` (for example an event) never takes a token back: `edgeTravel` does not reverse it, and
@@ -598,11 +543,12 @@ data goes and which trust boundaries it crosses.
 ### Trace import
 
 A trace becomes a flow (`src/import/trace.ts`, `trace-flow.ts`, `trace-apply.ts`) with its real operations, latencies
-and statuses.
+and statuses. The import dialog makes a new diagram from it. The flow panel and `import_trace` with a `diagramId` add
+the flow to a diagram.
 
 - Formats: OTLP JSON (`resourceSpans`, Tempo `batches`, Jaeger v3 API `result`), Jaeger UI and API JSON, Zipkin v2. A
-  shared Zipkin span has the id of its client span, so the importer gives its server half a new id below the client half. Of several traces,
-  the one with the most spans imports.
+  shared Zipkin span has the id of its client span, so the importer gives its server half a new id below the client
+  half. Of several traces, the one with the most spans imports.
 - `walkTrace` turns spans into calls between peers: services, databases (`db.system`), topics (`messaging.system`),
   peer services and outside hosts. Spans inside one service add no steps. A client span above a span of another
   service calls that service: protocol from the client, operation and status from the server.
@@ -635,11 +581,13 @@ and statuses.
   identity.
 - `evaluateFlow(timeline, t, geometry, view)` is pure: token position, node and edge state, caption and camera depend
   only on `t`. Seek and export use it.
+- The playback speed (`PLAYBACK_RATES`, 0.5× to 2×) multiplies the elapsed time of the playback clock. The diagram
+  does not store it, and an export sets the time of each frame itself, so the speed has no effect on an export.
 - A flow chooses its camera (`cameraStyle`): `follow` (default, rides along with the request), `frame` (a calm
   explainer) or `still` (a fixed overview for a slide).
-- `follow` (`src/engine/flow/follow-camera.ts`, also the camera of format 13 and earlier) takes a weighted mean of step targets. The
-  window around `t` is 1 s for position and 1.6 s for zoom. The camera moves before a step, without jumps. A step
-  zooms in at most 1.35× over the step before.
+- `follow` (`src/engine/flow/follow-camera.ts`, also the camera of format 13 and earlier) takes a weighted mean of step
+  targets. The window around `t` is 1 s for position and 1.6 s for zoom. The camera moves before a step, without
+  jumps. A step zooms in at most 1.35× over the step before.
 - The frame camera does not follow the token. `stepFrames` (`src/engine/flow/framing.ts`) gives each step one frame,
   in step order:
   - A follow step (Auto in the step properties) holds the overview while the whole diagram is legible: overview zoom
@@ -797,8 +745,9 @@ and a preview of the exact text.
 - The report is JSON from approved fields (`src/reports/report.ts`). The dialog shows this text, and the app sends
   this text. Thus a new field is visible in the preview before it can leave the device.
 - `src/reports/redact.ts` first removes the values that the app knows: the texts of the open diagram, the texts of the
-  diagram that was open at the problem, and the names of the diagrams. On the desktop, it also removes the home folder, the diagrams and user data folders, the user name,
-  the host name, the agent token and the pending handoff codes. Then rules remove web and file addresses, paths,
+  diagram that was open at the problem, and the names of the diagrams. On the desktop, it also removes the home
+  folder, the diagrams and user data folders, the user name, the host name, the agent token and the pending handoff
+  codes. Then rules remove web and file addresses, paths,
   email addresses, network addresses, ids and long tokens. `src/reports/build.test.ts` puts a marker into each kind of
   value and fails when the report text still holds it.
 - A stack frame keeps only the function name, the file name, the line and the column. A V8 stack gives frames only
@@ -827,7 +776,7 @@ and a preview of the exact text.
   of a later session cannot take that dump, because the GPU process can stop within 60 seconds of the next start.
 - Each new crash gets its own notice, so a later crash cannot replace the notice of an earlier one. When a list has
   more than one new crash, the notice is about the main process crash, because that crash closed the app.
-- The app keeps the newest 5 dumps for 7 days and the events for 30 days, because a dump can be several megabytes.
+- The app keeps the newest 5 dumps for 7 days and the newest 20 events for 30 days. A dump can be several megabytes.
 - `electron/reports/minidump.ts` reads only the exception and the module and offset of the crash. The problem reports
   dialog shows them, and "Show the file" opens the dump for the own tools of the user.
 - A dump holds memory of the app, so it can hold diagram text. Thus a dump goes with a report only when the user turns
@@ -837,8 +786,8 @@ and a preview of the exact text.
 
 #### Report server
 
-`report-server/` is a Hono app for Node.js. Vite bundles it into one file, and the image runs that file on a
-distroless Node.js base.
+`report-server/` is a Hono app for Node.js. [BUILD.md](BUILD.md#report-server-image) describes its image, the proxy
+settings for the client address, and its tests in CI.
 
 - An S3-compatible bucket alone cannot take reports from the public: the app would need bucket credentials, which it
   cannot keep secret, and a bucket has no rate limits. The server keeps the credentials and the limits.
@@ -847,11 +796,6 @@ distroless Node.js base.
 - The limits are in memory: reports and challenges per hour for each client address (an IPv6 /64 network counts as one
   address), a daily count and size, 64 KB without a dump and 16 MB with one, and the age header. The server logs no
   body and no address.
-- The client address is the socket address. `CLIENT_IP_HEADER` names a header that replaces the socket address, for a
-  proxy that does not add to `X-Forwarded-For`. `TRUST_PROXY_HOPS` moves the client address to the `X-Forwarded-For`
-  entry that the outermost proxy added. While the client address is in `TRUSTED_PROXIES`, for example the ranges of a
-  CDN, the server moves to the next entry on the left. A client that goes around the CDN can write any address into
-  `X-Forwarded-For`. Thus the server stops at the first address that is not in the ranges.
 - The receipt holds a random delete token. The server keeps only its SHA-256 hash.
 - CORS accepts only the origins in `ALLOWED_ORIGINS`. A request without an `Origin` header, from the desktop main
   process, passes, because a browser always sends the header on these requests. `Origin: null` fails.
@@ -860,19 +804,14 @@ distroless Node.js base.
   two are maintained, open and self-hosted, and they track no behaviour. mCaptcha has no maintained release.
 - Cap format 2 uses HashWX in WebAssembly, and the website policy has no `wasm-unsafe-eval`. Thus the server issues
   only format 1, and its bundle replaces the HashWX module of `capjs-core` (LGPL-3.0 WebAssembly) with
-  `report-server/src/no-hashwx.ts`. `capjs-core` needs esbuild and javascript-obfuscator only for its browser checks,
-  so the `overrides` of `pnpm-workspace.yaml` do not install them.
+  `report-server/src/no-hashwx.ts`.
 - The browser solves in a worker. The main process solves Cap in slices of 12 ms, so that it stays responsive and the
   user can cancel.
-- `report-server/src/conformance.test.ts` sends, deletes and replays reports with each provider and the client code of
-  the app. CI also runs it against the image, once with a folder and once with a SeaweedFS bucket.
-- The image has no cache mount and no `VOLUME`, so each container host can build and run it. The release workflow
-  publishes `ghcr.io/<repository>-report-server` with an SBOM (`scripts/report-server-sbom.ts`) and attestations.
 
 `scripts/open-report.ts` decrypts report files with an age identity file and writes `report.json` and `crash.dmp`. It
 treats each file as untrusted: it limits the size of the file and of the decompressed dump, writes fixed names,
-overwrites nothing and prints no control characters. `minidump-stackwalk` from rust-minidump, with the Electron symbols of the release, gives the stack of a
-dump.
+overwrites nothing and prints no control characters. `minidump-stackwalk` from rust-minidump, with the Electron
+symbols of the release, gives the stack of a dump.
 
 ### Undo
 
@@ -928,8 +867,8 @@ The browser frame rate has no effect.
   canvas in GPU memory gives transparent pixels after a restart of the GPU process, and the GIF then gets a blank
   frame.
 - The canvas grid is off in exports unless the user turns it on: it is an editing aid.
-- The animation tab shows a preview strip of five export-stage frames (the real camera path and framing) and, during a render, the time left from the
-  frame times so far.
+- The animation tab shows a preview strip of five export-stage frames (the real camera path and framing). In a render,
+  it shows the time left from the frame times so far.
 
 The image tab:
 
@@ -954,13 +893,14 @@ The Mermaid tab writes the diagram as flowchart text for GitHub Markdown (`diagr
 - Cards, shapes and boundaries become nodes and nested subgraphs. Text nodes, flows, icons and positions stay out;
   Mermaid has no place for them and does its own layout.
 - Each node colour becomes a `classDef` and a `class` line. A class sets only the stroke, in a middle tone, because
-  GitHub draws on a light or a dark page with fill and text colours from its theme. Boundaries with their kind colour get no class. The import finds
-  the kind again.
+  GitHub draws on a light or a dark page with fill and text colours from its theme. Boundaries with their kind colour
+  get no class. The import finds the kind again.
 - Import reads the fill (the stroke for a grey fill) from `classDef`, `class`, `:::` and `style`, and takes the
   nearest palette colour (`nearestColor`). A canvas 2D context turns CSS colour names into numbers.
 - Classic bracket shapes, not `@{ shape: … }`, for older Mermaid versions. Data store cards become cylinders, other
   cards rectangles.
-- Node ids come from titles (`api_gateway`), so the text is easy to edit by hand; ids that are Mermaid syntax, such as `end`, get a `node_` prefix.
+- Node ids come from titles (`api_gateway`), so the text is easy to edit by hand. Ids that are Mermaid syntax, such as
+  `end`, get a `node_` prefix.
 - Direction `LR`, or `TD` when most edges run down; nodes and edges in position order along it.
 - A boundary title starts with the canvas name of its kind (`Kubernetes namespace`). The import matches it before
   keywords and ignores the detail on line two.
@@ -983,9 +923,10 @@ numbered steps: nodes in travel order (as in the log), event, latency, level and
 - Export dialog, Description tab: text to copy or download. An SVG export (also `render_image` and the CLI) puts
   the name in `title` and the text in `desc`.
 - Order: `readingOrder` (`src/model/graph.ts`), along the main edge direction, as in the Mermaid flowchart.
-- `ariaLabel` (`src/canvas/aria.ts`) names a node by title and kind ("Postgres, data store").
-- `ariaLabel` names an edge by its ends and label ("Browser to API gateway, HTTPS"). Without it, React Flow uses node
-  ids. A focused edge draws wider, in the selection colour.
+- `nodeAriaLabel` (`src/canvas/aria.ts`) gives the React Flow `ariaLabel` of a node: title and kind ("Postgres, data
+  store").
+- `edgeAriaLabel` names an edge by its ends and label ("Browser to API gateway, HTTPS"). Without it, React Flow uses
+  node ids. A focused edge draws wider, in the selection colour.
 - Page content below the top bar is the `main` landmark, so the top bar stays the `banner`.
 - `useDocumentTitle` sets the tab title ("Order system – Diagrams").
 - Properties row controls take the row label as their name (`aria-labelledby`): "Name", not only "edit text".
@@ -1018,17 +959,6 @@ The Web page tab saves one HTML file that plays the diagram without other files 
   becomes `<\/script`, because an HTML parser ends a script element there.
 - At the end: licence texts of the player packages and fonts, because MIT and OFL ask for them in every copy.
 
-### README image
-
-`pnpm readme-gif` (`scripts/readme-gif.mjs`) records the README GIF of the editor. It starts the dev server, copies
-the Order system template in Chromium with Playwright, opens the flow panel and plays the flow.
-
-- The Playwright fake clock (`page.clock`) controls `requestAnimationFrame`, timers and `performance.now`. The script
-  moves one frame per screenshot, so no frame drops at any computer speed.
-- `modern-gif` (the GIF export encoder) also runs in Node and writes only the changed area of each frame, unchanged
-  pixels transparent.
-- `node:zlib` reads the PNG screenshots; no image package.
-
 ### Release notes
 
 The What’s new page (`#/releases`) lists published releases and notes. They come from the GitHub releases API in the
@@ -1053,29 +983,14 @@ HTML media type, so GitHub renders mentions and pull request links. Drafts stay 
   rebuilt nodes, never an HTML string.
 - Only the website links to the page. The desktop window connects only to the app and has the updater.
 
-### Release signing
-
-In the Release workflow, an OpenPGP key signs the Linux packages and `SHA256SUMS`
-(`scripts/openpgp-signing.ts`, `docs/RELEASING.md`).
-
-- The AppImage signature has the format of `appimagetool --sign`. The key signs the SHA-256 of the whole file, with
-  zero bytes in `.sha256_sig` and `.sig_key`.
-- The block map for differential updates is part of the signed file. The block map has a checksum of the chunk with
-  the signature. Thus a change to one makes the other incorrect.
-- `signAppImage` writes random bytes into the signature sections, makes the block map again, then writes the
-  signature. electron-updater uses chunk checksums only to find chunks to copy.
-- The checksums of the random bytes are different from all old chunks. Thus electron-updater downloads these chunks,
-  then checks the SHA-512 of the file. `check` fails if the download is more than 1 MiB.
-- The SBOM gives the SHA-256 of the AppImage runtime with empty signature sections.
-
 ### Share links
 
 The Share link tab makes a link with the whole diagram, to play with no account, server or file
 (`src/share/share-link.ts`). Own link code: no dependency, no licence.
 
-- A format letter starts the data after `#/s/`. `y` is current. `z` (raw deflate, `CompressionStream`) still opens
+- A format letter starts the data after `#/s/`. `y` is current. `z` (raw deflate, `CompressionStream`) opens
   (test: `samples/z-checkout-flow.txt`).
-- A `y` link carries the diagram JSON without id, timestamps and save counter (`linkJson`), in four steps:
+- A `y` link carries the diagram JSON without `$schema`, id, timestamps and save counter (`linkJson`), in four steps:
   - **Implicit ids** (`link-ids.ts`). Random ids (`n_4k2j9x0q7a`) repeat and do not compress. The id keys are `id`,
     `source`, `target`, `parentId`, `fromStep` and `rejoinStep`. In them, each id becomes its prefix and a number in
     order of first `id` (`n_3`). The first `id` keeps only `n_`. Text outside the id keys is unchanged. Other id-like
@@ -1086,11 +1001,12 @@ The Share link tab makes a link with the whole diagram, to play with no account,
     correct the result. A binary arithmetic coder writes the bits. Integers and a curve table only, so every engine
     gives the same bytes.
   - **A dictionary** (`link-dictionary.txt`, about 158 KB, from `node scripts/link-dictionary.mjs`). Both ends first
-    train the model on all template JSON. A template link takes a few hundred characters. A hash test pins the dictionary. A change to the dictionary or model breaks old links, so use
-    a new format letter.
+    train the model on all template JSON. A template link takes a few hundred characters. A hash test pins the
+    dictionary. A change to the dictionary or model breaks old links, so use a new format letter.
   - **A frame**: JSON length (varint), a 16-bit FNV-1a checksum and the coded bytes, in base64url, then `x`. A cut or
     damaged link gives an error. No link ends in a character such as `_` that Markdown and chat apps leave out.
-- The model trains on the dictionary slowly, so the browser runs it in a module worker (`link-worker.ts`). Node and tests run it in the same thread.
+- The model trains on the dictionary slowly, so the browser runs it in a module worker (`link-worker.ts`). Node and
+  tests run it in the same thread.
 - `MAX_LINK_JSON_BYTES` limits link JSON, and so the work of a damaged link.
 - `samples/y-checkout-flow.json` and `.txt` pin the format: the test expects exactly that link on all CI systems.
 - Above `LONG_LINK_CHARS`, the tab warns that some chat and mail apps cut the link. `share-link.test.ts` keeps the
@@ -1103,14 +1019,17 @@ The Share link tab makes a link with the whole diagram, to play with no account,
 ### Installable website
 
 A tablet cannot run the desktop app, so the library offers to install the website (`src/install`). The installed app
-opens from the home screen in its own window and works offline. Agents and diagram folders are desktop only.
+opens from the home screen in its own window and works offline. A folder works where the browser has the folder API
+(`canOpenFolder`, `canFollowFolder`), with no check of the device. The MCP server needs the desktop app.
 
 - `public/manifest.webmanifest` and `public/icons` (from `pnpm app-icon`; the maskable and Apple touch icons fill the
   square) make the website installable. Chrome needs no service worker for that.
 - Chromium fires `beforeinstallprompt`, and the offer shows an Install button. On tablets the website keeps the event,
   so Chrome on Android adds no install bar. Other browsers get one line of steps.
 - iPad: the offer also says the Home Screen app keeps its own diagrams (iPadOS gives it separate storage).
-- Only on tablets, not phones or the installed app; hidden once closed.
+- The offer shows only on tablets, not on phones or in the installed app; it stays hidden once closed. The manifest
+  lets any browser with an install command install the website, and the installed app registers the service worker
+  on each device (`runsAsInstalledApp`).
 
 #### Service worker
 
@@ -1143,9 +1062,10 @@ WebWorker library).
 
 A deploy removes the files of the old build, so an open tab cannot load its chunks, workers, fonts and icon sets
 (`src/new-version`). When such a load fails and the server does not have the entry script of the tab, the app saves the
-open diagram and offers a reload. A page change reloads at once, and a tab that gets the same build again shows an
-error and does not reload. A web page export also stops then, because the player files have no hash and come from
-the new build.
+open diagram and offers a reload. At a page change, the app reloads the tab at once. The app does not reload the tab
+when a save failed, a dialog is open or an export runs (`useReloadHold`). In these cases the app shows the offer and
+names what a reload stops. If the reloaded tab gets the same build, it shows an error and does not reload again. After
+a deploy, a web page export in an old tab also stops. Its player files have no hash and come from the new build.
 
 ### Folder on the website
 
@@ -1165,10 +1085,10 @@ Claude Code then works on the diagrams through files in that folder. The user in
 - Before a write, the app reads the file. If it differs from that last text, the app does not write it, and loads the
   change from outside. So the app never writes over an agent change that came between two scans. The app version
   stays in the version history.
-- A save that changes only the viewport, the save counter or measured sizes does not write a file of the folder, as
-  for linked files on the desktop.
+- A save that changes only the viewport, the save counter, measured sizes or `$schema` does not write a file of the
+  folder. Linked files on the desktop follow the same rule.
 - The open diagram loads a change from outside at once, unless a change of the user waits for its save. Then it offers
-  "Load newer", as before.
+  "Load newer", as the desktop app does.
 
 The agent folder `.diagrams` (`src/folder/agent-channel.ts`), when "Let agents use this folder" is on:
 
@@ -1211,41 +1131,8 @@ repository. A value that the build cannot use stops the build.
 [problem reports](#problem-reports). They have no default, also not in the official build, so that a fork without them
 sends no report. A report server needs keys, because the app sends only encrypted reports.
 
-### Docker image
-
-`Dockerfile` builds the website image that `.github/workflows/docker-image.yml` publishes for each release.
-
-- The build stage takes `DIAGRAMS_WEBSITE`, `DIAGRAMS_REPOSITORY`, `DIAGRAMS_REPORT_URL` and `DIAGRAMS_REPORT_KEYS`
-  as build arguments.
-- The build stage runs on the platform of the build computer, because `dist/` is the same for each platform. The final
-  stage has no `RUN` step, so the arm64 image needs no emulation.
-- The final stage is distroless with static-web-server, a static binary. It has no shell and runs as `nonroot`.
-- The Node.js image has no corepack, so the build copies pnpm from the official pnpm image.
-  `scripts/dockerfile.test.ts` keeps its version equal to `packageManager`.
-  - Dependabot bumps the pnpm image of both Dockerfiles in one pull request, in its own `pnpm` group. Dependabot cannot
-    bump `packageManager`, so add that change to the same pull request. Thus a failed pnpm bump does not block the other
-    images.
-- The pnpm store is a cache mount. The website host accepts only the cache mount ID `s/<service ID>-<target>`, and
-  no variable in it. Thus the ID holds the service ID of the website, and a fork that deploys to its own service
-  changes it.
-- The static-web-server configuration file overrides the `SERVER_*` variables. Thus the image sets the options as
-  variables, and `docker/sws.toml` holds only the headers.
-- The image holds the licence texts of static-web-server, from the release tag, with a checksum.
-- The BuildKit SBOM scanner reads package files. The bundles in `dist/` have none, so it does not find the npm
-  packages. Thus the `sbom` stage writes a CycloneDX SBOM from the same build (`scripts/image-sbom.ts`).
-  - It starts from `pnpm sbom --prod` and keeps the packages in the licence files of the website bundles, as the
-    desktop SBOM does. The desktop-only packages, such as the agent server, are not in it.
-  - A kept package that only a removed package needs becomes a dependency of the image.
-  - The publish workflow attests the SBOM to the image digest. The CI job "Docker image" builds it on each pull
-    request.
-- Trivy scans the image, the SBOM and the Dockerfile. The image scan finds only the Debian packages, so the npm
-  packages and static-web-server come from the SBOM scan.
-  - CI fails on a high or critical finding that has a fix.
-  - Each Monday, `.github/workflows/docker-scan.yml` verifies the attestations of the newest release image. Then it
-    scans the image and the attested SBOM and uploads the findings to code scanning. A release image does not change, so
-    only this scan finds a new advisory for it.
-  - `.github/actions/trivy` downloads the Trivy release and checks its SHA-256, without the Trivy action. Attackers
-    moved the tags of that action to malicious commits in March 2026.
+[BUILD.md](BUILD.md#docker-image) describes the Docker image of the website. It takes the website, repository and
+report options as build arguments.
 
 ## Desktop app
 
@@ -1277,9 +1164,6 @@ The React app in Electron, plus file storage, agent control, the website handoff
   - Unpackaged app: shows the icon on the window and macOS dock (Electron otherwise shows its own).
   - Packaged app: uses the executable or bundle icon.
 - The window restores position, size and maximized state on a connected screen, shrunk to fit if the saved one is gone.
-- `DIAGRAMS_HIDE_WINDOW` (desktop e2e tests, package smoke test): no visible window, taskbar button or focus.
-  `offscreen` renders at full frame rate without a native window. Chromium throttles hidden native windows, so only the
-  minimized-window test uses `native`.
 
 ### Capture window
 
@@ -1373,16 +1257,18 @@ with snapdom, because Chromium gives only pixels.
   - Main moves a damaged list to `linked-files-damaged-<time>.json`, keeps the entries that it can read and tells the
     user once. The list write flushes the temporary file to disk before the rename.
 - Files use indented JSON with numbers to two decimals, for small diffs.
-- A linked file is not written when only the viewport, save counter, time or measured sizes change: a pan or zoom must
-  not alter the repository file.
+- `app-settings.json` in the user data folder holds the app settings. Each key reads alone. A key that is not there or
+  not valid takes its default. The other keys of the file stay in use.
+- The app does not write a linked file when only the viewport, save counter, time, measured sizes or `$schema`
+  change. A pan or zoom must not alter the repository file.
 - Version history shows the last git commit of a linked file over the canvas, with a change summary (`git show
   HEAD:./<file>` through `files.committed`). Restore is one undo step. Git must be on the PATH.
 - An unreadable diagrams folder at start shows the reason and "Try again"; agent calls fail at once with it.
 - A `changed` event for the open diagram (another tab or program) offers "Load newer". A diagram gone from storage stays
   open with a notice; the next change saves it. `rev` stays the diagram's save counter.
 - Until the user loads the newer version or keeps the open one, saves only record versions, so a due save cannot
-  replace the newer version. A version that the app cannot read, for example a newer format, gets no save. The notice
-  then offers an export.
+  replace the newer version. Agent tools change nothing in that time and give the reason. A version that the app
+  cannot read, for example a newer format, gets no save. The notice then offers an export.
   - A readable newer version can merge with the open diagram (`src/model/diagram-merge.ts`). The base is the version
     that the session saved or loaded last, so the merge sees which side changed each field. Nodes, edges and flows
     merge by field, and each field that both sides changed is a conflict with its own choice. The review shows the
@@ -1409,8 +1295,7 @@ setting turns this off.
     stops working when that copy goes. A failed add tries again at the next start.
   - The Windows uninstaller removes the Run key value. A package manager cannot remove files in home folders, so the
     autostart entry has `TryExec`: the desktop skips it after the program is removed.
-  - Builds from source do not start at sign-in. `DIAGRAMS_AUTOSTART_DIR` makes the item an autostart entry in a test
-    folder on each system (desktop e2e tests, package smoke test).
+  - Builds from source do not start at sign-in.
 - The tools run in the renderer, so an agent call starts a hidden window when there is none. A call that only reads
   keeps it hidden. For a change, a setting shows the window without focus, shows it in front, or keeps it hidden.
 - On Windows, a window that maximizes takes the focus. Thus a window that shows without focus gets its saved maximized
@@ -1432,6 +1317,8 @@ setting turns this off.
   two users, or a development build next to an installed app. The agent setup holds the port, so an app waits 10 s for
   a kept port that another program uses (an app that quits can still hold it). Then it moves to a free port, keeps it
   and tells the user to run the setup again.
+- Without a kept port, an installed app takes the first free port from 27419, and a build from source from 27424.
+  Thus a build from source does not take the first port of an installed app.
 - Main and the renderer share `src/agent/tool-definitions.ts` (no DOM code). A tool without a handler fails the type
   check.
 - `runAgentTool` runs calls one at a time in the renderer and owns their time limits:
@@ -1477,71 +1364,11 @@ setting turns this off.
   the last 60 seconds, once. The code check answers other websites with `allowed: false` and takes no diagram from them.
 - Renderer permissions: clipboard writes and full screen only. Handed-over diagrams always become new diagrams.
 
-### Packaging and updates
+### Updates
 
-- electron-builder (`electron-builder.ts`): Windows NSIS; Mac dmg and zip per architecture; Linux AppImage and deb.
-  Vite bundles all main-process dependencies, so the package holds only `dist/` and three `dist-electron/` files.
-  - Toolsets: `nsis` 1.2.1 (NSIS 3.12) and `appimage` 1.0.3 (the static runtime of type2-runtime). electron-builder
-    marks them as beta.
-  - The default toolsets have NSIS 3.04, which has CVE-2023-37378. Their AppImage runtime needs libfuse2, which
-    Ubuntu 22.04 and later do not install.
-- Fuses turn off `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS`, inspect flags and extra `file://` rights, and allow only the
-  checked asar archive.
-- Release (`docs/RELEASING.md`): a `v*.*.*` tag starts `.github/workflows/release.yml` and sets the version
-  (`-c.extraMetadata.version`); a release needs no commit. `pnpm release:tag` calculates the tag. One job creates
-  the draft, because parallel electron-builder jobs could each create one. Platform jobs package, drive the app
-  through the agent server (`scripts/smoke-package.mjs`) and upload. The maintainer publishes the draft.
-- Release and `main` builds do not restore the Actions cache. Other workflow runs can write that cache. If a
-  build restores that cache, a changed package in it goes into the installers.
-- Each `uses:` line of a remote action in a workflow pins a commit SHA, with the version in a comment. `.github/workflows/actions.lock`
-  records the commit, the tag, the owner ID and the repository ID of each action. It also records the actions that
-  the composite actions use. GitHub runs an action only at a commit in the lockfile.
-  - A workflow calls a composite action of this repository with `uses: $/…`. GitHub runs that action at the commit
-    of the workflow.
-  - After a change to a `uses:` line, run `gh actions-lock --no-narrow`. Without `--no-narrow`, the tool changes the
-    SHA pins to tags, and OpenSSF Scorecard counts a tag as not pinned.
-  - The "Actions lockfile" job of CI checks the lockfile with `gh actions-lock --verify`.
-- Each platform job attests the build provenance of its installers (`actions/attest`, SLSA provenance signed with
-  Sigstore) after the test and before the upload. The attestation names the workflow file and the tag, so
-  `gh attestation verify --signer-workflow --source-ref` rejects a file from another workflow or branch. Only an
-  admin can create a tag, but any branch can change a workflow file. electron-updater does not check attestations.
-  - Each platform job also uploads its two attestation bundles (`bundle-path` of `actions/attest`) to the release, as
-    `<prefix>-<platform>-provenance.sigstore.json` and `<prefix>-<platform>-sbom.sigstore.json`.
-  - OpenSSF Scorecard looks for signatures only in the files of a release. `gh attestation verify --bundle` reads
-    the attestation from the file, without the attestation API of GitHub.
-- SBOM: the "Write the SBOM" job builds the bundles and runs `pnpm sbom --prod` (CycloneDX 1.6) once per release.
-  `scripts/sbom.ts` completes that SBOM. Each platform job attests the same SBOM for its installers.
-  - The production packages of pnpm include some that the bundles leave out, such as `@types` packages.
-  - Some bundled packages are not in the list of pnpm, for example dev dependencies whose CSS ships (tailwindcss,
-    shadcn). The script adds each one from its `package.json` and the lockfile hash, without its dependencies. As a
-    result, shadcn stays a dev dependency, and its CLI dependencies stay out of the SBOM.
-  - The script fails when a bundled package gets no component. CI runs the same check on each pull request.
-  - The script adds each program in `EMBEDDED_SOFTWARE` inside the package version that holds it, with a purl and a
-    CPE. `EMBEDDED_VERSIONS` finds the program versions: Graphviz from the loaded module, llhttp from
-    `deps/llhttp/include/llhttp.h` at the undici release tag on GitHub, and HashWX from the HashWX commit that
-    capjs-core names at its release tag on GitHub.
-  - Electron is a dev dependency, so the script adds it. The script starts the Electron binary with
-    `ELECTRON_RUN_AS_NODE` and reads `process.versions`. Chromium, V8 and Node.js go inside Electron. The projects of
-    Node.js, such as c-ares, nghttp2, SQLite and libuv, go inside Node.js.
-  - The projects of Chromium come from `LICENSES.chromium.html` next to the binary. That file does not give versions.
-  - Each Fontsource package gets its font as a `data` component, from the `metadata.json` of the package.
-  - Each icon set in `src/canvas/icons/data` becomes a `data` component, from `scripts/icons/sources.ts`, with the
-    SHA-256 of its data file. Simple Icons holds a component for each bundled logo that has its own licence.
-  - app-builder-lib (electron-builder) holds the code that the installers add next to the app:
-    - NSIS 3.12 for the Windows installer and uninstaller, with the plugins that their scripts call.
-    - Elevate 1.3.0, which the Windows installer puts in `resources\elevate.exe`.
-    - The AppImage runtime (type2-runtime 20251108). It is a static program with libfuse 3, squashfuse, Zstandard,
-      zlib, mimalloc and musl.
-    - Six libraries in `usr/lib` of the AppImage.
-  - `INSTALLER_TOOLSETS` names the toolsets and their bundles with the SHA-256. A test fails when
-    `electron-builder.ts` selects other toolsets, or when app-builder-lib downloads other bundles for the selected
-    toolsets.
-  - `NSIS_PLUGINS`, `APPIMAGE_RUNTIME_SHA256` and `APPIMAGE_LIBRARIES` give the SHA-256 of each file from the
-    bundles. CI runs `scripts/installer-contents.ts` on the built installers. The script fails when an installer
-    holds a file that the SBOM does not list. It also fails when the SBOM lists a file that no installer holds.
-  - The app gets a `pkg:github` purl, because the npm purl of the private package names another package.
-- Preview tags (`v0.2.0-beta.1`) build in the `preview` environment without approval and publish as GitHub
-  pre-releases.
+[BUILD.md](BUILD.md#installers-and-releases) describes the installers, the release workflow, the attestations and
+the SBOM.
+
 - Channels: a normal version reads `/releases/latest` (never a pre-release); a beta or alpha takes the newest release
   of its channel or a more stable one. electron-builder writes only `latest*.yml` for GitHub; no channel files.
 - `electron/updates.ts` policy per build (public releases; no token):
@@ -1581,10 +1408,10 @@ setting turns this off.
   (`build/installer.nsh`); an update keeps it.
 - Before an update Restart, main saves the open diagram and waits for the writes (`prepareQuit`): on macOS, the
   update quit skips the window close step.
-- Only the Mac builds of releases get a Developer ID signature. Mac builds without a certificate get an ad-hoc
-  signature, which Apple Silicon needs after the fuses change the binary.
-- `scripts/windows-signing.ts` signs the Windows build with `signtool.exe` (`docs/RELEASING.md`). After a signed
-  release, the updater accepts updates only from the publisher in `app-update.yml`.
+- When the install fails, for example after a cancelled password prompt of a deb install, the app undoes the quit
+  preparation. The next window close then saves again. The update state becomes `install-failed`, with the reason, and
+  the downloaded update stays ready for the next try.
+- The updater of a signed Windows build accepts updates only from the publisher in `app-update.yml`.
 
 ### Handoff from the website
 
@@ -1619,7 +1446,8 @@ The agent card and "Open in desktop app" show only on a computer. `deviceKind` (
 It uses `renderDiagramImage` (as the agent tool `render_image` does) and `renderDiagramVideo`.
 
 - `electron/render-args.ts` reads the options before the single-instance lock, so a render runs next to an open app.
-  Exit codes: 2 (usage) for bad arguments, 1 (message) for a failed render.
+  The options are `--theme`, `--flow`, `--path`, `--step` and `--max-size` (`RENDER_USAGE`). Exit codes: 2 (usage)
+  for bad arguments, 1 (message) for a failed render.
 - `--theme` takes a built-in theme or a `.theme.json` file. Without it, the render has no app settings, so it uses the
   Light or the Dark theme, as the system is.
 - `electron/render-cli.ts` opens a hidden window on the empty page `#/render`, with background throttling off, and
@@ -1636,7 +1464,8 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
 
 - App: the action downloads the Linux AppImage of a release with `gh` and the job token. Runners have no libfuse2,
   which the AppImageKit runtime of older releases needs, so the action unpacks the AppImage. The app runs under
-  `xvfb-run` without a display, and with `--no-sandbox` without unprivileged user namespaces. The `app` input replaces the download (this CI: the build from source).
+  `xvfb-run` without a display, and with `--no-sandbox` without unprivileged user namespaces. The `app` input
+  replaces the download (this CI: the build from source).
 - Version: without the `version` input, the ref of the action (`github.action_ref`) selects the release. If a release
   tag is at the commit of the ref, that release matches. If not, the newest stable release that the commit contains
   matches (compare API). A release does not change `package.json`, so the files of the action do not hold the
@@ -1659,32 +1488,8 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
   note in place of its old image. With no difference, the comment says so, to show that the check ran.
 - `base-root`: the base app renders the files at the same paths in that folder. Files on one side only show as new or
   removed. An app refuses a newer format, so without this input a format change gets no old images.
-- `.github/workflows/display-previews.yml` runs the action for a pull request from this repository that changes drawing
-  code, templates or dependencies. It builds the app of both commits. The base commit is the first parent of the merge
-  commit, not `pull_request.base.sha`, which stays old when `main` moves. `scripts/template-files.mjs` of each commit
-  writes each template as a diagram file in `.diagram-previews/` and `base/.diagram-previews/`, and the action renders
-  each file in the Dark and the Light theme (`theme: dark light`). Template changes then show. A template gets new random ids at each build, so the script numbers the ids in order. Particle
-  times depend on a hash of the edge id, so the script sets the times to 0.
-- App screens show what an export does not draw. `scripts/app-screens.mjs` of each commit serves its web build and
-  takes them with Playwright in both themes:
-  - library, template page, editor with a node selected and with the flow panel, image export, Present at its first
-    step and five steps later;
-  - empty diagram at 1440 × 900;
-  - editor with properties and flow panel at 1280 × 720;
-  - phone library, editor and Present at 390 × 844.
-
-  Reduced motion and no CSS animations keep the screens still. Library screens show the whole page, after every card
-  preview frames its diagram.
-
-- `e2e/accessibility-scan.spec.ts` runs axe (`@axe-core/playwright`, WCAG 2.2 A and AA) in the Light and the Dark
-  theme.
-  - Scope: library, template page, editor (selection, flow panel), command and insert menus, shortcut sheet, image
-    export, minimap, Present with Explore, phone library and editor.
-  - Each other built-in theme: editor with a selection, and the app settings.
-  - A violation fails the run.
-  - The scan leaves out what Explore dims (text at 16 %): WCAG 1.4.3 excludes inactive parts.
-  - Every node has the `group` role.
-  - The zoom readout, Insert, the path pickers and the log rows take their name from their text.
+- `screens` and `base-screens`: the action compares two folders of app screenshots. This repository uses them and
+  `base-app` for its display previews ([BUILD.md](BUILD.md#display-previews)).
 - `samePixels` (`actions/render/png.mjs`) compares the screens: at most 16 pixels with a colour channel more than 8 of
   255 off. Builds of the same code differ a little at text edges and rounded corners; a real change moves hundreds of
   pixels.
@@ -1706,66 +1511,6 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
   ends at the last whole box that fits, before the next outline. The action cuts only a taller first box. The link
   under it opens the whole image and counts the changes outside. The action cuts each side around its own boxes; the
   heights can differ.
-- The featured stage and the template cards frame their diagram after the fonts load and after node sizes change.
-
-### Continuous integration
-
-`.github/workflows/ci.yml` runs on each pull request and on `main`.
-
-- "Changed files": when a pull request changes only files that no check reads (`docs/`, `CONTRIBUTING.md`,
-  `CODEOWNERS`, the issue and pull request templates, `dependabot.yml` and some other Markdown files), the jobs of the
-  app do not run. `README.md`, `LICENSE` and the skills are not in the list, because tests read them.
-  - When a pull request changes only these files and the image files (the two Dockerfiles, `.dockerignore` and
-    `docker/`), only "Typecheck, lint and unit tests" and the two image jobs run. No web or desktop test reads the
-    image files.
-- "Typecheck, lint and unit tests": static checks and Vitest, with browser tests in Chromium.
-- "Docker image": builds the website image and its SBOM, and scans both and the Dockerfile with Trivy. It runs the image
-  with a read-only file system and no capabilities, and checks the content types, cache headers and compression.
-- "Report server image": builds and scans the report server image in the same way. It tests the bucket store against
-  SeaweedFS, and runs the conformance tests against the image with a folder (Cap) and with the bucket (ALTCHA).
-- "Web tests 1 of 4" to "4 of 4": the end-to-end tests, split with Playwright `--shard`. A 4-core runner gets 2
-  workers; four shards give the 8 of a developer computer. The matrix sets the number (`strategy.job-total`).
-- "All checks": the required check of the "Protect main" ruleset, also for the desktop jobs. It fails unless each job
-  passed or did not run because of "Changed files". It has `if: always()`, because GitHub counts a required job skipped
-  after a failed dependency as passed. A matrix job that does not run gives no check with its platform name, so the
-  desktop jobs are not required checks themselves.
-- "Desktop app on …": unit tests, desktop end-to-end tests and the render action on Windows, macOS and Linux.
-  - Each job builds the installers of its system for its own architecture: NSIS on Windows, dmg on macOS, AppImage
-    and deb on Linux.
-  - The job installs or mounts each installer and runs `scripts/smoke-package.mjs` on the installed app. On Windows,
-    the job then runs the uninstaller and checks that the uninstaller removed `Diagrams.exe`.
-  - The Windows and Linux jobs run `scripts/installer-contents.ts`. The script compares the NSIS plugins, the
-    AppImage runtime and the libraries in `usr/lib` of the AppImage with the SBOM. The script unpacks the Windows
-    installer and uninstaller with 7-Zip.
-  - Each job uploads its installers as the workflow artifact `installers-<runner>`. GitHub keeps them for 7 days. A
-    reviewer can install the app from the installers of a pull request before the merge.
-  - A failed desktop end-to-end test writes its evidence to its test results (`e2e/desktop/fixtures.ts`). The
-    evidence is the output of each app process with Chromium logs (`ELECTRON_ENABLE_LOGGING`), `crashes.json`, the
-    exception and location of each crash dump, the GPU state and the checked images. The job uploads the test results
-    only after a failure.
-  - A dump holds the memory of a process, and anyone can download the artifacts of a public repository. Thus the
-    evidence holds the dumps themselves only with `E2E_KEEP_CRASH_DUMPS=1`, for a local run.
-  - On `macos-latest`, some runners have more cores, and Playwright then uses 2 workers. With two apps on the virtual
-    GPU, the GPU device is often lost and the GPU process restarts. A canvas in a page then reads transparent pixels,
-    so the capture tests decode and compare pixels in the main process of the app (`e2e/desktop/pixels.ts`).
-- `.github/actions/playwright-chromium` caches Chromium by Playwright version.
-  - On Linux, it also caches the `.deb` files of the system libraries of Chromium, by runner image and Playwright
-    version. A cache hit installs them with `dpkg` and does not use the Ubuntu mirrors, so a mirror outage does not
-    stop CI. The key holds the image version, because the packages of an earlier image can downgrade those of a later
-    image.
-  - After a cache hit, `playwright install-deps --dry-run` fails the step when a library is missing.
-- `.github/actions/electron` caches the Electron downloads by Electron version and installs the binary, with three
-  tries. The `electron` package has no install script: it downloads the binary when a process first loads it, also in
-  the unit tests.
-- Playwright keeps a trace of each failed CI test (`trace: 'retain-on-failure'`); the failed job uploads it in
-  `test-results`. No retries, so a test that fails only sometimes stays visible.
-- `.github/workflows/dependency-review.yml` compares the dependency graph of a pull request with its base. It fails
-  when the pull request adds or changes a package with a high or critical advisory, in runtime or development scope.
-  It also fails for a licence outside `allow-licenses`, which holds the licences of the lockfile. A package with no
-  licence only shows in the summary.
-- `.github/workflows/scorecard.yml` runs OpenSSF Scorecard on each push to `main`, each Monday and after a change to
-  branch protection. It publishes the result to the Scorecard API for the README badge, and it uploads the findings
-  to code scanning. The Scorecard API accepts a result only from a job with approved actions and no `run` steps.
 
 ### Skills
 
@@ -1782,7 +1527,8 @@ The `infrastructure` skill builds or checks a diagram from Terraform, Compose or
 files with its client tools. The app has no parser, because the formats change often. Each node keeps its source as a
 link (`Source: <resource address>` to the file on the code host), so a later check matches by address, not by name.
 
-The `skills/list` and `skills/get` methods (MCP skills extension, SEP-2640) wait until ViteMCP can declare extensions.
+The server has no `skills/list` and `skills/get` methods (MCP skills extension, SEP-2640), because ViteMCP cannot
+declare extensions.
 Tests fail when a skill names a missing tool or icon.
 
 ## Network connections
@@ -1821,27 +1567,69 @@ those texts.
 - Fonts, icons and Mermaid ship in the bundle.
 - A connected agent sends what it reads to its model. The "Connect an agent" dialog says so.
 
-## Third-party licences
+## Runtime environment variables
 
-`scripts/third-party-licenses.ts`, a Vite plugin, collects the package of each module in the web and worker builds and
-writes `third-party-licenses.txt` with each licence text. The desktop main build writes
-`third-party-licenses.main.txt`. The fonts (OFL), elkjs (EPL) and mediabunny (MPL) need a licence text or source
-statement in each copy. A list that people keep by hand can become different from the lockfile. Tailwind resolves the `@import` and
-`@plugin` rules of the style sheets itself, so the module graph does not hold the packages that these rules name.
-The plugin reads the rules of each style sheet in the bundle and adds those packages: tailwindcss, tw-animate-css
-and shadcn.
+These variables are for tests and development. They are not a supported interface, and a release can change or
+remove them. The variables in "Build options" are a different set: the build reads them, and the app does not.
 
-Some packages hold another program in compiled form, with its own licence: Graphviz in `@hpcc-js/wasm-graphviz`
-(web worker and main), llhttp in undici (main), HashWX in capjs-core (report server). `EMBEDDED_SOFTWARE` names each one with its licence text. The build
-fails when a bundled module loads WebAssembly or holds a base64 WebAssembly module, and its package has no entry.
+| Variable                     | Effect                                                                                        |
+| ---------------------------- | --------------------------------------------------------------------------------------------- |
+| `DIAGRAMS_USER_DATA`         | The user data folder: settings, agent token and port, version history, reports                |
+| `DIAGRAMS_DATA_DIR`          | The diagrams folder, in place of `Documents/Diagrams`                                         |
+| `DIAGRAMS_AGENT_PORT`        | The port of the agent server, in place of the kept port                                       |
+| `DIAGRAMS_HIDE_WINDOW`       | No visible window, taskbar button or focus: `offscreen` or `native`                           |
+| `DIAGRAMS_AUTOSTART_DIR`     | The start at sign-in becomes an autostart entry in this folder, on each system                |
+| `DIAGRAMS_REGISTER_PROTOCOL` | `1`: a build from source registers `diagrams://`. `0`: the app does not register it           |
+| `VITE_DEV_SERVER_URL`        | A build from source loads the renderer from this Vite dev server (`pnpm desktop:dev` sets it) |
+| `E2E_COVERAGE`               | The web end-to-end tests record coverage (see [BUILD.md](BUILD.md#tests))                     |
+| `E2E_KEEP_CRASH_DUMPS`       | `1`: the evidence of a failed desktop end-to-end test keeps the crash dumps                   |
 
-The report server build writes `report-server/dist/third-party-licenses.txt`, which the image holds next to the server
-bundle. The standalone player build writes `dist/standalone/licenses.txt`, which each web page export holds. The preload
-build writes no licence file, so `withoutPackages` fails the preload build when that build bundles a package. The SBOM check reads the
-licence files of the web, player and main builds.
+- The desktop end-to-end tests and `scripts/smoke-package.mjs` set the first four. The sign-in tests also set
+  `DIAGRAMS_AUTOSTART_DIR`, and the smoke test sets `DIAGRAMS_REGISTER_PROTOCOL=0`. Thus a test run does
+  not change the diagrams, settings, port, login items or link handler of the user.
+- `DIAGRAMS_HIDE_WINDOW=offscreen` renders at full frame rate without a native window. Chromium throttles hidden native
+  windows, so only the minimized-window test uses `native`.
 
-`THIRD-PARTY-NOTICES.md` covers icons and logos (data, not packages). A test checks that it lists every bundled Simple
-Icons logo that has its own licence.
+## What the version number promises
+
+Releases have semantic version numbers. `RELEASE_MAJOR` in `src/persistence/release-formats.ts` is the major version
+of the next release.
+
+Each release keeps these interfaces for every earlier release of its major version, also in 0.x. Tests and CI checks
+enforce them:
+
+- The diagram file format: each format that a release wrote opens with no loss (see "Change the diagram format").
+  `src/persistence/formats.test.ts` opens the samples of each format. `scripts/release-formats.ts` checks the formats
+  of the releases in CI, in `pnpm release:tag` and in the Release workflow.
+- Images that hold a diagram and backup zip files. `src/export/embed.test.ts` and
+  `src/persistence/import-files.test.ts` open their samples.
+- The JSON Schema of each format at `/schemas/diagram-v<N>.json`. In the CI job "Release formats",
+  `scripts/release-formats.ts --base` fails when a change edits or deletes a file in `public/schemas/`.
+- Share links: each format letter after `#/s/` opens. The tests in `src/share` open the samples in
+  `src/share/samples`, and `scripts/release-formats.ts --base` fails when a change edits them.
+- Icon names: `src/canvas/icons/released-ids.json` only grows. `src/canvas/icons/released-ids.test.ts` checks that
+  each name draws an icon, and `scripts/icon-ids.ts --base` in CI fails when a change removes a name.
+
+From 1.0.0, a release with the same major version also keeps these interfaces. A 0.x release can change them:
+
+- The MCP tools of the agent server, their names and their arguments.
+- The names of the MCP prompts (`draw-architecture`, `animate-flow`, `diagram-from-code`, `threat-model`,
+  `review-diagram`) and of the skills in `claude-plugin/skills`, because users call them by name.
+- The command line: `--render` with its options and exit codes.
+- The inputs and outputs of the render action.
+- Theme files (`.theme.json`).
+- The README settings for a copy on another host: the build options (`DIAGRAMS_WEBSITE` and the others), the report
+  server variables and the Docker image tags.
+
+These are internal, and any release can change them:
+
+- Browser storage keys (`dg:*` in `localStorage`, the IndexedDB stores).
+- The IPC between the main process and the renderer (`window.desktop`).
+- Internal routes, such as `#/capture` and `#/render`.
+- The runtime environment variables above, and the `--background` flag of the start at sign-in.
+- The call, result and status files of the agent folder (`.diagrams/`). The website rewrites their guide each time it
+  opens the folder.
+- The `diagrams://` link format between the website and the desktop app.
 
 ## Limits
 
@@ -1850,8 +1638,8 @@ Icons logo that has its own licence.
   export JSON.
 - A browser can delete the storage of a site that is not persistent: Chromium and Firefox when the disk is almost
   full, Safari after 7 days of use without a visit. The app calls `navigator.storage.persist()` at a save while the
-  storage is not persistent, at most once a day, because Firefox shows a prompt. The library in browser storage offers one zip
-  file of all diagram files as a backup. Import keeps the id of a diagram when no stored diagram has it, so the links
-  between diagrams stay.
+  storage is not persistent, at most once a day, because Firefox shows a prompt. The library in browser storage offers
+  one zip file of all diagram files as a backup. Import keeps the id of a diagram when no stored diagram has it, so the
+  links between diagrams stay.
 - SVG export embeds HTML in `foreignObject`. Browsers show it; design tools can show it as one image.
 - Performance budget: about 150 nodes, 200 edges and 600 particles at 60 fps.
