@@ -12,13 +12,13 @@ The Diagrams app shows every change while you make it, and each call that change
 3. **Choose icons and boundaries.** Call `search_icons` once for each product the user names, for example "postgres", "lambda" or "kafka". If the system runs in a cloud account, a network or a cluster, call `list_boundary_kinds`.
 4. **Add everything in one call.** Send all nodes and edges in one `add_elements` call. Give each node a `ref` and use the refs in `from`, `to` and `parent`. Do not give `x` and `y`. The app places new nodes.
 5. **Lay it out.** After you add more than four nodes, call `layout_diagram` with the `layout` that fits the shape of the system:
-   - `flow` (the default) for request paths with `RIGHT`, and for layered stacks with `DOWN`.
+   - `flow` (the default) for request paths with `direction: "right"`, and for layered stacks with `direction: "down"`.
    - `tree` for a hierarchy from one root, such as an org chart or a dependency tree.
    - `hub` for one central node with many others around it, such as an event bus or an API gateway. Name it in `center`.
    - `network` for a mesh with many connections and no main direction.
    - `grid` for an inventory with few connections, such as a list of services that a team owns.
    - `lanes` for swimlanes: put the nodes of each team or tier (for example clients, edge, services, data) in a top-level group, in the order of the lanes, then lay out with `lanes`.
-   - The Graphviz engines when the user asks for one or a shape needs it: `dot`, `neato`, `fdp`, `circo` for a ring or a cycle, `twopi`, `osage`.
+   - The Graphviz layouts when the user asks for Graphviz or a shape needs one: `graphviz-layers` for layers along the direction, `graphviz-spring` and `graphviz-force` for a network, `graphviz-circle` for a ring or a cycle, `graphviz-radial` for rings around `center`, `graphviz-packed` for boxes packed in rows. If the user names a Graphviz engine, use its layout: `dot` is `graphviz-layers`, `neato` is `graphviz-spring`, `fdp` is `graphviz-force`, `circo` is `graphviz-circle`, `twopi` is `graphviz-radial`, `osage` is `graphviz-packed`.
 6. **Check your work.** Call `lint_diagram` and fix each `warning` with `update_elements`; label the edges it lists where the label helps the reader. Then call `render_image` and look at the image. Fix overlaps, nodes outside their boundary and long labels with `update_elements`. Then render again.
 
 ## Nodes

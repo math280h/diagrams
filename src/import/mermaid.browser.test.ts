@@ -15,7 +15,7 @@ const SOURCE = `flowchart LR
 describe('parseMermaidFlowchart', () => {
   it('reads nodes, groups, edges and the direction', async () => {
     const graph = await parseMermaidFlowchart(SOURCE)
-    expect(graph.direction).toBe('RIGHT')
+    expect(graph.direction).toBe('right')
     const byId = new Map(graph.nodes.map((node) => [node.id, node]))
     expect(byId.get('Services')?.isGroup).toBe(true)
     expect(byId.get('orders')?.parentId).toBe('Services')

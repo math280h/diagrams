@@ -164,10 +164,10 @@ function DiagramSettings() {
       <Section title="Layout">
         <SwitchField label="Snap to grid" checked={theme.snap} onChange={(snap) => setTheme({ snap })} />
         <div className="grid grid-cols-2 gap-1.5">
-          <Button variant="outline" size="sm" onClick={() => tidyUp('RIGHT', fitToScreen)}>
+          <Button variant="outline" size="sm" onClick={() => tidyUp('right', fitToScreen)}>
             <LayoutGrid /> Left to right
           </Button>
-          <Button variant="outline" size="sm" onClick={() => tidyUp('DOWN', fitToScreen)}>
+          <Button variant="outline" size="sm" onClick={() => tidyUp('down', fitToScreen)}>
             <LayoutGrid className="rotate-90" /> Top to bottom
           </Button>
         </div>
