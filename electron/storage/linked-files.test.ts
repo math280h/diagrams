@@ -1,10 +1,22 @@
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  linkSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createDiagram } from '@/model/defaults'
+import { DIAGRAM_VERSION } from '@/model/schema'
 import { committedText } from './git'
 import { createLinkedFiles, isLinkedId, linkedIdOf } from './linked-files'
+import { folderIdsOf } from './same-file'
 
 const fileCalls = vi.hoisted(() => [] as string[][])
 
@@ -94,6 +106,52 @@ describe('createLinkedFiles', () => {
     expect(await linked.readAll()).toEqual([])
   })
 
+  it('links a plain JSON file only when it is a diagram', async () => {
+    const linked = createLinkedFiles(registry)
+    const diagram = path.join(repo, 'docs', 'orders.json')
+    writeFileSync(diagram, JSON.stringify(createDiagram('Orders')))
+    const newer = path.join(repo, 'docs', 'newer.json')
+    writeFileSync(newer, JSON.stringify({ version: DIAGRAM_VERSION + 1, shape: 'unknown' }))
+    const older = path.join(repo, 'docs', 'older.json')
+    const sample = path.join(import.meta.dirname, '..', '..', 'src', 'persistence', 'formats', 'v6.json')
+    const { diagrams } = JSON.parse(readFileSync(sample, 'utf8')) as { diagrams: unknown[] }
+    writeFileSync(older, JSON.stringify(diagrams[0]))
+    const packageFile = path.join(repo, 'package.json')
+    writeFileSync(packageFile, '{"name":"shop","version":"1.0.0"}')
+    const notJson = path.join(repo, 'docs', 'notes.json')
+    writeFileSync(notJson, 'not json')
+
+    expect((await linked.link(diagram)).path).toBe(diagram)
+    expect((await linked.link(newer)).path).toBe(newer)
+    expect((await linked.link(older)).path).toBe(older)
+    await expect(linked.link(packageFile)).rejects.toThrow('package.json is not a diagram.')
+    await expect(linked.link(notJson)).rejects.toThrow('notes.json is not a diagram.')
+    expect((await createLinkedFiles(registry).readAll()).map((file) => file.path)).toEqual([diagram, newer, older])
+  })
+
+  it('links a .diagram.json file that the app cannot read, so that the library shows it', async () => {
+    const file = path.join(repo, 'docs', 'conflict.diagram.json')
+    writeFileSync(file, '<<<<<<< HEAD')
+    await expect(createLinkedFiles(registry).link(file)).resolves.toMatchObject({ text: '<<<<<<< HEAD' })
+  })
+
+  it('keeps one entry for a file that it links through two paths', async () => {
+    const file = path.join(repo, 'docs', 'once.diagram.json')
+    writeFileSync(file, 'once')
+    const junction = path.join(root, 'repo-link')
+    symlinkSync(repo, junction, 'junction')
+    const linked = createLinkedFiles(registry)
+    const first = await linked.link(file)
+    const second = await linked.link(path.join(junction, 'docs', 'once.diagram.json'))
+    expect(second).toEqual(first)
+    expect(await linked.create(path.join(junction, 'docs', 'once.diagram.json'), 'twice')).toMatchObject({
+      id: first.id,
+      path: file,
+    })
+    expect(readFileSync(file, 'utf8')).toBe('twice')
+    expect(JSON.parse(readFileSync(registry, 'utf8'))).toEqual({ files: [file] })
+  })
+
   it('flushes the new list to disk before it renames the list into place', async () => {
     const file = path.join(repo, 'docs', 'flushed.diagram.json')
     writeFileSync(file, 'x')
@@ -177,6 +235,67 @@ describe('a damaged list of linked files', () => {
     rmSync(registry, { recursive: true })
     writeRegistry(JSON.stringify({ files: [file] }))
     expect(await linked.readAll()).toEqual([{ id: linkedIdOf(file), text: 'later', path: path.resolve(file) }])
+  })
+})
+
+describe('duplicate entries in the list of linked files', () => {
+  let folder: string
+
+  beforeEach(() => {
+    folder = path.join(root, 'Diagrams')
+    mkdirSync(folder)
+  })
+
+  const inFolder = async (files: readonly string[]) => (await folderIdsOf(folder, files)).map((id) => id !== null)
+
+  function writeRegistry(files: string[]) {
+    mkdirSync(path.dirname(registry), { recursive: true })
+    writeFileSync(registry, JSON.stringify({ files }))
+  }
+
+  it('takes off each file that the diagrams folder lists, and keeps the files', async () => {
+    const folderFile = path.join(folder, 'd_orders.diagram.json')
+    writeFileSync(folderFile, 'in the folder')
+    const viaJunction = path.join(root, 'Moved diagrams')
+    symlinkSync(folder, viaJunction, 'junction')
+    const notListed = path.join(folder, 'notes.json')
+    writeFileSync(notListed, 'not listed')
+    const repoFile = path.join(repo, 'docs', 'repo.diagram.json')
+    writeFileSync(repoFile, 'in the repo')
+    writeRegistry([folderFile, path.join(viaJunction, 'd_orders.diagram.json'), notListed, repoFile])
+
+    const linked = createLinkedFiles(registry, { listedInFolder: inFolder })
+    expect((await linked.readAll()).map((file) => file.path)).toEqual([notListed, repoFile])
+    expect(linked.takeReset()).toBeNull()
+    expect(JSON.parse(readFileSync(registry, 'utf8'))).toEqual({ files: [notListed, repoFile] })
+    expect(readFileSync(folderFile, 'utf8')).toBe('in the folder')
+  })
+
+  it('keeps the first of two entries for one file', async () => {
+    const file = path.join(repo, 'docs', 'twice.diagram.json')
+    writeFileSync(file, 'twice')
+    const hardLink = path.join(root, 'twice.diagram.json')
+    linkSync(file, hardLink)
+    writeRegistry([file, hardLink, path.join(repo, 'docs', '..', 'docs', 'twice.diagram.json')])
+
+    const linked = createLinkedFiles(registry, { listedInFolder: inFolder })
+    expect(await linked.readAll()).toEqual([{ id: linkedIdOf(file), text: 'twice', path: file }])
+    expect(JSON.parse(readFileSync(registry, 'utf8'))).toEqual({ files: [file] })
+    expect(readFileSync(hardLink, 'utf8')).toBe('twice')
+  })
+
+  it('keeps the list as it is when it has no duplicates, or when the folder check fails', async () => {
+    const file = path.join(repo, 'docs', 'only.diagram.json')
+    writeFileSync(file, 'only')
+    const text = JSON.stringify({ files: [file] })
+    mkdirSync(path.dirname(registry), { recursive: true })
+    writeFileSync(registry, text)
+    const failing = async (): Promise<boolean[]> => {
+      throw new Error('The folder cannot be read.')
+    }
+    expect(await createLinkedFiles(registry, { listedInFolder: failing }).readAll()).toHaveLength(1)
+    expect(await createLinkedFiles(registry, { listedInFolder: inFolder }).readAll()).toHaveLength(1)
+    expect(readFileSync(registry, 'utf8')).toBe(text)
   })
 })
 
