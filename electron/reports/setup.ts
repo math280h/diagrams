@@ -3,6 +3,7 @@ import { app, crashReporter, dialog, net, shell } from 'electron'
 import { BUILD } from '@/desktop/build-config'
 import type { CrashRecord } from '@/desktop/contract'
 import type { MainHandlers } from '../ipc'
+import { removeStaleTempFilesOf } from '../storage/temp-files'
 import { createCrashStore, isCrashReason } from './crash-store'
 import { createReporter } from './reporter'
 
@@ -37,14 +38,18 @@ export interface ReportsOptions {
 /** Records the crashes of the app, and returns the handlers of the report requests of the renderer. */
 export function setupReports(options: ReportsOptions): ReportHandlers {
   const folder = path.join(options.userData, REPORTS_FOLDER)
+  const logFile = path.join(folder, 'crashes.json')
+  const sessionFile = path.join(folder, 'session.json')
+  const sentFile = path.join(folder, 'sent.json')
+  void removeStaleTempFilesOf([logFile, sessionFile, sentFile])
   const crashes = createCrashStore({
-    logFile: path.join(folder, 'crashes.json'),
+    logFile,
     dumpsFolder: app.getPath('crashDumps'),
-    sessionFile: path.join(folder, 'session.json'),
+    sessionFile,
   })
   const reporter = createReporter({
     reports: BUILD.reports,
-    sentFile: path.join(folder, 'sent.json'),
+    sentFile,
     crashes,
     fetch: netFetch,
     chooseFile: async (defaultName) => {

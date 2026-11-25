@@ -7,6 +7,7 @@ import {
   readFileSync,
   rmSync,
   symlinkSync,
+  utimesSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -17,18 +18,31 @@ import { DIAGRAM_VERSION } from '@/model/schema'
 import { committedText } from './git'
 import { createLinkedFiles, isLinkedId, linkedIdOf } from './linked-files'
 import { folderIdsOf } from './same-file'
+import { STALE_TEMP_AGE_MS } from './temp-files'
 
 const fileCalls = vi.hoisted(() => [] as string[][])
+const fileFailure = vi.hoisted(() => ({ writeFile: false, sync: false }))
 
 vi.mock('node:fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs/promises')>()
+  const noSpace = () => Object.assign(new Error('No space left on the disk.'), { code: 'ENOSPC' })
   return {
     ...actual,
+    writeFile: async (...args: Parameters<typeof actual.writeFile>) => {
+      if (!fileFailure.writeFile) return actual.writeFile(...args)
+      fileFailure.writeFile = false
+      await actual.writeFile(args[0], 'part')
+      throw noSpace()
+    },
     open: async (...args: Parameters<typeof actual.open>) => {
       const handle = await actual.open(...args)
       const sync = handle.sync.bind(handle)
       handle.sync = async () => {
         fileCalls.push(['sync', String(args[0])])
+        if (fileFailure.sync) {
+          fileFailure.sync = false
+          throw noSpace()
+        }
         await sync()
       }
       return handle
@@ -217,6 +231,66 @@ describe('a damaged list of linked files', () => {
     const again = createLinkedFiles(registry)
     expect(await again.readAll()).toEqual([kept])
     expect(again.takeReset()).toBeNull()
+  })
+
+  it('removes only the old temporary files that the app made for the list and the linked files', async () => {
+    const docs = path.join(repo, 'docs')
+    const file = path.join(docs, 'orders.diagram.json')
+    writeFileSync(file, 'orders')
+    const aged = (target: string, suffix: string, ageMs: number) => {
+      const temp = `${target}.tmp-${suffix}`
+      writeFileSync(temp, 'part')
+      const time = new Date(Date.now() - ageMs)
+      utimesSync(temp, time, time)
+    }
+    const old = STALE_TEMP_AGE_MS * 2
+    const linked = createLinkedFiles(registry)
+    await linked.link(file)
+    aged(file, '0a1b2c3d', old)
+    aged(file, '1a2b3c4d', 0)
+    aged(path.join(docs, 'notes.diagram.json'), '0a1b2c3d', old)
+    aged(path.join(docs, 'notes.txt'), '0a1b2c3d', old)
+    aged(registry, '0a1b2c3d', old)
+    const again = createLinkedFiles(registry)
+    expect(await again.readAll()).toEqual([{ id: linkedIdOf(file), text: 'orders', path: path.resolve(file) }])
+    expect(readdirSync(docs).toSorted()).toEqual([
+      'notes.diagram.json.tmp-0a1b2c3d',
+      'notes.txt.tmp-0a1b2c3d',
+      'orders.diagram.json',
+      'orders.diagram.json.tmp-1a2b3c4d',
+    ])
+    expect(readdirSync(path.dirname(registry))).toEqual(['linked-files.json'])
+    aged(file, '1a2b3c4d', old)
+    expect(await again.rescan()).toEqual([])
+    expect(readdirSync(docs).toSorted()).toEqual([
+      'notes.diagram.json.tmp-0a1b2c3d',
+      'notes.txt.tmp-0a1b2c3d',
+      'orders.diagram.json',
+    ])
+  })
+
+  it('removes the part of a failed write of a linked file, and keeps the file', async () => {
+    const file = path.join(repo, 'docs', 'orders.diagram.json')
+    writeFileSync(file, 'old')
+    const linked = createLinkedFiles(registry)
+    const { id } = await linked.link(file)
+    fileFailure.writeFile = true
+    await expect(linked.write(id, 'new')).rejects.toMatchObject({ code: 'ENOSPC' })
+    expect(readdirSync(path.join(repo, 'docs'))).toEqual(['orders.diagram.json'])
+    expect(readFileSync(file, 'utf8')).toBe('old')
+  })
+
+  it('removes the part of a failed write of the list, and keeps the list', async () => {
+    const file = path.join(repo, 'docs', 'orders.diagram.json')
+    const other = path.join(repo, 'docs', 'other.diagram.json')
+    writeFileSync(file, 'orders')
+    writeFileSync(other, 'other')
+    const linked = createLinkedFiles(registry)
+    await linked.link(file)
+    fileFailure.sync = true
+    await expect(linked.link(other)).rejects.toMatchObject({ code: 'ENOSPC' })
+    expect(readdirSync(path.dirname(registry))).toEqual(['linked-files.json'])
+    expect(JSON.parse(readFileSync(registry, 'utf8'))).toEqual({ files: [path.resolve(file)] })
   })
 
   it('checks a damaged list for changes without a failure', async () => {

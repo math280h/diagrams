@@ -1,8 +1,14 @@
 import { mkdtemp, readdir, rm, stat, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createFsStore } from './fs-store'
+import { STALE_TEMP_AGE_MS } from './temp-files'
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>()
+  return { ...actual, writeFile: vi.fn(actual.writeFile) }
+})
 
 const ID = 'a'.repeat(32)
 const HASH = 'b'.repeat(64)
@@ -30,16 +36,43 @@ describe('createFsStore', () => {
     expect(await store.remove(ID, HASH)).toBe('missing')
   })
 
+  it('removes the temporary file of a write that fails', async () => {
+    const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')
+    vi.mocked(writeFile).mockImplementationOnce(async (file) => {
+      await actual.writeFile(file, 'part')
+      throw Object.assign(new Error('No space left on the disk.'), { code: 'ENOSPC' })
+    })
+    await expect(
+      createFsStore(dir).put(ID, new Uint8Array([1]), { deleteHash: HASH, createdAt: 1 }),
+    ).rejects.toMatchObject({ code: 'ENOSPC' })
+    expect(await readdir(dir)).toEqual([])
+  })
+
   it('deletes old reports, files that a stopped write left, and metadata without a report', async () => {
     const store = createFsStore(dir)
     const newId = 'd'.repeat(32)
     await store.put(ID, new Uint8Array([1]), { deleteHash: HASH, createdAt: 1000 })
     await store.put(newId, new Uint8Array([1]), { deleteHash: HASH, createdAt: 3000 })
-    await writeFile(path.join(dir, `${ID}.age.tmp-0000`), 'partial')
+    const aged = async (name: string, ageMs: number) => {
+      const file = path.join(dir, name)
+      await writeFile(file, 'partial')
+      const time = new Date(Date.now() - ageMs)
+      await utimes(file, time, time)
+    }
+    await aged(`${ID}.age.tmp-0a1b2c3d`, STALE_TEMP_AGE_MS * 2)
+    await aged(`${newId}.json.tmp-0a1b2c3d`, STALE_TEMP_AGE_MS * 2)
+    const kept = [
+      `${newId}.age.tmp-1a2b3c4d`,
+      `${ID}.age.tmp-0000`,
+      'notes.txt.tmp-0a1b2c3d',
+      `${'z'.repeat(32)}.age.tmp-0a1b2c3d`,
+    ]
+    await aged(kept[0]!, STALE_TEMP_AGE_MS - 60_000)
+    for (const name of kept.slice(1)) await aged(name, STALE_TEMP_AGE_MS * 2)
     await writeFile(path.join(dir, `${'e'.repeat(32)}.json`), '{}')
     await writeFile(path.join(dir, 'notes.txt'), 'kept')
     expect(await store.sweep(2000)).toBe(1)
-    expect((await readdir(dir)).toSorted()).toEqual([`${newId}.age`, `${newId}.json`, 'notes.txt'])
+    expect((await readdir(dir)).toSorted()).toEqual([`${newId}.age`, `${newId}.json`, 'notes.txt', ...kept].toSorted())
   })
 
   it('uses the file time of a report without metadata', async () => {

@@ -1,8 +1,9 @@
-import { createHash, randomBytes } from 'node:crypto'
-import { mkdir, readFile, rename, rm, stat, unlink, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { mkdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import type { FileChange } from '@/desktop/contract'
 import { errorMessage } from '@/lib/error-message'
+import { writeThroughTemp } from './temp-files'
 
 /** Delays before each retry of a rename that another process blocks. */
 const RETRY_DELAYS_MS = [20, 50, 100, 200, 400]
@@ -43,14 +44,10 @@ async function withRetry<T>(work: () => Promise<T>): Promise<T> {
  */
 export async function writeFileAtomic(file: string, data: string | Uint8Array, mode = 0o600) {
   await mkdir(path.dirname(file), { recursive: true })
-  const temp = `${file}.tmp-${randomBytes(4).toString('hex')}`
-  await writeFile(temp, data, { mode })
-  try {
+  await writeThroughTemp(file, async (temp) => {
+    await writeFile(temp, data, { mode })
     await withRetry(() => rename(temp, file))
-  } catch (error) {
-    await rm(temp, { force: true })
-    throw error
-  }
+  })
 }
 
 /** Tells that the trash did not take a file. The file stays where it is. */
@@ -121,14 +118,10 @@ export function createFileQueue(options: FileQueueOptions) {
       known.delete(id)
       return
     }
-    const temp = `${target}.tmp-${randomBytes(4).toString('hex')}`
-    await writeTemp(target, temp, operation.text)
-    try {
+    await writeThroughTemp(target, async (temp) => {
+      await writeTemp(target, temp, operation.text)
       await withRetry(() => rename(temp, target))
-    } catch (error) {
-      await rm(temp, { force: true })
-      throw error
-    }
+    })
     await remember(id, operation.text)
   }
 
