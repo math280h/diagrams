@@ -48,6 +48,7 @@ function folderRepository() {
 beforeEach(() => {
   // Sonner dismisses a toast in an animation frame. Node has no requestAnimationFrame.
   vi.stubGlobal('requestAnimationFrame', (callback: () => void) => setTimeout(callback))
+  saves = 0
   refuseSaves = false
   const folder = createCachedRepository({
     location: { kind: 'folder', path: '/test' },
@@ -114,14 +115,15 @@ describe('diagram session', () => {
     expect(saves).toBe(1)
   })
 
-  it('drops the waiting save of a diagram that is deleted, also when its editor closes after', () => {
+  it('drops the waiting save of a diagram that is deleted, also when its editor closes after', async () => {
     const diagram = stored('Shop')
     openDiagramSession(diagram)
     useDoc.setState({ name: 'A change that waits for a save' })
-    void deleteDiagram(diagram.id)
+    const deleted = deleteDiagram(diagram.id)
     closeDiagramSession(diagram.id)
     expect(repository().load(diagram.id)).toBeNull()
     expect(openDiagramId()).toBeNull()
+    expect(await deleted).toEqual({ ok: true })
   })
 
   it('keeps the schema address of the user in the file of each save, and gives the next diagram its own', () => {
@@ -139,15 +141,16 @@ describe('diagram session', () => {
     expect(currentDiagram()).not.toHaveProperty('$schema')
   })
 
-  it('saves a diagram with the id of a deleted one after it opens again', () => {
+  it('saves a diagram with the id of a deleted one after it opens again', async () => {
     const diagram = stored('Shop')
     openDiagramSession(diagram)
-    void deleteDiagram(diagram.id)
+    const deleted = deleteDiagram(diagram.id)
     repository().save(diagram)
     openDiagramSession(repository().load(diagram.id)!)
     useDoc.setState({ name: 'Back from the trash' })
     flushPendingSave()
     expect(repository().load(diagram.id)?.name).toBe('Back from the trash')
+    expect(await deleted).toEqual({ ok: true })
   })
 })
 

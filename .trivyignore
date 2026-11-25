@@ -1,0 +1,2 @@
+# The distroless base image has libzstd1 1.5.7+dfsg-1. Debian fixed the CVE in 1.5.7+dfsg-1+deb13u1 (DSA-6657-1).
+CVE-2026-124851 exp:2026-12-02
