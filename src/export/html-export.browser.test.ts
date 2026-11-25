@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Diagram } from '@/model/schema'
+import { FileLoadError } from '@/new-version/file-load'
+import { watchNewVersions } from '@/new-version/new-version'
 import { PLAYER_FILES } from '@/standalone/files'
 import type { PageIcons } from '@/standalone/page-data'
 import { DiagramBuilder } from '@/templates/builder'
@@ -80,5 +82,18 @@ describe('exportHtmlPage', () => {
     await expect(exportHtmlPage(diagram())).rejects.toThrow(
       'The player file standalone/player.css could not be loaded (404).',
     )
+  })
+
+  it('refuses the player of a newer version when the server no longer has the build of the tab', async () => {
+    const realFetch = vi.mocked(window.fetch).getMockImplementation()!
+    vi.mocked(window.fetch).mockImplementation(async (input, init) =>
+      init?.method === 'HEAD' ? new Response(null, { status: 404 }) : realFetch(input, init),
+    )
+    const stopWatching = watchNewVersions()
+    try {
+      await expect(exportHtmlPage(diagram())).rejects.toBeInstanceOf(FileLoadError)
+    } finally {
+      stopWatching()
+    }
   })
 })

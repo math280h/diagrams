@@ -118,6 +118,37 @@ test('loads a new version of the page at once while there is internet', async ({
   }
 })
 
+test('fetches every file of a new version while the old service worker still serves the open page', async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(CACHE_ALL_TIMEOUT_MS + 60_000)
+  await asInstalledApp(context)
+  await openWithServiceWorker(page)
+  const list = await assetList()
+  const workerFile = path.join(outDir, 'sw.js')
+  const original = await readFile(workerFile, 'utf8')
+  const listPath = /\/assets\/sw-assets-[\w-]+\.json/.exec(original)![0]
+  const newerList = '/assets/sw-assets-newer.json'
+  const newerFile = '/assets/newer-build.js'
+  try {
+    await writeFile(path.join(outDir, newerFile), 'export {}')
+    await writeFile(path.join(outDir, newerList), JSON.stringify({ ...list, all: [newerFile, ...list.all] }))
+    await writeFile(workerFile, original.replaceAll(listPath, newerList))
+    await page.reload()
+    await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())!.update())
+
+    await expect.poll(() => cachedPaths(page, [newerFile]), { timeout: CACHE_ALL_TIMEOUT_MS }).toBe(1)
+    expect(await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.waiting !== null)).toBe(
+      true,
+    )
+  } finally {
+    await writeFile(workerFile, original)
+    await rm(path.join(outDir, newerFile), { force: true })
+    await rm(path.join(outDir, newerList), { force: true })
+  }
+})
+
 test('removes the files of an earlier build when a new service worker takes over', async ({ browser }) => {
   const context = await browser.newContext()
   // A browser activates a new service worker only after the old one ends its work, such as fetching every file.

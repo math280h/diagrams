@@ -15,6 +15,7 @@ import { useThemesByBase } from '@/themes/active'
 import { descriptionParagraph } from './describe'
 import { readmeImagePaths, readmeSnippet, type ReadmeFormat } from './readme'
 import { renderDiagramImage, renderDiagramVideo } from './render-image'
+import { useReloadHold } from '@/new-version/new-version'
 import { useDiagramDescription } from './use-description'
 
 const NO_FLOW = 'traffic'
@@ -34,6 +35,7 @@ export function ReadmeExport() {
   const [flowChoice, setFlowChoice] = useState<string>(activeFlowId ?? flows[0]?.id ?? NO_FLOW)
   const [basePath, setBasePath] = useState(() => `docs/images/${safeFileName(name)}`)
   const [status, setStatus] = useState<string | null>(null)
+  useReloadHold(status === null ? null : 'The image export stops.')
   const themes = useThemesByBase()
   const flow = flows.find((candidate) => candidate.id === flowChoice)
   const paths = readmeImagePaths(basePath, format)

@@ -1,4 +1,5 @@
 import type { CardForm } from '@/model/schema'
+import { fetchAppFile } from '@/new-version/file-load'
 import awsUrl from './data/aws.json?url'
 import azureUrl from './data/azure.json?url'
 import gcpUrl from './data/gcp.json?url'
@@ -86,7 +87,7 @@ export function iconSourceOf(name: string): IconSourceId | null {
 export function loadIconSet(source: IconSourceId): Promise<IconSet> {
   let job = pending.get(source)
   if (!job) {
-    job = fetch(SET_URLS[source])
+    job = fetchAppFile(SET_URLS[source])
       .then((response) => response.json() as Promise<{ entries: IconEntry[]; art?: Record<string, IconArt> }>)
       .then(({ entries, art = {} }) => {
         const set = toIconSet(source, { entries, art })
@@ -105,7 +106,7 @@ function toIconSet(source: IconSourceId, { entries, art = {} }: IconSetData): Ic
 
 function loadTemplateSets(): Promise<Map<IconSourceId, IconSet>> {
   if (!templateSets) {
-    const job = fetch(templatesUrl)
+    const job = fetchAppFile(templatesUrl)
       .then((response) => response.json() as Promise<Partial<Record<IconSourceId, IconSetData>>>)
       .then((data) => {
         const result = new Map<IconSourceId, IconSet>()

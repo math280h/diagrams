@@ -1,6 +1,7 @@
 import { toast } from 'sonner'
 import { create } from 'zustand'
 import { errorProblem, type Problem } from '@/lib/problem-report'
+import { isFileLoadError } from '@/new-version/file-load'
 import { rememberProblem } from '@/reports/recent-problems'
 
 interface ProblemState {
@@ -33,6 +34,25 @@ export function closeProblem() {
   useProblemStore.setState({ problem: null, key: null })
 }
 
+type ReportOptions = { description?: string; facts?: readonly string[]; id?: string; duration?: number }
+
+/**
+ * Explains a file of the app that did not load.
+ *
+ * @returns A promise that resolves to true if it showed a notice for the failure.
+ */
+export type FileLoadExplainer = (title: string, error: unknown) => Promise<boolean>
+
+let explainFileLoad: FileLoadExplainer | null = null
+
+/**
+ * Sets the function that {@link reportError} asks first about a file of the app that did not load (see
+ * {@link isFileLoadError}). When it shows a notice, for example about a new version, the error toast does not show.
+ */
+export function explainFileLoadsWith(explain: FileLoadExplainer | null) {
+  explainFileLoad = explain
+}
+
 /**
  * Shows a failure as an error toast with a "More details" action, which opens the problem dialog with the details for
  * a bug report.
@@ -41,11 +61,21 @@ export function closeProblem() {
  * @param options.description - The line under the title. Without it, the toast shows the error message.
  * @param options.facts - Facts about the action that failed, for the bug report.
  */
-export function reportError(
-  title: string,
-  error: unknown,
-  options: { description?: string; facts?: readonly string[]; id?: string; duration?: number } = {},
-) {
+export function reportError(title: string, error: unknown, options: ReportOptions = {}) {
+  const explain = explainFileLoad
+  if (explain && isFileLoadError(error)) {
+    void explain(title, error).then(
+      (explained) => {
+        if (!explained) showError(title, error, options)
+      },
+      () => showError(title, error, options),
+    )
+    return
+  }
+  showError(title, error, options)
+}
+
+function showError(title: string, error: unknown, options: ReportOptions) {
   const problem = errorProblem(title, error, options.facts)
   rememberProblem(problem)
   toast.error(title, {
