@@ -29,7 +29,7 @@ import { buildInstructions, bundledPluginConfig, bundledSkillFiles, loadSkills, 
 import { createToken, loadToken } from './agent/token'
 import { appAbout } from './about'
 import { runningAppImage } from './appimage'
-import { registerAppImageLinks } from './appimage-links'
+import { appImageLinksMoved, registerAppImageLinks } from './appimage-links'
 import { agentWindowShow, createIdleClose } from './agent-window'
 import { appMenuTemplate, type HelpLink, runEditCommand } from './app-menu'
 import { registerAppScheme, serveRenderer } from './app-protocol'
@@ -330,6 +330,10 @@ async function start() {
     prepareQuit,
     cancelQuit,
     automatic: settings.get().autoUpdateCheck,
+    appImageMoved: (appImage) => {
+      loginItem.moved(appImage)
+      appImageLinksMoved(appImage)
+    },
   })
 
   const createServer = (serverPort: number) =>

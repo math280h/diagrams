@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -107,6 +107,23 @@ describe('autostartLoginItem', () => {
     writeFileSync(file, '[Desktop Entry]\nType=Application\nExec=/opt/Diagrams/diagrams --background\n')
     autostartLoginItem(folder, ['/opt/Diagrams/diagrams', BACKGROUND_ARG]).sync()
     expect(readFileSync(file, 'utf8')).toContain('\nTryExec=/opt/Diagrams/diagrams\n')
+  })
+
+  it('writes the new path of an updated AppImage into an entry that is on, as the next start writes it', () => {
+    const folder = tempFolder()
+    const file = path.join(folder, AUTOSTART_FILE)
+    const item = autostartLoginItem(folder, ['/apps/Diagrams-1.0.AppImage', BACKGROUND_ARG])
+    item.moved('/apps/Diagrams-1.1.AppImage')
+    expect(existsSync(file)).toBe(false)
+
+    item.set(true)
+    item.moved('/apps/Diagrams-1.1.AppImage')
+    expect(readFileSync(file, 'utf8')).toBe(autostartEntry(['/apps/Diagrams-1.1.AppImage', BACKGROUND_ARG]))
+
+    const turnedOff = `${readFileSync(file, 'utf8')}Hidden=true\n`
+    writeFileSync(file, turnedOff)
+    item.moved('/apps/Diagrams-1.2.AppImage')
+    expect(readFileSync(file, 'utf8')).toBe(turnedOff)
   })
 })
 

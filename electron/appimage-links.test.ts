@@ -8,12 +8,14 @@ import { entryProgram, execValue } from './desktop-entry'
 vi.mock('electron', () => ({ app: {} }))
 
 const {
+  appImageLinksMoved,
   hostEnvironment,
   LINK_MIME_TYPE,
   linkCommand,
   linkEntry,
   linkPlan,
   linkSystem,
+  moveLinkEntry,
   registerAppImageLinks,
   updateLinkEntry,
 } = await import('./appimage-links')
@@ -142,6 +144,24 @@ describe('linkPlan', () => {
   })
 })
 
+describe('moveLinkEntry', () => {
+  it('writes the new path into the entry of the AppImage, as the next start writes it', () => {
+    const folder = tempFolder()
+    const file = path.join(folder, APPIMAGE_LINK_ENTRY)
+    writeFileSync(file, linkEntry(['/apps/Diagrams-1.0.AppImage', '--no-sandbox']))
+    const moved = linkCommand('/apps/Diagrams-1.1.AppImage', ['/tmp/.mount_x/diagrams', '--no-sandbox'])
+    expect(moveLinkEntry(moved, folder)).toBe(true)
+    expect(readFileSync(file, 'utf8')).toBe(linkEntry(moved))
+    expect(moveLinkEntry(moved, folder)).toBe(false)
+  })
+
+  it('writes no entry when the AppImage has none, for example when the deb package has the links', () => {
+    const folder = tempFolder()
+    expect(moveLinkEntry(['/apps/Diagrams-1.1.AppImage'], folder)).toBe(false)
+    expect(existsSync(path.join(folder, APPIMAGE_LINK_ENTRY))).toBe(false)
+  })
+})
+
 describe('updateLinkEntry', () => {
   it('writes the entry and takes the links when no app has them', async () => {
     const { user, calls, links } = fakeSystem('')
@@ -212,5 +232,6 @@ describe('registerAppImageLinks', () => {
     vi.stubEnv('APPIMAGE', '/home/a/Editor.AppImage')
     vi.stubEnv('APPDIR', '/tmp/.mount_Editor')
     expect(await registerAppImageLinks()).toBeNull()
+    expect(() => appImageLinksMoved('/apps/Diagrams-1.1.AppImage')).not.toThrow()
   })
 })

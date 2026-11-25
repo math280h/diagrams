@@ -168,6 +168,27 @@ describe('createUpdates', () => {
     expect([...withoutUpdater.emitted, ...withoutPolicy.emitted]).toEqual([])
   })
 
+  it('passes the new path of an AppImage that the update renamed', () => {
+    const updater = new FakeUpdater()
+    const appImageMoved = vi.fn()
+    const updates = createUpdates({
+      updater,
+      policy: INSTALL,
+      currentVersion: '0.1.0',
+      buildRepository: BUILD_REPOSITORY,
+      repository: BUILD_REPOSITORY,
+      feed: async () => ({ repository: BUILD_REPOSITORY, token: null }),
+      emit: () => undefined,
+      prepareQuit: async () => true,
+      cancelQuit: () => undefined,
+      automatic: false,
+      appImageMoved,
+    })
+    updater.emit('appimage-filename-updated', '/apps/Diagrams-0.2.0-linux-x86_64.AppImage')
+    expect(appImageMoved).toHaveBeenCalledExactlyOnceWith('/apps/Diagrams-0.2.0-linux-x86_64.AppImage')
+    updates.stop()
+  })
+
   it('sets the updater to download and install as the policy says', () => {
     const install = setup()
     expect(install.updater!.autoDownload).toBe(true)

@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
@@ -185,22 +185,55 @@ export async function updateLinkEntry(command: readonly string[], system: LinkSy
 }
 
 /**
+ * Writes the command into the entry {@link APPIMAGE_LINK_ENTRY} of the folder, synchronously, if the entry exists.
+ *
+ * @returns True if the function wrote the entry.
+ * @throws Error If the command has a line break, or if the entry cannot be written.
+ */
+export function moveLinkEntry(command: readonly string[], folder: string): boolean {
+  const file = path.join(folder, APPIMAGE_LINK_ENTRY)
+  const current = readEntry(file)
+  const wanted = linkEntry(command)
+  if (current === null || current === wanted) return false
+  writeFileSync(file, wanted, { mode: ENTRY_MODE })
+  return true
+}
+
+function currentLinkSystem(): { appImage: string; system: LinkSystem } | null {
+  const appImage = runningAppImage()
+  const appDir = process.env.APPDIR
+  if (!appImage || !appDir) return null
+  const env = hostEnvironment(process.env, appDir)
+  const run = promisify(execFile)
+  const system = linkSystem(env, homedir(), async (program, args) => {
+    const { stdout } = await run(program, args, { env, timeout: COMMAND_TIMEOUT_MS })
+    return stdout
+  })
+  return { appImage, system }
+}
+
+/**
  * Lets {@link DEEP_LINK_SCHEME} links open the AppImage that runs this process. Each start writes the current path of
  * the AppImage. Outside an AppImage, the function does nothing.
  *
  * @returns What the function changed, or `null` outside an AppImage.
  */
 export async function registerAppImageLinks(): Promise<LinkPlan | null> {
-  const appImage = runningAppImage()
-  const appDir = process.env.APPDIR
-  if (!appImage || !appDir) return null
-  const env = hostEnvironment(process.env, appDir)
-  const run = promisify(execFile)
-  return updateLinkEntry(
-    linkCommand(appImage, process.argv),
-    linkSystem(env, homedir(), async (program, args) => {
-      const { stdout } = await run(program, args, { env, timeout: COMMAND_TIMEOUT_MS })
-      return stdout
-    }),
-  )
+  const current = currentLinkSystem()
+  if (!current) return null
+  return updateLinkEntry(linkCommand(current.appImage, process.argv), current.system)
+}
+
+/**
+ * Writes the new path of the AppImage into the entry {@link APPIMAGE_LINK_ENTRY}, synchronously, after an update gives
+ * the AppImage a new file name. Without the entry or outside an AppImage, the function does nothing.
+ */
+export function appImageLinksMoved(appImage: string): void {
+  const folder = currentLinkSystem()?.system.entryFolders[0]
+  if (!folder) return
+  try {
+    moveLinkEntry(linkCommand(appImage, process.argv), folder)
+  } catch {
+    return
+  }
 }

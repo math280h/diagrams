@@ -20,6 +20,8 @@ export interface LoginItem {
   set(on: boolean): void
   /** Writes the current command line into an entry that is on, if the app moved. */
   sync(): void
+  /** Writes a new path of the program into an entry that is on, synchronously, for example after an update. */
+  moved(program: string): void
   /** Tells whether the app runs from a place where it stays, so that a new item can point at it. */
   installed(): boolean
 }
@@ -30,6 +32,7 @@ const UNSUPPORTED: LoginItem = {
     throw new Error('Only an installed app can start when you sign in.')
   },
   sync: () => undefined,
+  moved: () => undefined,
   installed: () => false,
 }
 
@@ -63,9 +66,19 @@ export function autostartLoginItem(folder: string, command: readonly string[]): 
       return null
     }
   }
+  let current: readonly string[] = command
   const write = () => {
     mkdirSync(folder, { recursive: true })
-    writeFileSync(file, autostartEntry(command))
+    writeFileSync(file, autostartEntry(current))
+  }
+  const sync = () => {
+    const text = read()
+    if (text === null || !autostartEnabled(text)) return
+    try {
+      if (text !== autostartEntry(current)) write()
+    } catch {
+      return
+    }
   }
   return {
     state() {
@@ -76,14 +89,10 @@ export function autostartLoginItem(folder: string, command: readonly string[]): 
       if (on) write()
       else rmSync(file, { force: true })
     },
-    sync() {
-      const text = read()
-      if (text === null || !autostartEnabled(text)) return
-      try {
-        if (text !== autostartEntry(command)) write()
-      } catch {
-        return
-      }
+    sync,
+    moved(program) {
+      current = [program, ...current.slice(1)]
+      sync()
     },
     installed: () => true,
   }
@@ -97,6 +106,7 @@ function windowsLoginItem(): LoginItem {
     state: () => (app.getLoginItemSettings(options).executableWillLaunchAtLogin ? 'on' : 'off'),
     set: (on) => app.setLoginItemSettings({ ...options, openAtLogin: on }),
     sync: () => undefined,
+    moved: () => undefined,
     installed: () => true,
   }
 }
@@ -110,6 +120,7 @@ function macLoginItem(): LoginItem {
     },
     set: (on) => app.setLoginItemSettings({ openAtLogin: on }),
     sync: () => undefined,
+    moved: () => undefined,
     installed: () => app.isInApplicationsFolder(),
   }
 }

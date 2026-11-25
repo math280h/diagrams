@@ -1,5 +1,5 @@
 import { type ChildProcess, execFileSync, spawn } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -12,6 +12,7 @@ const HANDLER_TIMEOUT_MS = 30_000
 const HANDLER_SETTLE_MS = 5000
 const POLL_MS = 500
 const STOP_TIMEOUT_MS = 10_000
+const APP_SETTINGS_FILE = 'app-settings.json'
 const UNSET_VARIABLES = ['DIAGRAMS_REGISTER_PROTOCOL', 'XDG_CURRENT_DESKTOP', 'DESKTOP_SESSION']
 
 function freePort(): Promise<number> {
@@ -28,11 +29,14 @@ function freePort(): Promise<number> {
 }
 
 async function appEnv(temp: string, name: string): Promise<NodeJS.ProcessEnv> {
+  const userData = path.join(temp, name, 'user-data')
+  mkdirSync(userData, { recursive: true })
+  writeFileSync(path.join(userData, APP_SETTINGS_FILE), JSON.stringify({ autoUpdateCheck: false }))
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     XDG_DATA_HOME: path.join(temp, 'data'),
     XDG_CONFIG_HOME: path.join(temp, 'config'),
-    DIAGRAMS_USER_DATA: path.join(temp, name, 'user-data'),
+    DIAGRAMS_USER_DATA: userData,
     DIAGRAMS_DATA_DIR: path.join(temp, name, 'diagrams'),
     DIAGRAMS_AUTOSTART_DIR: path.join(temp, name, 'autostart'),
     DIAGRAMS_AGENT_PORT: String(await freePort()),
@@ -103,8 +107,7 @@ async function openLink(appImage: string, temp: string) {
   if (!entry.includes(`\nTryExec=${appImage}\n`)) throw new Error(`The entry does not name ${appImage}:\n${entry}`)
   const env = await appEnv(temp, 'link')
   console.log(`Opening ${CONNECT_AGENT_LINK} with xdg-open. The handler is ${linkHandler(env)}.\n${entry}`)
-  const xdgOpen = execFileSync('sh', ['-c', 'command -v xdg-open'], { env }).toString().trim()
-  const opener = startGroup('sh', ['-x', xdgOpen, CONNECT_AGENT_LINK], { ...env, XDG_UTILS_DEBUG_LEVEL: '3' })
+  const opener = startGroup('xdg-open', [CONNECT_AGENT_LINK], env)
   const failed = () =>
     opener.exitCode !== null && opener.exitCode !== 0 ? `xdg-open stopped with exit code ${opener.exitCode}` : null
   try {
