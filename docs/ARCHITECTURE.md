@@ -1382,6 +1382,10 @@ setting turns this off.
   call. This close does not quit the app.
 - A window that closes first saves its diagram. An agent call or an open from the tray in that time waits for the close
   and then starts a new window, because the renderer that closes cannot answer.
+- On Linux, Electron shows the tray icon only if a program owns `org.kde.StatusNotifierWatcher` on the session bus, and
+  GNOME has none without the AppIndicator extension. Thus the app asks the bus with `gdbus` or `dbus-send`
+  (`electron/tray-host.ts`), and makes a new tray icon when a host starts. Without a host, a notice at each close or
+  start at sign-in, and the settings, tell how to open and quit the app.
 
 ### Agent tools
 

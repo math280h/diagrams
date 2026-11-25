@@ -1,7 +1,9 @@
 import path from 'node:path'
 import { app, Menu, nativeImage, Notification, Tray, type NativeImage } from 'electron'
-import { stillRunningNotice } from '@/desktop/keep-running'
+import type { TrayHost } from '@/desktop/contract'
+import { startedNotice, stillRunningNotice, trayIconShows } from '@/desktop/keep-running'
 import { APP_NAME, iconPath, rendererFolder, trayTemplatePath } from './paths'
+import { remakesTrayIcon } from './tray-host'
 
 const MAC = process.platform === 'darwin'
 
@@ -31,22 +33,53 @@ export interface Background {
    *   started at sign-in.
    */
   follow(shown: boolean): void
+  /** Takes the last tray host that the system reports. A host that starts later gets a new tray icon. */
+  setHost(host: TrayHost): void
   /** Removes the Dock icon on macOS while the app runs without a window. A window that shows brings it back. */
   hideDock(): void
   /**
-   * Tells the user that the app still runs without a window, and how to quit it.
+   * Tells the user that the app still runs without a window, and how to quit it. Without a tray icon, a click on the
+   * notice opens the window, and a new notice replaces the last one.
    *
+   * @param moment - `closed` after the window closes, `started` after a start at sign-in.
    * @returns False if the system cannot show the notice.
    */
-  notify(): boolean
+  notify(moment?: 'closed' | 'started'): boolean
 }
 
 /**
  * Gives the app a tray icon while it can run without a window: in the notification area on Windows, the system tray on
  * Linux and the menu bar on macOS. Its menu opens the window or quits the app.
+ *
+ * @param host - The tray host at the start.
  */
-export function createBackground({ open, quit }: { open: () => void; quit: () => void }): Background {
+export function createBackground({
+  open,
+  quit,
+  host: firstHost = 'present',
+}: {
+  open: () => void
+  quit: () => void
+  host?: TrayHost
+}): Background {
   let tray: Tray | null = null
+  let host = firstHost
+  let notice: Notification | null = null
+
+  const makeTray = () => {
+    tray = new Tray(trayIcon())
+    tray.setToolTip(APP_NAME)
+    tray.setContextMenu(
+      Menu.buildFromTemplate([
+        { label: `Open ${APP_NAME}`, click: () => open() },
+        { type: 'separator' },
+        { label: `Quit ${APP_NAME}`, click: () => quit() },
+      ]),
+    )
+    // macOS opens the context menu on a click.
+    if (!MAC) tray.on('click', () => open())
+  }
+
   return {
     follow(shown) {
       if (!shown) {
@@ -54,30 +87,30 @@ export function createBackground({ open, quit }: { open: () => void; quit: () =>
         tray = null
         return
       }
-      if (tray) return
-      tray = new Tray(trayIcon())
-      tray.setToolTip(APP_NAME)
-      tray.setContextMenu(
-        Menu.buildFromTemplate([
-          { label: `Open ${APP_NAME}`, click: () => open() },
-          { type: 'separator' },
-          { label: `Quit ${APP_NAME}`, click: () => quit() },
-        ]),
-      )
-      // macOS opens the context menu on a click.
-      if (!MAC) tray.on('click', () => open())
+      if (!tray) makeTray()
+    },
+    setHost(next) {
+      const remake = remakesTrayIcon(host, next)
+      host = next
+      if (!remake || !tray) return
+      tray.destroy()
+      makeTray()
     },
     hideDock() {
       app.dock?.hide()
     },
-    notify() {
-      const notice = stillRunningNotice(process.platform)
+    notify(moment = 'closed') {
+      const text = moment === 'started' ? startedNotice() : stillRunningNotice(process.platform, host)
       if (process.platform === 'win32' && tray) {
-        tray.displayBalloon({ title: notice.title, content: notice.body, respectQuietTime: true })
+        tray.displayBalloon({ title: text.title, content: text.body, respectQuietTime: true })
         return true
       }
       if (!Notification.isSupported()) return false
-      new Notification({ title: notice.title, body: notice.body }).show()
+      const withTray = trayIconShows(process.platform, host)
+      if (!withTray) notice?.close()
+      notice = new Notification({ title: text.title, body: text.body })
+      if (!withTray) notice.on('click', () => open())
+      notice.show()
       return true
     },
   }

@@ -133,11 +133,20 @@ export const AGENT_WINDOW_MODES = ['show', 'focus', 'hidden'] as const
  */
 export type AgentWindowMode = (typeof AGENT_WINDOW_MODES)[number]
 
+/**
+ * Tells whether the desktop shows the tray icon of the app. On Linux, `missing` means that no program on the session
+ * bus owns `org.kde.StatusNotifierWatcher`, and `unknown` means that the app could not ask the bus. Windows and macOS
+ * always give `present`.
+ */
+export type TrayHost = 'present' | 'missing' | 'unknown'
+
 export interface AppSettings {
   /** If true, the app and its agent server keep running after the window closes, until the user quits. */
   keepRunning: boolean
   openAtLogin: OpenAtLogin
   agentWindow: AgentWindowMode
+  /** The state that the system reports, not a setting. */
+  trayHost: TrayHost
   /** The origins of the websites that may send diagrams to the app. The list is never empty. */
   websites: string[]
   /** The origin of the website that share links open on. It is one of `websites`. */
