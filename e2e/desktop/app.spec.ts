@@ -148,6 +148,7 @@ test('tells how to get the window back on Linux without a tray host, and quits f
     return
   }
   const app = await launchElectron({ args: ['.'], env: { ...appEnv, DBUS_SESSION_BUS_ADDRESS: bus.address } })
+  const appProcess = app.process()
   try {
     const window = await app.firstWindow()
     await window.getByRole('banner').getByRole('button', { name: 'App settings' }).click()
@@ -157,7 +158,7 @@ test('tells how to get the window back on Linux without a tray host, and quits f
     await dialog.getByRole('button', { name: 'Quit', exact: true }).click()
     await exit
   } finally {
-    if (app.process().exitCode === null) await app.close()
+    if (appProcess.exitCode === null && appProcess.signalCode === null) await app.close()
     bus.stop()
   }
 })
