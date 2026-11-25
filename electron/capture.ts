@@ -3,7 +3,15 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { app, BrowserWindow, type NativeImage, type WebContents } from 'electron'
 import { CAPTURE_HASH } from '@/desktop/constants'
 import type { CaptureRequest } from '@/desktop/contract'
-import { bgraToRgba, MARKER_COUNT, MARKER_PX, planCapture, readMarker, type CapturePlan } from '@/export/capture-plan'
+import {
+  allOpaque,
+  bgraToRgba,
+  MARKER_COUNT,
+  MARKER_PX,
+  planCapture,
+  readMarker,
+  type CapturePlan,
+} from '@/export/capture-plan'
 import { APP_ORIGIN, originOf } from './app-protocol'
 import type { MainHandlers } from './ipc'
 import { devServerUrl, preloadPath } from './paths'
@@ -23,6 +31,8 @@ const MAX_SESSIONS = 16
 
 /** A capture waits at most this long for the frame of its render request. */
 const PAINT_TIMEOUT_MS = 5000
+/** A capture renders its moment at most this many times until it gets a complete frame. */
+const MAX_CAPTURE_TRIES = 3
 
 interface Session {
   stage: unknown
@@ -77,6 +87,11 @@ export type CaptureHandlers = Pick<MainHandlers, 'capture.open' | 'capture.image
  *
  * Captures run one at a time. The window shows one stage at a time. When a capture has a different session or viewport
  * scale than the last capture, the window mounts its stage.
+ *
+ * A frame is complete when no GPU process restart occurs during its capture and, on an opaque background, each pixel
+ * is opaque. After an incomplete frame, the next try renders the moment in a new window. After
+ * {@link MAX_CAPTURE_TRIES} incomplete frames, the capture fails. The service does not use a window again after a GPU
+ * process restart.
  */
 export function createCaptureService(): { handlers: CaptureHandlers; dispose: () => void } {
   const rpc = createRendererRpc()
@@ -86,6 +101,13 @@ export function createCaptureService(): { handlers: CaptureHandlers; dispose: ()
   let renders = 0
   let queue: Promise<unknown> = Promise.resolve()
   let idleTimer: ReturnType<typeof setTimeout> | undefined
+  let gpuRestarts = 0
+  let windowGpuRestarts = 0
+
+  const onChildProcessGone = (_event: Electron.Event, details: Electron.Details) => {
+    if (details.type === 'GPU') gpuRestarts += 1
+  }
+  app.on('child-process-gone', onChildProcessGone)
 
   const closeWindow = () => {
     clearTimeout(idleTimer)
@@ -105,8 +127,12 @@ export function createCaptureService(): { handlers: CaptureHandlers; dispose: ()
   app.on('browser-window-created', onWindowCreated)
 
   const openWindow = (): BrowserWindow => {
-    if (window && !window.isDestroyed() && !window.webContents.isCrashed()) return window
+    const current = window
+    if (current && !current.isDestroyed() && !current.webContents.isCrashed() && windowGpuRestarts === gpuRestarts) {
+      return current
+    }
     closeWindow()
+    windowGpuRestarts = gpuRestarts
     const created = new BrowserWindow({
       show: false,
       width: 800,
@@ -175,12 +201,12 @@ export function createCaptureService(): { handlers: CaptureHandlers; dispose: ()
     target.setContentSize(plan.windowWidth, plan.windowHeight)
     renders += 1
     const marker = renders % MARKER_COUNT
-    await rpc.call(
+    const { opaque } = await rpc.call(
       'capture.render',
       { moment: request.moment, transparent: request.transparent, marker, pageZoom: plan.pageZoom },
       { timeoutMs: CALL_TIMEOUT_MS },
     )
-    return { target, plan, marker }
+    return { target, plan, marker, opaque }
   }
 
   const capture = async ({ target, plan, marker }: Awaited<ReturnType<typeof show>>): Promise<NativeImage> => {
@@ -188,6 +214,18 @@ export function createCaptureService(): { handlers: CaptureHandlers; dispose: ()
     const stage = frame.crop({ x: 0, y: 0, width: plan.stageWidth, height: plan.stageHeight })
     if (plan.stageWidth === plan.outputWidth && plan.stageHeight === plan.outputHeight) return stage
     return stage.resize({ width: plan.outputWidth, height: plan.outputHeight, quality: 'best' })
+  }
+
+  const captureComplete = async (request: CaptureRequest): Promise<{ image: NativeImage; pixels: Buffer }> => {
+    for (let tries = 1; ; tries++) {
+      const restartsBefore = gpuRestarts
+      const shown = await show(request)
+      const image = await capture(shown)
+      const pixels = image.toBitmap()
+      if (gpuRestarts === restartsBefore && (!shown.opaque || allOpaque(pixels))) return { image, pixels }
+      closeWindow()
+      if (tries >= MAX_CAPTURE_TRIES) throw new Error('The capture window gave no complete frame of the stage.')
+    }
   }
 
   const handlers: CaptureHandlers = {
@@ -202,24 +240,22 @@ export function createCaptureService(): { handlers: CaptureHandlers; dispose: ()
     },
     'capture.image': (request) =>
       serial(async () => {
-        let image = await capture(await show(request))
-        let pixels = image.toBitmap()
+        let { image, pixels } = await captureComplete(request)
         for (let count = 1; count < MAX_IMAGE_FRAMES; count++) {
           await delay(IMAGE_FRAME_GAP_MS)
-          const next = await capture(await show(request))
-          const nextPixels = next.toBitmap()
-          image = next
-          if (nextPixels.equals(pixels)) break
-          pixels = nextPixels
+          const next = await captureComplete(request)
+          image = next.image
+          if (next.pixels.equals(pixels)) break
+          pixels = next.pixels
         }
         return { png: new Uint8Array(image.toPNG()) }
       }),
     'capture.frame': (request) =>
       serial(async () => {
-        const image = await capture(await show(request))
+        const { image, pixels } = await captureComplete(request)
         const size = image.getSize()
         // NativeImage bitmaps hold premultiplied BGRA pixels.
-        return { pixels: bgraToRgba(image.toBitmap()), width: size.width, height: size.height }
+        return { pixels: bgraToRgba(pixels), width: size.width, height: size.height }
       }),
     'capture.close': async ({ sessionId }) => {
       sessions.delete(sessionId)
@@ -232,6 +268,7 @@ export function createCaptureService(): { handlers: CaptureHandlers; dispose: ()
     handlers,
     dispose: () => {
       app.off('browser-window-created', onWindowCreated)
+      app.off('child-process-gone', onChildProcessGone)
       sessions.clear()
       closeWindow()
     },

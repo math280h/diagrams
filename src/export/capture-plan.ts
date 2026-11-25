@@ -93,6 +93,12 @@ export function readMarker(pixels: Uint8Array): number | null {
   return valueAt(MARKER_PX + middle) === MARKER_COUNT - 1 - left ? left : null
 }
 
+/** Returns true when each of the BGRA or RGBA pixels has the full alpha of 255. */
+export function allOpaque(pixels: Uint8Array | Uint8ClampedArray): boolean {
+  for (let i = 3; i < pixels.length; i += 4) if (pixels[i] !== 255) return false
+  return true
+}
+
 /** Returns a copy of premultiplied BGRA pixels as RGBA pixels with straight alpha, the form of `ImageData`. */
 export function bgraToRgba(pixels: Uint8Array): Uint8Array {
   const out = new Uint8Array(pixels.length)

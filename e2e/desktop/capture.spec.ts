@@ -5,6 +5,7 @@ import { decodeFrames } from 'modern-gif'
 import { CAPTURE_HASH } from '@/desktop/constants'
 import { compileFlow } from '@/engine/flow/compile'
 import { diagramBounds } from '@/export/bounds'
+import { allOpaque } from '@/export/capture-plan'
 import { DIAGRAM_VERSION, type Diagram } from '@/model/schema'
 import { fromDiagram } from '@/persistence/serialize'
 import { builtInTheme } from '@/themes/built-in'
@@ -26,6 +27,14 @@ const MOMENTS = 12
 /** The largest number of neighbour pixel pairs with opposite red and blue shifts in a capture. */
 const MAX_COLOUR_PAIRS = 50
 const BLANK_FRAME_MAX_COLOURS = 10
+
+function captureWindowId(app: ElectronApplication) {
+  return app.evaluate(
+    ({ BrowserWindow }, hash) =>
+      BrowserWindow.getAllWindows().find((other) => other.webContents.getURL().endsWith(hash))?.webContents.id,
+    CAPTURE_HASH,
+  )
+}
 
 /** Saves the next download of the app to a file, without the save dialog. */
 function saveNextDownload(app: ElectronApplication, file: string) {
@@ -124,25 +133,39 @@ test('renders the image of an agent in the capture window and keeps the zoom of 
 })
 
 test('opens a new capture window after the old one stops', async ({ app, window, mcp }) => {
-  const captureWindowId = () =>
-    app.evaluate(
-      ({ BrowserWindow }, hash) =>
-        BrowserWindow.getAllWindows().find((other) => other.webContents.getURL().endsWith(hash))?.webContents.id,
-      CAPTURE_HASH,
-    )
   await callTool(mcp, 'create_diagram', { name: 'Captured', template: 'order-system' })
   await expect(window.locator('[data-editor-canvas] .react-flow__node').first()).toBeVisible()
   await callTool(mcp, 'render_image', { maxSizePx: 400 })
-  const first = await captureWindowId()
+  const first = await captureWindowId(app)
   expect(first).toBeDefined()
   await app.evaluate(({ webContents }, id) => process.kill(webContents.fromId(id!)!.getOSProcessId()), first)
-  await expect.poll(captureWindowId, { timeout: 15_000 }).toBeUndefined()
+  await expect.poll(() => captureWindowId(app), { timeout: 15_000 }).toBeUndefined()
 
   const result = await callTool(mcp, 'render_image', { maxSizePx: 400 })
   expect(result.json.width).toBe(400)
-  const second = await captureWindowId()
+  const second = await captureWindowId(app)
   expect(second).toBeDefined()
   expect(second).not.toBe(first)
+})
+
+test('renders the next video frame in a new capture window after the GPU process stops', async ({
+  app,
+  window: page,
+}) => {
+  const { spec } = flowStage()
+  const sessionId = await openStage(page, spec, false)
+  const request = { sessionId, moment: { ambientMs: 0, timeMs: 0 }, scale: 0.5, transparent: false }
+  await captureFrame(page, request)
+  const first = await captureWindowId(app)
+  await app.evaluate(({ app: electronApp }) => {
+    electronApp.emit('child-process-gone', {}, { type: 'GPU', reason: 'killed', exitCode: 9 })
+  })
+
+  const frame = await captureFrame(page, request)
+  await closeStage(page, sessionId)
+  expect(await captureWindowId(app)).not.toBe(first)
+  expect(allOpaque(frame.data)).toBe(true)
+  expect(colourCount(frame)).toBeGreaterThan(20)
 })
 
 test('gives the pixels of the image in a video frame, within 2 in each channel, also for a small image', async ({

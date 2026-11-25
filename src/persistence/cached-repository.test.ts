@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createDiagram, createFlow } from '@/model/defaults'
 import type { Diagram } from '@/model/schema'
-import { createCachedRepository, serializeDiagram } from './cached-repository'
+import { createCachedRepository, serializeDiagram, type RepositorySink } from './cached-repository'
 import { TrashError, type RepositoryEvent, type StorageLocation } from './repository'
 import { DIAGRAM_SCHEMA_URL } from './schema-address'
 
@@ -13,7 +13,7 @@ function setup(
   files: { id: string; text: string; path?: string }[] = [],
   location: StorageLocation = { kind: 'folder', path: '/diagrams' },
 ) {
-  const sink = { write: vi.fn(async () => undefined), remove: vi.fn(async () => undefined) }
+  const sink = { write: vi.fn<RepositorySink['write']>(async () => undefined), remove: vi.fn(async () => undefined) }
   const repository = createCachedRepository({ location, files, sink })
   const events: RepositoryEvent[] = []
   repository.subscribe((event) => events.push(event))
@@ -55,6 +55,17 @@ describe('createCachedRepository', () => {
     repository.save(saved)
     await repository.settled()
     expect(events).toEqual([{ kind: 'save-failed', id: saved.id, reason: 'unknown', message: 'disk full' }])
+  })
+
+  it('takes the change from outside that storage keeps in place of a save, and reports no save', async () => {
+    const original = diagram('Original', { rev: 4 })
+    const { repository, sink, events } = setup([{ id: 'a', text: serializeDiagram(original) }])
+    const outside = serializeDiagram({ ...original, name: 'From git', rev: 2 })
+    sink.write.mockResolvedValueOnce({ kind: 'kept-outside', change: { kind: 'changed', id: 'a', text: outside } })
+    repository.save({ ...original, name: 'Mine', rev: 5 })
+    await repository.settled()
+    expect(repository.load('a')).toMatchObject({ name: 'From git', rev: 2 })
+    expect(events).toEqual([{ kind: 'changed', id: 'a' }])
   })
 
   it('takes a file that changed outside, with its own rev, and reports it', () => {

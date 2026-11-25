@@ -1224,6 +1224,11 @@ with snapdom, because Chromium gives only pixels.
   capture, because the frame of a render can arrive before the capture listens.
 - `NativeImage` bitmaps are BGRA with premultiplied alpha. Video frames go to the renderer as RGBA with straight alpha,
   as `ImageData` expects.
+- After a GPU process restart, the capture window can paint frames with the marker and a fully transparent stage. A
+  GIF then got blank frames on a macOS runner with two apps on the virtual GPU. Thus a frame counts only when no GPU
+  process restart occurs during its capture and, on an opaque background, each pixel is opaque. Otherwise the main
+  process renders the moment again in a new capture window, up to 3 times, and then fails the capture. It also does
+  not use a window again after a GPU process restart.
 - When a native image capture fails, the stage session uses snapdom. When a video frame fails, the export stops.
 
 ### Storage
@@ -1241,6 +1246,13 @@ with snapdom, because Chromium gives only pixels.
   changes from app writes. A known size and change time skip the read.
 - That record changes only after a write or remove succeeds, so a failed write never looks like an outside change.
   A check that overlaps an app write counts for nothing.
+- The size and change time of a read come from before the read, and those of a write from the temporary file before
+  the rename. A record from a later `stat` can hold the size and time of an outside change, and the watcher then
+  misses that change.
+- Just before the rename, a write compares the file with the record. If another program changed the file, the write
+  keeps that file and gives its text to the renderer as a change from outside (`kept-outside`), as on the website.
+  Otherwise an autosave that ends just after a `git pull` replaces the pulled file. A save from a save dialog replaces
+  the file.
 - Repositories send `saved`, `save-failed`, `removed` or `remove-failed` when a save or remove ends (desktop: after the
   write). The library list refreshes on them. `watchSaveOutcomes` shows a run of failed saves once, again after a save
   reaches storage, and each failed remove.
