@@ -133,6 +133,13 @@ export const AGENT_WINDOW_MODES = ['show', 'focus', 'hidden'] as const
  */
 export type AgentWindowMode = (typeof AGENT_WINDOW_MODES)[number]
 
+/**
+ * Tells whether the desktop shows the tray icon of the app. On Linux, `missing` means that no program on the session
+ * bus owns `org.kde.StatusNotifierWatcher`, and `unknown` means that the app could not ask the bus. Windows and macOS
+ * always give `present`.
+ */
+export type TrayHost = 'present' | 'missing' | 'unknown'
+
 export interface AppSettings {
   /** If true, the app and its agent server keep running after the window closes, until the user quits. */
   keepRunning: boolean
@@ -143,6 +150,8 @@ export interface AppSettings {
    * also when it is false.
    */
   autoUpdateCheck: boolean
+  /** The state that the system reports, not a setting. */
+  trayHost: TrayHost
   /** The origins of the websites that may send diagrams to the app. The list is never empty. */
   websites: string[]
   /** The origin of the website that share links open on. It is one of `websites`. */
@@ -169,6 +178,18 @@ export type GitHubSignIn =
   | { state: 'signed-out'; message: string | null }
   | { state: 'waiting'; userCode: string; verificationUri: string }
   | { state: 'signed-in'; kept: boolean }
+
+/** A command of the macOS menu bar that the app window runs. */
+export type MenuCommand =
+  | 'settings'
+  | 'check-for-updates'
+  | 'new-diagram'
+  | 'open-files'
+  | 'shortcuts'
+  | 'problem-reports'
+
+/** An edit command of the macOS menu bar that the app runs on the canvas, and the system runs in a text field. */
+export type EditCommand = 'undo' | 'redo' | 'delete' | 'select-all'
 
 export type ToolContent = { type: 'text'; text: string } | { type: 'image'; mimeType: 'image/png'; data: string }
 
@@ -332,6 +353,12 @@ export interface RendererRequests {
   'app.flush': { input: null; output: { unsaved: UnsavedFile | null } }
   /** Opens the "Connect an agent" dialog. */
   'app.connectAgent': { input: null; output: null }
+  'menu.command': { input: { command: MenuCommand }; output: null }
+  /**
+   * Runs an edit command of the menu bar on the canvas. `handled` is false when a text field, a dialog or a menu has the
+   * focus, or when no editor is open. The main process then runs the command of the system.
+   */
+  'menu.edit': { input: { command: EditCommand }; output: { handled: boolean } }
   /** Renders a diagram file and returns the image or the video as base64. */
   'render.file': { input: RenderRequest; output: { data: string } }
   /** Mounts an export stage in the capture window. Below 1, `viewportScale` scales its size and viewport. */

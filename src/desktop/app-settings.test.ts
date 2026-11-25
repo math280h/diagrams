@@ -21,6 +21,7 @@ const SETTINGS: AppSettings = {
   openAtLogin: 'on',
   agentWindow: 'show',
   autoUpdateCheck: true,
+  trayHost: 'present',
   websites: ['https://draw.thias.dev'],
   shareWebsite: 'https://draw.thias.dev',
 }

@@ -7,7 +7,14 @@ import { useAppSettings } from './app-settings'
 import type { AppSettings, DesktopApi, GitHubSignIn, MainEvents, UpdateInfo } from './contract'
 import { DesktopSettingsDialog } from './DesktopSettingsDialog'
 import { useGitHubSignIn, watchGitHubSignIn } from './github-sign-in'
-import { AGENT_WINDOW_LABEL, KEEP_RUNNING_LABEL, OPEN_AT_LOGIN_LABEL, openAtLoginHint } from './keep-running'
+import {
+  AGENT_WINDOW_LABEL,
+  KEEP_RUNNING_LABEL,
+  keepRunningHint,
+  OPEN_AT_LOGIN_LABEL,
+  openAtLoginHint,
+  quitButtonHint,
+} from './keep-running'
 import { useDesktopSettingsDialog } from './settings-dialog'
 import { AUTO_UPDATE_CHECK_LABEL, autoUpdateCheckHint, useUpdateInfo } from './updates'
 
@@ -28,7 +35,15 @@ const COMPANY = 'https://diagrams.example.com'
 const SIGNED_OUT: GitHubSignIn = { state: 'signed-out', message: null }
 
 function settings(websites: string[] = [OFFICIAL], shareWebsite = OFFICIAL): AppSettings {
-  return { keepRunning: false, openAtLogin: 'off', agentWindow: 'show', autoUpdateCheck: true, websites, shareWebsite }
+  return {
+    keepRunning: false,
+    openAtLogin: 'off',
+    agentWindow: 'show',
+    autoUpdateCheck: true,
+    trayHost: 'present',
+    websites,
+    shareWebsite,
+  }
 }
 
 function updateInfo(patch: Partial<UpdateInfo> = {}): UpdateInfo {
@@ -162,6 +177,24 @@ describe('background', () => {
     show({ app: { ...settings(), openAtLogin: 'unsupported' } })
     await expect.element(page.getByRole('switch', { name: OPEN_AT_LOGIN_LABEL })).toBeDisabled()
     await expect.element(page.getByText('Only an installed app can start when you sign in.')).toBeVisible()
+  })
+
+  it('tells how to get the window back on a Linux desktop without a tray icon, and quits from the settings', async () => {
+    window.desktop = { ...window.desktop!, platform: 'linux' }
+    answers['app.quit'] = () => null
+    show({ app: { ...settings(), keepRunning: true, trayHost: 'missing' } })
+    await expect.element(page.getByText(keepRunningHint('linux', 'missing'))).toBeVisible()
+    const quit = page.getByRole('button', { name: 'Quit', exact: true })
+    await expect.element(quit).toHaveAccessibleDescription(quitButtonHint('linux', 'missing'))
+    await quit.click()
+    expect(request).toHaveBeenCalledWith('app.quit', null)
+  })
+
+  it('shows no quit button where the tray icon shows', async () => {
+    window.desktop = { ...window.desktop!, platform: 'linux' }
+    show({ app: { ...settings(), trayHost: 'present' } })
+    await expect.element(page.getByText(keepRunningHint('linux', 'present'))).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Quit', exact: true })).not.toBeInTheDocument()
   })
 
   it('chooses what the window does when an agent changes a diagram', async () => {

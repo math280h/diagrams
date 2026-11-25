@@ -103,15 +103,18 @@ describe('createAppSettings', () => {
 
   it('gives the renderer only the settings that it shows, with a website for share links', () => {
     const settings = stored({ keepRunning: false, backgroundNoticeShown: true, openAtLoginAdded: true })
-    expect(publicSettings({ ...settings, agentWindow: 'hidden', autoUpdateCheck: false }, 'on')).toEqual({
+    expect(publicSettings({ ...settings, agentWindow: 'hidden', autoUpdateCheck: false }, 'on', 'missing')).toEqual({
       keepRunning: false,
       openAtLogin: 'on',
       agentWindow: 'hidden',
       autoUpdateCheck: false,
+      trayHost: 'missing',
       websites: [OFFICIAL],
       shareWebsite: OFFICIAL,
     })
-    expect(publicSettings(stored({ websites: [COMPANY], shareWebsite: OFFICIAL }), 'off').shareWebsite).toBe(COMPANY)
+    expect(publicSettings(stored({ websites: [COMPANY], shareWebsite: OFFICIAL }), 'off', 'present').shareWebsite).toBe(
+      COMPANY,
+    )
   })
 
   it('reads the agent window mode and the one-time sign-in entry, and uses the default for other values', () => {
@@ -159,7 +162,7 @@ describe('website changes', () => {
     const settings = stored({ websites: [OFFICIAL, COMPANY], shareWebsite: COMPANY })
     const removed = removeWebsite(settings, COMPANY)
     expect(removed.websites).toEqual([OFFICIAL])
-    expect(publicSettings(removed, 'off').shareWebsite).toBe(OFFICIAL)
+    expect(publicSettings(removed, 'off', 'present').shareWebsite).toBe(OFFICIAL)
     expect(() => removeWebsite(removed, OFFICIAL)).toThrow('at least one website')
   })
 

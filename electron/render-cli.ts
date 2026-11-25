@@ -107,6 +107,7 @@ export async function runRender(args: RenderArgs): Promise<number> {
         openAtLogin: 'unsupported',
         agentWindow: 'hidden',
         autoUpdateCheck: false,
+        trayHost: 'present',
         websites: [BUILD.website],
         shareWebsite: BUILD.website,
       }),

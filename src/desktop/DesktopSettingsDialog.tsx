@@ -193,7 +193,7 @@ function GitHubSignInSetting({ repositoryNeedsSignIn }: { repositoryNeedsSignIn:
   if (info.state === 'signed-in') {
     return (
       <div className="flex items-start justify-between gap-4">
-        <p className="leading-5 text-muted-foreground">
+        <p className="leading-5 text-pretty text-muted-foreground">
           {info.kept
             ? 'Signed in to GitHub.'
             : 'Signed in to GitHub until the app quits. This system has no keychain to store the sign-in.'}
@@ -234,7 +234,7 @@ function GitHubSignInSetting({ repositoryNeedsSignIn }: { repositoryNeedsSignIn:
   if (!repositoryNeedsSignIn && !BUILD.repositoryEditable) return null
   return (
     <div className="space-y-2">
-      <p className="leading-5 text-muted-foreground">
+      <p className="leading-5 text-pretty text-muted-foreground">
         {repositoryNeedsSignIn
           ? 'The updates are in a private repository. Sign in to GitHub with an account that can read it.'
           : 'To get updates from a private repository, sign in to GitHub first.'}

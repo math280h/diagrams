@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { homedir, hostname, userInfo } from 'node:os'
 import path from 'node:path'
-import { app, type BrowserWindow, dialog, powerMonitor, session, shell } from 'electron'
+import { app, type BrowserWindow, dialog, Menu, powerMonitor, session, shell, webContents } from 'electron'
 import electronUpdater from 'electron-updater'
 import { TOOL_DEFINITIONS } from '@/agent/tool-definitions'
 import {
@@ -16,9 +16,11 @@ import {
   FIRST_DEV_AGENT_PORT,
   HANDOFF_TTL_MS,
   PREVIEW_APP_LABEL,
+  REPOSITORY_URL,
 } from '@/desktop/constants'
-import { BUILD, repositoryName } from '@/desktop/build-config'
-import type { AgentInfo, GitHubSignIn } from '@/desktop/contract'
+import { BUILD, releaseLinks, repositoryName } from '@/desktop/build-config'
+import type { AgentInfo, GitHubSignIn, TrayHost } from '@/desktop/contract'
+import { showsStartedNotice, showsStillRunningNotice, trayIconShows } from '@/desktop/keep-running'
 import { createHandoffCodes, mountHandoff } from './agent/handoff'
 import { marketplaceFiles, writeMarketplace } from './agent/marketplace'
 import { loadAgentPort, nextFreeAgentPort, saveAgentPort } from './agent/port'
@@ -27,6 +29,7 @@ import { buildInstructions, bundledPluginConfig, bundledSkillFiles, loadSkills, 
 import { createToken, loadToken } from './agent/token'
 import { appAbout } from './about'
 import { agentWindowShow, createIdleClose } from './agent-window'
+import { appMenuTemplate, type HelpLink, runEditCommand } from './app-menu'
 import { registerAppScheme, serveRenderer } from './app-protocol'
 import {
   addWebsite,
@@ -42,7 +45,7 @@ import { findDeepLink, isConnectAgentLink, parseReceiveLink } from './deep-link'
 import { createCaptureService } from './capture'
 import { registerIpc } from './ipc'
 import { createLoginItem, startedAtLogin, type LoginItem } from './login-item'
-import { configurePaths, diagramsFolder, iconPath, rendererFolder } from './paths'
+import { configurePaths, devServerUrl, diagramsFolder, iconPath, rendererFolder } from './paths'
 import { parseRenderArgs, RENDER_USAGE, RenderUsageError, type RenderArgs } from './render-args'
 import { isolateRender, runRender } from './render-cli'
 import { createRendererRpc } from './renderer-rpc'
@@ -55,6 +58,7 @@ import { createLinkedFiles, isLinkedId } from './storage/linked-files'
 import { createThemeFiles, watchThemeFolder } from './storage/theme-files'
 import { watchDiagramFolder, watchLinkedFiles } from './storage/watcher'
 import { checkUpdateRepository, repositoryFeed } from './update-repository'
+import { createTrayHostWatch } from './tray-host'
 import { createUpdates, updatePolicy, type UpdatePolicy } from './updates'
 import { layoutGraphviz } from './graphviz'
 import { type CloseDialogs, confirmUnsavedClose, diagramFileName } from './unsaved-close'
@@ -68,6 +72,7 @@ import {
   focusWindow,
   prepareAgentWindow,
   prepareQuit,
+  reloadMainWindow,
   rendererOrigin,
   setRendererUnsaved,
   setWindowColors,
@@ -82,6 +87,8 @@ const COPY_FILE_MODE = 0o644
 const AGENT_CALL_LIMIT_MS = 10 * 60_000
 const HANDOFF_OPEN_TIMEOUT_MS = 20_000
 const AGENT_SETUP_OPEN_TIMEOUT_MS = 20_000
+const MENU_COMMAND_TIMEOUT_MS = 20_000
+const MENU_EDIT_TIMEOUT_MS = 2000
 const UNSEEN_AGENT_WINDOW_IDLE_MS = 5 * 60_000
 const PORT_RETRY_MS = 2000
 /** How long the app waits for its kept agent port, for example while an app that quits still holds it. */
@@ -212,15 +219,31 @@ async function start() {
   const settings = createAppSettings(path.join(userData, APP_SETTINGS_FILE), BUILD.website)
   const loginItem = createLoginItem()
   addLoginItemOnce(loginItem, settings)
-  const appSettings = (stored = settings.get()) => publicSettings(stored, loginItem.state())
+  const trayHost = createTrayHostWatch({ platform: process.platform, changed: (host) => background?.setHost(host) })
+  const appSettings = (stored = settings.get()) => publicSettings(stored, loginItem.state(), trayHost.current())
   const handoffOrigins = (): readonly string[] =>
     app.isPackaged ? settings.get().websites : [...settings.get().websites, ...DEV_ORIGINS]
   const updateRepository = () => (BUILD.repositoryEditable && settings.get().updateRepository) || BUILD.repository
-  const background = windowHidden ? null : createBackground({ open: () => focusWindow(), quit: () => app.quit() })
-  const followBackground = () => background?.follow(settings.get().keepRunning || atLogin)
-  followBackground()
+  const background = windowHidden
+    ? null
+    : createBackground({ open: () => focusWindow(), quit: () => app.quit(), host: trayHost.current() })
+  const followBackground = () => {
+    const shown = settings.get().keepRunning || atLogin
+    background?.follow(shown)
+    trayHost.watch(shown)
+  }
+  void trayHost.refresh().then((host) => {
+    followBackground()
+    if (atLogin && showsStartedNotice(process.platform, host)) background?.notify('started')
+  })
   if (atLogin) background?.hideDock()
   powerMonitor.on('shutdown', endSession)
+  const noticeStillRunning = (host: TrayHost) => {
+    if (currentWindow()) return
+    const { backgroundNoticeShown } = settings.get()
+    if (!showsStillRunningNotice(process.platform, host, backgroundNoticeShown) || !background?.notify()) return
+    if (trayIconShows(process.platform, host)) settings.update({ backgroundNoticeShown: true })
+  }
   app.on('window-all-closed', () => {
     if (closedUnseen()) return
     if (!settings.get().keepRunning) {
@@ -228,7 +251,7 @@ async function start() {
       return
     }
     background?.hideDock()
-    if (!settings.get().backgroundNoticeShown && background?.notify()) settings.update({ backgroundNoticeShown: true })
+    void trayHost.refresh().then(noticeStillRunning)
   })
   const agentCalls = createIdleClose(UNSEEN_AGENT_WINDOW_IDLE_MS, closeUnseenWindow)
   let port =
@@ -463,7 +486,10 @@ async function start() {
         await shell.openPath(await themes.ensureFolder())
         return null
       },
-      'app.settings': async () => appSettings(),
+      'app.settings': async () => {
+        await trayHost.refresh()
+        return appSettings()
+      },
       'app.setKeepRunning': async ({ keepRunning }) => {
         const next = settings.update({ keepRunning })
         followBackground()
@@ -532,7 +558,8 @@ async function start() {
       await Promise.all([files.drain(), linked.drain()])
       return flushed?.unsaved ?? null
     },
-    confirmUnsavedClose: (window, unsaved, signal) => confirmUnsavedClose(unsaved, nativeCloseDialogs(window, signal)),
+    confirmUnsavedClose: (window, unsaved, signal, action) =>
+      confirmUnsavedClose(unsaved, nativeCloseDialogs(window, signal), action),
     focused: () => {
       watcher.rescan()
       linkedWatcher.rescan()
@@ -544,6 +571,7 @@ async function start() {
 
   app.on('will-quit', () => {
     capture.dispose()
+    trayHost.stop()
     agentCalls.stop()
     updates.stop()
     watcher.stop()
@@ -552,6 +580,32 @@ async function start() {
     clearTimeout(retry)
     void server.stop()
   })
+
+  const helpLinks: Record<HelpLink, () => string> = {
+    website: () => BUILD.website,
+    'whats-new': () => releaseLinks(updateRepository()).releases,
+    'source-code': () => REPOSITORY_URL,
+  }
+  const menu = appMenuTemplate(
+    process.platform,
+    { development: devServerUrl() !== null, updates: policy.kind !== 'none' },
+    {
+      run: (command) => {
+        focusWindow()
+        void rpc.call('menu.command', { command }, { timeoutMs: MENU_COMMAND_TIMEOUT_MS }).catch(() => undefined)
+      },
+      edit: (command) =>
+        void runEditCommand(
+          command,
+          webContents.getFocusedWebContents(),
+          currentWindow()?.webContents ?? null,
+          async (sent) => (await rpc.call('menu.edit', { command: sent }, { timeoutMs: MENU_EDIT_TIMEOUT_MS })).handled,
+        ),
+      open: (link) => void shell.openExternal(helpLinks[link]()),
+      reload: (ignoreCache) => void reloadMainWindow(ignoreCache),
+    },
+  )
+  if (menu) Menu.setApplicationMenu(Menu.buildFromTemplate(menu))
 
   serveRenderer(rendererFolder())
   if (!atLogin) createMainWindow()

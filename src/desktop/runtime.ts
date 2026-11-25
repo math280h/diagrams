@@ -4,19 +4,36 @@ import { runAgentTool } from '@/agent/runtime'
 import { repository } from '@/persistence/active-repository'
 import { parseDiagramJson } from '@/persistence/library-actions'
 import { untilStored } from '@/persistence/until-stored'
+import { createAndOpenBlankDiagram, openPickedDiagramFiles } from '@/library/library-commands'
 import { watchCrashes } from '@/reports/crashes'
+import { openProblemReports } from '@/reports/report-store'
 import { router } from '@/router'
 import { serializeDiagram } from '@/persistence/cached-repository'
 import { currentDiagram, saveAndSettle } from '@/store/document'
+import { setUi } from '@/store/ui-store'
 import { useUnsaved } from '@/store/unsaved'
 import { openConnectAgent, recordAgentCall, watchAgentInfo } from './agent-store'
 import { loadAppSettings } from './app-settings'
 import { desktopApi } from './bridge'
+import type { MenuCommand } from './contract'
 import { watchGitHubSignIn } from './github-sign-in'
+import { runMenuEdit } from './menu-edit'
 import { serveMainRequests } from './serve'
-import { watchUpdates } from './updates'
+import { openDesktopSettings } from './settings-dialog'
+import { checkForUpdates, watchUpdates } from './updates'
 
 const ONLY_IN_CAPTURE_WINDOW = 'Only the capture window renders export stages.'
+
+const openDiagram = (diagramId: string) => void router.navigate({ to: '/d/$diagramId', params: { diagramId } })
+
+const MENU_COMMANDS: Record<MenuCommand, () => void> = {
+  settings: openDesktopSettings,
+  'check-for-updates': () => void checkForUpdates(),
+  'new-diagram': () => createAndOpenBlankDiagram(openDiagram),
+  'open-files': () => openPickedDiagramFiles(openDiagram),
+  shortcuts: () => setUi({ shortcutsOpen: true }),
+  'problem-reports': openProblemReports,
+}
 
 function reportUnsaved() {
   const report = (unsaved: boolean) =>
@@ -82,6 +99,13 @@ export function startDesktopRuntime(storageError: string | null = null) {
       openConnectAgent()
       return null
     },
+
+    'menu.command': async ({ command }) => {
+      MENU_COMMANDS[command]()
+      return null
+    },
+
+    'menu.edit': async ({ command }) => ({ handled: runMenuEdit(command) }),
 
     'capture.mount': () => Promise.reject(new Error(ONLY_IN_CAPTURE_WINDOW)),
     'capture.render': () => Promise.reject(new Error(ONLY_IN_CAPTURE_WINDOW)),

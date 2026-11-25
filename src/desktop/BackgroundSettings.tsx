@@ -1,16 +1,27 @@
+import { Power } from 'lucide-react'
 import { useEffect, useId } from 'react'
+import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { loadAppSettings, setAgentWindow, setKeepRunning, setOpenAtLogin, useAppSettings } from './app-settings'
+import {
+  loadAppSettings,
+  quitApp,
+  setAgentWindow,
+  setKeepRunning,
+  setOpenAtLogin,
+  useAppSettings,
+} from './app-settings'
 import { desktopApi } from './bridge'
 import type { AgentWindowMode } from './contract'
 import {
   AGENT_WINDOW_LABEL,
   AGENT_WINDOW_OPTIONS,
   KEEP_RUNNING_LABEL,
+  keepRunningHint,
   OPEN_AT_LOGIN_LABEL,
   openAtLoginHint,
-  quitHint,
+  QUIT_LABEL,
+  quitButtonHint,
 } from './keep-running'
 import { Setting } from './Setting'
 
@@ -24,13 +35,16 @@ export function BackgroundSettings() {
   const keepRunningHintId = useId()
   const agentWindowLabelId = useId()
   const agentWindowHintId = useId()
+  const quitHintId = useId()
   useEffect(() => {
     loadAppSettings()
     window.addEventListener('focus', loadAppSettings)
     return () => window.removeEventListener('focus', loadAppSettings)
   }, [])
   if (!settings) return null
-  const { openAtLogin } = settings
+  const { openAtLogin, trayHost } = settings
+  const platform = desktopApi()?.platform ?? ''
+  const quitHint = quitButtonHint(platform, trayHost)
   return (
     <div className="space-y-4 border-t pt-4 text-[13px]">
       <Setting label={OPEN_AT_LOGIN_LABEL} hint={openAtLoginHint(openAtLogin)} hintId={openAtLoginHintId}>
@@ -42,11 +56,7 @@ export function BackgroundSettings() {
           onCheckedChange={(checked) => void setOpenAtLogin(checked)}
         />
       </Setting>
-      <Setting
-        label={KEEP_RUNNING_LABEL}
-        hint={`Agents can connect while the window is closed. ${quitHint(desktopApi()?.platform ?? '')}`}
-        hintId={keepRunningHintId}
-      >
+      <Setting label={KEEP_RUNNING_LABEL} hint={keepRunningHint(platform, trayHost)} hintId={keepRunningHintId}>
         <Switch
           aria-label={KEEP_RUNNING_LABEL}
           aria-describedby={keepRunningHintId}
@@ -82,6 +92,13 @@ export function BackgroundSettings() {
           </SelectContent>
         </Select>
       </Setting>
+      {quitHint && (
+        <Setting label={QUIT_LABEL} hint={quitHint} hintId={quitHintId}>
+          <Button variant="outline" size="sm" aria-describedby={quitHintId} onClick={quitApp}>
+            <Power /> Quit
+          </Button>
+        </Setting>
+      )}
     </div>
   )
 }

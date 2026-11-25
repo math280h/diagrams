@@ -7,6 +7,7 @@ import { isDesktop } from '@/desktop/bridge'
 import { ConnectAgentDialog } from '@/desktop/ConnectAgentDialog'
 import { DesktopSettingsDialog } from '@/desktop/DesktopSettingsDialog'
 import { OpenInAppDialog } from '@/desktop/OpenInAppDialog'
+import { ShortcutsDialog } from '@/editor/ShortcutsDialog'
 import { FolderAgentDialog } from '@/folder/FolderAgentDialog'
 import { ReloadQuestion } from '@/new-version/ReloadQuestion'
 import { ProblemReportsDialog } from '@/reports/ProblemReportsDialog'
@@ -33,6 +34,7 @@ export function RootLayout() {
           <ReloadQuestion />
         </>
       )}
+      <ShortcutsDialog />
       <ProblemDialog />
       <ProblemReportsDialog />
       <ReportDialog />
