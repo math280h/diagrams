@@ -3,6 +3,8 @@ import path from 'node:path'
 import { app } from 'electron'
 import { AUTOSTART_FILE, BACKGROUND_ARG } from '@/desktop/constants'
 import type { OpenAtLogin } from '@/desktop/contract'
+import { runningAppImage } from './appimage'
+import { entryValues, execValue, stringValue } from './desktop-entry'
 import { APP_NAME } from './paths'
 
 /** The name of the registry value of the Windows login item. It is the app ID, as in `build/installer.nsh`. */
@@ -18,6 +20,8 @@ export interface LoginItem {
   set(on: boolean): void
   /** Writes the current command line into an entry that is on, if the app moved. */
   sync(): void
+  /** Writes a new path of the program into an entry that is on, synchronously, for example after an update. */
+  moved(program: string): void
   /** Tells whether the app runs from a place where it stays, so that a new item can point at it. */
   installed(): boolean
 }
@@ -28,53 +32,22 @@ const UNSUPPORTED: LoginItem = {
     throw new Error('Only an installed app can start when you sign in.')
   },
   sync: () => undefined,
+  moved: () => undefined,
   installed: () => false,
-}
-
-const PLAIN_EXEC_ARG = /^[\w/.,:@=+-]+$/
-
-function assertOneLine(value: string) {
-  if (/[\n\r]/.test(value)) throw new Error('A path of the app has a line break, so the system cannot start it.')
-}
-
-// The Desktop Entry Specification puts an Exec argument with other characters in double quotes, with a backslash
-// before ", `, $ and \. The string value then needs a second backslash before each backslash, and %% for a literal %.
-function execArg(arg: string): string {
-  assertOneLine(arg)
-  if (PLAIN_EXEC_ARG.test(arg)) return arg
-  const quoted = `"${arg.replace(/["`$\\]/g, '\\$&')}"`
-  return quoted.replaceAll('\\', '\\\\').replaceAll('%', '%%')
-}
-
-/** Returns the Exec value of an autostart entry that runs the command. */
-export function execValue(command: readonly string[]): string {
-  return command.map(execArg).join(' ')
 }
 
 /** Returns the text of an XDG autostart entry that runs the command at sign-in, while its program exists. */
 export function autostartEntry(command: readonly string[]): string {
-  const program = command[0] ?? ''
-  assertOneLine(program)
   return [
     '[Desktop Entry]',
     'Type=Application',
     `Name=${APP_NAME}`,
-    `TryExec=${program.replaceAll('\\', '\\\\')}`,
+    `TryExec=${stringValue(command[0] ?? '')}`,
     `Exec=${execValue(command)}`,
     'Terminal=false',
     'X-GNOME-Autostart-enabled=true',
     '',
   ].join('\n')
-}
-
-// The Desktop Entry Specification ignores spaces before and after the = of a key.
-function entryValues(text: string): Map<string, string> {
-  const values = new Map<string, string>()
-  for (const line of text.split(/\r?\n/)) {
-    const separator = line.indexOf('=')
-    if (separator > 0) values.set(line.slice(0, separator).trim(), line.slice(separator + 1).trim())
-  }
-  return values
 }
 
 /** Tells whether the system starts an autostart entry. It skips a hidden entry and an entry that GNOME turned off. */
@@ -93,9 +66,19 @@ export function autostartLoginItem(folder: string, command: readonly string[]): 
       return null
     }
   }
+  let current: readonly string[] = command
   const write = () => {
     mkdirSync(folder, { recursive: true })
-    writeFileSync(file, autostartEntry(command))
+    writeFileSync(file, autostartEntry(current))
+  }
+  const sync = () => {
+    const text = read()
+    if (text === null || !autostartEnabled(text)) return
+    try {
+      if (text !== autostartEntry(current)) write()
+    } catch {
+      return
+    }
   }
   return {
     state() {
@@ -106,14 +89,10 @@ export function autostartLoginItem(folder: string, command: readonly string[]): 
       if (on) write()
       else rmSync(file, { force: true })
     },
-    sync() {
-      const text = read()
-      if (text === null || !autostartEnabled(text)) return
-      try {
-        if (text !== autostartEntry(command)) write()
-      } catch {
-        return
-      }
+    sync,
+    moved(program) {
+      current = [program, ...current.slice(1)]
+      sync()
     },
     installed: () => true,
   }
@@ -127,6 +106,7 @@ function windowsLoginItem(): LoginItem {
     state: () => (app.getLoginItemSettings(options).executableWillLaunchAtLogin ? 'on' : 'off'),
     set: (on) => app.setLoginItemSettings({ ...options, openAtLogin: on }),
     sync: () => undefined,
+    moved: () => undefined,
     installed: () => true,
   }
 }
@@ -140,13 +120,14 @@ function macLoginItem(): LoginItem {
     },
     set: (on) => app.setLoginItemSettings({ openAtLogin: on }),
     sync: () => undefined,
+    moved: () => undefined,
     installed: () => app.isInApplicationsFolder(),
   }
 }
 
 function loginCommand(): string[] {
   const entry = process.defaultApp ? process.argv[1] : undefined
-  return [process.env.APPIMAGE ?? process.execPath, ...(entry ? [path.resolve(entry)] : []), BACKGROUND_ARG]
+  return [runningAppImage() ?? process.execPath, ...(entry ? [path.resolve(entry)] : []), BACKGROUND_ARG]
 }
 
 /**

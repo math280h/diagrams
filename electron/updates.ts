@@ -13,6 +13,8 @@ export interface Updater {
   on(event: 'checking-for-update' | 'update-not-available', listener: () => void): unknown
   on(event: 'update-available' | 'update-downloaded', listener: (release: Release) => void): unknown
   on(event: 'error', listener: (error: Error) => void): unknown
+  /** The AppImage updater sends the new path when the update gives the AppImage a new file name. */
+  on(event: 'appimage-filename-updated', listener: (appImage: string) => void): unknown
   /** Replaces the feed of `app-update.yml`. With a token, electron-updater reads a private repository. */
   setFeedURL(options: { provider: 'github'; owner: string; repo: string; token?: string }): void
   checkForUpdates(): Promise<unknown>
@@ -119,6 +121,8 @@ function feedKey({ repository, token }: UpdateFeed) {
  * @param prepareQuit - Runs before the install. It saves the open work, so that the windows can close at once. False
  *   means that the user keeps the app open, and the install does not start.
  * @param cancelQuit - Cancels `prepareQuit` when the install fails and the app does not quit.
+ * @param appImageMoved - Receives the new path of the AppImage after an update with a new file name. It runs during
+ *   the quit, so it must write synchronously.
  */
 export function createUpdates(options: {
   updater: Updater | null
@@ -126,6 +130,7 @@ export function createUpdates(options: {
   currentVersion: string
   buildRepository: string
   repository: string
+  appImageMoved?: (appImage: string) => void
   feed: () => Promise<UpdateFeed | 'sign-in'>
   emit: (info: UpdateInfo) => void
   prepareQuit: () => Promise<boolean>
@@ -178,6 +183,7 @@ export function createUpdates(options: {
     publish({ state: policy.kind === 'install' ? 'downloading' : 'available', version: release.version }),
   )
   updater.on('update-downloaded', (release) => publish({ state: 'ready', version: release.version }))
+  updater.on('appimage-filename-updated', (appImage) => options.appImageMoved?.(appImage))
   const downloaded = () => info.state === 'ready' || info.state === 'install-failed'
   let installStep: 'none' | 'preparing' | 'started' = 'none'
   const failInstall = (error: unknown) => {

@@ -14,6 +14,8 @@ export const BACKGROUND_ARG = '--background'
 export const AUTOSTART_FILE = 'diagrams.desktop'
 
 export const DEEP_LINK_SCHEME = 'diagrams'
+/** The file name of the desktop entry that opens {@link DEEP_LINK_SCHEME} links in an AppImage of the desktop app. */
+export const APPIMAGE_LINK_ENTRY = 'diagrams-appimage.desktop'
 /** The deep link that opens the desktop app at "Connect an agent". An app without it only opens its window. */
 export const CONNECT_AGENT_LINK = `${DEEP_LINK_SCHEME}://connect-agent`
 /** The route of the hidden window that renders export stages for the native capture. */

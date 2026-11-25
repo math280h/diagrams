@@ -125,6 +125,8 @@ Vitest 5 (node and Chromium browser mode), Playwright. A real browser runs the t
     and deb on Linux.
   - The job installs or mounts each installer and runs `scripts/smoke-package.mjs` on the installed app. On Windows,
     the job then runs the uninstaller and checks that the uninstaller removed `Diagrams.exe`.
+  - On Linux, `scripts/smoke-deep-link.ts` checks the `diagrams://` handler with `xdg-mime`. Without the deb package,
+    `xdg-open` starts the AppImage with a link. With the deb package, the deb entry keeps the links.
   - The Windows and Linux jobs run `scripts/installer-contents.ts`. The script compares the NSIS plugins, the AppImage
     runtime and the libraries in `usr/lib` of the AppImage with the SBOM. The script unpacks the Windows installer and
     uninstaller with 7-Zip.

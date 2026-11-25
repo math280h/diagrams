@@ -28,6 +28,8 @@ import { createAgentServer, portIsFree, startAgentServer } from './agent/server'
 import { buildInstructions, bundledPluginConfig, bundledSkillFiles, loadSkills, registerSkills } from './agent/skills'
 import { createToken, loadToken } from './agent/token'
 import { appAbout } from './about'
+import { runningAppImage } from './appimage'
+import { appImageLinksMoved, registerAppImageLinks } from './appimage-links'
 import { agentWindowShow, createIdleClose } from './agent-window'
 import { appMenuTemplate, type HelpLink, runEditCommand } from './app-menu'
 import { registerAppScheme, serveRenderer } from './app-protocol'
@@ -120,6 +122,7 @@ function registerProtocolClient() {
   if (process.env.DIAGRAMS_REGISTER_PROTOCOL === '0') return
   if (!process.defaultApp) {
     app.setAsDefaultProtocolClient(DEEP_LINK_SCHEME)
+    if (process.platform === 'linux') void registerAppImageLinks().catch(() => undefined)
     return
   }
   const entry = process.argv[1]
@@ -155,7 +158,7 @@ function currentUpdatePolicy(): UpdatePolicy {
     packaged: true,
     platform: process.platform,
     packageType: readText(path.join(process.resourcesPath, 'package-type')),
-    appImage: Boolean(process.env.APPIMAGE),
+    appImage: runningAppImage() !== null,
     macSigned: manifest.macSigned === true,
     preview: app.getVersion().includes(`-${PREVIEW_APP_LABEL}.`),
   })
@@ -327,6 +330,10 @@ async function start() {
     prepareQuit,
     cancelQuit,
     automatic: settings.get().autoUpdateCheck,
+    appImageMoved: (appImage) => {
+      loginItem.moved(appImage)
+      appImageLinksMoved(appImage)
+    },
   })
 
   const createServer = (serverPort: number) =>
