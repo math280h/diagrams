@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { matchIcon, searchIcons, type IconEntry, type IconSet } from './library'
+import { matchIcon, OFFERS_RETIRED_ICONS, searchIcons, toIconSet, type IconEntry, type IconSet } from './library'
 
 function entry(id: string, title: string, aliases: string[], keywords: string[] = []): IconEntry {
   return {
@@ -49,6 +49,16 @@ describe('matchIcon', () => {
     expect(matchIcon(SETS, 'Go to checkout')).toBeUndefined()
     expect(matchIcon(SETS, 'Orders service')).toBeUndefined()
     expect(matchIcon(SETS, 'API')).toBeUndefined()
+  })
+})
+
+describe('toIconSet', () => {
+  it('finds a retired logo by its name, and offers it only if the app offers retired icons', () => {
+    const go = { ...entry('logo:go', 'Go', ['go']), path: 'M0 0h24v24H0z' }
+    const gone = { ...entry('logo:gone', 'Gone', ['gone']), path: 'M0 0h24v24H0z', retired: true }
+    const logos = toIconSet('logo', { entries: [go, gone] })
+    expect(logos.byId.get('logo:gone')).toBe(gone)
+    expect(logos.entries).toEqual(OFFERS_RETIRED_ICONS ? [go, gone] : [go])
   })
 })
 

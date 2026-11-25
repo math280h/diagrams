@@ -45,6 +45,7 @@ import {
   type LucideProps,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
+import { currentIconName } from './icons/aliases'
 import { iconComponent, iconImageUrls } from './icons/components'
 import { iconSourceOf, loadSetOfIcon } from './icons/library'
 
@@ -132,9 +133,9 @@ function decodeImage(url: string): Promise<void> {
   return image.decode().catch(() => undefined)
 }
 
-async function loadSetIcon(name: string): Promise<void> {
-  const set = await loadSetOfIcon(name)
-  const entry = set?.byId.get(name)
+async function loadSetIcon(name: string, current: string): Promise<void> {
+  const set = await loadSetOfIcon(current)
+  const entry = set?.byId.get(current)
   const component = set && entry ? iconComponent(set, entry) : null
   if (!set || !entry || !component) return
   await Promise.all(iconImageUrls(set, entry).map(decodeImage))
@@ -144,24 +145,32 @@ async function loadSetIcon(name: string): Promise<void> {
 
 function loadIcon(name: string): Promise<void> {
   let job = pending.get(name)
-  if (!job && iconSourceOf(name)) {
-    job = loadSetIcon(name).catch(() => {
+  if (job) return job
+  const current = currentIconName(name)
+  const known = loaded.get(current)
+  if (known) {
+    loaded.set(name, known)
+    notify()
+    return Promise.resolve()
+  }
+  if (iconSourceOf(current)) {
+    job = loadSetIcon(name, current).catch(() => {
       pending.delete(name)
     })
-    pending.set(name, job)
-  }
-  if (!job) {
+  } else {
     job = loadDynamicIcons()
       .then(({ dynamicIconImports }) =>
-        name in dynamicIconImports ? dynamicIconImports[name as keyof typeof dynamicIconImports]() : null,
+        Object.hasOwn(dynamicIconImports, current)
+          ? dynamicIconImports[current as keyof typeof dynamicIconImports]()
+          : null,
       )
       .then((module) => {
         if (!module) return
         loaded.set(name, module.default)
         notify()
       })
-    pending.set(name, job)
   }
+  pending.set(name, job)
   return job
 }
 

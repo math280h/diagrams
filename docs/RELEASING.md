@@ -186,6 +186,28 @@ action.
 - Do not edit or delete the samples in `src/persistence/formats`, `src/share/samples` and `src/export/samples`. Every
   release of the same major version opens them. A major release that drops old formats first raises `RELEASE_MAJOR`
   in `src/persistence/release-formats.ts`; then `pnpm release:tag major` works.
+- Do not remove a name from `src/canvas/icons/released-ids.json`. Diagrams of earlier releases use these icon names.
+  The CI job "Release formats" fails when a change removes one (`node scripts/icon-ids.ts --base <git ref>`).
+
+### Keep icon names
+
+After an update of `lucide-react`, `simple-icons` or an icon package in `scripts/icons/sources.ts`,
+`src/canvas/icons/released-ids.test.ts` can fail:
+
+- The app has new icon names. Run `node scripts/icon-ids.ts`. It adds them to `src/canvas/icons/released-ids.json`.
+- A name of an earlier release draws no icon. Find out what the package did with it:
+  - It renamed the icon. Add the old name and the new name to `ICON_ALIASES` in `src/canvas/icons/aliases.ts`. For a
+    logo, also change the slug in `LOGOS` and `LOGO_ALIASES` of `scripts/icons/catalog.mjs` and run `pnpm icons logos`.
+  - Simple Icons removed the logo. Then `pnpm icons logos` stops. Run `pnpm icons logos --keep-from <version>` with
+    the last version that had the logo, which `THIRD-PARTY-NOTICES.md` names. The build copies the path, source and
+    licence to `scripts/icons/kept-logos.json` and marks the entry as `retired`. In `THIRD-PARTY-NOTICES.md`, add
+    "<title> (simple-icons <version>)" and, for a logo with its own licence, a row in the licence table. Keep a
+    removed logo only if its terms still allow it. Otherwise give it an alias to a related icon.
+  - A cloud icon package no longer has an image. Then `pnpm icons` stops. Point the entry in
+    `scripts/icons/catalog.mjs` to another image of the package, or add an alias to a related entry.
+
+A retired logo still draws in diagrams, and the icon picker and the search still offer it (`OFFERS_RETIRED_ICONS` in
+`src/canvas/icons/library.ts`).
 
 ## Set up the live website
 

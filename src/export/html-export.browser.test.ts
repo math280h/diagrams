@@ -7,6 +7,12 @@ import type { PageIcons } from '@/standalone/page-data'
 import { DiagramBuilder } from '@/templates/builder'
 import { exportHtmlPage } from './html-export'
 
+vi.mock(import('@/canvas/icons/aliases'), async (original) => {
+  const aliases = await original()
+  const test = { 'logo:golang': 'logo:go', 'old-ship': 'ship', 'old-database': 'database' }
+  return { ...aliases, currentIconName: (name: string) => aliases.currentIconName(name, test) }
+})
+
 const PLAYER = {
   [PLAYER_FILES.script]: 'window.playerStarted = true',
   [PLAYER_FILES.style]: '.player{color:red}',
@@ -63,6 +69,18 @@ describe('exportHtmlPage', () => {
     const icons = JSON.parse(document.getElementById('dg-icons')!.textContent) as PageIcons
     expect(Object.keys(icons.lucide)).toEqual(['anchor'])
     expect(Array.isArray(icons.lucide.anchor!.node)).toBe(true)
+    expect(icons.sets.map((set) => [set.source, set.entries.map((entry) => entry.id)])).toEqual([['logo', ['logo:go']]])
+  })
+
+  it('carries the icons of earlier names under the names that the diagram uses', async () => {
+    const builder = new DiagramBuilder()
+    builder.card(0, 0, { title: 'Go service', icon: 'logo:go' })
+    builder.card(300, 0, { title: 'Old Go service', icon: 'logo:golang' })
+    builder.card(600, 0, { title: 'Old ship', icon: 'old-ship' })
+    builder.card(900, 0, { title: 'Old database', icon: 'old-database' })
+    const { document } = await page(builder.build('Earlier names'))
+    const icons = JSON.parse(document.getElementById('dg-icons')!.textContent) as PageIcons
+    expect(Object.keys(icons.lucide)).toEqual(['old-ship'])
     expect(icons.sets.map((set) => [set.source, set.entries.map((entry) => entry.id)])).toEqual([['logo', ['logo:go']]])
   })
 

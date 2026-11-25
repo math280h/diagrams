@@ -20,6 +20,12 @@ import { HANDLERS } from './handlers'
 import { runAgentTool } from './runtime'
 import { TOOL_DEFINITIONS, TOOL_NAMES, type ToolInput, type ToolName } from './tool-definitions'
 
+vi.mock(import('@/canvas/icons/aliases'), async (original) => {
+  const aliases = await original()
+  const test = { 'aws:old-lambda': 'aws:lambda', 'old-monitor': 'monitor' }
+  return { ...aliases, currentIconName: (name: string) => aliases.currentIconName(name, test) }
+})
+
 const LAMBDA = {
   id: 'aws:lambda',
   title: 'AWS Lambda',
@@ -233,6 +239,21 @@ describe('agent tools', () => {
     ])
     const cache = nodeByLabel('Cache')
     expect(cache.type === 'card' && cache.data.icon).toBe('')
+  })
+
+  it('writes the current name of an icon that an earlier release named in another way', async () => {
+    await call('create_diagram', { name: 'Shop' })
+    const result = await call('add_elements', {
+      nodes: [
+        { label: 'Checkout API', icon: 'aws:old-lambda' },
+        { label: 'Shopper', icon: 'old-monitor' },
+      ],
+    })
+    expect(result.warnings).toBeUndefined()
+    const api = nodeByLabel('Checkout API')
+    expect(api.type === 'card' && [api.data.icon, api.data.form]).toEqual(['aws:lambda', 'function'])
+    const shopper = nodeByLabel('Shopper')
+    expect(shopper.type === 'card' && shopper.data.icon).toBe('monitor')
   })
 
   it('colours cards, shapes and boundaries, reads the colours back and warns about text', async () => {

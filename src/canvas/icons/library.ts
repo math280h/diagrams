@@ -1,5 +1,6 @@
 import type { CardForm } from '@/model/schema'
 import { fetchAppFile } from '@/new-version/file-load'
+import { currentIconName } from './aliases'
 import awsUrl from './data/aws.json?url'
 import azureUrl from './data/azure.json?url'
 import gcpUrl from './data/gcp.json?url'
@@ -62,14 +63,24 @@ export interface IconEntry {
   art?: string
   /** The SVG path data of a single-colour logo, in a 24 by 24 view box. */
   path?: string
+  /**
+   * True for a logo that Simple Icons removed. The app keeps its last path, so that earlier diagrams still draw it.
+   * If {@link OFFERS_RETIRED_ICONS} is true, the app also offers it.
+   */
+  retired?: boolean
 }
 
 export interface IconSet {
   source: IconSourceId
+  /** The entries that the icon picker, the search and the imports offer. */
   entries: IconEntry[]
   art: Record<string, IconArt>
+  /** All entries of the set, also the retired entries that {@link IconSet.entries} can leave out. */
   byId: Map<string, IconEntry>
 }
+
+/** Whether the icon picker, the search and the imports offer a retired icon. */
+export const OFFERS_RETIRED_ICONS: boolean = true
 
 const sets = new Map<IconSourceId, IconSet>()
 const pending = new Map<IconSourceId, Promise<IconSet>>()
@@ -100,8 +111,13 @@ export function loadIconSet(source: IconSourceId): Promise<IconSet> {
   return job
 }
 
-function toIconSet(source: IconSourceId, { entries, art = {} }: IconSetData): IconSet {
-  return { source, entries, art, byId: new Map(entries.map((entry) => [entry.id, entry])) }
+export function toIconSet(source: IconSourceId, { entries, art = {} }: IconSetData): IconSet {
+  return {
+    source,
+    entries: OFFERS_RETIRED_ICONS ? entries : entries.filter((entry) => !entry.retired),
+    art,
+    byId: new Map(entries.map((entry) => [entry.id, entry])),
+  }
 }
 
 function loadTemplateSets(): Promise<Map<IconSourceId, IconSet>> {
@@ -131,12 +147,13 @@ function loadTemplateSets(): Promise<Map<IconSourceId, IconSet>> {
  * @returns `null` for a Lucide icon name.
  */
 export async function loadSetOfIcon(name: string): Promise<IconSet | null> {
-  const source = iconSourceOf(name)
+  const current = currentIconName(name)
+  const source = iconSourceOf(current)
   if (!source) return null
   const full = sets.get(source)
   if (full) return full
   const template = (await loadTemplateSets().catch(() => null))?.get(source)
-  return template?.byId.has(name) ? template : loadIconSet(source)
+  return template?.byId.has(current) ? template : loadIconSet(source)
 }
 
 /** Adds an icon set that the app has without a fetch, such as the icons that an exported page carries. */
@@ -151,8 +168,9 @@ export function loadIconSets(): Promise<IconSet[]> {
 
 /** Returns the entry of an icon name if the app has loaded its set. */
 export function iconEntry(name: string): IconEntry | undefined {
-  const source = iconSourceOf(name)
-  return source ? (sets.get(source)?.byId.get(name) ?? templateEntries.get(name)) : undefined
+  const current = currentIconName(name)
+  const source = iconSourceOf(current)
+  return source ? (sets.get(source)?.byId.get(current) ?? templateEntries.get(current)) : undefined
 }
 
 const artUrls = new Map<string, string>()

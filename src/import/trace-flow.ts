@@ -1,3 +1,4 @@
+import { currentIconName } from '@/canvas/icons/aliases'
 import { matchIcon, type IconSet } from '@/canvas/icons/library'
 import { createStep } from '@/editor/flow/record'
 import { createEdge, createFlow, defaultCardData, newId } from '@/model/defaults'
@@ -72,7 +73,7 @@ function findCard(peer: TracePeer, cards: readonly CardNodeType[], productIcon: 
   const typed = peer.form === 'datastore' || peer.form === 'queue'
   const strictKeys = typed ? [peer.title, peer.product].filter(Boolean).map(matchKey) : keys
   const fitting = cards.filter((card) => prefersForm(peer, card.data.form))
-  const byIcon = productIcon ? fitting.filter((card) => card.data.icon === productIcon) : []
+  const byIcon = productIcon ? fitting.filter((card) => currentIconName(card.data.icon) === productIcon) : []
   return (
     fitting.find((card) => keys.includes(matchKey(card.data.title))) ??
     (typed ? fitting.find((card) => card.data.lines.some((line) => keys.includes(matchKey(line.text)))) : undefined) ??
