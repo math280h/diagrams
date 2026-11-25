@@ -36,8 +36,11 @@ function toMcpResult(outcome: ToolOutcome): ContentResult {
   }
 }
 
+const SEMVER = /^\d+\.\d+\.\d+(?:-[\dA-Za-z-]+(?:\.[\dA-Za-z-]+)*)?(?:\+[\dA-Za-z-]+(?:\.[\dA-Za-z-]+)*)?$/
+
+// MCP accepts any version text, but the type of @vitemcp/server accepts only x.y.z, also for a pre-release.
 function semver(version: string): `${number}.${number}.${number}` {
-  return /^\d+\.\d+\.\d+$/.test(version) ? (version as `${number}.${number}.${number}`) : '0.0.0'
+  return SEMVER.test(version) ? (version as `${number}.${number}.${number}`) : '0.0.0'
 }
 
 /**
