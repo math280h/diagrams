@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile } from 'node:fs/promises'
+import { mkdir, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { DIAGRAM_FILE_SUFFIX } from '@/desktop/constants'
 import type { FileChange, StoredFile } from '@/desktop/contract'
@@ -21,8 +21,9 @@ export type DiagramFiles = ReturnType<typeof createDiagramFiles>
  * Reads and writes diagram files in one folder.
  *
  * Writes are atomic. Each id keeps only its last change that the app did not write yet. {@link DiagramFiles.inspect}
- * compares each file with the digest, size and change time of the last write or remove that succeeded. A write that
- * fails does not change these values. `readAll` and `rescan` also remove old temporary files of diagram files.
+ * compares each file with the digest, size and change time of the last read, write or remove that succeeded. A write
+ * that fails does not change these values. A write does not replace a file that changed from outside since then; see
+ * {@link createFileQueue}. `readAll` and `rescan` also remove old temporary files of diagram files.
  */
 export function createDiagramFiles(folder: string, options: { trash?: (file: string) => Promise<void> } = {}) {
   let folderReady: Promise<unknown> | null = null
@@ -46,9 +47,7 @@ export function createDiagramFiles(folder: string, options: { trash?: (file: str
 
   const read = async (id: string): Promise<StoredFile | null> => {
     try {
-      const text = await readFile(pathOf(id), 'utf8')
-      await queue.remember(id, text)
-      return { id, text }
+      return { id, text: await queue.read(id) }
     } catch {
       return null
     }

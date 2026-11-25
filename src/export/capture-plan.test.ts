@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  allOpaque,
   bgraToRgba,
   MARKER_COUNT,
   MARKER_PX,
@@ -107,5 +108,11 @@ describe('capture marker', () => {
     expect([...bgraToRgba(new Uint8Array([5, 5, 5, 5, 0, 64, 128, 128, 9, 9, 9, 0]))]).toEqual([
       255, 255, 255, 5, 255, 128, 0, 128, 0, 0, 0, 0,
     ])
+  })
+
+  it('tells a frame with only opaque pixels from a frame with a transparent pixel', () => {
+    expect(allOpaque(new Uint8Array([0, 0, 0, 255, 9, 9, 9, 255]))).toBe(true)
+    expect(allOpaque(new Uint8Array([0, 0, 0, 255, 0, 0, 0, 0]))).toBe(false)
+    expect(allOpaque(new Uint8Array([255, 255, 255, 254]))).toBe(false)
   })
 })

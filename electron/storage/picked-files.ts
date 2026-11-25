@@ -35,7 +35,7 @@ export function createPickedFiles(files: DiagramFiles, linked: LinkedFiles) {
     async saveAs(file: string, text: string): Promise<StoredFile> {
       const id = await files.idOf(file)
       if (id === null) return linked.create(file, text)
-      await files.write(id, text)
+      await files.write(id, text, { replace: true })
       return { id, text }
     },
   }

@@ -415,8 +415,11 @@ async function start() {
         return { folder: files.folder, files: [...inFolder, ...outside], linkedFilesReset: linked.takeReset() }
       },
       'files.write': async ({ id, text }) => {
-        await (isLinkedId(id) ? linked.write(id, text) : files.write(id, text))
-        return null
+        const linkedFile = isLinkedId(id)
+        const kept = await (linkedFile ? linked.write(id, text) : files.write(id, text))
+        if (!kept) return { kind: 'written' }
+        const where = linkedFile ? linked.pathOf(id) : null
+        return { kind: 'kept-outside', change: kept.kind === 'changed' && where ? { ...kept, path: where } : kept }
       },
       'files.remove': async ({ id, trash }) => {
         try {
