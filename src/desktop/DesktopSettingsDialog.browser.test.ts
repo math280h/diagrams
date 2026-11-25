@@ -16,7 +16,7 @@ import {
   quitButtonHint,
 } from './keep-running'
 import { useDesktopSettingsDialog } from './settings-dialog'
-import { useUpdateInfo } from './updates'
+import { AUTO_UPDATE_CHECK_LABEL, autoUpdateCheckHint, useUpdateInfo } from './updates'
 
 const build = vi.hoisted(() => ({
   website: 'https://draw.thias.dev',
@@ -35,7 +35,15 @@ const COMPANY = 'https://diagrams.example.com'
 const SIGNED_OUT: GitHubSignIn = { state: 'signed-out', message: null }
 
 function settings(websites: string[] = [OFFICIAL], shareWebsite = OFFICIAL): AppSettings {
-  return { keepRunning: false, openAtLogin: 'off', agentWindow: 'show', trayHost: 'present', websites, shareWebsite }
+  return {
+    keepRunning: false,
+    openAtLogin: 'off',
+    agentWindow: 'show',
+    autoUpdateCheck: true,
+    trayHost: 'present',
+    websites,
+    shareWebsite,
+  }
 }
 
 function updateInfo(patch: Partial<UpdateInfo> = {}): UpdateInfo {
@@ -210,6 +218,34 @@ describe('updates', () => {
 
     await page.getByRole('button', { name: 'Check for updates' }).click()
     await expect.element(page.getByText('Cannot find latest.yml')).not.toBeInTheDocument()
+  })
+
+  it('turns the automatic checks off and on, and still checks on request', async () => {
+    answers['app.setAutoUpdateCheck'] = (input) => ({ ...settings(), ...(input as object) })
+    answers['update.check'] = () => updateInfo()
+    show()
+    const automatic = page.getByRole('switch', { name: AUTO_UPDATE_CHECK_LABEL })
+    await expect.element(automatic).toBeChecked()
+    await expect.element(automatic).toHaveAccessibleDescription(autoUpdateCheckHint(true))
+
+    await automatic.click()
+    await expect.element(automatic).not.toBeChecked()
+    await expect.element(page.getByText(autoUpdateCheckHint(false))).toBeVisible()
+    expect(changeRequests().at(-1)).toEqual(['app.setAutoUpdateCheck', { autoUpdateCheck: false }])
+
+    await page.getByRole('button', { name: 'Check for updates' }).click()
+    await expect.poll(() => changeRequests().at(-1)).toEqual(['update.check', null])
+
+    await automatic.click()
+    await expect.element(automatic).toBeChecked()
+    expect(request).toHaveBeenLastCalledWith('app.setAutoUpdateCheck', { autoUpdateCheck: true })
+  })
+
+  it('shows no automatic check setting in a build that does not update itself', async () => {
+    show({ update: updateInfo({ state: 'unsupported' }) })
+    await expect.element(page.getByText('Version 1.2.3. This build does not update itself.')).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Check for updates' })).toBeVisible()
+    await expect.element(page.getByRole('switch', { name: AUTO_UPDATE_CHECK_LABEL })).not.toBeInTheDocument()
   })
 
   it('shows the reason why the install of a downloaded update failed', async () => {

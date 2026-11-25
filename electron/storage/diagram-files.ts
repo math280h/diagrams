@@ -4,6 +4,7 @@ import { DIAGRAM_FILE_SUFFIX } from '@/desktop/constants'
 import type { FileChange, StoredFile } from '@/desktop/contract'
 import { idOfFile, isSafeId } from '@/persistence/diagram-file-name'
 import { createFileQueue } from './file-queue'
+import { folderIdOf, folderIdsOf } from './same-file'
 import { removeStaleTempFiles } from './temp-files'
 
 export { idOfFile, isSafeId } from '@/persistence/diagram-file-name'
@@ -43,6 +44,16 @@ export function createDiagramFiles(folder: string, options: { trash?: (file: str
     trash: options.trash,
   })
 
+  const read = async (id: string): Promise<StoredFile | null> => {
+    try {
+      const text = await readFile(pathOf(id), 'utf8')
+      await queue.remember(id, text)
+      return { id, text }
+    } catch {
+      return null
+    }
+  }
+
   return {
     folder,
 
@@ -52,21 +63,28 @@ export function createDiagramFiles(folder: string, options: { trash?: (file: str
       const names = await readdir(folder)
       const ids = names.map(idOfFile).filter((id): id is string => id !== null)
       const [files] = await Promise.all([
-        Promise.all(
-          ids.map(async (id): Promise<StoredFile | null> => {
-            try {
-              const text = await readFile(pathOf(id), 'utf8')
-              await queue.remember(id, text)
-              return { id, text }
-            } catch {
-              return null
-            }
-          }),
-        ),
+        Promise.all(ids.map(read)),
         removeStaleTempFiles(folder, names, isDiagramFile),
       ])
       return files.filter((file): file is StoredFile => file !== null)
     },
+
+    /** Returns one file of the folder, or `null` if it cannot be read. */
+    async read(id: string): Promise<StoredFile | null> {
+      if (!isSafeId(id)) return null
+      await queue.drain()
+      return read(id)
+    },
+
+    /**
+     * Returns the id under which this folder lists a file, also through other letter case, links and junctions.
+     *
+     * @returns The id, or `null` if the folder does not list the file and does not list it after a write.
+     */
+    idOf: (file: string) => folderIdOf(folder, file),
+
+    /** Returns the result of {@link DiagramFiles.idOf} for each file, with one read of the folder. */
+    idsOf: (files: readonly string[]) => folderIdsOf(folder, files),
 
     write: queue.write,
 

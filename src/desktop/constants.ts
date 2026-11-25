@@ -23,6 +23,8 @@ export const DEV_ORIGINS = ['http://127.0.0.1:5173', 'http://localhost:5173']
 export const REPOSITORY_URL = 'https://github.com/math280h/diagrams'
 export const BUG_REPORT_URL = `${REPOSITORY_URL}/issues/new?template=bug_report.yml`
 export const GITHUB_API_ORIGIN = 'https://api.github.com'
+export const UPDATE_CHECK_INTERVAL_HOURS = 6
+export const UPDATE_CHECK_INTERVAL_MS = UPDATE_CHECK_INTERVAL_HOURS * 60 * 60_000
 /** The pre-release label in the app version of a build of `main`, as in `0.2.1-preview.57`. */
 export const PREVIEW_APP_LABEL = 'preview'
 /** Matches the tag of a pre-release with a build of `main`, such as `preview-57` for the version `0.2.1-preview.57`. */

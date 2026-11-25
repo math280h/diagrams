@@ -12,6 +12,8 @@ export interface DocSnapshot {
 }
 
 export interface DocState extends DocSnapshot {
+  /** The `$schema` of the open diagram, if it is not a schema address of the app. */
+  $schema?: string
   id: string | null
   viewport: { x: number; y: number; zoom: number }
   createdAt: number

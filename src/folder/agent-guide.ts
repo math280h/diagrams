@@ -5,8 +5,9 @@ import { BUILD } from '@/desktop/build-config'
 import { DIAGRAM_FILE_SUFFIX } from '@/desktop/constants'
 import { downloadBlob } from '@/lib/download'
 import { z } from '@/lib/zod'
-import { diagramSchema, type Diagram } from '@/model/schema'
+import { DIAGRAM_VERSION, diagramSchema, type Diagram } from '@/model/schema'
 import { serializeDiagram } from '@/persistence/cached-repository'
+import { DIAGRAM_SCHEMA_URL } from '@/persistence/schema-address'
 import { TEMPLATES } from '@/templates'
 import {
   AGENT_FOLDER,
@@ -91,7 +92,7 @@ If no result comes within 30 seconds, ask the user to keep the website tab open,
 
 ## Change diagram files directly
 
-You can also change a \`*${DIAGRAM_FILE_SUFFIX}\` file. ${at(SCHEMA_FILE)} gives the format. The file name without \`${DIAGRAM_FILE_SUFFIX}\` is the diagram id, which the tools take as \`diagramId\`. After each change, the website writes:
+You can also change a \`*${DIAGRAM_FILE_SUFFIX}\` file. ${at(SCHEMA_FILE)} gives the format. Keep \`$schema\` and \`version\` at the top of each file: \`$schema\` is the address of the JSON Schema of the format (${DIAGRAM_SCHEMA_URL}), and \`version\` is the format (${DIAGRAM_VERSION}). The file name without \`${DIAGRAM_FILE_SUFFIX}\` is the diagram id, which the tools take as \`diagramId\`. After each change, the website writes:
 
 - ${at(STATUS_FOLDER, '<id>.md')}: whether the file opens, and the problems that \`lint_diagram\` finds.
 - ${at(STATUS_FOLDER, '<id>.png')}: an image of the diagram, as \`render_image\` makes it.
@@ -163,6 +164,7 @@ The tab sees a new file only after the user chooses the folder again. When you a
 ## Change a diagram file
 
 - One file holds one diagram. The file name without \`${DIAGRAM_FILE_SUFFIX}\` is the diagram id, and the \`id\` in the file is the same.
+- Start each file with \`"$schema": "${DIAGRAM_SCHEMA_URL}"\` and \`"version": ${DIAGRAM_VERSION}\`, as in the example. Keep these two fields in a file that you change.
 - Read a file before you change it, and keep the ids of the nodes, edges and flows that stay.
 - Give each new node, edge and flow an id that the diagram does not use yet.
 - Give each node a \`position\` in pixels, with room between the nodes: the tab does not arrange a file. A node in a boundary has the boundary as its \`parentId\`, and its position is relative to the boundary.

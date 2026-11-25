@@ -1,7 +1,7 @@
 import { z } from '@/lib/zod'
 import { COLORS } from './colors'
 
-export const DIAGRAM_VERSION = 20
+export const DIAGRAM_VERSION = 21
 
 const colorSchema = z.enum(COLORS)
 
@@ -409,9 +409,15 @@ export type DiagramTheme = z.infer<typeof themeSchema>
 export const viewportSchema = z.object({ x: z.number(), y: z.number(), zoom: z.number() })
 
 export const diagramSchema = z.object({
+  $schema: z
+    .string()
+    .optional()
+    .describe('The address of the JSON Schema of the file, for text editors. The app keeps an address of your own.'),
   id: z.string(),
   name: z.string(),
-  version: z.literal(DIAGRAM_VERSION),
+  version: z
+    .literal(DIAGRAM_VERSION)
+    .describe('The format of the file. The app opens files of earlier formats and saves them in the current format.'),
   theme: themeSchema,
   nodes: z.array(storedNodeSchema),
   edges: z.array(storedEdgeSchema),

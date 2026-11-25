@@ -124,6 +124,21 @@ describe('diagram session', () => {
     expect(openDiagramId()).toBeNull()
   })
 
+  it('keeps the schema address of the user in the file of each save, and gives the next diagram its own', () => {
+    const diagram = { $schema: './schemas/diagram.json', ...stored('Shop') }
+    repository().save(diagram)
+    openDiagramSession(repository().load(diagram.id)!)
+    useDoc.setState({ name: 'Store' })
+    flushPendingSave()
+    expect(JSON.parse(repository().storedText(diagram.id)!)).toMatchObject({
+      $schema: './schemas/diagram.json',
+      name: 'Store',
+    })
+    const other = stored('Other')
+    openDiagramSession(other)
+    expect(currentDiagram()).not.toHaveProperty('$schema')
+  })
+
   it('saves a diagram with the id of a deleted one after it opens again', () => {
     const diagram = stored('Shop')
     openDiagramSession(diagram)

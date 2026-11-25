@@ -7,13 +7,21 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { addWebsite, removeWebsite, setShareWebsite, useAppSettings } from './app-settings'
+import { Switch } from '@/components/ui/switch'
+import { addWebsite, removeWebsite, setAutoUpdateCheck, setShareWebsite, useAppSettings } from './app-settings'
 import { BUILD, releaseLinks, repositoryName, websiteOrigin } from './build-config'
 import { cancelGitHubSignIn, signInToGitHub, signOutOfGitHub, useGitHubSignIn } from './github-sign-in'
 import { openProblemReports } from '@/reports/report-store'
 import { BackgroundSettings } from './BackgroundSettings'
+import { Setting } from './Setting'
 import { useDesktopSettingsDialog } from './settings-dialog'
-import { checkForUpdates, setUpdateRepository, useUpdateInfo } from './updates'
+import {
+  AUTO_UPDATE_CHECK_LABEL,
+  autoUpdateCheckHint,
+  checkForUpdates,
+  setUpdateRepository,
+  useUpdateInfo,
+} from './updates'
 
 function Problem({ id, message }: { id: string; message: string | null }) {
   if (!message) return null
@@ -239,6 +247,22 @@ function GitHubSignInSetting({ repositoryNeedsSignIn }: { repositoryNeedsSignIn:
   )
 }
 
+function AutoUpdateCheckSetting() {
+  const settings = useAppSettings((state) => state.settings)
+  const hintId = useId()
+  if (!settings) return null
+  return (
+    <Setting label={AUTO_UPDATE_CHECK_LABEL} hint={autoUpdateCheckHint(settings.autoUpdateCheck)} hintId={hintId}>
+      <Switch
+        aria-label={AUTO_UPDATE_CHECK_LABEL}
+        aria-describedby={hintId}
+        checked={settings.autoUpdateCheck}
+        onCheckedChange={(checked) => void setAutoUpdateCheck(checked)}
+      />
+    </Setting>
+  )
+}
+
 function Updates() {
   const info = useUpdateInfo((state) => state.info)
   if (!info) return null
@@ -269,6 +293,7 @@ function Updates() {
           Could not install version {info.version}. {info.message?.split('\n', 1)[0]}
         </p>
       )}
+      {info.state !== 'unsupported' && <AutoUpdateCheckSetting />}
       {BUILD.repositoryEditable && <UpdateRepository key={info.repository} repository={info.repository} />}
       {BUILD.githubApp && info.state !== 'unsupported' && (
         <GitHubSignInSetting repositoryNeedsSignIn={info.state === 'sign-in'} />

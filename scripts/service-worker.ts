@@ -7,6 +7,7 @@ import { type AssetList, HASHED_FOLDER, SERVICE_WORKER_PATH } from '../src/sw/as
 const ENTRY = fileURLToPath(new URL('../src/sw/service-worker.ts', import.meta.url))
 const PAGE_FILE = 'index.html'
 const DESKTOP_ONLY_SOURCE = /[\\/]src[\\/]desktop[\\/]/
+const SCHEMA_FOLDER = 'schemas/'
 
 function chunkFiles(chunk: Rolldown.OutputChunk): string[] {
   return [...chunk.imports, ...(chunk.viteMetadata?.importedCss ?? []), ...(chunk.viteMetadata?.importedAssets ?? [])]
@@ -38,7 +39,8 @@ function fontsOf(bundle: Rolldown.OutputBundle, styleSheets: Iterable<string>): 
  *
  * It precaches the entry with its static imports, the chunks that the entry loads on demand (such as the editor and
  * Present) with their static imports, and the WOFF2 fonts of their style sheets. Chunks that those chunks load on
- * demand, such as icon sets and the layout engine, wait until a page uses them.
+ * demand, such as icon sets and the layout engine, wait until a page uses them. The shell has the public files apart
+ * from the JSON Schemas of the diagram formats in `schemas/`.
  *
  * @param publicFiles - The paths of the files in the public folder, relative to it, with `/` between folders.
  */
@@ -57,7 +59,7 @@ export function planAssetList(bundle: Rolldown.OutputBundle, publicFiles: readon
   const app = withStaticImports(bundle, [...core, ...loaded])
   const toPath = (file: string) => `/${file}`
   return {
-    shell: publicFiles.map(toPath),
+    shell: publicFiles.filter((file) => !file.startsWith(SCHEMA_FOLDER)).map(toPath),
     precache: [...new Set([...app, ...fontsOf(bundle, app)])].map(toPath).filter((p) => p.startsWith(HASHED_FOLDER)),
     all: outputs
       .map((output) => output.fileName)

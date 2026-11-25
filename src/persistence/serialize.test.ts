@@ -8,9 +8,13 @@ import {
   defaultShapeData,
   defaultTextData,
 } from '@/model/defaults'
+import { BUILD, OFFICIAL_WEBSITE } from '@/desktop/build-config'
 import { DIAGRAM_VERSION, diagramSchema } from '@/model/schema'
 import { TEMPLATES, templateDiagrams } from '@/templates'
+import { serializeDiagram } from './cached-repository'
+import { diagramFileText } from './library-actions'
 import { DiagramFormatError, migrate, migrateElements } from './migrations'
+import { DIAGRAM_SCHEMA_URL, diagramSchemaPath } from './schema-address'
 import { fromDiagram, toDiagram } from './serialize'
 
 describe('templates', () => {
@@ -366,5 +370,95 @@ describe('migrate', () => {
     const migrated = migrate(JSON.parse(JSON.stringify(v4)))
     expect(migrated.nodes[0]!.data).toMatchObject({ kind: 'custom', detail: '', color: 'auto', label: 'Zone' })
     expect(migrated.theme.boundaryColors).toBe(true)
+  })
+})
+
+describe('files without a version', () => {
+  it('reads a file without a version as format 1', () => {
+    const base = createDiagram()
+    const { version: _version, ...rest } = base
+    const v1 = {
+      ...rest,
+      theme: { fonts: 'geist', background: base.theme.background, snap: base.theme.snap },
+      nodes: [{ id: 'db', type: 'card', position: { x: 0, y: 0 }, data: { ...defaultCardData(), variant: 'glass' } }],
+    }
+    const migrated = migrate(JSON.parse(JSON.stringify(v1)))
+    expect(migrated.version).toBe(DIAGRAM_VERSION)
+    expect(migrated.theme).toMatchObject({ fonts: 'host', boundaryColors: true, protocolColors: true })
+    expect(migrated.nodes[0]!.data).not.toHaveProperty('variant')
+  })
+
+  const laterFields: [string, (diagram: Record<string, unknown>) => Record<string, unknown>][] = [
+    ['the current format', (diagram) => diagram],
+    ['only a schema address', (diagram) => ({ ...diagram, $schema: DIAGRAM_SCHEMA_URL })],
+    [
+      'only a flow field of a later format',
+      (diagram) => ({
+        ...diagram,
+        theme: { fonts: 'atkinson', background: 'dots', snap: true },
+        flows: [{ ...createFlow('Login'), captionStyle: 'bottom' }],
+      }),
+    ],
+  ]
+
+  it.each(laterFields)('asks for a version when a file without one has %s', (_, change) => {
+    const { version: _version, ...diagram } = createDiagram()
+    expect(() => migrate(JSON.parse(JSON.stringify(change(diagram))))).toThrow(
+      `This diagram has no "version", but it has fields of a later format than format 1. Add "version": ${DIAGRAM_VERSION} for the current format.`,
+    )
+  })
+
+  it('says that it reads a file without a version as format 1 when the file does not fit that format', () => {
+    expect(() => migrate({ name: 'Notes', nodes: [] })).toThrow(
+      /It has no "version", so the app reads it as format 1\.$/,
+    )
+  })
+
+  it.each([String(DIAGRAM_VERSION), null, 20.5])('refuses the version %j', (version) => {
+    expect(() => migrate({ ...createDiagram(), version })).toThrow(
+      `The "version" of this diagram is not a whole number. Use the number of its format, such as ${DIAGRAM_VERSION}.`,
+    )
+  })
+})
+
+describe('schema address', () => {
+  const OWN_OLDER = `${BUILD.website}${diagramSchemaPath(DIAGRAM_VERSION - 1)}`
+  const OFFICIAL = `${OFFICIAL_WEBSITE}${diagramSchemaPath(DIAGRAM_VERSION)}`
+  const CUSTOM = './schemas/diagram.json'
+
+  it('writes the address of the current format first in each file of a diagram without one', () => {
+    const diagram = createDiagram('Test')
+    const file = serializeDiagram(diagram)
+    expect(Object.keys(JSON.parse(file) as object)[0]).toBe('$schema')
+    expect(JSON.parse(file)).toEqual({ $schema: DIAGRAM_SCHEMA_URL, ...diagram })
+    expect(JSON.parse(diagramFileText(diagram))).toEqual({ $schema: DIAGRAM_SCHEMA_URL, ...diagram })
+  })
+
+  it.each([DIAGRAM_SCHEMA_URL, OWN_OLDER, OFFICIAL])('writes the current address in place of %s', (address) => {
+    const diagram = createDiagram('Test')
+    const opened = migrate(JSON.parse(JSON.stringify({ ...diagram, $schema: address })))
+    expect(opened).toEqual(diagram)
+    expect(opened).not.toHaveProperty('$schema')
+    expect(JSON.parse(serializeDiagram(opened))).toMatchObject({ $schema: DIAGRAM_SCHEMA_URL })
+  })
+
+  it.each([CUSTOM, 'https://example.com/schemas/diagram-v1.json', `${DIAGRAM_SCHEMA_URL}?x`])(
+    'keeps the address %s of the user when it opens and saves the file',
+    (address) => {
+      const diagram = { $schema: address, ...createDiagram('Test') }
+      const opened = migrate(JSON.parse(serializeDiagram(diagram)))
+      expect(opened.$schema).toBe(address)
+      const { nodes, edges } = fromDiagram(opened)
+      const saved = toDiagram({ ...opened, nodes, edges })
+      expect(JSON.parse(serializeDiagram(saved))).toMatchObject({ $schema: address })
+      expect(JSON.parse(diagramFileText(saved))).toMatchObject({ $schema: address })
+    },
+  )
+
+  it('reads version 20 diagrams as they are, and keeps a schema address of the user', () => {
+    const diagram = createDiagram()
+    expect(migrate(JSON.parse(JSON.stringify({ ...diagram, version: 20 })))).toEqual(diagram)
+    const v20 = { ...diagram, version: 20, $schema: CUSTOM }
+    expect(migrate(JSON.parse(JSON.stringify(v20)))).toEqual({ ...diagram, $schema: CUSTOM })
   })
 })

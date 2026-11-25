@@ -60,6 +60,9 @@ Your diagrams stay on your computer. There is no account and no server that stor
   text. The report has no diagram content and is encrypted on your device for the maintainers. Crash dumps stay on your
   computer unless you attach one.<br>
   <sub>_A build without [`DIAGRAMS_REPORT_URL`](#build-options) has no report server and sends no reports._</sub>
+- **Update checks that you can turn off.** The installed desktop app asks GitHub for a new version when it starts and
+  every 6 hours. The request has no diagram content. Turn off "Check for updates automatically" in App settings to
+  stop these requests.
 
 ## Desktop app
 
@@ -73,7 +76,8 @@ from [GitHub Releases](https://github.com/math280h/diagrams/releases/latest):
 - **Linux**: the `.AppImage` (make it executable first), or the `.deb`.
 
 The installed app checks for updates, downloads them in the background and installs them when you quit or choose
-Restart. "Check for updates" in the command menu checks at once.
+Restart. "Check for updates" in the command menu checks at once. To stop the automatic checks, turn off "Check for
+updates automatically" in App settings; "Check for updates" still works.
 
 The Windows and macOS builds are not signed yet. Windows SmartScreen asks before the first start: choose "More info",
 then "Run anyway". macOS blocks the first start: open System Settings, then Privacy & Security, and choose "Open
@@ -108,6 +112,13 @@ On the website, choose "Open in desktop app" in the export menu or in the menu o
 the app and hands the diagram over, and the copy in the browser stays. The app takes diagrams only from the websites
 under Websites in the app settings. A build from source handles `diagrams://` links only if you start it with
 `DIAGRAMS_REGISTER_PROTOCOL=1`.
+
+### Edit a diagram file by hand
+
+Each diagram file names the JSON Schema of its format in `$schema`, for example
+`https://draw.thias.dev/schemas/diagram-v21.json`, so VS Code and other editors check the file and complete its
+fields. Keep `$schema` and `version` in a file that you write by hand: the app reads the file in the format that
+`version` gives.
 
 ### Render from the command line
 

@@ -276,6 +276,85 @@ test('opens the library when the list of opened files is damaged, and tells the 
   }
 })
 
+const linkedOnDisk = (userData: string) => {
+  const list = path.join(userData, 'linked-files.json')
+  return existsSync(list) ? (JSON.parse(readFileSync(list, 'utf8')) as { files: string[] }).files : []
+}
+
+test('opens a file of the diagrams folder from its folder entry, and shows it once', async ({ app, window, dirs }) => {
+  const inFolder = diagramFile('Opened from the folder', 'd_opened_from_folder')
+  const target = path.join(dirs.data, `${inFolder.id}.diagram.json`)
+  writeFileSync(target, inFolder.text)
+  await window.reload()
+  await expect(window.getByText('Opened from the folder')).toBeVisible()
+  const name = process.platform === 'linux' ? path.basename(target) : path.basename(target).toUpperCase()
+  await app.evaluate(
+    ({ dialog }, picked) => {
+      dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [picked] })
+    },
+    path.join(dirs.data, 'themes', '..', name),
+  )
+
+  await window.getByRole('button', { name: 'Open a diagram file' }).click()
+  await expect(window.getByLabel('Diagram name')).toHaveValue('Opened from the folder')
+  await expect(window.getByRole('button', { name: /^Saved in / })).toHaveCount(0)
+  await window.getByRole('link', { name: 'All diagrams' }).click()
+  await expect(window.getByText('Opened from the folder')).toHaveCount(1)
+  expect(linkedOnDisk(dirs.userData)).toEqual([])
+})
+
+test('saves a diagram as a file in the diagrams folder as a folder file', async ({ app, window, dirs }) => {
+  const original = diagramFile('Before the copy', 'd_before_copy')
+  writeFileSync(path.join(dirs.data, `${original.id}.diagram.json`), original.text)
+  await window.reload()
+  await window.evaluate((id) => {
+    location.hash = `#/d/${id}`
+  }, original.id)
+  await expect(window.getByLabel('Diagram name')).toHaveValue('Before the copy')
+  const copy = path.join(dirs.data, 'Copy in the folder.diagram.json')
+  await app.evaluate(({ dialog }, picked) => {
+    dialog.showSaveDialog = async () => ({ canceled: false, filePath: picked })
+  }, copy)
+
+  await window.getByRole('button', { name: 'Export' }).click()
+  await window.getByRole('menuitem', { name: 'Save as a file…' }).click()
+  await expect.poll(() => existsSync(copy)).toBe(true)
+  await expect.poll(() => window.evaluate(() => decodeURIComponent(location.hash))).toBe('#/d/Copy in the folder')
+  await expect(window.getByRole('button', { name: /^Saved in / })).toHaveCount(0)
+  await window.getByLabel('Diagram name').fill('Renamed copy')
+  await window.getByLabel('Diagram name').press('Enter')
+  await expect.poll(() => nameOnDisk(copy)).toBe('Renamed copy')
+  expect(nameOnDisk(path.join(dirs.data, `${original.id}.diagram.json`))).toBe('Before the copy')
+
+  await window.getByRole('link', { name: 'All diagrams' }).click()
+  await expect(window.getByText('Renamed copy')).toHaveCount(1)
+  await expect(window.getByText('Before the copy')).toHaveCount(1)
+  expect(linkedOnDisk(dirs.userData)).toEqual([])
+})
+
+test('takes a file of the diagrams folder off the list of opened files, and keeps the file', async ({
+  appEnv,
+  dirs,
+}) => {
+  mkdirSync(dirs.data, { recursive: true })
+  const inFolder = diagramFile('Linked by an earlier version', 'd_linked_earlier')
+  const target = path.join(dirs.data, `${inFolder.id}.diagram.json`)
+  writeFileSync(target, inFolder.text)
+  const { file: outside } = repoWithDiagram(path.dirname(dirs.data), 'Outside the folder')
+  mkdirSync(dirs.userData, { recursive: true })
+  writeFileSync(path.join(dirs.userData, 'linked-files.json'), JSON.stringify({ files: [target, outside] }))
+
+  const { app, window } = await launchApp(appEnv)
+  try {
+    await expect(window.getByText('Outside the folder')).toBeVisible()
+    await expect(window.getByText('Linked by an earlier version')).toHaveCount(1)
+    await expect.poll(() => linkedOnDisk(dirs.userData)).toEqual([outside])
+    expect(readFileSync(target, 'utf8')).toBe(inFolder.text)
+  } finally {
+    await app.close()
+  }
+})
+
 test('compares a diagram file with its last commit and restores it', async ({ app, window, dirs }) => {
   const { repo, file } = repoWithDiagram(path.dirname(dirs.data), 'Committed name')
   commitAll(repo)

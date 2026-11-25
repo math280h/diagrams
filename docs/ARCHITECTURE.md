@@ -149,6 +149,7 @@ The visual system is in `DESIGN.md` at the repository root.
   - 18, optional: `delayMs` on flow steps and on their `parallel` targets.
   - 19: no theme `mode` (removed: the colour theme of each reader colours the canvas).
   - 20: `captionStyle` on flows (`bottom`), optional on flow steps.
+  - 21, optional: `$schema` (the address of the JSON Schema of a diagram file).
 - Groups are boundaries. `kind` points into `src/model/boundaries.ts`: AWS, Azure, Google Cloud, Kubernetes, general
   and custom kinds.
   - Each kind has a family (scope, logical, location, zone, network, subnet, security, runtime) that sets the line
@@ -489,6 +490,12 @@ Every format that a release wrote must open with no loss, until a new major vers
   the `version` of the source app).
 - A diagram keeps its format until the app saves a change (also a pan or zoom), so older apps elsewhere can still open
   it.
+- A diagram file starts with `$schema`, the address of the JSON Schema of its format (`public/schemas/diagram-v<N>.json`
+  on the website). Text editors use it to check and complete the files that people write by hand. The app writes the
+  address of the current format, or an address of the user. Browser storage keeps only an address of the user, and
+  share links keep none.
+- Data without `version` is format 1. If it has a field of a later format, such as `$schema` or theme `routeAround`,
+  the app asks for `version`, because the migration from format 1 can change its values.
 
 A format on `main` can reach a browser: the preview website deploys from `main`. Every `diagramSchema` change needs a
 new version, also for an optional field or enum value:
@@ -502,6 +509,8 @@ new version, also for an optional field or enum value:
    - `v<N>.json`: the Order system and Checkout flow templates; from format 12 also Event pipeline.
    - `v<N>.fields.json`: copies of these templates that hold each property, enum value, boolean value and union
      branch of the schema. `scripts/format-fields.ts` makes them, and the schema of the format accepts each copy.
+5. Run `pnpm test`. `src/persistence/formats.test.ts` writes `public/schemas/diagram-v<N>.json`. Files of format N name
+   this schema, so it stays, also after a new major version.
 
 `src/persistence/release-formats.ts` holds the rules of the releases:
 
@@ -512,13 +521,14 @@ new version, also for an optional field or enum value:
 
 The tests and checks fail when:
 
-- the schema differs from the current version file (`src/persistence/formats.test.ts`).
+- the schema differs from the current version file, or a schema in `public/schemas` differs from the version file of
+  its format (`src/persistence/formats.test.ts`).
 - a sample of a format from `OLDEST_FORMAT` does not open, or loses or changes a value outside `REWRITTEN_FIELDS`.
   The test opens, imports and saves each sample, and pastes its nodes. Pasted nodes also have a test in
   `src/editor/clipboard.test.ts`.
 - the samples of a format that a release can write do not fill its schema (`scripts/format-fields.test.ts`).
-- a change edits or deletes a sample on `main` (`scripts/release-formats.ts --base`, in the CI job "Release formats").
-  Add a new file for a new format or container.
+- a change edits or deletes a sample or a schema in `public/schemas` on `main` (`scripts/release-formats.ts --base`, in
+  the CI job "Release formats"). Add a new file for a new format or container.
 - a release of `RELEASE_MAJOR` wrote a format older than `OLDEST_FORMAT` (`scripts/release-formats.ts`). CI,
   `pnpm release:tag` and the Release workflow do this check. The Release workflow also runs the sample tests.
 
@@ -1109,7 +1119,8 @@ WebWorker library).
 
 - `scripts/service-worker.ts` writes the file plan of each build (`planAssetList`) to `assets/sw-assets-<hash>.json`
   (the hash names the build). Then it builds `sw.js` at the site root, one script with that path.
-- At install, the worker fetches the page, public files and precache (about 4 MB). Precache: the entry, its
+- At install, the worker fetches the page, public files and precache (about 4 MB). It does not fetch the diagram
+  format schemas in `public/schemas`, because only text editors use them. Precache: the entry, its
   on-demand chunks (editor, Present, template and share pages), their static imports and WOFF2 fonts.
 - Then the installed app asks the worker to fetch the rest (icon sets, layout engine, Mermaid, video export; about
   13 MB in total), unless the browser saves data.
@@ -1353,6 +1364,13 @@ with snapdom, because Chromium gives only pixels.
 - Linked files sit outside the diagrams folder (for example a repository's `docs/`), so a diagram can change in the
   same commit as its code.
   - Open file links one (`electron/storage/linked-files.ts`); Save as a file links a copy.
+  - A file that the folder scan lists is never a linked file: open and Save as use its folder id
+    (`electron/storage/picked-files.ts`). Else the library shows the file two times. Main compares files by device and
+    file id, so letter case, `..`, links and junctions do not matter. At start, main takes such entries and second
+    entries of one file off the list, and keeps the files.
+  - A linked file without the `.diagram.json` suffix must be a diagram in a format of this app or a newer one. Any
+    `.json` file is in the open dialog. A `.diagram.json` file can hold any text, so that the library shows a damaged
+    file as it does in the folder.
   - Id: `link-` and a path hash; list in `linked-files.json` in the user data folder. Remove from the library only
     unlinks.
   - `file-queue.ts` serves both kinds. Watchers on linked folders and the focus rescan report git or editor changes.
@@ -1537,6 +1555,11 @@ setting turns this off.
   - Build from source, or no `app-update.yml`: none.
   - `main` builds from `preview-<run>` pre-releases (`x.y.z-preview.n`): none. electron-updater cannot compare these
     tags and offers pre-releases to any pre-release version, so beta and alpha apps skip them too.
+- "Check for updates automatically" in the app settings (`autoUpdateCheck`, on by default) controls the checks at
+  start and every 6 hours. Some computers have no internet access, or IT installs the updates. When the setting is
+  off, only "Check for updates", a GitHub sign-in or a new update source starts a check, and that check also
+  downloads and installs. When the setting comes on, `nextAutomaticCheckMs` checks at once if no check started in the
+  last 6 hours.
 - `DIAGRAMS_REPOSITORY` sets `publish` in `electron-builder.ts`, and thus `app-update.yml`. The release workflows set it
   to the repository that they run in, so a fork updates from its own releases.
   - With `DIAGRAMS_REPOSITORY_EDITABLE=1`, the user can set another repository. The app first checks that its newest
@@ -1777,7 +1800,7 @@ those texts.
 | The website files, from its host                  | A visit; a feature that loads its code or an icon set                                    | Fixed paths. Hash routing keeps diagram ids and share data out of requests. |
 | `api.github.com`, the latest release              | On a computer, once: while the agent introduction shows, and in "Could not open the app" | No diagram. Picks the installer for the system.                             |
 | `api.github.com`, release notes                   | Build time. At run time only on the dev server, or when the build could not load them    | No diagram                                                                  |
-| `github.com` releases, through `electron-updater` | Desktop app: at start, every 6 hours, "Check for updates"                                | No diagram. A random install id. The GitHub token for a private repository. |
+| `github.com` releases, through `electron-updater` | Desktop app: at start, every 6 hours (a setting turns these off), "Check for updates"    | No diagram. A random install id. The GitHub token for a private repository. |
 | `github.com/login`, GitHub sign-in                | A build with a GitHub App: sign-in, and the renewal of the sign-in before a check        | No diagram. The client ID and the GitHub tokens.                            |
 | `api.github.com`, newest release of a repository  | A build with an editable update source: the user saves another repository                | No diagram. The GitHub token for a private repository.                      |
 | Repository access, `github.com` or the API        | A build with a GitHub App: before each check. An editable update source: on save         | No diagram. The GitHub token after a sign-in.                               |
