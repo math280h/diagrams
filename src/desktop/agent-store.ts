@@ -1,6 +1,7 @@
 import { toast } from 'sonner'
 import { create } from 'zustand'
-import { createJSONStorage, persist } from 'zustand/middleware'
+import { persist } from 'zustand/middleware'
+import { localPersistStorage } from '@/lib/persist-storage'
 import { updateProblem } from '@/store/problem-store'
 import { AGENT_PROBLEM_KEY, agentProblem, isAgentProblem } from './agent-problem'
 import { desktopApi, isDesktop } from './bridge'
@@ -39,7 +40,7 @@ interface AgentHistory {
 export const useAgentHistory = create<AgentHistory>()(
   persist((): AgentHistory => ({ lastCallAt: null, introHidden: false }), {
     name: 'dg:agent-history',
-    storage: createJSONStorage(() => localStorage),
+    storage: localPersistStorage(),
   }),
 )
 

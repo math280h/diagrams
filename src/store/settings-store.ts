@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { create } from 'zustand'
-import { createJSONStorage, persist } from 'zustand/middleware'
+import { persist } from 'zustand/middleware'
+import { localPersistStorage } from '@/lib/persist-storage'
 import { DEFAULT_THEME_IDS, HIGH_CONTRAST_THEME_IDS } from '@/themes/built-in'
 import type { ThemeBase } from '@/themes/tokens'
 
@@ -88,7 +89,7 @@ export const useSettings = create<SettingsState>()(
       name: 'dg:settings',
       version: SETTINGS_VERSION,
       migrate: migrateSettings,
-      storage: createJSONStorage(() => localStorage),
+      storage: localPersistStorage(),
       partialize: ({
         themeMode,
         themes,

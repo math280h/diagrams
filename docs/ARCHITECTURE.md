@@ -1653,6 +1653,10 @@ These are internal, and any release can change them:
 - `localStorage` holds about 5 MB per site; versions in IndexedDB do not count. The desktop app has no such limit. A
   typical diagram uses 20 to 80 KB. When storage is full, the app keeps the diagram in memory and asks the user to
   export JSON.
+- The persisted zustand stores (settings and notices) write to `localStorage` through `localPersistStorage` in
+  `src/lib/persist-storage.ts`. When `localStorage` is missing, blocked or full, they keep their state in memory only,
+  and a change does not throw. Node 26 has no `localStorage` without `--localstorage-file`, and a browser can block
+  site data.
 - A browser can delete the storage of a site that is not persistent: Chromium and Firefox when the disk is almost
   full, Safari after 7 days of use without a visit. The app calls `navigator.storage.persist()` at a save while the
   storage is not persistent, at most once a day, because Firefox shows a prompt. The library in browser storage offers
