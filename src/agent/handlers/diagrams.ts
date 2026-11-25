@@ -46,11 +46,11 @@ export const openDiagramHandler: ToolHandler<'open_diagram'> = async ({ diagramI
   return json({ diagramId, name: meta.name })
 }
 
-export const updateDiagram: ToolHandler<'update_diagram'> = async ({ diagramId, name, theme }, ctx) => {
+export const updateDiagram: ToolHandler<'update_diagram'> = async ({ diagramId, name, settings }, ctx) => {
   const id = await openForEdit(ctx, diagramId)
   await commitEdit(ctx, id, () => {
     if (name !== undefined) setName(name)
-    if (theme) setTheme(definedFields(theme))
+    if (settings) setTheme(definedFields(settings))
   })
   return json({ diagramId: id, updated: true })
 }

@@ -235,7 +235,7 @@ export function compactDiagram(content: DiagramContent, detail: 'outline' | 'ful
   const compact = {
     id: content.id,
     name: content.name,
-    ...(full ? { theme: content.theme } : {}),
+    ...(full ? { settings: content.theme } : {}),
     nodes: content.nodes.map((node) => compactNode(node, absoluteRect(node, byId), full)),
     edges: content.edges.map((edge) => compactEdge(edge, full)),
     flows: content.flows.map((flow) => compactFlow(flow, full)),

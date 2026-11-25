@@ -92,7 +92,7 @@ If no result comes within 30 seconds, ask the user to keep the website tab open,
 
 ## Change diagram files directly
 
-You can also change a \`*${DIAGRAM_FILE_SUFFIX}\` file. ${at(SCHEMA_FILE)} gives the format. Keep \`$schema\` and \`version\` at the top of each file: \`$schema\` is the address of the JSON Schema of the format (${DIAGRAM_SCHEMA_URL}), and \`version\` is the format (${DIAGRAM_VERSION}). The file name without \`${DIAGRAM_FILE_SUFFIX}\` is the diagram id, which the tools take as \`diagramId\`. After each change, the website writes:
+You can also change a \`*${DIAGRAM_FILE_SUFFIX}\` file. ${at(SCHEMA_FILE)} gives the format. Keep \`$schema\` and \`version\` at the top of each file: \`$schema\` is the address of the JSON Schema of the format (${DIAGRAM_SCHEMA_URL}), and \`version\` is the format (${DIAGRAM_VERSION}). The file name without \`${DIAGRAM_FILE_SUFFIX}\` is the diagram id, which the tools take as \`diagramId\`. The \`theme\` field of a file holds the diagram settings, which the tools call \`settings\`. It holds no colours: each viewer chooses a colour theme. After each change, the website writes:
 
 - ${at(STATUS_FOLDER, '<id>.md')}: whether the file opens, and the problems that \`lint_diagram\` finds.
 - ${at(STATUS_FOLDER, '<id>.png')}: an image of the diagram, as \`render_image\` makes it.
