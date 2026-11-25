@@ -145,7 +145,7 @@ describe('createDiagramFiles', () => {
     expect(readdirSync(folder)).toEqual(['d_one.diagram.json'])
   })
 
-  it('ignores a read that overlaps its own write', async () => {
+  it('ignores a read that overlaps its own write, and the write gives the change from outside', async () => {
     const files = createDiagramFiles(folder)
     await files.write('d_one', 'first')
     writeFileSync(path.join(folder, 'd_one.diagram.json'), 'theirs, a little longer')
@@ -161,10 +161,68 @@ describe('createDiagramFiles', () => {
     })
     const inspected = files.inspect('d_one')
     await vi.waitFor(() => expect(fsPromises.readFile).toHaveBeenCalled())
-    await files.write('d_one', 'second')
+    expect(await files.write('d_one', 'second')).toEqual({
+      kind: 'changed',
+      id: 'd_one',
+      text: 'theirs, a little longer',
+    })
     release()
     expect(await inspected).toBeNull()
     expect(await files.inspect('d_one')).toBeNull()
+  })
+
+  it('keeps a change from outside that comes before the rename of its write, and gives it', async () => {
+    const files = createDiagramFiles(folder)
+    const target = path.join(folder, 'd_one.diagram.json')
+    await files.write('d_one', 'first')
+    const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')
+    vi.mocked(fsPromises.writeFile).mockImplementationOnce(async (...args: Parameters<typeof actual.writeFile>) => {
+      await actual.writeFile(...args)
+      writeFileSync(target, 'theirs, from git')
+    })
+    expect(await files.write('d_one', 'second')).toEqual({ kind: 'changed', id: 'd_one', text: 'theirs, from git' })
+    expect(readFileSync(target, 'utf8')).toBe('theirs, from git')
+    expect(readdirSync(folder)).toEqual(['d_one.diagram.json'])
+    expect(await files.inspect('d_one')).toBeNull()
+    expect(await files.write('d_one', 'third')).toBeNull()
+    expect(readFileSync(target, 'utf8')).toBe('third')
+  })
+
+  it('replaces a change from outside when the write asks for it', async () => {
+    const files = createDiagramFiles(folder)
+    const target = path.join(folder, 'd_one.diagram.json')
+    await files.write('d_one', 'first')
+    writeFileSync(target, 'theirs')
+    expect(await files.write('d_one', 'picked in the save dialog', { replace: true })).toBeNull()
+    expect(readFileSync(target, 'utf8')).toBe('picked in the save dialog')
+    expect(await files.inspect('d_one')).toBeNull()
+  })
+
+  it('reports a change from outside that comes just after the rename of its write', async () => {
+    const files = createDiagramFiles(folder)
+    const target = path.join(folder, 'd_one.diagram.json')
+    await files.write('d_one', 'first')
+    const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')
+    vi.mocked(fsPromises.rename).mockImplementationOnce(async (...args: Parameters<typeof actual.rename>) => {
+      await actual.rename(...args)
+      writeFileSync(target, 'theirs, a little longer')
+    })
+    expect(await files.write('d_one', 'second')).toBeNull()
+    expect(await files.inspect('d_one')).toEqual({ kind: 'changed', id: 'd_one', text: 'theirs, a little longer' })
+  })
+
+  it('reports a change from outside that comes during a read', async () => {
+    const target = path.join(folder, 'd_one.diagram.json')
+    writeFileSync(target, 'first')
+    const files = createDiagramFiles(folder)
+    const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')
+    vi.mocked(fsPromises.readFile).mockImplementationOnce(async (...args: Parameters<typeof actual.readFile>) => {
+      const text = await actual.readFile(...args)
+      writeFileSync(target, 'theirs, a little longer')
+      return text
+    })
+    expect(await files.read('d_one')).toEqual({ id: 'd_one', text: 'first' })
+    expect(await files.inspect('d_one')).toEqual({ kind: 'changed', id: 'd_one', text: 'theirs, a little longer' })
   })
 
   it('keeps a file that the trash does not take, and does not delete it', async () => {

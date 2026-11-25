@@ -49,7 +49,7 @@ export function OpenInAppDialog() {
               <DialogTitle>Could not open the app</DialogTitle>
               <DialogDescription>
                 {state.reason === 'unreachable'
-                  ? 'The Diagrams desktop app did not answer. Install it, or allow the browser to open it and to reach apps on this device, then try again.'
+                  ? 'The Diagrams desktop app did not answer. Install it and start it once, or allow the browser to open it and to reach apps on this device, then try again.'
                   : state.message}
               </DialogDescription>
             </DialogHeader>

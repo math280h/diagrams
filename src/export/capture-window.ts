@@ -12,6 +12,9 @@ const ZOOM_WAIT_LIMIT_MS = 5000
  */
 const ZOOM_TOLERANCE = 0.001
 
+// A computed sRGB colour serializes as rgb() when its alpha is 1, and as rgba() otherwise.
+const isOpaqueColor = (computed: string) => computed.startsWith('rgb(')
+
 async function zoomApplied(pageZoom: number) {
   const started = performance.now()
   // In Chromium, window.devicePixelRatio is the device scale factor times the page zoom.
@@ -82,7 +85,7 @@ export function startCaptureWindow(): () => void {
         Object.assign(square.style, { width: side, height: side, background: colours[index] }),
       )
       await waitForPaint()
-      return null
+      return { opaque: isOpaqueColor(getComputedStyle(document.documentElement).backgroundColor) }
     },
   })
 }

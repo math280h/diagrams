@@ -208,9 +208,7 @@ export function createLinkedFiles(registryFile: string, options: LinkedFilesOpti
     const file = links.get(id)
     if (!file) return null
     try {
-      const text = await readFile(file, 'utf8')
-      await queue.remember(id, text)
-      return { id, text, path: file }
+      return { id, text: await queue.read(id), path: file }
     } catch {
       return null
     }
@@ -264,7 +262,7 @@ export function createLinkedFiles(registryFile: string, options: LinkedFilesOpti
       await ready()
       const id = await sameFileId(file)
       if (id === linkedIdOf(file)) links.set(id, path.resolve(file))
-      await queue.write(id, text)
+      await queue.write(id, text, { replace: true })
       await persist()
       return { id, text, path: links.get(id)! }
     },

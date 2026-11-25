@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { UPDATE_CHECK_INTERVAL_MS } from '@/desktop/constants'
 import type { UpdateInfo } from '@/desktop/contract'
+import { runningAppImage } from './appimage'
 import {
   createUpdates,
   nextAutomaticCheckMs,
@@ -112,6 +113,21 @@ describe('updatePolicy', () => {
     expect(updatePolicy({ ...build, platform: 'linux', appImage: true })).toEqual({ kind: 'install', onQuit: true })
     expect(updatePolicy({ ...build, platform: 'linux' })).toEqual({ kind: 'none' })
   })
+
+  it('does not update an AppImage of a parent process, for example of the terminal that started the deb app', () => {
+    const inherited = { APPIMAGE: '/home/a/Editor.AppImage', APPDIR: '/tmp/.mount_Editor' }
+    const linux = { ...build, platform: 'linux' as const }
+    const appImage = (execPath: string) => runningAppImage(inherited, execPath) !== null
+    expect(updatePolicy({ ...linux, appImage: appImage('/opt/Diagrams/diagrams') })).toEqual({ kind: 'none' })
+    expect(updatePolicy({ ...linux, packageType: 'deb', appImage: appImage('/opt/Diagrams/diagrams') })).toEqual({
+      kind: 'install',
+      onQuit: false,
+    })
+    expect(updatePolicy({ ...linux, appImage: appImage('/tmp/.mount_Editor/diagrams') })).toEqual({
+      kind: 'install',
+      onQuit: true,
+    })
+  })
 })
 
 describe('nextAutomaticCheckMs', () => {
@@ -150,6 +166,27 @@ describe('createUpdates', () => {
     expect(await withoutPolicy.updates.check()).toMatchObject({ state: 'unsupported' })
     expect(withoutPolicy.updater!.checkForUpdates).not.toHaveBeenCalled()
     expect([...withoutUpdater.emitted, ...withoutPolicy.emitted]).toEqual([])
+  })
+
+  it('passes the new path of an AppImage that the update renamed', () => {
+    const updater = new FakeUpdater()
+    const appImageMoved = vi.fn()
+    const updates = createUpdates({
+      updater,
+      policy: INSTALL,
+      currentVersion: '0.1.0',
+      buildRepository: BUILD_REPOSITORY,
+      repository: BUILD_REPOSITORY,
+      feed: async () => ({ repository: BUILD_REPOSITORY, token: null }),
+      emit: () => undefined,
+      prepareQuit: async () => true,
+      cancelQuit: () => undefined,
+      automatic: false,
+      appImageMoved,
+    })
+    updater.emit('appimage-filename-updated', '/apps/Diagrams-0.2.0-linux-x86_64.AppImage')
+    expect(appImageMoved).toHaveBeenCalledExactlyOnceWith('/apps/Diagrams-0.2.0-linux-x86_64.AppImage')
+    updates.stop()
   })
 
   it('sets the updater to download and install as the policy says', () => {

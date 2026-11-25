@@ -28,6 +28,12 @@ export interface UnsavedFile {
 /** The end of a file remove. After `trash-failed`, the file stays where it is. */
 export type FileRemoveOutcome = { kind: 'removed' } | { kind: 'trash-failed'; message: string }
 
+/**
+ * The end of a file write. After `kept-outside`, the file holds a change of another program that the app did not read
+ * yet, and `change` is that change. The write did not replace it.
+ */
+export type FileWriteOutcome = { kind: 'written' } | { kind: 'kept-outside'; change: FileChange }
+
 /** The text of a theme file, and its file name without `.theme.json`. */
 export interface ThemeSource {
   name: string
@@ -240,7 +246,7 @@ export interface MainRequests {
     input: null
     output: { folder: string; files: StoredFile[]; linkedFilesReset: LinkedFilesReset | null }
   }
-  'files.write': { input: StoredFile; output: null }
+  'files.write': { input: StoredFile; output: FileWriteOutcome }
   /** Moves a diagram file to the trash, or deletes it if `trash` is false. A linked file only leaves the list. */
   'files.remove': { input: { id: string; trash: boolean }; output: FileRemoveOutcome }
   'files.reveal': { input: null; output: null }
@@ -365,11 +371,12 @@ export interface RendererRequests {
   'capture.mount': { input: { stage: unknown; viewportScale: number }; output: null }
   /**
    * Shows the mounted stage at a moment, with `marker` in the bottom left corner. Waits first until the page zoom of
-   * the capture window is `pageZoom`, and resolves after the next paint.
+   * the capture window is `pageZoom`, and resolves after the next paint. `opaque` is true when the background of the
+   * stage has no transparency, so that each pixel of a complete frame is opaque.
    */
   'capture.render': {
     input: { moment: CaptureMoment; transparent: boolean; marker: number; pageZoom: number }
-    output: null
+    output: { opaque: boolean }
   }
 }
 
