@@ -83,7 +83,7 @@ export const addElements: ToolHandler<'add_elements'> = async (input, ctx) => {
     added: built,
     fixed,
     edges: [...doc.edges, ...edges],
-    direction: input.direction ?? 'RIGHT',
+    direction: input.direction ?? 'right',
     layout: ctx.layout,
   })
   const routed = edges.map((edge): DiagramEdge => {
@@ -193,7 +193,7 @@ async function placeMovedNodes(
   const added = nodes
     .filter((node) => targets.has(node.id))
     .map((node) => ({ ...node, parentId: targets.get(node.id) }))
-  const result = await placeNodes({ existing, added, fixed: new Set(), edges, direction: 'RIGHT', layout })
+  const result = await placeNodes({ existing, added, fixed: new Set(), edges, direction: 'right', layout })
   const byId = new Map([...existing, ...result.added].map((node) => [node.id, node]))
   const placed = new Map(
     result.added.map((node) => {
@@ -254,7 +254,7 @@ export const layoutDiagramHandler: ToolHandler<'layout_diagram'> = async (
   const { nodes, edges } = useDoc.getState()
   if (nodes.length === 0) return json({ diagramId: id, nodes: 0 })
   const centerId = center === undefined ? undefined : createResolver(nodes, edges).node(center).id
-  const result = await ctx.layout(nodes, edges, direction ?? 'RIGHT', {
+  const result = await ctx.layout(nodes, edges, direction ?? 'right', {
     style: layout ?? 'flow',
     ...(centerId === undefined ? {} : { center: centerId }),
   })

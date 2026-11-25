@@ -18,7 +18,7 @@ const POINTS_PER_INCH = 72
 /** The space between two boxes of one level, in canvas pixels. */
 const BOX_GAP_PX = 64
 
-const RANK_DIRECTIONS: Record<LayoutDirection, string> = { RIGHT: 'LR', DOWN: 'TB', LEFT: 'RL', UP: 'BT' }
+const RANK_DIRECTIONS: Record<LayoutDirection, string> = { right: 'LR', down: 'TB', left: 'RL', up: 'BT' }
 
 /** Lays out a DOT text with a Graphviz engine and returns the `plain` output. */
 export type GraphvizRunner = (dot: string, engine: GraphvizEngine) => Promise<string>

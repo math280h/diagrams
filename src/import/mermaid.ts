@@ -54,7 +54,7 @@ function texts(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item) => typeof item === 'string') : []
 }
 
-const DIRECTIONS: Record<string, LayoutDirection> = { TB: 'DOWN', TD: 'DOWN', BT: 'UP', LR: 'RIGHT', RL: 'LEFT' }
+const DIRECTIONS: Record<string, LayoutDirection> = { TB: 'down', TD: 'down', BT: 'up', LR: 'right', RL: 'left' }
 
 /**
  * Parses Mermaid flowchart text.
@@ -102,7 +102,7 @@ export async function parseMermaidFlowchart(source: string): Promise<MermaidGrap
       arrowTypeStart: text(edge.arrowTypeStart),
     }
   })
-  const direction = DIRECTIONS[db.getDirection?.() ?? 'TB'] ?? 'DOWN'
+  const direction = DIRECTIONS[db.getDirection?.() ?? 'TB'] ?? 'down'
   return { direction, nodes, edges }
 }
 

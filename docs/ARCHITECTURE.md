@@ -665,16 +665,24 @@ clear routes. Agent placement snaps a new block's origin, not each node, to the 
 ### Layout styles
 
 `layout_diagram` takes a `layout` (`LAYOUT_STYLES` in `src/layout/types.ts`). Tidy up and Mermaid import use `flow`.
+The `direction` of a layout is `right`, `down`, `left` or `up`, in lowercase as the edge sides. A direction tells where
+the edges go, so it uses `down` and `up`, not the side names `bottom` and `top`. Only `ELK_DIRECTIONS` changes it to
+the ELK value. The tools reject an uppercase ELK value with an error that names the lowercase value.
 
-| Style                                            | Use                                                  | Engine                                       |
-| ------------------------------------------------ | ---------------------------------------------------- | -------------------------------------------- |
-| `flow`                                           | Request paths and layered architectures              | ELK `layered`, as in the section above       |
-| `tree`                                           | A hierarchy from one root                            | ELK `mrtree`                                 |
-| `hub`                                            | One central node, such as an event bus or a gateway  | ELK `radial`                                 |
-| `network`                                        | A mesh with many connections and no main direction   | ELK `sporeOverlap` over `stress`             |
-| `grid`                                           | An inventory with few connections                    | ELK `rectpacking`, with the aspect ratio 1.6 |
-| `lanes`                                          | Swimlanes: one top-level group for each team or tier | Own (`src/layout/lanes.ts`)                  |
-| `dot`, `neato`, `fdp`, `circo`, `twopi`, `osage` | The Graphviz engines of the same names               | Graphviz 16 (`src/layout/graphviz.ts`)       |
+| Style             | Use                                                        | Engine                                       |
+| ----------------- | ---------------------------------------------------------- | -------------------------------------------- |
+| `flow`            | Request paths and layered architectures                    | ELK `layered`, as in the section above       |
+| `tree`            | A hierarchy from one root                                  | ELK `mrtree`                                 |
+| `hub`             | One central node, such as an event bus or a gateway        | ELK `radial`                                 |
+| `network`         | A mesh with many connections and no main direction         | ELK `sporeOverlap` over `stress`             |
+| `grid`            | An inventory with few connections                          | ELK `rectpacking`, with the aspect ratio 1.6 |
+| `lanes`           | Swimlanes: one top-level group for each team or tier       | Own (`src/layout/lanes.ts`)                  |
+| `graphviz-layers` | Layers along the direction, as in `flow`                   | Graphviz 16 `dot` (`src/layout/graphviz.ts`) |
+| `graphviz-spring` | A network in which all edges have almost the same length   | Graphviz 16 `neato`                          |
+| `graphviz-force`  | A network in which the nodes push apart and the edges pull | Graphviz 16 `fdp`                            |
+| `graphviz-circle` | Nodes on a circle, for rings and cycles                    | Graphviz 16 `circo`                          |
+| `graphviz-radial` | Rings around the `center` node                             | Graphviz 16 `twopi`                          |
+| `graphviz-packed` | Boxes in tight rows                                        | Graphviz 16 `osage`                          |
 
 - Only ELK `layered` lays out nested groups in one run. The other styles, except `lanes`, use the recursion of
   `arrangeLevels` and place each level with `placeLevel` (`src/layout/styles.ts`). `flow` and `lanes` align nodes
@@ -682,20 +690,24 @@ clear routes. Agent placement snaps a new block's origin, not each node, to the 
 - `router.ts` routes the edges of all styles except `flow`.
 - ELK `radial` accepts only a tree with edges away from the root. Without it, ELK throws, overflows the stack, or
   overlaps nodes. `hubTree` gives ELK a breadth-first tree from the hub. The hub is the node in `center`, or else the
-  box with the most links. A box that no link reaches gets a link from the hub. `twopi` uses the same hub as its root.
+  box with the most links. A box that no link reaches gets a link from the hub. `graphviz-radial` uses the same hub as its
+  root.
 - `stress` took about 4 s for 150 cards in a test. So a level with more than 80 boxes gets `grid` instead of `network`.
 - `lanes` uses a `flow` layout for the inside of each box. Then each top-level group becomes a lane, in the order of the
   diagram, with the same length for all lanes. Each box in a lane gets a column from the longest path in the edges
   (`laneColumns`); the columns are the same in all lanes. Top-level nodes outside every group get a band before the
-  first lane. With `RIGHT` or `LEFT` the lanes are rows; with `DOWN` or `UP` they are columns.
+  first lane. With `right` or `left` the lanes are rows; with `down` or `up` they are columns.
 - Graphviz comes from `@hpcc-js/wasm-graphviz`, with the WebAssembly module inline. Each level is a flat graph with
   fixed node sizes in points; `neato` and `fdp` get `start=1` for the same result each time.
+- The name of a Graphviz style tells the shape of the result, because many users do not know the engine names. Only
+  `GRAPHVIZ_STYLE_ENGINES` (`src/layout/types.ts`) changes a style to its engine. The tools reject an engine name, such
+  as `circo`, with an error that names the style.
 - The desktop renderer allows only `script-src 'self'`, and Chromium compiles WebAssembly only with
   `'wasm-unsafe-eval'`. So in the desktop app the layout worker does not run Graphviz. It sends each DOT text to its
   page, and the page sends it to the main process (`layout.graphviz`, `electron/graphviz.ts`), where Node runs Graphviz.
   The website has no such policy; its worker loads the Graphviz chunk (about 820 kB) only for a Graphviz layout.
 - Graphviz is EPL-2.0, so `third-party-licenses.txt` and `third-party-licenses.main.txt` list it with the licence text.
-- The style is a parameter of the request. The diagram does not store it.
+- The style and the direction are parameters of the request. The diagram does not store them.
 - Rejected engines: ELK `force` gave worse results than `stress`; dagre repeats `layered` and has open bugs with
   nested groups; cytoscape fCoSE is not deterministic; WebCola has no maintenance; MSAGL and libavoid failed earlier
   (see "Stack and why").
