@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { UPDATE_CHECK_INTERVAL_MS } from '@/desktop/constants'
 import type { UpdateInfo } from '@/desktop/contract'
+import { runningAppImage } from './appimage'
 import {
   createUpdates,
   nextAutomaticCheckMs,
@@ -111,6 +112,21 @@ describe('updatePolicy', () => {
     })
     expect(updatePolicy({ ...build, platform: 'linux', appImage: true })).toEqual({ kind: 'install', onQuit: true })
     expect(updatePolicy({ ...build, platform: 'linux' })).toEqual({ kind: 'none' })
+  })
+
+  it('does not update an AppImage of a parent process, for example of the terminal that started the deb app', () => {
+    const inherited = { APPIMAGE: '/home/a/Editor.AppImage', APPDIR: '/tmp/.mount_Editor' }
+    const linux = { ...build, platform: 'linux' as const }
+    const appImage = (execPath: string) => runningAppImage(inherited, execPath) !== null
+    expect(updatePolicy({ ...linux, appImage: appImage('/opt/Diagrams/diagrams') })).toEqual({ kind: 'none' })
+    expect(updatePolicy({ ...linux, packageType: 'deb', appImage: appImage('/opt/Diagrams/diagrams') })).toEqual({
+      kind: 'install',
+      onQuit: false,
+    })
+    expect(updatePolicy({ ...linux, appImage: appImage('/tmp/.mount_Editor/diagrams') })).toEqual({
+      kind: 'install',
+      onQuit: true,
+    })
   })
 })
 

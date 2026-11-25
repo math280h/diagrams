@@ -1579,6 +1579,10 @@ setting turns this off.
   systems and failed lookups get the release page. It links only this repository's release files.
 - The app registers `diagrams://` at each start. The Windows uninstaller removes it if it points at the installed app
   (`build/installer.nsh`); an update keeps it.
+  - An AppImage installs no desktop entry, so the system cannot open `diagrams://` links with it. At each start, the
+    AppImage writes its path into `~/.local/share/applications/diagrams-appimage.desktop` and makes this entry the
+    handler (`electron/appimage-links.ts`). It keeps a handler that works, for example of the deb package, because
+    the user installed that app.
 - Before an update Restart, main saves the open diagram and waits for the writes (`prepareQuit`): on macOS, the
   update quit skips the window close step.
 - Only the Mac builds of releases get a Developer ID signature. Mac builds without a certificate get an ad-hoc
@@ -1734,6 +1738,8 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
     and deb on Linux.
   - The job installs or mounts each installer and runs `scripts/smoke-package.mjs` on the installed app. On Windows,
     the job then runs the uninstaller and checks that the uninstaller removed `Diagrams.exe`.
+  - On Linux, `scripts/smoke-deep-link.ts` checks the `diagrams://` handler with `xdg-mime`. Without the deb package,
+    `xdg-open` starts the AppImage with a link. With the deb package, the deb entry keeps the links.
   - The Windows and Linux jobs run `scripts/installer-contents.ts`. The script compares the NSIS plugins, the
     AppImage runtime and the libraries in `usr/lib` of the AppImage with the SBOM. The script unpacks the Windows
     installer and uninstaller with 7-Zip.

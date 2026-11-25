@@ -110,8 +110,8 @@ dialog.
 
 On the website, choose "Open in desktop app" in the export menu or in the menu of a diagram card. The browser starts
 the app and hands the diagram over, and the copy in the browser stays. The app takes diagrams only from the websites
-under Websites in the app settings. A build from source handles `diagrams://` links only if you start it with
-`DIAGRAMS_REGISTER_PROTOCOL=1`.
+under Websites in the app settings. An AppImage handles `diagrams://` links after you start it once. A build from
+source handles them only if you start it with `DIAGRAMS_REGISTER_PROTOCOL=1`.
 
 ### Edit a diagram file by hand
 

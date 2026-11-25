@@ -535,6 +535,8 @@ jobs:
           chmod +x "$appimage"
           node scripts/installer-contents.ts appimage "$appimage"
           xvfb-run --auto-servernum node scripts/smoke-package.mjs "$appimage"
+          sudo apt-get install -y -qq --no-install-recommends xdg-utils desktop-file-utils
+          xvfb-run --auto-servernum node scripts/smoke-deep-link.ts "$appimage" diagrams-appimage.desktop
       - name: Install, test and remove the deb package
         if: runner.os == 'Linux'
         run: |
@@ -545,6 +547,7 @@ jobs:
             echo 'The app did not add an autostart entry with TryExec.'
             exit 1
           }
+          xvfb-run --auto-servernum node scripts/smoke-deep-link.ts "$(ls release/*.AppImage)" diagrams.desktop
           sudo apt-get remove -y diagrams
       - name: Keep the installers
         if: ${{ !cancelled() }}
