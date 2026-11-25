@@ -4,7 +4,14 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { TOOL_DEFINITIONS } from '@/agent/tool-definitions'
 import { marketplaceFiles, writeMarketplace } from './marketplace'
-import { buildInstructions, bundledPluginConfig, bundledSkillFiles, loadSkills, parseFrontmatter } from './skills'
+import {
+  RENAMED_PROMPTS,
+  buildInstructions,
+  bundledPluginConfig,
+  bundledSkillFiles,
+  loadSkills,
+  parseFrontmatter,
+} from './skills'
 
 const files = bundledSkillFiles()
 const skills = loadSkills(files)
@@ -27,6 +34,20 @@ describe('skills', () => {
       'review',
       'threat-model',
     ])
+  })
+
+  it('maps each earlier prompt name to a skill, and no skill keeps an earlier name', () => {
+    const names = skills.map((skill) => skill.name)
+    expect(RENAMED_PROMPTS).toEqual({
+      'draw-architecture': 'architecture',
+      'animate-flow': 'flows',
+      'diagram-from-code': 'infrastructure',
+      'review-diagram': 'review',
+    })
+    for (const [earlier, current] of Object.entries(RENAMED_PROMPTS)) {
+      expect(names).toContain(current)
+      expect(names).not.toContain(earlier)
+    }
   })
 
   it('names each skill like its folder and describes it', () => {

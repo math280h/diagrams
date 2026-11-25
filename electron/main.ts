@@ -25,7 +25,14 @@ import { createHandoffCodes, mountHandoff } from './agent/handoff'
 import { marketplaceFiles, writeMarketplace } from './agent/marketplace'
 import { loadAgentPort, nextFreeAgentPort, saveAgentPort } from './agent/port'
 import { createAgentServer, portIsFree, startAgentServer } from './agent/server'
-import { buildInstructions, bundledPluginConfig, bundledSkillFiles, loadSkills, registerSkills } from './agent/skills'
+import {
+  RENAMED_PROMPTS,
+  buildInstructions,
+  bundledPluginConfig,
+  bundledSkillFiles,
+  loadSkills,
+  registerSkills,
+} from './agent/skills'
 import { createToken, loadToken } from './agent/token'
 import { appAbout } from './about'
 import { agentWindowShow, createIdleClose } from './agent-window'
@@ -346,6 +353,7 @@ async function start() {
         }
       },
       extend: (mcp) => registerSkills(mcp, skills),
+      renamedPrompts: RENAMED_PROMPTS,
       routes: (routes) =>
         mountHandoff(routes, {
           codes,

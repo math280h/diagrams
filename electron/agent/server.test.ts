@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { TOOL_NAMES } from '@/agent/tool-definitions'
 import type { ToolOutcome } from '@/desktop/contract'
 import { createAgentServer, startAgentServer } from './server'
-import { bundledSkillFiles, loadSkills, registerSkills } from './skills'
+import { RENAMED_PROMPTS, bundledSkillFiles, loadSkills, registerSkills } from './skills'
 
 const TOKEN = 'a'.repeat(43)
 const skills = loadSkills(bundledSkillFiles())
@@ -22,6 +22,7 @@ function makeServer(
     token: () => TOKEN,
     callTool,
     extend: (mcp) => registerSkills(mcp, skills),
+    renamedPrompts: RENAMED_PROMPTS,
     logger: { debug() {}, info() {}, log() {}, warn() {}, error() {} },
   })
   return { server, callTool }
@@ -109,8 +110,43 @@ describe('agent server over MCP', () => {
     expect(resources.map((resource) => resource.uri)).toContain('skill://diagrams/architecture/SKILL.md')
     const skill = await client.readResource({ uri: 'skill://diagrams/flows/SKILL.md' })
     expect(JSON.stringify(skill.contents)).toContain('Animate a flow')
-    const prompt = await client.getPrompt({ name: 'draw-architecture', arguments: { request: 'a shop' } })
+    const prompt = await client.getPrompt({ name: 'architecture', arguments: { request: 'a shop' } })
     expect(JSON.stringify(prompt.messages)).toContain('Task: a shop')
+  })
+
+  it('serves one prompt for each skill, with the name and the text of the skill', async () => {
+    const client = await inMemoryClient(makeServer(1).server)
+    const { prompts } = await client.listPrompts()
+    expect(prompts.map((prompt) => prompt.name).toSorted()).toEqual(skills.map((skill) => skill.name).toSorted())
+    for (const prompt of prompts) {
+      const skill = skills.find((candidate) => candidate.name === prompt.name)!
+      expect(prompt.arguments).toHaveLength(1)
+      const argument = prompt.arguments![0]!
+      const result = await client.getPrompt({ name: prompt.name, arguments: { [argument.name]: 'the task' } })
+      expect(result.messages).toHaveLength(1)
+      const text = (result.messages[0]!.content as { text: string }).text
+      expect(text.startsWith(skill.body.trim())).toBe(true)
+      expect(text).toContain('Task: the task')
+    }
+  })
+
+  it('gives the infrastructure skill a prompt that takes the request', async () => {
+    const client = await inMemoryClient(makeServer(1).server)
+    const { prompts } = await client.listPrompts()
+    expect(prompts.find((prompt) => prompt.name === 'infrastructure')?.arguments).toEqual([
+      expect.objectContaining({ name: 'request', required: true }),
+    ])
+    const prompt = await client.getPrompt({ name: 'infrastructure', arguments: { request: 'draw infra/' } })
+    const text = JSON.stringify(prompt.messages)
+    expect(text).toContain('Diagrams from infrastructure code')
+    expect(text).toContain('skill://diagrams/infrastructure/references/terraform.md')
+    expect(text).toContain('Task: draw infra/')
+  })
+
+  it('does not list the earlier prompt names', async () => {
+    const client = await inMemoryClient(makeServer(1).server)
+    const names = (await client.listPrompts()).prompts.map((prompt) => prompt.name)
+    for (const name of Object.keys(RENAMED_PROMPTS)) expect(names).not.toContain(name)
   })
 })
 
@@ -179,6 +215,44 @@ describe('agent server over HTTP', () => {
     await client.close()
 
     expect((await fetch(`http://127.0.0.1:${port}/health`)).status).toBe(404)
+  })
+
+  it('refuses an earlier prompt name with an error that gives the new name', async () => {
+    const port = await freePort()
+    const { server } = makeServer(port)
+    expect((await startAgentServer(server, port)).state).toBe('running')
+    running = server
+
+    const getOldPrompt = JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'prompts/get',
+      params: { name: 'animate-flow', arguments: {} },
+    })
+    const unauthenticated = await fetch(`http://127.0.0.1:${port}/mcp`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
+      body: getOldPrompt,
+    })
+    expect(unauthenticated.status).toBe(401)
+
+    for (const mode of ['legacy', 'auto'] as const) {
+      const client = new Client({ name: 'test', version: '1.0.0' }, { versionNegotiation: { mode } })
+      await client.connect(
+        new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${port}/mcp`), {
+          requestInit: { headers: { Authorization: `Bearer ${TOKEN}` } },
+        }),
+      )
+      for (const [earlier, current] of Object.entries(RENAMED_PROMPTS)) {
+        await expect(client.getPrompt({ name: earlier, arguments: { request: 'a shop' } })).rejects.toThrow(
+          `The prompt "${earlier}" has a new name: "${current}".`,
+        )
+      }
+      const prompt = await client.getPrompt({ name: 'flows', arguments: { request: 'an order' } })
+      expect(JSON.stringify(prompt.messages)).toContain('Task: an order')
+      await expect(client.getPrompt({ name: 'missing' })).rejects.toThrow('missing')
+      await client.close()
+    }
   })
 
   it('rejects requests for another host name', async () => {
