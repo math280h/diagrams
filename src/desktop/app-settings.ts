@@ -59,6 +59,14 @@ export function setAgentWindow(agentWindow: AgentWindowMode) {
   )
 }
 
+export function setAutoUpdateCheck(autoUpdateCheck: boolean) {
+  return changeSettings(
+    'app.setAutoUpdateCheck',
+    { autoUpdateCheck },
+    { title: 'Could not change the setting', facts: [`Check for updates automatically: ${autoUpdateCheck}`] },
+  )
+}
+
 export function addWebsite(website: string) {
   return changeSettings(
     'app.addWebsite',

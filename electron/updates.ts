@@ -1,7 +1,6 @@
+import { UPDATE_CHECK_INTERVAL_MS } from '@/desktop/constants'
 import type { UpdateInfo } from '@/desktop/contract'
 import { errorMessage } from '@/lib/error-message'
-
-export const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60_000
 
 interface Release {
   version: string
@@ -59,10 +58,40 @@ export function updatePolicy(build: {
   return { kind: 'install', onQuit: true }
 }
 
+/**
+ * Returns the time until the next automatic check, or `null` while the automatic checks are off.
+ *
+ * @param schedule.lastCheckMs - The time of the last check, or `null` before the first check. A check at the request
+ *   of the user also counts.
+ * @param schedule.nowMs - The time now, on the same clock as `lastCheckMs`.
+ * @returns 0 when a check is due, else a time of at most `intervalMs`.
+ */
+export function nextAutomaticCheckMs(schedule: {
+  automatic: boolean
+  lastCheckMs: number | null
+  nowMs: number
+  intervalMs: number
+}): number | null {
+  if (!schedule.automatic) return null
+  if (schedule.lastCheckMs === null) return 0
+  const remainingMs = schedule.intervalMs - (schedule.nowMs - schedule.lastCheckMs)
+  return Math.min(schedule.intervalMs, Math.max(0, remainingMs))
+}
+
 export interface Updates {
   info(): UpdateInfo
-  /** Checks for an update unless one downloads or waits for a restart. Parallel calls share one check. */
+  /**
+   * Checks for an update unless one downloads or waits for a restart. Parallel calls share one check. The call works
+   * also while the automatic checks are off, and the next automatic check comes one interval after it.
+   */
   check(): Promise<UpdateInfo>
+  /** Starts the automatic checks. When they are on, the first check starts at once. */
+  start(): void
+  /**
+   * Turns the automatic checks on or off. When they come on, a check starts at once if no check started in the last
+   * interval.
+   */
+  setAutomatic(automatic: boolean): void
   /** Shows another repository of updates. The next check reads the feed again. */
   setRepository(repository: string): UpdateInfo
   /**
@@ -78,9 +107,11 @@ function feedKey({ repository, token }: UpdateFeed) {
 }
 
 /**
- * Keeps the app up to date as the policy says, with a check at each {@link UPDATE_CHECK_INTERVAL_MS}.
+ * Keeps the app up to date as the policy says. While the automatic checks are on, a check starts at each
+ * {@link UPDATE_CHECK_INTERVAL_MS}, see {@link nextAutomaticCheckMs}.
  *
  * @param updater - The updater, or `null` for a build that does not update itself.
+ * @param automatic - True if the app checks on its own, after {@link Updates.start}.
  * @param buildRepository - The repository in the `app-update.yml` of the build.
  * @param feed - Returns the feed for the next check, or `sign-in` while a private repository needs a GitHub sign-in.
  *   The updater keeps the feed of `app-update.yml` until it differs.
@@ -99,7 +130,9 @@ export function createUpdates(options: {
   emit: (info: UpdateInfo) => void
   prepareQuit: () => Promise<boolean>
   cancelQuit: () => void
+  automatic: boolean
   intervalMs?: number
+  now?: () => number
 }): Updates {
   const { updater, policy, emit } = options
   let info: UpdateInfo = {
@@ -120,6 +153,8 @@ export function createUpdates(options: {
     return {
       info: () => info,
       check: async () => info,
+      start: () => undefined,
+      setAutomatic: () => undefined,
       setRepository,
       install: async () => undefined,
       stop: () => undefined,
@@ -162,8 +197,25 @@ export function createUpdates(options: {
     await updater.checkForUpdates()
     return info
   }
+  const now = options.now ?? Date.now
+  const intervalMs = options.intervalMs ?? UPDATE_CHECK_INTERVAL_MS
+  let automatic = options.automatic
+  let started = false
+  let lastCheckMs: number | null = null
+  let timer: ReturnType<typeof setTimeout> | undefined
   let running: Promise<UpdateInfo> | null = null
+  const schedule = () => {
+    clearTimeout(timer)
+    timer = undefined
+    if (!started) return
+    const delayMs = nextAutomaticCheckMs({ automatic, lastCheckMs, nowMs: now(), intervalMs })
+    if (delayMs !== null) timer = setTimeout(() => void check(), delayMs)
+  }
   const check = () => {
+    if (!running) {
+      lastCheckMs = now()
+      schedule()
+    }
     if (info.state === 'downloading' || downloaded()) return Promise.resolve(info)
     running ??= checkFeed()
       .catch((error: unknown) => publish({ state: 'failed', message: errorMessage(error) }))
@@ -172,11 +224,18 @@ export function createUpdates(options: {
       })
     return running
   }
-  const timer = setInterval(() => void check(), options.intervalMs ?? UPDATE_CHECK_INTERVAL_MS)
 
   return {
     info: () => info,
     check,
+    start: () => {
+      started = true
+      schedule()
+    },
+    setAutomatic: (next) => {
+      automatic = next
+      schedule()
+    },
     setRepository,
     install: async () => {
       if (installStep !== 'none' || !downloaded()) return
@@ -192,6 +251,9 @@ export function createUpdates(options: {
         failInstall(error)
       }
     },
-    stop: () => clearInterval(timer),
+    stop: () => {
+      started = false
+      schedule()
+    },
   }
 }

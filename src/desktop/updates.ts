@@ -3,11 +3,21 @@ import { create } from 'zustand'
 import { reportError } from '@/store/problem-store'
 import { desktopApi, requestErrorMessage } from './bridge'
 import { releaseLinks } from './build-config'
+import { UPDATE_CHECK_INTERVAL_HOURS } from './constants'
 import type { UpdateInfo, UpdateState } from './contract'
 import { openDesktopSettings } from './settings-dialog'
 
 const UPDATE_TOAST_ID = 'update'
 const NOTICE_STATES: ReadonlySet<UpdateState> = new Set(['available', 'ready', 'install-failed'])
+
+export const AUTO_UPDATE_CHECK_LABEL = 'Check for updates automatically'
+
+/** Returns the text next to the setting that turns the automatic update checks on or off. */
+export function autoUpdateCheckHint(autoUpdateCheck: boolean): string {
+  return autoUpdateCheck
+    ? `The app asks GitHub for a new version when it starts and every ${UPDATE_CHECK_INTERVAL_HOURS} hours.`
+    : 'The app checks only when you choose “Check for updates”.'
+}
 
 export const useUpdateInfo = create<{ info: UpdateInfo | null }>(() => ({ info: null }))
 

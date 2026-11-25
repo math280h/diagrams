@@ -299,6 +299,7 @@ async function start() {
     emit: (info) => rpc.emit('update.info', info),
     prepareQuit,
     cancelQuit,
+    automatic: settings.get().autoUpdateCheck,
   })
 
   const createServer = (serverPort: number) =>
@@ -473,6 +474,11 @@ async function start() {
         return appSettings()
       },
       'app.setAgentWindow': async ({ agentWindow }) => appSettings(settings.update({ agentWindow })),
+      'app.setAutoUpdateCheck': async ({ autoUpdateCheck }) => {
+        const next = settings.update({ autoUpdateCheck })
+        updates.setAutomatic(autoUpdateCheck)
+        return appSettings(next)
+      },
       'app.addWebsite': async ({ website }) => appSettings(settings.update((current) => addWebsite(current, website))),
       'app.removeWebsite': async ({ website }) =>
         appSettings(settings.update((current) => removeWebsite(current, website))),
@@ -553,7 +559,7 @@ async function start() {
   for (const url of pendingLinks.splice(0)) openLink(url)
 
   void writePlugin()
-  void updates.check()
+  updates.start()
   await startServer()
 }
 

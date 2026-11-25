@@ -21,6 +21,7 @@ export interface StoredSettings {
   addedBuildWebsites: string[]
   /** The repository of updates that the user chose, or `null` for the repository of the build. */
   updateRepository: string | null
+  autoUpdateCheck: boolean
 }
 
 const DEFAULT_SETTINGS: StoredSettings = {
@@ -32,6 +33,7 @@ const DEFAULT_SETTINGS: StoredSettings = {
   shareWebsite: null,
   addedBuildWebsites: [],
   updateRepository: null,
+  autoUpdateCheck: true,
 }
 
 function originOrNull(value: unknown): string | null {
@@ -50,9 +52,13 @@ const STORED_SETTINGS = z
     openAtLoginAdded: z.boolean().catch(DEFAULT_SETTINGS.openAtLoginAdded),
     agentWindow: z.enum(AGENT_WINDOW_MODES).catch(DEFAULT_SETTINGS.agentWindow),
     websites: ORIGINS,
-    shareWebsite: z.unknown().transform(originOrNull),
+    shareWebsite: z.unknown().optional().transform(originOrNull),
     addedBuildWebsites: ORIGINS,
-    updateRepository: z.unknown().transform((value) => (typeof value === 'string' ? repositoryName(value) : null)),
+    updateRepository: z
+      .unknown()
+      .optional()
+      .transform((value) => (typeof value === 'string' ? repositoryName(value) : null)),
+    autoUpdateCheck: z.boolean().catch(DEFAULT_SETTINGS.autoUpdateCheck),
   })
   .catch(DEFAULT_SETTINGS)
 
@@ -151,9 +157,9 @@ export type AppSettingsStore = ReturnType<typeof createAppSettings>
  * @param openAtLogin - The state that the system keeps, not the stored settings.
  */
 export function publicSettings(
-  { keepRunning, agentWindow, websites, shareWebsite }: StoredSettings,
+  { keepRunning, agentWindow, autoUpdateCheck, websites, shareWebsite }: StoredSettings,
   openAtLogin: OpenAtLogin,
 ): AppSettings {
   const share = shareWebsite !== null && websites.includes(shareWebsite) ? shareWebsite : websites[0]!
-  return { keepRunning, openAtLogin, agentWindow, websites, shareWebsite: share }
+  return { keepRunning, openAtLogin, agentWindow, autoUpdateCheck, websites, shareWebsite: share }
 }

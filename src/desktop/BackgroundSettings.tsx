@@ -1,4 +1,4 @@
-import { useEffect, useId, type ReactNode } from 'react'
+import { useEffect, useId } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { loadAppSettings, setAgentWindow, setKeepRunning, setOpenAtLogin, useAppSettings } from './app-settings'
@@ -12,34 +12,7 @@ import {
   openAtLoginHint,
   quitHint,
 } from './keep-running'
-
-function Setting({
-  label,
-  labelId,
-  hint,
-  hintId,
-  children,
-}: {
-  label: string
-  labelId?: string
-  hint: string
-  hintId: string
-  children: ReactNode
-}) {
-  return (
-    <div className="flex items-start justify-between gap-4">
-      <div className="space-y-0.5">
-        <p id={labelId} className="font-medium text-foreground">
-          {label}
-        </p>
-        <p id={hintId} className="leading-5 text-muted-foreground">
-          {hint}
-        </p>
-      </div>
-      {children}
-    </div>
-  )
-}
+import { Setting } from './Setting'
 
 /**
  * Shows the settings that let agents use the app while its window is closed. It loads the settings again when it

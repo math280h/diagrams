@@ -58,6 +58,7 @@ const INPUTS = {
   'app.setKeepRunning': z.object({ keepRunning: z.boolean() }),
   'app.setOpenAtLogin': z.object({ openAtLogin: z.boolean() }),
   'app.setAgentWindow': z.object({ agentWindow: z.enum(AGENT_WINDOW_MODES) }),
+  'app.setAutoUpdateCheck': z.object({ autoUpdateCheck: z.boolean() }),
   'app.addWebsite': z.object({ website: z.string().max(MAX_ADDRESS_CHARS) }),
   'app.removeWebsite': z.object({ website: z.string().max(MAX_ADDRESS_CHARS) }),
   'app.setShareWebsite': z.object({ website: z.string().max(MAX_ADDRESS_CHARS) }),

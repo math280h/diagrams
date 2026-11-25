@@ -138,6 +138,11 @@ export interface AppSettings {
   keepRunning: boolean
   openAtLogin: OpenAtLogin
   agentWindow: AgentWindowMode
+  /**
+   * If true, the app checks for updates when it starts and at an interval. A check at the request of the user works
+   * also when it is false.
+   */
+  autoUpdateCheck: boolean
   /** The origins of the websites that may send diagrams to the app. The list is never empty. */
   websites: string[]
   /** The origin of the website that share links open on. It is one of `websites`. */
@@ -243,6 +248,11 @@ export interface MainRequests {
   /** Adds the app to the programs that start when the user signs in, or removes it. */
   'app.setOpenAtLogin': { input: { openAtLogin: boolean }; output: AppSettings }
   'app.setAgentWindow': { input: { agentWindow: AgentWindowMode }; output: AppSettings }
+  /**
+   * Turns the automatic update checks on or off. When they come on, the app checks at once if it did not check in the
+   * last interval.
+   */
+  'app.setAutoUpdateCheck': { input: { autoUpdateCheck: boolean }; output: AppSettings }
   /** Adds a website to the websites that may send diagrams. The input is an address that the user typed. */
   'app.addWebsite': { input: { website: string }; output: AppSettings }
   /** Removes a website. The last website stays. */

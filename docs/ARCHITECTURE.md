@@ -1522,6 +1522,11 @@ setting turns this off.
   - Build from source, or no `app-update.yml`: none.
   - `main` builds from `preview-<run>` pre-releases (`x.y.z-preview.n`): none. electron-updater cannot compare these
     tags and offers pre-releases to any pre-release version, so beta and alpha apps skip them too.
+- "Check for updates automatically" in the app settings (`autoUpdateCheck`, on by default) controls the checks at
+  start and every 6 hours. Some computers have no internet access, or IT installs the updates. When the setting is
+  off, only "Check for updates", a GitHub sign-in or a new update source starts a check, and that check also
+  downloads and installs. When the setting comes on, `nextAutomaticCheckMs` checks at once if no check started in the
+  last 6 hours.
 - `DIAGRAMS_REPOSITORY` sets `publish` in `electron-builder.ts`, and thus `app-update.yml`. The release workflows set it
   to the repository that they run in, so a fork updates from its own releases.
   - With `DIAGRAMS_REPOSITORY_EDITABLE=1`, the user can set another repository. The app first checks that its newest
@@ -1762,7 +1767,7 @@ those texts.
 | The website files, from its host                  | A visit; a feature that loads its code or an icon set                                    | Fixed paths. Hash routing keeps diagram ids and share data out of requests. |
 | `api.github.com`, the latest release              | On a computer, once: while the agent introduction shows, and in "Could not open the app" | No diagram. Picks the installer for the system.                             |
 | `api.github.com`, release notes                   | Build time. At run time only on the dev server, or when the build could not load them    | No diagram                                                                  |
-| `github.com` releases, through `electron-updater` | Desktop app: at start, every 6 hours, "Check for updates"                                | No diagram. A random install id. The GitHub token for a private repository. |
+| `github.com` releases, through `electron-updater` | Desktop app: at start, every 6 hours (a setting turns these off), "Check for updates"    | No diagram. A random install id. The GitHub token for a private repository. |
 | `github.com/login`, GitHub sign-in                | A build with a GitHub App: sign-in, and the renewal of the sign-in before a check        | No diagram. The client ID and the GitHub tokens.                            |
 | `api.github.com`, newest release of a repository  | A build with an editable update source: the user saves another repository                | No diagram. The GitHub token for a private repository.                      |
 | Repository access, `github.com` or the API        | A build with a GitHub App: before each check. An editable update source: on save         | No diagram. The GitHub token after a sign-in.                               |

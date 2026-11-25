@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -32,6 +32,7 @@ function stored(change: Partial<StoredSettings> = {}): StoredSettings {
     shareWebsite: OFFICIAL,
     addedBuildWebsites: [OFFICIAL],
     updateRepository: null,
+    autoUpdateCheck: true,
     ...change,
   }
 }
@@ -102,10 +103,11 @@ describe('createAppSettings', () => {
 
   it('gives the renderer only the settings that it shows, with a website for share links', () => {
     const settings = stored({ keepRunning: false, backgroundNoticeShown: true, openAtLoginAdded: true })
-    expect(publicSettings({ ...settings, agentWindow: 'hidden' }, 'on')).toEqual({
+    expect(publicSettings({ ...settings, agentWindow: 'hidden', autoUpdateCheck: false }, 'on')).toEqual({
       keepRunning: false,
       openAtLogin: 'on',
       agentWindow: 'hidden',
+      autoUpdateCheck: false,
       websites: [OFFICIAL],
       shareWebsite: OFFICIAL,
     })
@@ -118,6 +120,29 @@ describe('createAppSettings', () => {
     expect(createAppSettings(file, OFFICIAL).get()).toMatchObject({ openAtLoginAdded: true, agentWindow: 'focus' })
     writeFileSync(file, JSON.stringify({ ...stored(), openAtLoginAdded: 'yes', agentWindow: 'minimized' }))
     expect(createAppSettings(file, OFFICIAL).get()).toMatchObject({ openAtLoginAdded: false, agentWindow: 'show' })
+  })
+
+  it('keeps the automatic update checks on for a file from an older app, and keeps them off after a change', () => {
+    const file = settingsFile()
+    const { autoUpdateCheck: _autoUpdateCheck, ...older } = stored({ keepRunning: false })
+    mkdirSync(path.dirname(file), { recursive: true })
+    writeFileSync(file, JSON.stringify(older))
+    expect(createAppSettings(file, OFFICIAL).get()).toEqual(stored({ keepRunning: false }))
+
+    createAppSettings(file, OFFICIAL).update({ autoUpdateCheck: false })
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toMatchObject({ autoUpdateCheck: false })
+    expect(createAppSettings(file, OFFICIAL).get().autoUpdateCheck).toBe(false)
+    writeFileSync(file, JSON.stringify({ ...stored(), autoUpdateCheck: 'off' }))
+    expect(createAppSettings(file, OFFICIAL).get().autoUpdateCheck).toBe(true)
+    writeFileSync(file, JSON.stringify({ autoUpdateCheck: false }))
+    expect(createAppSettings(file, OFFICIAL).get()).toEqual(stored({ autoUpdateCheck: false }))
+  })
+
+  it('keeps each stored value of a file that has only some of the settings', () => {
+    const file = settingsFile()
+    mkdirSync(path.dirname(file), { recursive: true })
+    writeFileSync(file, JSON.stringify({ keepRunning: false, backgroundNoticeShown: true }))
+    expect(createAppSettings(file, OFFICIAL).get()).toEqual(stored({ keepRunning: false, backgroundNoticeShown: true }))
   })
 })
 
