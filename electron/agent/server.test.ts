@@ -89,6 +89,20 @@ describe('agent server over MCP', () => {
     expect(JSON.stringify(result.content)).toContain('No node \\"Cache\\".')
   })
 
+  it('passes the diagram settings on and refuses them as theme with the name of the new argument', async () => {
+    const { server, callTool } = makeServer(1)
+    const client = await inMemoryClient(server)
+    const settings = { fonts: 'inter', snap: false }
+    await client.callTool({ name: 'update_diagram', arguments: { settings } })
+    expect(callTool).toHaveBeenCalledWith('update_diagram', { settings }, expect.any(AbortSignal))
+
+    callTool.mockClear()
+    const result = await client.callTool({ name: 'update_diagram', arguments: { theme: settings } })
+    expect(result.isError).toBe(true)
+    expect(JSON.stringify(result.content)).toContain('in \\"settings\\"')
+    expect(callTool).not.toHaveBeenCalled()
+  })
+
   it('serves the skills as resources and prompts', async () => {
     const client = await inMemoryClient(makeServer(1).server)
     const { resources } = await client.listResources()

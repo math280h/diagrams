@@ -134,6 +134,17 @@ describe('tool definitions', () => {
     expect(Object.keys(HANDLERS).toSorted()).toEqual([...TOOL_NAMES].toSorted())
   })
 
+  it('takes the diagram settings as settings and only a colour theme as theme', () => {
+    const properties = (name: ToolName) =>
+      (z.toJSONSchema(TOOL_DEFINITIONS[name].input, { io: 'input' }) as { properties: Record<string, unknown> })
+        .properties
+    expect(Object.keys(properties('update_diagram'))).toEqual(['diagramId', 'name', 'settings'])
+    expect(properties('render_image')).toHaveProperty('theme', expect.objectContaining({ type: 'string' }))
+    for (const name of TOOL_NAMES.filter((tool) => tool !== 'render_image')) {
+      expect(properties(name), name).not.toHaveProperty('theme')
+    }
+  })
+
   it('names every template in the create_diagram description', () => {
     for (const template of TEMPLATES) expect(TOOL_DEFINITIONS.create_diagram.description).toContain(`"${template.id}"`)
   })
@@ -158,6 +169,46 @@ describe('agent tools', () => {
     const staybook = nodeByLabel('Staybook')
     expect(staybook.type === 'card' && staybook.data.opens).toBe(inside?.id)
     expect(open).toBe(result.diagramId)
+  })
+
+  it('renames a diagram and changes its settings in one undo step, and reads the settings back', async () => {
+    await call('create_diagram', { name: 'Shop' })
+    resetHistory()
+    await call('update_diagram', {
+      name: 'Store',
+      settings: { fonts: 'inter', background: 'none', snap: false, protocolColors: false, routeAround: true },
+    })
+    const settings = {
+      fonts: 'inter',
+      background: 'none',
+      snap: false,
+      boundaryColors: true,
+      protocolColors: false,
+      routeAround: true,
+    }
+    expect(useDoc.getState()).toMatchObject({ name: 'Store', theme: settings })
+    expect((await call('get_diagram', { detail: 'full' })).settings).toEqual(settings)
+    expect(await call('get_diagram', {})).not.toHaveProperty('settings')
+
+    undo()
+    expect(useDoc.getState()).toMatchObject({ name: 'Shop', theme: { fonts: 'host', routeAround: false } })
+    expect(useHistory.getState().canUndo).toBe(false)
+  })
+
+  it('refuses diagram settings or a colour theme as theme and names the settings argument', async () => {
+    await call('create_diagram', { name: 'Shop' })
+    const before = useDoc.getState().theme
+    const calls = [{ theme: { fonts: 'inter', snap: false } }, { theme: 'dark' }, { name: 5, theme: { snap: false } }]
+    for (const args of calls) {
+      const outcome = await runAgentTool('update_diagram', args, new AbortController().signal, context)
+      expect(outcome.ok).toBe(false)
+      const message = outcome.ok ? '' : outcome.message
+      expect(message).toContain(
+        'update_diagram has no "theme" argument. Send fonts, background, snap, boundaryColors, protocolColors, routeAround in "settings".',
+      )
+      expect(message).toContain('render_image takes one as "theme"')
+    }
+    expect(useDoc.getState().theme).toBe(before)
   })
 
   it('adds nodes, a boundary and edges in one undo step', async () => {

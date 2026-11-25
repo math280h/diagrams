@@ -1355,6 +1355,10 @@ setting turns this off.
   and editor grouping.
 - Agents name nodes by id, same-call ref or unique label. An unknown or ambiguous name returns an error with the
   candidates.
+- Tools give the `theme` field of a diagram as `settings`: fonts, background, snap, routing and the boundary and
+  protocol colour switches. In tools, `theme` is always a colour theme, as with `--theme` and the render action.
+  `update_diagram` rejects `theme` with an error that names `settings`. Without this check, the schema removes the
+  argument and the agent gets no error.
 - Unplaced new nodes go through ELK as a block, then next to their connected node, right of the content, or in a new
   row in their group. Agent positions stay exact.
 - `render_image` mounts a separate export stage that measures its own nodes: a newly opened diagram has no node sizes

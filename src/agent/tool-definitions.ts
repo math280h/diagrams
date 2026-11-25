@@ -373,6 +373,27 @@ const flowPaths = z
 
 const flowRef = z.string().describe('The flow: its id or its name.')
 
+const diagramSettings = z
+  .object({
+    fonts: z.enum(FONT_PAIRS).optional(),
+    background: z
+      .enum(['dots', 'grid', 'none'])
+      .optional()
+      .describe('The canvas background: dots (the default), grid lines, or none.'),
+    snap: z.boolean().optional().describe('If true, nodes snap to the 16 pixel grid.'),
+    boundaryColors: z.boolean().optional(),
+    protocolColors: z.boolean().optional(),
+    routeAround: z
+      .boolean()
+      .optional()
+      .describe('If true, round and step connections go around the other nodes. Off by default.'),
+  })
+  .describe(
+    'The settings of the diagram. The fields that you leave out keep their values. The diagram file keeps them in its "theme" field.',
+  )
+
+const THEME_IS_NOT_SETTINGS = `update_diagram has no "theme" argument. Send ${Object.keys(diagramSettings.shape).join(', ')} in "settings". A diagram has no colour theme: each viewer chooses one, and render_image takes one as "theme".`
+
 export interface ToolDefinition {
   title: string
   description: string
@@ -413,7 +434,7 @@ export const TOOL_DEFINITIONS = {
       detail: z
         .enum(['outline', 'full'])
         .optional()
-        .describe('outline (the default) leaves out card lines, body fields, flow steps and the theme.'),
+        .describe('outline (the default) leaves out card lines, body fields, flow steps and the diagram settings.'),
     }),
     annotations: READ,
     timeoutMs: SHORT_MS,
@@ -483,27 +504,15 @@ export const TOOL_DEFINITIONS = {
   update_diagram: {
     title: 'Update diagram',
     description:
-      'Rename a diagram or change its look: fonts, background grid, protocol and boundary colours, routing. The colours come from the theme of each reader.',
-    input: z.object({
-      diagramId,
-      name: z.string().optional(),
-      theme: z
-        .object({
-          fonts: z.enum(FONT_PAIRS).optional(),
-          background: z
-            .enum(['dots', 'grid', 'none'])
-            .optional()
-            .describe('The canvas background: dots (the default), grid lines, or none.'),
-          snap: z.boolean().optional().describe('If true, nodes snap to the 16 pixel grid.'),
-          boundaryColors: z.boolean().optional(),
-          protocolColors: z.boolean().optional(),
-          routeAround: z
-            .boolean()
-            .optional()
-            .describe('If true, round and step connections go around the other nodes. Off by default.'),
-        })
-        .optional(),
-    }),
+      'Rename a diagram or change its settings: fonts, background grid, snap to grid, protocol and boundary colours, routing. A diagram has no colour theme: each viewer sees it in their own theme.',
+    input: z
+      .object({ diagramId, name: z.string().optional(), settings: diagramSettings.optional() })
+      .loose()
+      .refine((input) => !Object.hasOwn(input, 'theme'), {
+        path: ['theme'],
+        error: THEME_IS_NOT_SETTINGS,
+        when: ({ value }) => typeof value === 'object' && value !== null,
+      }),
     annotations: CHANGE,
     timeoutMs: SHORT_MS,
   },
