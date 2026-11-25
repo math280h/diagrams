@@ -5,6 +5,7 @@ import {
   quitApp,
   removeWebsite,
   setAgentWindow,
+  setAutoUpdateCheck,
   setKeepRunning,
   setOpenAtLogin,
   setShareWebsite,
@@ -19,6 +20,7 @@ const SETTINGS: AppSettings = {
   keepRunning: true,
   openAtLogin: 'on',
   agentWindow: 'show',
+  autoUpdateCheck: true,
   trayHost: 'present',
   websites: ['https://draw.thias.dev'],
   shareWebsite: 'https://draw.thias.dev',
@@ -55,6 +57,9 @@ describe('app settings', () => {
     expect(await setAgentWindow('hidden')).toBe(true)
     expect(request).toHaveBeenLastCalledWith('app.setAgentWindow', { agentWindow: 'hidden' })
     expect(useAppSettings.getState().settings?.agentWindow).toBe('hidden')
+    expect(await setAutoUpdateCheck(false)).toBe(true)
+    expect(request).toHaveBeenLastCalledWith('app.setAutoUpdateCheck', { autoUpdateCheck: false })
+    expect(useAppSettings.getState().settings?.autoUpdateCheck).toBe(false)
   })
 
   it('takes the sign-in state from the main process, which reads it from the system', async () => {

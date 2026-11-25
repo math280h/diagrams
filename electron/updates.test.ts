@@ -1,7 +1,16 @@
 import { EventEmitter } from 'node:events'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { UPDATE_CHECK_INTERVAL_MS } from '@/desktop/constants'
 import type { UpdateInfo } from '@/desktop/contract'
-import { createUpdates, updatePolicy, type UpdateFeed, type UpdatePolicy, type Updater, type Updates } from './updates'
+import {
+  createUpdates,
+  nextAutomaticCheckMs,
+  updatePolicy,
+  type UpdateFeed,
+  type UpdatePolicy,
+  type Updater,
+  type Updates,
+} from './updates'
 
 class FakeUpdater extends EventEmitter implements Updater {
   autoDownload = false
@@ -41,8 +50,27 @@ function setup(
     emit: (info) => emitted.push(info),
     prepareQuit,
     cancelQuit,
+    automatic: true,
   })
   return { updater, updates, emitted, steps, prepareQuit, cancelQuit }
+}
+
+function scheduled(automatic: boolean) {
+  const updater = new FakeUpdater()
+  const updates = createUpdates({
+    updater,
+    policy: INSTALL,
+    currentVersion: '0.1.0',
+    buildRepository: BUILD_REPOSITORY,
+    repository: BUILD_REPOSITORY,
+    feed: async () => ({ repository: BUILD_REPOSITORY, token: null }),
+    emit: () => undefined,
+    prepareQuit: async () => true,
+    cancelQuit: () => undefined,
+    automatic,
+    intervalMs: 1000,
+  })
+  return { updater, updates }
 }
 
 async function downloadUpdate(updater: FakeUpdater, updates: Updates) {
@@ -83,6 +111,30 @@ describe('updatePolicy', () => {
     })
     expect(updatePolicy({ ...build, platform: 'linux', appImage: true })).toEqual({ kind: 'install', onQuit: true })
     expect(updatePolicy({ ...build, platform: 'linux' })).toEqual({ kind: 'none' })
+  })
+})
+
+describe('nextAutomaticCheckMs', () => {
+  const schedule = { automatic: true, lastCheckMs: 10_000, nowMs: 10_000, intervalMs: 1000 }
+
+  it('never checks while the automatic checks are off', () => {
+    expect(nextAutomaticCheckMs({ ...schedule, automatic: false })).toBeNull()
+    expect(nextAutomaticCheckMs({ ...schedule, automatic: false, lastCheckMs: null })).toBeNull()
+  })
+
+  it('checks at once before the first check and after a full interval', () => {
+    expect(nextAutomaticCheckMs({ ...schedule, lastCheckMs: null })).toBe(0)
+    expect(nextAutomaticCheckMs({ ...schedule, nowMs: 11_000 })).toBe(0)
+    expect(nextAutomaticCheckMs({ ...schedule, nowMs: 50_000 })).toBe(0)
+  })
+
+  it('waits for the rest of the interval after the last check', () => {
+    expect(nextAutomaticCheckMs(schedule)).toBe(1000)
+    expect(nextAutomaticCheckMs({ ...schedule, nowMs: 10_400 })).toBe(600)
+  })
+
+  it('waits at most one interval when the clock goes back', () => {
+    expect(nextAutomaticCheckMs({ ...schedule, nowMs: 2000 })).toBe(1000)
   })
 })
 
@@ -287,25 +339,89 @@ describe('createUpdates', () => {
     expect(emitted.at(-1)?.repository).toBe('acme/diagrams')
   })
 
-  it('checks again after each interval', async () => {
+  it('checks at the start and again after each interval, until it stops', async () => {
     vi.useFakeTimers()
-    const updater = new FakeUpdater()
-    const updates = createUpdates({
-      updater,
-      policy: INSTALL,
-      currentVersion: '0.1.0',
-      buildRepository: BUILD_REPOSITORY,
-      repository: BUILD_REPOSITORY,
-      feed: async () => ({ repository: BUILD_REPOSITORY, token: null }),
-      emit: () => undefined,
-      prepareQuit: async () => true,
-      cancelQuit: () => undefined,
-      intervalMs: 1000,
-    })
+    const { updater, updates } = scheduled(true)
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(updater.checkForUpdates).not.toHaveBeenCalled()
+    updates.start()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(updater.checkForUpdates).toHaveBeenCalledOnce()
     await vi.advanceTimersByTimeAsync(2500)
-    expect(updater.checkForUpdates).toHaveBeenCalledTimes(2)
+    expect(updater.checkForUpdates).toHaveBeenCalledTimes(3)
     updates.stop()
     await vi.advanceTimersByTimeAsync(5000)
+    expect(updater.checkForUpdates).toHaveBeenCalledTimes(3)
+  })
+
+  it('checks only at the request of the user while the automatic checks are off, and installs that update', async () => {
+    vi.useFakeTimers()
+    const { updater, updates } = scheduled(false)
+    updates.start()
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(updater.checkForUpdates).not.toHaveBeenCalled()
+
+    await downloadUpdate(updater, updates)
+    expect(updates.info()).toMatchObject({ state: 'ready', version: '0.2.0' })
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(updater.checkForUpdates).not.toHaveBeenCalled()
+    await updates.install()
+    expect(updater.quitAndInstall).toHaveBeenCalledOnce()
+    updates.stop()
+  })
+
+  it('checks at once when the automatic checks come on without a check in the last interval', async () => {
+    vi.useFakeTimers()
+    const { updater, updates } = scheduled(false)
+    updates.start()
+    await vi.advanceTimersByTimeAsync(5000)
+    updates.setAutomatic(true)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(updater.checkForUpdates).toHaveBeenCalledOnce()
+    await vi.advanceTimersByTimeAsync(1000)
     expect(updater.checkForUpdates).toHaveBeenCalledTimes(2)
+
+    updates.setAutomatic(false)
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(updater.checkForUpdates).toHaveBeenCalledTimes(2)
+    updates.stop()
+  })
+
+  it('waits for the rest of the interval when the automatic checks come on after a recent check', async () => {
+    vi.useFakeTimers()
+    const { updater, updates } = scheduled(false)
+    updates.start()
+    await updates.check()
+    await vi.advanceTimersByTimeAsync(400)
+    updates.setAutomatic(true)
+    await vi.advanceTimersByTimeAsync(599)
+    expect(updater.checkForUpdates).toHaveBeenCalledOnce()
+    await vi.advanceTimersByTimeAsync(1)
+    expect(updater.checkForUpdates).toHaveBeenCalledTimes(2)
+    updates.stop()
+  })
+
+  it('starts the interval again after a check at the request of the user', async () => {
+    vi.useFakeTimers()
+    const { updater, updates } = scheduled(true)
+    updates.start()
+    await vi.advanceTimersByTimeAsync(600)
+    await updates.check()
+    expect(updater.checkForUpdates).toHaveBeenCalledTimes(2)
+    await vi.advanceTimersByTimeAsync(999)
+    expect(updater.checkForUpdates).toHaveBeenCalledTimes(2)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(updater.checkForUpdates).toHaveBeenCalledTimes(3)
+    updates.stop()
+  })
+
+  it('has no automatic checks in a build that does not update itself', async () => {
+    vi.useFakeTimers()
+    const { updates, updater } = setup({ kind: 'none' })
+    updates.start()
+    updates.setAutomatic(true)
+    await vi.advanceTimersByTimeAsync(UPDATE_CHECK_INTERVAL_MS * 2)
+    expect(updater!.checkForUpdates).not.toHaveBeenCalled()
+    updates.stop()
   })
 })

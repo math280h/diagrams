@@ -17,7 +17,7 @@ export function DialogSection({
         <h3 id={headingId} className="font-medium text-foreground">
           {title}
         </h3>
-        <p className="leading-5 text-muted-foreground">{description}</p>
+        <p className="leading-5 text-pretty text-muted-foreground">{description}</p>
       </div>
       {children}
     </section>

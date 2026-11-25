@@ -27,6 +27,7 @@ export interface StoredSettings {
   addedBuildWebsites: string[]
   /** The repository of updates that the user chose, or `null` for the repository of the build. */
   updateRepository: string | null
+  autoUpdateCheck: boolean
 }
 
 const DEFAULT_SETTINGS: StoredSettings = {
@@ -38,6 +39,7 @@ const DEFAULT_SETTINGS: StoredSettings = {
   shareWebsite: null,
   addedBuildWebsites: [],
   updateRepository: null,
+  autoUpdateCheck: true,
 }
 
 function originOrNull(value: unknown): string | null {
@@ -62,6 +64,7 @@ const STORED_SETTINGS = z
       .unknown()
       .optional()
       .transform((value) => (typeof value === 'string' ? repositoryName(value) : null)),
+    autoUpdateCheck: z.boolean().catch(DEFAULT_SETTINGS.autoUpdateCheck),
   })
   .catch(DEFAULT_SETTINGS)
 
@@ -161,10 +164,10 @@ export type AppSettingsStore = ReturnType<typeof createAppSettings>
  * @param trayHost - The state that the system reports.
  */
 export function publicSettings(
-  { keepRunning, agentWindow, websites, shareWebsite }: StoredSettings,
+  { keepRunning, agentWindow, autoUpdateCheck, websites, shareWebsite }: StoredSettings,
   openAtLogin: OpenAtLogin,
   trayHost: TrayHost,
 ): AppSettings {
   const share = shareWebsite !== null && websites.includes(shareWebsite) ? shareWebsite : websites[0]!
-  return { keepRunning, openAtLogin, agentWindow, trayHost, websites, shareWebsite: share }
+  return { keepRunning, openAtLogin, agentWindow, autoUpdateCheck, trayHost, websites, shareWebsite: share }
 }
