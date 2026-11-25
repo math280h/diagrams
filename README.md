@@ -130,9 +130,16 @@ Diagrams --render docs/orders.diagram.json --out docs/orders.png
 Diagrams --render docs/orders.diagram.json --out docs/checkout.mp4 --flow "Place an order"
 ```
 
-The extension of `--out` gives the format: `.png`, `.svg`, `.gif`, `.mp4` or `.webm`. `--theme <theme>` (a built-in
-theme such as `dark` or `blueprint`, or a `.theme.json` file), `--flow <name or id>`, `--step <number>` (with `--flow`
-and an image) and `--max-size <pixels>` change the output.
+The extension of `--out` gives the format: `.png`, `.svg`, `.gif`, `.mp4` or `.webm`. These options change the output:
+
+- `--theme <theme>`: a built-in theme such as `dark` or `blueprint`, or a `.theme.json` file. Without it, the render
+  uses the Light or the Dark theme that matches the system setting.
+- `--flow <name or id>`: the flow to play in a video, or to show in an image.
+- `--path <name or id>`: with `--flow`, a path of the flow. Without it, the render uses the main steps of the flow.
+- `--step <number>`: with `--flow` and an image, the step to show, counting from 0.
+- `--max-size <pixels>`: the longest side, from 64 to 8192. Without it, an image is at most 2048 pixels, a video 1280
+  and a GIF 960.
+
 `Diagrams --render` without arguments prints the options. The command exits with 0 after it writes the file, 1 when the
 render fails and 2 for a wrong command line.
 

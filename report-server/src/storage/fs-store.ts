@@ -1,19 +1,33 @@
-import { randomBytes } from 'node:crypto'
-import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
+import { lstat, mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { REPORT_ID } from '@/reports/protocol'
 import { sameHash, type RemoveResult, type ReportStore, type StoredReport } from './store'
+import { STALE_TEMP_AGE_MS, targetOfTempName, tempFileOf } from './temp-files'
 
 const REPORT_SUFFIX = '.age'
 const META_SUFFIX = '.json'
 
-async function writeAtomic(file: string, data: Uint8Array | string) {
-  const temp = `${file}.tmp-${randomBytes(4).toString('hex')}`
-  await writeFile(temp, data, { mode: 0o600 })
+function isStoreFile(name: string) {
+  const suffix = [REPORT_SUFFIX, META_SUFFIX].find((candidate) => name.endsWith(candidate))
+  return suffix !== undefined && REPORT_ID.test(name.slice(0, -suffix.length))
+}
+
+async function removeIfStale(file: string, nowMs: number) {
   try {
+    const info = await lstat(file)
+    if (info.isFile() && nowMs - info.mtimeMs >= STALE_TEMP_AGE_MS) await rm(file, { force: true })
+  } catch {
+    return
+  }
+}
+
+async function writeAtomic(file: string, data: Uint8Array | string) {
+  const temp = tempFileOf(file)
+  try {
+    await writeFile(temp, data, { mode: 0o600 })
     await rename(temp, file)
   } catch (error) {
-    await rm(temp, { force: true })
+    await rm(temp, { force: true }).catch(() => undefined)
     throw error
   }
 }
@@ -57,10 +71,12 @@ export function createFsStore(dir: string): ReportStore {
         return 0
       }
       const present = new Set(names)
+      const nowMs = Date.now()
       let deleted = 0
       for (const name of names) {
-        if (name.includes('.tmp-')) {
-          await rm(path.join(dir, name), { force: true })
+        const target = targetOfTempName(name)
+        if (target !== null) {
+          if (isStoreFile(target)) await removeIfStale(path.join(dir, name), nowMs)
           continue
         }
         if (name.endsWith(META_SUFFIX) && !present.has(`${name.slice(0, -META_SUFFIX.length)}${REPORT_SUFFIX}`)) {

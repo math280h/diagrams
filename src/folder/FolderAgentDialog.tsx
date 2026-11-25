@@ -121,8 +121,8 @@ const MOZILLA_POSITION_URL = 'https://github.com/mozilla/standards-positions/iss
 function Browsers({ or = false }: { or?: boolean }) {
   return (
     <>
-      <strong className="font-semibold text-foreground">Chrome</strong> {or ? 'or' : 'and'}{' '}
-      <strong className="font-semibold text-foreground">Microsoft Edge</strong>
+      <strong className="font-medium text-foreground">Chrome</strong> {or ? 'or' : 'and'}{' '}
+      <strong className="font-medium text-foreground">Microsoft Edge</strong>
     </>
   )
 }

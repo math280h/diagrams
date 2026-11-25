@@ -10,9 +10,13 @@ import { bundledSkillFiles, loadSkills, registerSkills } from './skills'
 const TOKEN = 'a'.repeat(43)
 const skills = loadSkills(bundledSkillFiles())
 
-function makeServer(port: number, callTool = vi.fn(async (): Promise<ToolOutcome> => ({ ok: true, content: [] }))) {
+function makeServer(
+  port: number,
+  callTool = vi.fn(async (): Promise<ToolOutcome> => ({ ok: true, content: [] })),
+  version = '1.2.3',
+) {
   const server = createAgentServer({
-    version: '1.2.3',
+    version,
     port,
     instructions: 'Use the tools.',
     token: () => TOKEN,
@@ -42,6 +46,15 @@ function freePort(): Promise<number> {
 }
 
 describe('agent server over MCP', () => {
+  it('reports the version of the app, also for a release preview', async () => {
+    for (const version of ['1.2.3', '0.3.0-beta.1', '0.1.5-preview.57']) {
+      const client = await inMemoryClient(makeServer(1, undefined, version).server)
+      expect(client.getServerVersion()).toMatchObject({ name: 'diagrams', version })
+    }
+    const client = await inMemoryClient(makeServer(1, undefined, 'dev').server)
+    expect(client.getServerVersion()?.version).toBe('0.0.0')
+  })
+
   it('lists every tool with its schema and annotations', async () => {
     const client = await inMemoryClient(makeServer(1).server)
     const { tools } = await client.listTools()
@@ -74,6 +87,20 @@ describe('agent server over MCP', () => {
     const result = await client.callTool({ name: 'get_diagram', arguments: {} })
     expect(result.isError).toBe(true)
     expect(JSON.stringify(result.content)).toContain('No node \\"Cache\\".')
+  })
+
+  it('passes the diagram settings on and refuses them as theme with the name of the new argument', async () => {
+    const { server, callTool } = makeServer(1)
+    const client = await inMemoryClient(server)
+    const settings = { fonts: 'inter', snap: false }
+    await client.callTool({ name: 'update_diagram', arguments: { settings } })
+    expect(callTool).toHaveBeenCalledWith('update_diagram', { settings }, expect.any(AbortSignal))
+
+    callTool.mockClear()
+    const result = await client.callTool({ name: 'update_diagram', arguments: { theme: settings } })
+    expect(result.isError).toBe(true)
+    expect(JSON.stringify(result.content)).toContain('in \\"settings\\"')
+    expect(callTool).not.toHaveBeenCalled()
   })
 
   it('serves the skills as resources and prompts', async () => {
