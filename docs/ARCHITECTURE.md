@@ -1360,6 +1360,13 @@ with snapdom, because Chromium gives only pixels.
 - Linked files sit outside the diagrams folder (for example a repository's `docs/`), so a diagram can change in the
   same commit as its code.
   - Open file links one (`electron/storage/linked-files.ts`); Save as a file links a copy.
+  - A file that the folder scan lists is never a linked file: open and Save as use its folder id
+    (`electron/storage/picked-files.ts`). Else the library shows the file two times. Main compares files by device and
+    file id, so letter case, `..`, links and junctions do not matter. At start, main takes such entries and second
+    entries of one file off the list, and keeps the files.
+  - A linked file without the `.diagram.json` suffix must be a diagram in a format of this app or a newer one. Any
+    `.json` file is in the open dialog. A `.diagram.json` file can hold any text, so that the library shows a damaged
+    file as it does in the folder.
   - Id: `link-` and a path hash; list in `linked-files.json` in the user data folder. Remove from the library only
     unlinks.
   - `file-queue.ts` serves both kinds. Watchers on linked folders and the focus rescan report git or editor changes.

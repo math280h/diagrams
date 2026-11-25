@@ -55,6 +55,7 @@ import { createDiagramFiles } from './storage/diagram-files'
 import { TrashError, writeFileAtomic } from './storage/file-queue'
 import { committedText } from './storage/git'
 import { createLinkedFiles, isLinkedId } from './storage/linked-files'
+import { createPickedFiles } from './storage/picked-files'
 import { createThemeFiles, watchThemeFolder } from './storage/theme-files'
 import { watchDiagramFolder, watchLinkedFiles } from './storage/watcher'
 import { checkUpdateRepository, repositoryFeed } from './update-repository'
@@ -267,7 +268,10 @@ async function start() {
   const themeWatcher = watchThemeFolder(themes, () => {
     void themes.list().then((sources) => rpc.emit('themes.changed', sources))
   })
-  const linked = createLinkedFiles(path.join(userData, 'linked-files.json'))
+  const linked = createLinkedFiles(path.join(userData, 'linked-files.json'), {
+    listedInFolder: async (linkedFiles) => (await files.idsOf(linkedFiles)).map((id) => id !== null),
+  })
+  const picked = createPickedFiles(files, linked)
   const linkedWatcher = watchLinkedFiles(linked, (change) => rpc.emit('files.changed', change))
   const linkedPath = (id: string) => {
     const file = linked.pathOf(id)
@@ -432,11 +436,13 @@ async function start() {
           properties: ['openFile', 'multiSelections'] as ('openFile' | 'multiSelections')[],
           filters: DIAGRAM_FILE_FILTERS,
         }
-        const picked = window ? await dialog.showOpenDialog(window, options) : await dialog.showOpenDialog(options)
-        if (picked.canceled) return []
-        const opened = await Promise.all(picked.filePaths.map((file) => linked.link(file)))
-        linkedWatcher.sync()
-        return opened
+        const chosen = window ? await dialog.showOpenDialog(window, options) : await dialog.showOpenDialog(options)
+        if (chosen.canceled) return []
+        try {
+          return await picked.open(chosen.filePaths)
+        } finally {
+          linkedWatcher.sync()
+        }
       },
       'files.saveAs': async ({ name, text }) => {
         const window = currentWindow()
@@ -445,11 +451,11 @@ async function start() {
           defaultPath: diagramFileName(name),
           filters: DIAGRAM_FILE_FILTERS,
         }
-        const picked = window ? await dialog.showSaveDialog(window, options) : await dialog.showSaveDialog(options)
-        if (picked.canceled || !picked.filePath) return null
-        const created = await linked.create(picked.filePath, text)
+        const chosen = window ? await dialog.showSaveDialog(window, options) : await dialog.showSaveDialog(options)
+        if (chosen.canceled || !chosen.filePath) return null
+        const saved = await picked.saveAs(chosen.filePath, text)
         linkedWatcher.sync()
-        return created
+        return saved
       },
       'files.show': async ({ id }) => {
         shell.showItemInFolder(linkedPath(id))
