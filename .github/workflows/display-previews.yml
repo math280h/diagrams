@@ -8,7 +8,6 @@ on:
       - 'public/**'
       - 'electron/render-*.ts'
       - 'actions/render/**'
-      - '.github/actions/display-previews/**'
       - 'scripts/template-files.mjs'
       - 'scripts/app-screens.mjs'
       - 'package.json'
@@ -75,10 +74,11 @@ jobs:
             cd base && node scripts/app-screens.mjs dist .app-screens 4181
           fi
       - name: Compare the images of both apps
-        uses: $/.github/actions/display-previews
+        uses: $/actions/render
         with:
           files: .diagram-previews/*.diagram.json
           theme: dark light
+          mode: compare
           app: node_modules/.bin/electron .
           base-app: base/node_modules/.bin/electron base
           base-root: base

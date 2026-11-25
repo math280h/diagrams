@@ -1608,16 +1608,13 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
   - `?raw=true` links work in private repositories for people who can read them.
   - One comment, found by a marker, updates at each push.
   - The token goes to git through `GIT_CONFIG_*` variables, not the command line; the log masks it.
-- `.github/actions/display-previews` runs the same `main.mjs` with the inputs `base-app`, `base-root`, `screens` and
-  `base-screens`. These inputs exist only for the previews of this repository, so the public action does not show
-  them.
 - `base-app`: both apps render every matched diagram, also untracked files. Only diagrams with different images stay.
   One runner and a fixed render time make an exact byte compare enough. A diagram that the base app cannot open gets a
   note in place of its old image. With no difference, the comment says so, to show that the check ran.
 - `base-root`: the base app renders the files at the same paths in that folder. Files on one side only show as new or
   removed. An app refuses a newer format, so without this input a format change gets no old images.
-- `.github/workflows/display-previews.yml` runs `.github/actions/display-previews` for a pull request from this
-  repository that changes drawing code, templates or dependencies. It builds the app of both commits. The base commit is the first parent of the merge
+- `.github/workflows/display-previews.yml` runs the action for a pull request from this repository that changes drawing
+  code, templates or dependencies. It builds the app of both commits. The base commit is the first parent of the merge
   commit, not `pull_request.base.sha`, which stays old when `main` moves. `scripts/template-files.mjs` of each commit
   writes each template as a diagram file in `.diagram-previews/` and `base/.diagram-previews/`, and the action renders
   each file in the Dark and the Light theme (`theme: dark light`). Template changes then show. A template gets new random ids at each build, so the script numbers the ids in order. Particle
