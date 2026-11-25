@@ -23,6 +23,10 @@ test('exports a PNG image and a diagram file', async ({ page }) => {
   const json = JSON.parse(await readFile(await (await jsonDownload).path(), 'utf8'))
   expect(json.version).toBe(DIAGRAM_VERSION)
   expect(json.nodes.length).toBeGreaterThan(5)
+  expect(Object.keys(json)[0]).toBe('$schema')
+  const schema = await page.request.get(new URL(json.$schema).pathname)
+  expect(schema.ok()).toBe(true)
+  expect((await schema.json()).properties.version.const).toBe(DIAGRAM_VERSION)
 })
 
 test('exports a Mermaid flowchart to copy or download', async ({ page, context }) => {

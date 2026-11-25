@@ -2,6 +2,7 @@ import type { FileChange, StoredFile } from '@/desktop/contract'
 import type { Diagram } from '@/model/schema'
 import { errorMessage } from '@/lib/error-message'
 import { migrate } from './migrations'
+import { withSchemaAddress } from './schema-address'
 import {
   diagramMeta,
   type DiagramMeta,
@@ -53,11 +54,11 @@ const DECIMALS = 100
 
 /**
  * Returns the text of a diagram file: indented JSON with numbers to two decimals, so that a change shows as a few lines
- * in a diff.
+ * in a diff. It starts with the `$schema` of the diagram, or with the schema address of the current format.
  */
 export function serializeDiagram(diagram: Diagram) {
   const rounded = JSON.stringify(
-    diagram,
+    withSchemaAddress(diagram),
     (_key, value: unknown) =>
       typeof value === 'number' && !Number.isInteger(value) ? Math.round(value * DECIMALS) / DECIMALS : value,
     2,
@@ -76,11 +77,18 @@ function withSortedKeys(value: unknown): unknown {
 }
 
 /**
- * Returns the content of a diagram file without the fields that change on a pan, a zoom, a measure or any save, with
- * the keys in a fixed order: a diagram that the app parses again has its keys in the order of the schema.
+ * Returns the content of a diagram file without `$schema` and the fields that change on a pan, a zoom, a measure or
+ * any save, with the keys in a fixed order: a diagram that the app parses again has its keys in the order of the schema.
  */
 function lastingContent(text: string): string {
-  const { viewport: _viewport, rev: _rev, updatedAt: _updatedAt, nodes, ...rest } = JSON.parse(text) as Diagram
+  const {
+    $schema: _schema,
+    viewport: _viewport,
+    rev: _rev,
+    updatedAt: _updatedAt,
+    nodes,
+    ...rest
+  } = JSON.parse(text) as Diagram
   return JSON.stringify(withSortedKeys({ ...rest, nodes: nodes.map(({ measured: _measured, ...node }) => node) }))
 }
 
@@ -89,8 +97,8 @@ function lastingContent(text: string): string {
  *
  * Reads are synchronous. The id of a diagram is its file name, so a copied file never saves under the id inside it.
  * Only the last save of a diagram sends `saved` or `save-failed`. A linked file and a file in a picked folder are
- * project files: a save that changes only the viewport, the save counter, the time or measured sizes does not write
- * them, when storage has the other content already.
+ * project files: a save that changes only the viewport, the save counter, the time, measured sizes or `$schema` does
+ * not write them, when storage has the other content already.
  */
 export function createCachedRepository(options: {
   location: StorageLocation

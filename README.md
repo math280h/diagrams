@@ -113,6 +113,13 @@ the app and hands the diagram over, and the copy in the browser stays. The app t
 under Websites in the app settings. A build from source handles `diagrams://` links only if you start it with
 `DIAGRAMS_REGISTER_PROTOCOL=1`.
 
+### Edit a diagram file by hand
+
+Each diagram file names the JSON Schema of its format in `$schema`, for example
+`https://draw.thias.dev/schemas/diagram-v21.json`, so VS Code and other editors check the file and complete its
+fields. Keep `$schema` and `version` in a file that you write by hand: the app reads the file in the format that
+`version` gives.
+
 ### Render from the command line
 
 The desktop app renders a diagram file to an image or a video without a window, for example to keep the images in a

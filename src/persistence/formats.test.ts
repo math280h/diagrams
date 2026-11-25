@@ -6,9 +6,12 @@ import { serializeDiagram } from './cached-repository'
 import { parseDiagramJson } from './library-actions'
 import { migrate, migrateElements, REWRITTEN_FIELDS } from './migrations'
 import { OLDEST_FORMAT, PREVIEW_FORMATS } from './release-formats'
+import { diagramSchemaPath, FIRST_PUBLISHED_FORMAT } from './schema-address'
 
 const FILES = import.meta.glob<unknown>('./formats/*.json', { eager: true, import: 'default' })
 const VERSIONS = Array.from({ length: DIAGRAM_VERSION - OLDEST_FORMAT + 1 }, (_, index) => OLDEST_FORMAT + index)
+const OLDEST_PUBLISHED = Math.max(FIRST_PUBLISHED_FORMAT, OLDEST_FORMAT)
+const PUBLISHED_VERSIONS = VERSIONS.filter((version) => version >= OLDEST_PUBLISHED)
 const HOW = 'See "Change the diagram format" in docs/ARCHITECTURE.md.'
 const NEW_IDENTITY = new Set(['id', 'rev', 'createdAt', 'updatedAt'])
 const FLOAT_TOLERANCE = 1e-9
@@ -81,6 +84,13 @@ describe('diagram formats', () => {
   it('describes the current format in the file of its version', () => {
     expect(z.toJSONSchema(diagramSchema), `The diagram format changed. ${HOW}`).toEqual(
       formatFile(`v${DIAGRAM_VERSION}.schema.json`),
+    )
+  })
+
+  it.each(PUBLISHED_VERSIONS)('publishes the JSON Schema of format %i for text editors', async (version) => {
+    const schema = version === DIAGRAM_VERSION ? z.toJSONSchema(diagramSchema) : formatFile(`v${version}.schema.json`)
+    await expect(`${JSON.stringify(schema, null, 2)}\n`, HOW).toMatchFileSnapshot(
+      `../../public${diagramSchemaPath(version)}`,
     )
   })
 

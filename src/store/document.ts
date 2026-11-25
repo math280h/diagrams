@@ -23,6 +23,7 @@ const SAVE_DELAY_MS = 400
 export function openDiagram(diagram: Diagram) {
   const { nodes, edges } = fromDiagram(diagram)
   useDoc.setState({
+    $schema: diagram.$schema,
     id: diagram.id,
     name: diagram.name,
     theme: diagram.theme,
@@ -214,6 +215,7 @@ function startSession(diagram: Diagram): Session {
     outside = null
     dismissNotice()
     restoreContent(merged)
+    useDoc.setState({ $schema: merged.$schema })
     lastSaved = ''
     save()
   }

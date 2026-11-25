@@ -3,6 +3,7 @@ import { createDiagram, createFlow } from '@/model/defaults'
 import type { Diagram } from '@/model/schema'
 import { createCachedRepository, serializeDiagram } from './cached-repository'
 import { TrashError, type RepositoryEvent, type StorageLocation } from './repository'
+import { DIAGRAM_SCHEMA_URL } from './schema-address'
 
 function diagram(name: string, patch: Partial<Diagram> = {}): Diagram {
   return { ...createDiagram(name), ...patch }
@@ -156,6 +157,24 @@ describe('createCachedRepository', () => {
     repository.save({ ...first, name: 'Renamed' })
     await repository.settled()
     expect(sink.write).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not write a linked file without a schema address again only to add the address', async () => {
+    const first = diagram('Hand-written', { id: 'link-2' })
+    const { repository, sink } = setup([
+      { id: 'link-2', text: JSON.stringify(first), path: '/repo/docs/b.diagram.json' },
+    ])
+    repository.save({ ...first, viewport: { x: 5, y: 5, zoom: 2 }, rev: first.rev + 1 })
+    await repository.settled()
+    expect(sink.write).not.toHaveBeenCalled()
+    repository.save({ ...first, name: 'Renamed' })
+    await repository.settled()
+    expect(sink.write).toHaveBeenCalledWith({
+      id: 'link-2',
+      text: expect.stringContaining(
+        `{\n  "$schema": "${DIAGRAM_SCHEMA_URL}",\n  "id": "link-2",\n  "name": "Renamed",`,
+      ),
+    })
   })
 
   it('does not write a file of a picked folder again when only the order of its keys changes', async () => {

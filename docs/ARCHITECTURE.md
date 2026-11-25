@@ -149,6 +149,7 @@ The visual system is in `DESIGN.md` at the repository root.
   - 18, optional: `delayMs` on flow steps and on their `parallel` targets.
   - 19: no theme `mode` (removed: the colour theme of each reader colours the canvas).
   - 20: `captionStyle` on flows (`bottom`), optional on flow steps.
+  - 21, optional: `$schema` (the address of the JSON Schema of a diagram file).
 - Groups are boundaries. `kind` points into `src/model/boundaries.ts`: AWS, Azure, Google Cloud, Kubernetes, general
   and custom kinds.
   - Each kind has a family (scope, logical, location, zone, network, subnet, security, runtime) that sets the line
@@ -489,6 +490,12 @@ Every format that a release wrote must open with no loss, until a new major vers
   the `version` of the source app).
 - A diagram keeps its format until the app saves a change (also a pan or zoom), so older apps elsewhere can still open
   it.
+- A diagram file starts with `$schema`, the address of the JSON Schema of its format (`public/schemas/diagram-v<N>.json`
+  on the website). Text editors use it to check and complete the files that people write by hand. The app writes the
+  address of the current format, or an address of the user. Browser storage keeps only an address of the user, and
+  share links keep none.
+- Data without `version` is format 1. If it has a field of a later format, such as `$schema` or theme `routeAround`,
+  the app asks for `version`, because the migration from format 1 can change its values.
 
 A format on `main` can reach a browser: the preview website deploys from `main`. Every `diagramSchema` change needs a
 new version, also for an optional field or enum value:
@@ -502,6 +509,8 @@ new version, also for an optional field or enum value:
    - `v<N>.json`: the Order system and Checkout flow templates; from format 12 also Event pipeline.
    - `v<N>.fields.json`: copies of these templates that hold each property, enum value, boolean value and union
      branch of the schema. `scripts/format-fields.ts` makes them, and the schema of the format accepts each copy.
+5. Run `pnpm test`. `src/persistence/formats.test.ts` writes `public/schemas/diagram-v<N>.json`. Files of format N name
+   this schema, so it stays, also after a new major version.
 
 `src/persistence/release-formats.ts` holds the rules of the releases:
 
@@ -512,13 +521,14 @@ new version, also for an optional field or enum value:
 
 The tests and checks fail when:
 
-- the schema differs from the current version file (`src/persistence/formats.test.ts`).
+- the schema differs from the current version file, or a schema in `public/schemas` differs from the version file of
+  its format (`src/persistence/formats.test.ts`).
 - a sample of a format from `OLDEST_FORMAT` does not open, or loses or changes a value outside `REWRITTEN_FIELDS`.
   The test opens, imports and saves each sample, and pastes its nodes. Pasted nodes also have a test in
   `src/editor/clipboard.test.ts`.
 - the samples of a format that a release can write do not fill its schema (`scripts/format-fields.test.ts`).
-- a change edits or deletes a sample on `main` (`scripts/release-formats.ts --base`, in the CI job "Release formats").
-  Add a new file for a new format or container.
+- a change edits or deletes a sample or a schema in `public/schemas` on `main` (`scripts/release-formats.ts --base`, in
+  the CI job "Release formats"). Add a new file for a new format or container.
 - a release of `RELEASE_MAJOR` wrote a format older than `OLDEST_FORMAT` (`scripts/release-formats.ts`). CI,
   `pnpm release:tag` and the Release workflow do this check. The Release workflow also runs the sample tests.
 
@@ -1109,7 +1119,8 @@ WebWorker library).
 
 - `scripts/service-worker.ts` writes the file plan of each build (`planAssetList`) to `assets/sw-assets-<hash>.json`
   (the hash names the build). Then it builds `sw.js` at the site root, one script with that path.
-- At install, the worker fetches the page, public files and precache (about 4 MB). Precache: the entry, its
+- At install, the worker fetches the page, public files and precache (about 4 MB). It does not fetch the diagram
+  format schemas in `public/schemas`, because only text editors use them. Precache: the entry, its
   on-demand chunks (editor, Present, template and share pages), their static imports and WOFF2 fonts.
 - Then the installed app asks the worker to fetch the rest (icon sets, layout engine, Mermaid, video export; about
   13 MB in total), unless the browser saves data.

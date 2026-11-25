@@ -86,6 +86,14 @@ describe('sampleProblems', () => {
     ])
   })
 
+  it('keeps each published format schema as it is, also in a new major version', () => {
+    const changes = ['D\tpublic/schemas/diagram-v21.json', 'M\tpublic/schemas/diagram-v22.json']
+    expect(sampleProblems(changes, 30, true)).toEqual([
+      expect.stringContaining('deletes public/schemas/diagram-v21.json'),
+      expect.stringContaining('changes public/schemas/diagram-v22.json'),
+    ])
+  })
+
   it('refuses a change to a backup sample', () => {
     expect(sampleProblems(['M\tsrc/persistence/backups/v19.zip'], 6, false)).toEqual([
       expect.stringContaining('changes src/persistence/backups/v19.zip'),

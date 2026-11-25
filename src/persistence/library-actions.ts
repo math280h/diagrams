@@ -11,6 +11,7 @@ import { forgetVersions } from '@/store/versions'
 import { loadDiagramOrNull, repository } from './active-repository'
 import { DiagramFormatError, migrate } from './migrations'
 import type { DiagramMeta, RemoveOptions, RemoveResult, SaveResult } from './repository'
+import { withSchemaAddress } from './schema-address'
 
 export function withFreshIdentity(diagram: Diagram, name = diagram.name): Diagram {
   const now = Date.now()
@@ -124,9 +125,9 @@ function removeFromRepository(id: string, options: RemoveOptions | undefined): P
   })
 }
 
-/** Returns the text of an exported diagram file. */
+/** Returns the text of an exported diagram file. It starts with `$schema`, as {@link withSchemaAddress} gives it. */
 export function diagramFileText(diagram: Diagram): string {
-  return JSON.stringify(diagram, null, 2)
+  return JSON.stringify(withSchemaAddress(diagram), null, 2)
 }
 
 export function exportDiagramJson(diagram: Diagram) {

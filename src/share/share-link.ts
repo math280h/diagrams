@@ -60,9 +60,12 @@ function readVarint(bytes: Uint8Array): { value: number; length: number } {
   throw new ShareLinkError(INCOMPLETE)
 }
 
-/** Returns the JSON that a share link carries for a diagram: its content without the local id, timestamps and save counter. */
+/**
+ * Returns the JSON that a share link carries for a diagram: its content without the schema address, the local id,
+ * timestamps and save counter.
+ */
 export function linkJson(diagram: Diagram): string {
-  const { id: _id, rev: _rev, createdAt: _createdAt, updatedAt: _updatedAt, ...content } = diagram
+  const { $schema: _schema, id: _id, rev: _rev, createdAt: _createdAt, updatedAt: _updatedAt, ...content } = diagram
   return JSON.stringify(withImplicitIds(content))
 }
 
