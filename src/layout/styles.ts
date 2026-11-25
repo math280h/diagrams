@@ -1,7 +1,7 @@
 import type { ELK, ElkExtendedEdge, LayoutOptions } from 'elkjs/lib/elk-api'
 import type { XY } from '@/model/schema'
 import { graphvizPositions, type GraphvizRunner } from './graphviz'
-import { isGraphvizEngine, type LayoutRequest, type LayoutStyle } from './types'
+import { ELK_DIRECTIONS, GRAPHVIZ_STYLE_ENGINES, isGraphvizStyle, type LayoutRequest, type LayoutStyle } from './types'
 
 export interface LevelBox {
   id: string
@@ -24,7 +24,7 @@ const GRID_ASPECT = 1.6
 function treeOptions(request: LayoutRequest): LayoutOptions {
   return {
     'elk.algorithm': 'mrtree',
-    'elk.direction': request.direction,
+    'elk.direction': ELK_DIRECTIONS[request.direction],
     'elk.spacing.nodeNode': String(Math.max(BOX_GAP_PX, request.layerGapPx / 2)),
   }
 }
@@ -116,7 +116,8 @@ export async function placeLevel(
   center: string | null,
   graphviz: GraphvizRunner,
 ): Promise<Map<string, XY>> {
-  if (isGraphvizEngine(style)) return graphvizPositions(style, boxes, links, request, center, graphviz)
+  if (isGraphvizStyle(style))
+    return graphvizPositions(GRAPHVIZ_STYLE_ENGINES[style], boxes, links, request, center, graphviz)
   if (style === 'tree') return runElk(elk, treeOptions(request), boxes, links)
   // ELK radial accepts only a tree with edges that point away from its root.
   if (style === 'hub') return runElk(elk, HUB_OPTIONS, boxes, hubTree(boxes, links, center))

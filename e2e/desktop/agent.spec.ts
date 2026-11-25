@@ -76,7 +76,7 @@ test('an agent arranges a hub around the node that it names', async ({ window, m
   expect(issues.filter((issue) => issue.rule === 'overlap')).toEqual([])
 })
 
-test('an agent arranges a ring with Graphviz circo in the desktop app', async ({ window, mcp }) => {
+test('an agent arranges a ring with graphviz-circle in the desktop app', async ({ window, mcp }) => {
   await callTool(mcp, 'create_diagram', { name: 'Ring' })
   const peers = ['Node A', 'Node B', 'Node C', 'Node D', 'Node E', 'Node F']
   await callTool(mcp, 'add_elements', {
@@ -85,7 +85,10 @@ test('an agent arranges a ring with Graphviz circo in the desktop app', async ({
   })
   await expect(window.locator('[data-editor-canvas] .react-flow__node')).toHaveCount(peers.length)
 
-  await callTool(mcp, 'layout_diagram', { layout: 'circo' })
+  await expect(callTool(mcp, 'layout_diagram', { layout: 'circo' })).rejects.toThrow(
+    'Use the layout "graphviz-circle", which runs circo.',
+  )
+  await callTool(mcp, 'layout_diagram', { layout: 'graphviz-circle' })
   const { json } = await callTool(mcp, 'get_diagram', {})
   const nodes = json.nodes as { x: number; y: number; w: number; h: number }[]
   const centres = nodes.map((node) => ({ x: node.x + node.w / 2, y: node.y + node.h / 2 }))

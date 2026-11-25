@@ -1,3 +1,4 @@
+import ELK from 'elkjs/lib/elk.bundled.js'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from '@/lib/zod'
 import type { IconSet } from '@/canvas/icons/library'
@@ -15,6 +16,9 @@ import { closeDiagramSession, openDiagram, openDiagramId, openDiagramSession } f
 import { resetHistory, undo, useHistory } from '@/store/history'
 import { TEMPLATES } from '@/templates'
 import { sampleTrace } from '@/import/trace-sample'
+import { computeLayout } from '@/layout/engine'
+import { graphvizWasm, type GraphvizRunner } from '@/layout/graphviz'
+import type { GraphvizEngine, LayoutStyle } from '@/layout/types'
 import type { HandlerContext } from './context'
 import { HANDLERS } from './handlers'
 import { runAgentTool } from './runtime'
@@ -1010,6 +1014,83 @@ describe('runAgentTool', () => {
   })
 })
 
+describe('layout directions', () => {
+  const LAYOUT_TOOLS = ['add_elements', 'layout_diagram'] as const
+  const twoNodes = {
+    nodes: [
+      { ref: 'api', label: 'API' },
+      { ref: 'db', label: 'DB' },
+    ],
+    edges: [{ from: 'api', to: 'db' }],
+  }
+
+  function runWithDirections(directions: string[]) {
+    const recording = () => {
+      const ctx = context()
+      return {
+        ...ctx,
+        layout: (...args: Parameters<HandlerContext['layout']>) => {
+          directions.push(args[2])
+          return ctx.layout(...args)
+        },
+      }
+    }
+    return (tool: ToolName, args: unknown) => runAgentTool(tool, args, new AbortController().signal, recording)
+  }
+
+  it('lists the lowercase directions in the schema of each layout tool', () => {
+    for (const tool of LAYOUT_TOOLS) {
+      const { properties } = z.toJSONSchema(TOOL_DEFINITIONS[tool].input, { io: 'input' })
+      expect(properties?.direction, tool).toMatchObject({ enum: ['right', 'down', 'left', 'up'] })
+    }
+  })
+
+  it('gives each direction to the layout, with right as the default', async () => {
+    const directions: string[] = []
+    const run = runWithDirections(directions)
+    await call('create_diagram', { name: 'Shop' })
+    expect(await run('add_elements', twoNodes)).toMatchObject({ ok: true })
+    expect(await run('add_elements', { ...twoNodes, direction: 'down' })).toMatchObject({ ok: true })
+    for (const direction of ['right', 'down', 'left', 'up']) {
+      expect(await run('layout_diagram', { direction })).toMatchObject({ ok: true })
+    }
+    expect(await run('layout_diagram', { layout: 'lanes' })).toMatchObject({ ok: true })
+    expect(directions).toEqual(['right', 'down', 'right', 'down', 'left', 'up', 'right'])
+  })
+
+  it('refuses an uppercase direction and names the lowercase direction', async () => {
+    const directions: string[] = []
+    const run = runWithDirections(directions)
+    await call('create_diagram', { name: 'Shop' })
+    const calls = [
+      ['add_elements', 'RIGHT', 'right'],
+      ['add_elements', 'LEFT', 'left'],
+      ['layout_diagram', 'DOWN', 'down'],
+      ['layout_diagram', 'UP', 'up'],
+    ] as const
+    for (const [tool, direction, lowercase] of calls) {
+      const outcome = await run(tool, { ...twoNodes, direction })
+      expect(outcome.ok, `${tool} ${direction}`).toBe(false)
+      expect(outcome.ok ? '' : outcome.message).toContain(
+        `Write the direction in lowercase: "${lowercase}", not "${direction}". The directions are right, down, left, up.`,
+      )
+    }
+    expect(directions).toEqual([])
+    expect(useDoc.getState().nodes).toEqual([])
+  })
+
+  it('gives the schema error for a value that is not a direction', async () => {
+    await call('create_diagram', { name: 'Shop' })
+    for (const tool of LAYOUT_TOOLS) {
+      const outcome = await runWithDirections([])(tool, { ...twoNodes, direction: 'sideways' })
+      expect(outcome.ok, tool).toBe(false)
+      const message = outcome.ok ? '' : outcome.message
+      expect(message).toContain('direction')
+      expect(message).not.toContain('lowercase')
+    }
+  })
+})
+
 describe('agent changes that end after the editor moved on', () => {
   function gatedContext(signal = new AbortController().signal) {
     let release: () => void = () => undefined
@@ -1183,5 +1264,96 @@ describe('changes that do not reach storage', () => {
       'The diagram file could not go to the trash (No trash on this drive.), so the diagram and its file stay.',
     )
     expect(repository().load(diagramId)?.name).toBe('Shop')
+  })
+})
+
+describe('layout names', () => {
+  const GRAPHVIZ_LAYOUTS = [
+    ['graphviz-layers', 'dot'],
+    ['graphviz-spring', 'neato'],
+    ['graphviz-force', 'fdp'],
+    ['graphviz-circle', 'circo'],
+    ['graphviz-radial', 'twopi'],
+    ['graphviz-packed', 'osage'],
+  ] as const
+  const ring = {
+    nodes: ['A', 'B', 'C', 'D'].map((label) => ({ ref: label, label })),
+    edges: [
+      { from: 'A', to: 'B' },
+      { from: 'B', to: 'C' },
+      { from: 'C', to: 'D' },
+      { from: 'D', to: 'A' },
+    ],
+  }
+  const elk = new ELK()
+
+  function runWithEngines(styles: (LayoutStyle | undefined)[], engines: GraphvizEngine[]) {
+    const recordingRunner: GraphvizRunner = (dot, engine) => {
+      engines.push(engine)
+      return graphvizWasm(dot, engine)
+    }
+    const recording = () => ({
+      ...context(),
+      layout: async (...[nodes, edges, direction, choice]: Parameters<HandlerContext['layout']>) => {
+        styles.push(choice?.style)
+        await computeLayout(
+          elk,
+          {
+            nodes: nodes.map((node) => ({ id: node.id, width: 216, height: 60, minWidth: 0 })),
+            edges: edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target })),
+            direction,
+            layerGapPx: 120,
+            style: choice?.style ?? 'flow',
+          },
+          recordingRunner,
+        )
+        return { nodes, edges }
+      },
+    })
+    return (args: unknown) => runAgentTool('layout_diagram', args, new AbortController().signal, recording)
+  }
+
+  it('lists the layouts by their look in the schema', () => {
+    const { properties } = z.toJSONSchema(TOOL_DEFINITIONS.layout_diagram.input, { io: 'input' })
+    expect(properties?.layout).toMatchObject({
+      enum: ['flow', 'tree', 'hub', 'network', 'grid', 'lanes', ...GRAPHVIZ_LAYOUTS.map(([layout]) => layout)],
+    })
+  })
+
+  it.each(GRAPHVIZ_LAYOUTS)('lays out with %s through the Graphviz engine %s', async (layout, engine) => {
+    await call('create_diagram', { name: 'Ring' })
+    await call('add_elements', ring)
+    const styles: (LayoutStyle | undefined)[] = []
+    const engines: GraphvizEngine[] = []
+    expect(await runWithEngines(styles, engines)({ layout })).toMatchObject({ ok: true })
+    expect(styles).toEqual([layout])
+    expect(engines.length).toBeGreaterThan(0)
+    expect(new Set(engines)).toEqual(new Set([engine]))
+  })
+
+  it.each(GRAPHVIZ_LAYOUTS.map(([layout, engine]) => [engine, layout] as const))(
+    'refuses the engine name %s and names the layout %s',
+    async (engine, layout) => {
+      await call('create_diagram', { name: 'Ring' })
+      await call('add_elements', ring)
+      const styles: (LayoutStyle | undefined)[] = []
+      const engines: GraphvizEngine[] = []
+      const outcome = await runWithEngines(styles, engines)({ layout: engine })
+      expect(outcome.ok).toBe(false)
+      expect(outcome.ok ? '' : outcome.message).toContain(
+        `"${engine}" is a Graphviz engine, not a layout. Use the layout "${layout}", which runs ${engine}.`,
+      )
+      expect(styles).toEqual([])
+      expect(engines).toEqual([])
+    },
+  )
+
+  it('gives the schema error for a value that is not a layout', async () => {
+    await call('create_diagram', { name: 'Ring' })
+    const outcome = await runWithEngines([], [])({ layout: 'spiral' })
+    expect(outcome.ok).toBe(false)
+    const message = outcome.ok ? '' : outcome.message
+    expect(message).toContain('layout')
+    expect(message).not.toContain('Graphviz engine')
   })
 })
