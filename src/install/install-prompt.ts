@@ -1,7 +1,8 @@
 import { create } from 'zustand'
-import { createJSONStorage, persist } from 'zustand/middleware'
+import { persist } from 'zustand/middleware'
 import { isDesktop } from '@/desktop/bridge'
 import { browserDeviceKind } from '@/lib/device'
+import { localPersistStorage } from '@/lib/persist-storage'
 
 /** The event of Chromium browsers that offers to install the website. The DOM library of TypeScript does not have it. */
 interface BeforeInstallPromptEvent extends Event {
@@ -25,7 +26,7 @@ interface InstallIntro {
 const useInstallIntro = create<InstallIntro>()(
   persist((): InstallIntro => ({ hidden: false }), {
     name: 'dg:install-intro',
-    storage: createJSONStorage(() => localStorage),
+    storage: localPersistStorage(),
   }),
 )
 
