@@ -99,6 +99,15 @@ export function allOpaque(pixels: Uint8Array | Uint8ClampedArray): boolean {
   return true
 }
 
+/** Returns the share of the BGRA or RGBA pixels with the full alpha of 255, from 0 to 1, or 0 for no pixels. */
+export function opaqueShare(pixels: Uint8Array | Uint8ClampedArray): number {
+  const count = pixels.length / 4
+  if (count === 0) return 0
+  let opaque = 0
+  for (let i = 3; i < pixels.length; i += 4) if (pixels[i] === 255) opaque += 1
+  return opaque / count
+}
+
 /** Returns a copy of premultiplied BGRA pixels as RGBA pixels with straight alpha, the form of `ImageData`. */
 export function bgraToRgba(pixels: Uint8Array): Uint8Array {
   const out = new Uint8Array(pixels.length)

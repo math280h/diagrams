@@ -1225,10 +1225,11 @@ with snapdom, because Chromium gives only pixels.
 - `NativeImage` bitmaps are BGRA with premultiplied alpha. Video frames go to the renderer as RGBA with straight alpha,
   as `ImageData` expects.
 - After a GPU process restart, the capture window can paint frames with the marker and a fully transparent stage. A
-  GIF then got blank frames on a macOS runner with two apps on the virtual GPU. Thus a frame counts only when no GPU
-  process restart occurs during its capture and, on an opaque background, each pixel is opaque. Otherwise the main
-  process renders the moment again in a new capture window, up to 3 times, and then fails the capture. It also does
-  not use a window again after a GPU process restart.
+  GIF then got blank frames on a macOS runner with two apps on the virtual GPU. Thus on an opaque background, a frame
+  counts only when at least half of its pixels are opaque. A restart alone does not spoil a frame, and edge pixels
+  can be soft. On a transparent background, a frame counts only when no GPU process restart occurs during its
+  capture. Otherwise the main process renders the moment again in a new capture window, up to 3 times, and then
+  fails the capture. It also does not use a window again after a GPU process restart.
 - When a native image capture fails, the stage session uses snapdom. When a video frame fails, the export stops.
 
 ### Storage
