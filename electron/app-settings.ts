@@ -2,7 +2,13 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { z } from 'zod'
 import { repositoryName, websiteOrigin } from '@/desktop/build-config'
-import { AGENT_WINDOW_MODES, type AgentWindowMode, type AppSettings, type OpenAtLogin } from '@/desktop/contract'
+import {
+  AGENT_WINDOW_MODES,
+  type AgentWindowMode,
+  type AppSettings,
+  type OpenAtLogin,
+  type TrayHost,
+} from '@/desktop/contract'
 
 export const APP_SETTINGS_FILE = 'app-settings.json'
 
@@ -149,11 +155,13 @@ export type AppSettingsStore = ReturnType<typeof createAppSettings>
  * Returns the settings for the renderer.
  *
  * @param openAtLogin - The state that the system keeps, not the stored settings.
+ * @param trayHost - The state that the system reports.
  */
 export function publicSettings(
   { keepRunning, agentWindow, websites, shareWebsite }: StoredSettings,
   openAtLogin: OpenAtLogin,
+  trayHost: TrayHost,
 ): AppSettings {
   const share = shareWebsite !== null && websites.includes(shareWebsite) ? shareWebsite : websites[0]!
-  return { keepRunning, openAtLogin, agentWindow, websites, shareWebsite: share }
+  return { keepRunning, openAtLogin, agentWindow, trayHost, websites, shareWebsite: share }
 }
