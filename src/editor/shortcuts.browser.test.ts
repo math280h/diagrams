@@ -6,7 +6,8 @@ import type { Engine } from '@/engine/engine'
 import { DEFAULT_THEME, createFlow } from '@/model/defaults'
 import { PRESET_BY_ID } from '@/model/presets'
 import type { DiagramNode } from '@/model/types'
-import { selectOnly, setName } from '@/store/actions'
+import { runMenuEdit } from '@/desktop/menu-edit'
+import { deleteSelection, selectOnly, setName } from '@/store/actions'
 import { useDoc } from '@/store/doc-store'
 import { resetHistory } from '@/store/history'
 import { setUi, useUi } from '@/store/ui-store'
@@ -335,5 +336,121 @@ describe('editor shortcuts', () => {
     press('a', { ctrlKey: true })
     clipboard('copy')
     expect(selectedCount()).toBe(0)
+  })
+})
+
+describe('edit commands of the menu bar', () => {
+  const nodeIds = () => useDoc.getState().nodes.map((node) => node.id)
+
+  function textTargets() {
+    const editable = inBody(document.createElement('div'))
+    editable.contentEditable = 'true'
+    const dialog = inBody(document.createElement('div'))
+    dialog.setAttribute('role', 'dialog')
+    const inDialog = document.createElement('button')
+    dialog.append(inDialog)
+    const menu = inBody(document.createElement('div'))
+    menu.setAttribute('role', 'menu')
+    const inMenu = document.createElement('div')
+    inMenu.tabIndex = -1
+    menu.append(inMenu)
+    return [
+      inBody(document.createElement('input')),
+      inBody(document.createElement('textarea')),
+      inBody(document.createElement('select')),
+      editable,
+      inDialog,
+      inMenu,
+    ]
+  }
+
+  beforeEach(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+  })
+
+  it('runs undo, redo, select all and delete on the canvas', () => {
+    setName('Renamed')
+    expect(runMenuEdit('undo')).toBe(true)
+    expect(useDoc.getState().name).toBe('Start')
+    expect(runMenuEdit('redo')).toBe(true)
+    expect(useDoc.getState().name).toBe('Renamed')
+    expect(runMenuEdit('select-all')).toBe(true)
+    expect(selectedCount()).toBe(2)
+    expect(runMenuEdit('delete')).toBe(true)
+    expect(nodeIds()).toEqual([])
+  })
+
+  it('selects all steps and deletes the selected steps while the step list has the focus', () => {
+    const flow = { ...createFlow(), steps: [a, b].map((node) => createStep({ kind: 'node', id: node.id })) }
+    useDoc.setState({ flows: [flow] })
+    setUi({ flowPanelOpen: true, activeFlowId: flow.id, activePathId: null, selectedStepIds: [] })
+    const list = inBody(document.createElement('div'))
+    list.dataset.stepList = ''
+    const row = document.createElement('button')
+    list.append(row)
+    row.focus()
+
+    expect(runMenuEdit('select-all')).toBe(true)
+    expect(useUi.getState().selectedStepIds).toEqual(flow.steps.map((step) => step.id))
+    expect(runMenuEdit('delete')).toBe(true)
+    expect(useDoc.getState().flows[0]!.steps).toEqual([])
+    expect(nodeIds()).toEqual([a.id, b.id])
+  })
+
+  it('leaves each command to the system while a text field, a dialog or a menu has the focus', () => {
+    setName('Renamed')
+    selectOnly([a.id])
+    for (const target of textTargets()) {
+      target.focus()
+      expect(document.activeElement).toBe(target)
+      for (const command of ['undo', 'redo', 'select-all', 'delete'] as const) {
+        expect(runMenuEdit(command), `${command} in ${target.tagName}`).toBe(false)
+      }
+    }
+    expect(useDoc.getState().name).toBe('Renamed')
+    expect(selectedCount()).toBe(1)
+    expect(nodeIds()).toEqual([a.id, b.id])
+  })
+
+  it('leaves each command to the system while a version preview covers the canvas, and without an editor', () => {
+    setName('Renamed')
+    useVersions.setState({ previewId: 'v1' })
+    expect(runMenuEdit('undo')).toBe(false)
+    useVersions.setState({ previewId: null })
+    act(() => root.unmount())
+    root = createRoot(container)
+    expect(runMenuEdit('undo')).toBe(false)
+    expect(useDoc.getState().name).toBe('Renamed')
+  })
+
+  it('gives each edit key one effect: the canvas takes the key, or the key goes on to the menu bar', () => {
+    setName('Renamed')
+    selectOnly([b.id])
+    deleteSelection()
+    expect(press('z', { metaKey: true }).defaultPrevented).toBe(true)
+    expect(nodeIds()).toEqual([a.id, b.id])
+    expect(useDoc.getState().name).toBe('Renamed')
+
+    const input = inBody(document.createElement('input'))
+    input.focus()
+    const selected = selectedCount()
+    for (const init of [{ key: 'z' }, { key: 'z', shiftKey: true }, { key: 'a' }]) {
+      expect(press(init.key, { metaKey: true, ...init }, input).defaultPrevented).toBe(false)
+    }
+    expect(runMenuEdit('undo')).toBe(false)
+    expect(nodeIds()).toEqual([a.id, b.id])
+    expect(selectedCount()).toBe(selected)
+  })
+
+  it('leaves the other keys of the menu bar without a change, so that only the menu bar runs them', () => {
+    selectOnly([a.id])
+    const before = { doc: useDoc.getState(), ui: useUi.getState() }
+    for (const key of ['n', 'o', ',', 'w', 'q', 'h', 'm', 'c', 'x', 'v']) {
+      expect(press(key, { metaKey: true }).defaultPrevented, key).toBe(false)
+    }
+    expect(press('v', { metaKey: true, altKey: true, shiftKey: true }).defaultPrevented).toBe(false)
+    expect(press('f', { metaKey: true, ctrlKey: true }).defaultPrevented).toBe(false)
+    expect(useDoc.getState()).toBe(before.doc)
+    expect(useUi.getState()).toBe(before.ui)
   })
 })

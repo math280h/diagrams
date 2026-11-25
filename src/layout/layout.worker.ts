@@ -1,6 +1,7 @@
 import ELK from 'elkjs/lib/elk-api'
 import elkWorkerUrl from 'elkjs/lib/elk-worker.min.js?url'
 import { errorMessage } from '@/lib/error-message'
+import { FileLoadError, isFileLoadError, workerError } from '@/new-version/file-load'
 import { computeLayout } from './engine'
 import { graphvizWasm, type GraphvizRunner } from './graphviz'
 import type { GraphvizEngine, LayoutRequest, LayoutResponse } from './types'
@@ -18,7 +19,8 @@ export type LayoutWorkerRequest =
 
 export type LayoutWorkerReply =
   | { kind: 'layout'; id: number; response: LayoutResponse }
-  | { kind: 'layout'; id: number; error: string }
+  /** `fileMissing` is true when a file of the layout engine did not load. */
+  | { kind: 'layout'; id: number; error: string; fileMissing: boolean }
   | { kind: 'graphviz'; call: number; dot: string; engine: GraphvizEngine }
 
 interface WorkerScope {
@@ -27,7 +29,23 @@ interface WorkerScope {
 }
 
 const scope = self as unknown as WorkerScope
-const elk = new ELK({ workerUrl: elkWorkerUrl })
+let elkNotLoaded: (error: Error) => void = () => undefined
+const elkFailure = new Promise<never>((_resolve, reject) => {
+  elkNotLoaded = reject
+})
+elkFailure.catch(() => undefined)
+const elk = new ELK({
+  workerUrl: elkWorkerUrl,
+  workerFactory: (url) => {
+    const worker = new Worker(url ?? elkWorkerUrl)
+    // elkjs does not reject its calls when the script of its worker does not load.
+    worker.addEventListener('error', (event) => {
+      const error = workerError(event, 'The ELK worker stopped.', 'The ELK worker did not load.')
+      if (error instanceof FileLoadError) elkNotLoaded(error)
+    })
+    return worker
+  },
+})
 const calls = new Map<number, { resolve: (plain: string) => void; reject: (error: Error) => void }>()
 let nextCall = 0
 
@@ -48,8 +66,9 @@ scope.onmessage = (event) => {
     return
   }
   const { id, request } = message
-  computeLayout(elk, request, message.graphvizOnPage ? graphvizOnPage : graphvizWasm).then(
+  Promise.race([computeLayout(elk, request, message.graphvizOnPage ? graphvizOnPage : graphvizWasm), elkFailure]).then(
     (response) => scope.postMessage({ kind: 'layout', id, response }, []),
-    (error: unknown) => scope.postMessage({ kind: 'layout', id, error: errorMessage(error) }, []),
+    (error: unknown) =>
+      scope.postMessage({ kind: 'layout', id, error: errorMessage(error), fileMissing: isFileLoadError(error) }, []),
   )
 }

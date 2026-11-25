@@ -2,6 +2,7 @@ import { desktopApi, isDesktop } from '@/desktop/bridge'
 import { errorMessage } from '@/lib/error-message'
 import { boundaryKind, boundaryKindLabel } from '@/model/boundaries'
 import { estimateSize, sortParentsFirst } from '@/model/graph'
+import { workerError, workerReplyError } from '@/new-version/file-load'
 import type { DiagramEdge, DiagramNode, GroupNodeType } from '@/model/types'
 import { withRoute } from './apply-layout'
 import { keepPinned } from './pinned'
@@ -66,11 +67,12 @@ function layoutWorker(): Worker {
     const waiting = pending.get(reply.id)
     if (!waiting) return
     pending.delete(reply.id)
-    if ('error' in reply) waiting.reject(new Error(reply.error))
+    if ('error' in reply) waiting.reject(workerReplyError(reply.error, reply.fileMissing))
     else waiting.resolve(reply.response)
   }
   created.onerror = (event) => {
-    for (const waiting of pending.values()) waiting.reject(new Error(event.message || 'The layout worker stopped.'))
+    const error = workerError(event, 'The layout worker stopped.', 'The layout worker did not load.')
+    for (const waiting of pending.values()) waiting.reject(error)
     pending.clear()
     created.terminate()
     if (worker === created) worker = null

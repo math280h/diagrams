@@ -52,6 +52,8 @@ export function startCaptureWindow(): () => void {
     'render.file': refuse,
     'app.flush': async () => ({ unsaved: null }),
     'app.connectAgent': refuse,
+    'menu.command': refuse,
+    'menu.edit': refuse,
     'capture.mount': async ({ stage, viewportScale }) => {
       mounted?.dispose()
       mounted = null

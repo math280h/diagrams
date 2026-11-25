@@ -16,6 +16,7 @@ import { errorMessage } from '@/lib/error-message'
 import { isCaptureWindow, isDesktop } from './desktop/bridge'
 import { watchInstallPrompt } from './install/install-prompt'
 import { registerServiceWorker } from './install/register-service-worker'
+import { watchNewVersions } from './new-version/new-version'
 import { bootstrapStorage } from './persistence/bootstrap'
 import { captureUncaughtErrors } from './reports/recent-problems'
 import { router } from './router'
@@ -25,6 +26,7 @@ import { startThemeFiles } from './themes/sources'
 async function startApp() {
   captureUncaughtErrors()
   if (!isDesktop()) {
+    watchNewVersions()
     watchInstallPrompt()
     if (import.meta.env.PROD) registerServiceWorker()
   }

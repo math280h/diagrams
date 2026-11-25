@@ -1,3 +1,4 @@
+import { workerError, workerReplyError } from '@/new-version/file-load'
 import type { LinkJob } from './link-job'
 import type { LinkReply } from './link-worker'
 
@@ -7,8 +8,8 @@ async function run(job: LinkJob): Promise<Uint8Array> {
   try {
     return await new Promise<Uint8Array>((resolve, reject) => {
       worker.onmessage = (event: MessageEvent<LinkReply>) =>
-        event.data.ok ? resolve(event.data.bytes) : reject(new Error(event.data.message))
-      worker.onerror = (event) => reject(new Error(event.message || 'The link codec stopped.'))
+        event.data.ok ? resolve(event.data.bytes) : reject(workerReplyError(event.data.message))
+      worker.onerror = (event) => reject(workerError(event, 'The link codec stopped.', 'The link codec did not load.'))
       worker.postMessage(job, [])
     })
   } finally {

@@ -383,6 +383,7 @@ src/
   templates/    starter diagrams
   components/   shadcn (Base UI) primitives in ui/
   lib/          small shared helpers: errors, queues, idle mount, reduced motion
+  new-version/  the reload of a website tab after a deploy removed the files of its build
   styles/       canvas CSS and the colour variables of the default themes
 e2e/            Playwright tests for the website, and for the desktop app in e2e/desktop
 scripts/        icon catalog and build (icons/), app icon, README image, desktop dev runner, third-party licence and release notes plugins, release signing
@@ -1115,11 +1116,22 @@ WebWorker library).
   offline. A navigation waits 4 s for the network, so a new version shows at once when online.
 - A new worker waits until no old page is open and the old worker ends its work. Then it deletes the old page cache
   and hashed files outside the new build.
+- While a new worker waits, the installed app asks it to fetch every file of its build too. A page that reloaded into
+  the new build then works offline before the old worker ends.
 - `e2e/offline.spec.ts` builds and serves the website, then checks:
   - a tab without a worker;
   - the installed app without internet, also Tidy up after the full fetch;
   - a new version while online;
+  - the full fetch of a new version while its worker waits;
   - the clean-up after an update.
+
+### New version in an open tab
+
+A deploy removes the files of the old build, so an open tab cannot load its chunks, workers, fonts and icon sets
+(`src/new-version`). When such a load fails and the server does not have the entry script of the tab, the app saves the
+open diagram and offers a reload. A page change reloads at once, and a tab that gets the same build again shows an
+error and does not reload. A web page export also stops then, because the player files have no hash and come from
+the new build.
 
 ### Folder on the website
 
@@ -1242,6 +1254,10 @@ The React app in Electron, plus file storage, agent control, the website handoff
 - A fixed 44 px drag strip tops every page, also without a header. Interactive elements and dialogs do not drag.
 - Back and forward: app buttons, Alt with arrow keys (Command with brackets on macOS), mouse side buttons (no browser
   buttons).
+- macOS menu bar (`electron/app-menu.ts`): app actions, reload and page zoom in each build, but developer tools only on
+  the dev server. Reload saves the diagram first, as a window close does. Chromium gives a key to the page first, so the
+  edit items ask the canvas first and use the system command only in a text field. Cut, copy and paste keep the
+  Electron roles, because these send the clipboard events that the canvas reads.
 - `pnpm app-icon` renders `build/icon.svg` to `build/icon.png` (1024 px), `build/icon.ico` (16 to 256 px) and the
   macOS menu bar icon `build/trayTemplate.png`.
   - Unpackaged app: shows the icon on the window and macOS dock (Electron otherwise shows its own).

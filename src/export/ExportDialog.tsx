@@ -27,6 +27,7 @@ import { setUi, useUi, type ExportKind } from '@/store/ui-store'
 import { Choice, Field, Segmented, SliderField, SwitchField } from '@/editor/inspector/controls'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { reportError } from '@/store/problem-store'
+import { useReloadHold } from '@/new-version/new-version'
 import { diagramBounds } from './bounds'
 import { HtmlExport } from './HtmlExport'
 import { LinkExport } from './LinkExport'
@@ -149,6 +150,7 @@ function ImageExport({ onClose }: { onClose: () => void }) {
   const [preview, setPreview] = useState<{ url: string; bytes: number; scale: number } | null>(null)
   const [svgBytes, setSvgBytes] = useState<{ key: string; bytes: number } | null>(null)
   const [busy, setBusy] = useState(false)
+  useReloadHold(busy ? 'The image export stops.' : null)
   const selectedCount = useDoc((state) => state.nodes.filter((node) => node.selected).length)
   const [selectionChoice, setSelectionChoice] = useState(true)
   const selectionOnly = selectionChoice && selectedCount > 0
@@ -432,6 +434,7 @@ function VideoExport({ onClose }: { onClose: () => void }) {
   useEffect(() => () => abortRef.current?.abort(), [])
 
   const recording = progress !== null
+  useReloadHold(recording ? 'The animation export stops.' : null)
 
   const previewKey = `${stageKey}|${source}|${pathId}|${durationMs}`
   const frames = captured?.key === previewKey ? captured.frames : null
