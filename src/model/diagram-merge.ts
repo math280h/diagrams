@@ -473,7 +473,8 @@ export function changedElements(base: Diagram, side: Diagram): Set<string> {
  * details, the traffic and the bodies. A change on one side takes that side, and the same change on both sides
  * counts once. A field that the two sides changed in different ways is a conflict of its own. An element that one
  * side deleted and the other side changed, and an element that both sides added in different ways, are conflicts of
- * the whole element. The viewport, the measured sizes, the rev and the save time come from `mine`.
+ * the whole element. The viewport, the measured sizes, the rev and the save time come from `mine`. `$schema` comes
+ * from `theirs` if only `theirs` changed it, else from `mine`.
  *
  * @param choices - The choice for each conflict, by {@link MergeConflict.key}. A conflict without a choice, or with a
  *   choice that does not apply, takes `mine`.
@@ -499,10 +500,13 @@ export function mergeDiagrams(
   const ordered = parentsFirst(attached)
   const nodeIds = new Set(ordered.map((node) => node.id))
   const hasEnds = (edge: StoredEdge) => nodeIds.has(edge.source) && nodeIds.has(edge.target)
+  const { $schema: _schema, ...content } = mine
+  const schema = mine.$schema === base.$schema ? theirs.$schema : mine.$schema
 
   return {
     diagram: {
-      ...mine,
+      ...(schema === undefined ? {} : { $schema: schema }),
+      ...content,
       name: name.value.name as string,
       theme: theme.value as unknown as DiagramTheme,
       nodes: ordered,

@@ -5,6 +5,7 @@ import { TEMPLATES } from '@/templates'
 import {
   decodeShareData,
   encodeShareData,
+  linkJson,
   LONG_LINK_CHARS,
   MAX_LINK_JSON_BYTES,
   ShareLinkError,
@@ -65,6 +66,11 @@ describe('share links', () => {
     const flow = shared.flows[0]!
     expect(flow.paths ?? []).toHaveLength(diagram.flows[0]!.paths?.length ?? 0)
     expect(flow.steps.map((step) => step.id)).toContain(flow.paths?.[0]?.fromStep)
+  })
+
+  it('leaves the schema address of a diagram file out of the link', () => {
+    const diagram = ownDiagram('order-system')
+    expect(linkJson({ $schema: './schemas/diagram.json', ...diagram })).toBe(linkJson(diagram))
   })
 
   it('leaves text that looks like an id as it is', SLOW, async () => {

@@ -34,9 +34,13 @@ export function toStoredEdge(edge: DiagramEdge): StoredEdge | null {
 }
 
 export function toDiagram(
-  state: Pick<DocState, 'id' | 'name' | 'theme' | 'nodes' | 'edges' | 'flows' | 'viewport' | 'createdAt' | 'rev'>,
+  state: Pick<
+    DocState,
+    '$schema' | 'id' | 'name' | 'theme' | 'nodes' | 'edges' | 'flows' | 'viewport' | 'createdAt' | 'rev'
+  >,
 ): Diagram {
   return {
+    ...(state.$schema === undefined ? {} : { $schema: state.$schema }),
     id: state.id ?? '',
     name: state.name,
     version: DIAGRAM_VERSION,

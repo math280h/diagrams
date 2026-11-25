@@ -8,6 +8,7 @@ import {
   type StoredEdge,
   type StoredNode,
 } from '@/model/schema'
+import { withoutOwnSchemaAddress } from './schema-address'
 
 type Migration = (raw: Record<string, unknown>) => Record<string, unknown>
 
@@ -200,6 +201,11 @@ function toVersion20(raw: Record<string, unknown>): Record<string, unknown> {
   return { ...raw, flows: flows.map((flow: Record<string, unknown>) => ({ captionStyle: 'bottom', ...flow })) }
 }
 
+/** Version 21 adds the optional `$schema` address, so earlier data needs no change. */
+function toVersion21(raw: Record<string, unknown>): Record<string, unknown> {
+  return raw
+}
+
 /** The migration at index `n` converts a diagram from version `n + 1` to version `n + 2`. */
 const MIGRATIONS: Migration[] = [
   toVersion2,
@@ -221,6 +227,7 @@ const MIGRATIONS: Migration[] = [
   toVersion18,
   toVersion19,
   toVersion20,
+  toVersion21,
 ]
 
 /**
@@ -234,6 +241,21 @@ export const REWRITTEN_FIELDS: Readonly<Record<number, readonly string[]>> = {
 }
 
 export class DiagramFormatError extends Error {}
+
+const THEME_FIELDS_AFTER_FORMAT_1 = ['boundaryColors', 'protocolColors', 'routeAround']
+const FLOW_FIELDS_AFTER_FORMAT_1 = ['bodies', 'cameraStyle', 'cameraMotion', 'stepNumbers', 'captionStyle']
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
+
+function hasFieldsAfterFormat1(raw: Record<string, unknown>): boolean {
+  const { theme, flows } = raw
+  if ('$schema' in raw) return true
+  if (isRecord(theme) && THEME_FIELDS_AFTER_FORMAT_1.some((field) => field in theme)) return true
+  return (
+    Array.isArray(flows) &&
+    flows.some((flow) => isRecord(flow) && FLOW_FIELDS_AFTER_FORMAT_1.some((field) => field in flow))
+  )
+}
 
 function upgrade(raw: Record<string, unknown>, subject: string): Record<string, unknown> {
   let current = raw
@@ -267,15 +289,33 @@ function problem(error: z.ZodError): string {
 /**
  * Converts stored or imported data to the current diagram version and validates it.
  *
- * @throws DiagramFormatError If the data is not a diagram, or if its version is newer than this app.
+ * Data without `version` is format 1. The result keeps a `$schema` of the user, but not a schema address of the app.
+ *
+ * @throws DiagramFormatError If the data is not a diagram, if its version is newer than this app or is not a whole
+ *   number, or if it has no version but has fields of a later format than format 1.
  */
 export function migrate(raw: unknown): Diagram {
   if (typeof raw !== 'object' || raw === null) throw new DiagramFormatError('The data is not a diagram.')
-  const result = diagramSchema.safeParse(upgrade(raw as Record<string, unknown>, 'This diagram uses'))
-  if (!result.success) {
-    throw new DiagramFormatError(`The data is not a diagram that this app can read (${problem(result.error)}).`)
+  const data = raw as Record<string, unknown>
+  const versionless = data.version === undefined
+  if (versionless && hasFieldsAfterFormat1(data)) {
+    throw new DiagramFormatError(
+      `This diagram has no "version", but it has fields of a later format than format 1. Add "version": ${DIAGRAM_VERSION} for the current format.`,
+    )
   }
-  return result.data
+  if (!versionless && !Number.isInteger(data.version)) {
+    throw new DiagramFormatError(
+      `The "version" of this diagram is not a whole number. Use the number of its format, such as ${DIAGRAM_VERSION}.`,
+    )
+  }
+  const result = diagramSchema.safeParse(upgrade(data, 'This diagram uses'))
+  if (!result.success) {
+    const format1 = versionless ? ' It has no "version", so the app reads it as format 1.' : ''
+    throw new DiagramFormatError(
+      `The data is not a diagram that this app can read (${problem(result.error)}).${format1}`,
+    )
+  }
+  return withoutOwnSchemaAddress(result.data)
 }
 
 const elementsSchema = z.object({ nodes: z.array(storedNodeSchema), edges: z.array(storedEdgeSchema) })

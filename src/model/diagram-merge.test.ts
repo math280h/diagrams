@@ -82,6 +82,14 @@ describe('mergeDiagrams', () => {
     expect(result.origins.get(`node:${db}`)).toBe('theirs')
   })
 
+  it('takes the schema address from the side that changed it, and from mine when both did', () => {
+    const own = { ...base, $schema: './own.json' }
+    expect(merged(base, own).diagram.$schema).toBe('./own.json')
+    expect(merged(own, base).diagram.$schema).toBe('./own.json')
+    expect(merged(own, { ...base, $schema: './theirs.json' }).diagram.$schema).toBe('./own.json')
+    expect(merged(base, base).diagram).not.toHaveProperty('$schema')
+  })
+
   it('counts the same change on both sides once', () => {
     const rename = (draft: Diagram) => void (card(draft, api).data.title = 'Gateway')
     const result = merged(edited(base, rename), edited(base, rename))

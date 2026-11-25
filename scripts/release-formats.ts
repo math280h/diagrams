@@ -2,12 +2,15 @@ import { execFileSync } from 'node:child_process'
 import { parseArgs } from 'node:util'
 import { OLDEST_FORMAT, PREVIEW_FORMATS, RELEASE_MAJOR } from '../src/persistence/release-formats.ts'
 
-/** The folders of the sample files that the format and container tests read. */
+const PUBLISHED_SCHEMA_FOLDER = 'public/schemas/'
+
+/** The folders of the sample files that the format and container tests read, and of the published format schemas. */
 export const SAMPLE_FOLDERS = [
   'src/persistence/formats/',
   'src/share/samples/',
   'src/export/samples/',
   'src/persistence/backups/',
+  PUBLISHED_SCHEMA_FOLDER,
 ]
 const STABLE_TAG = /^v(\d+)\.(\d+)\.(\d+)$/
 const FORMAT_FILE = /^src\/persistence\/formats\/v(\d+)\./
@@ -77,16 +80,20 @@ export function releaseProblems(releases: readonly Release[], policy: Policy, ne
  *
  * @param changes - The lines of `git diff --name-status --no-renames` for the sample folders.
  * @param newMajor - True if `RELEASE_MAJOR` starts a new major version. Then the samples of formats older than
- *   `oldestFormat` can go.
+ *   `oldestFormat` can go. A published format schema in `public/schemas/` always stays.
  */
 export function sampleProblems(changes: readonly string[], oldestFormat: number, newMajor: boolean): string[] {
   const problems: string[] = []
   for (const line of changes) {
     const [status, file] = line.split('\t')
     if (!status || !file || status === 'A') continue
+    const action = status === 'D' ? 'deletes' : 'changes'
+    if (file.startsWith(PUBLISHED_SCHEMA_FOLDER)) {
+      problems.push(`The change ${action} ${file}. Diagram files name this schema, so it stays as it is. ${HOW}`)
+      continue
+    }
     const format = Number((FORMAT_FILE.exec(file) ?? CONTAINER_FILE.exec(file))?.[1] ?? Number.NaN)
     if (status === 'D' && newMajor && !(format >= oldestFormat)) continue
-    const action = status === 'D' ? 'deletes' : 'changes'
     problems.push(`The change ${action} ${file}. A sample on main stays as it is; add a new file instead. ${HOW}`)
   }
   return problems

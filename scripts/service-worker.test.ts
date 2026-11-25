@@ -53,7 +53,7 @@ const BUNDLE = Object.fromEntries(
 ) as unknown as Rolldown.OutputBundle
 
 describe('planAssetList', () => {
-  const list = planAssetList(BUNDLE, ['favicon.svg', 'icons/icon-192.png'])
+  const list = planAssetList(BUNDLE, ['favicon.svg', 'icons/icon-192.png', 'schemas/diagram-v21.json'])
 
   it('precaches the entry, the pages it loads and their fonts', () => {
     expect(list.precache.toSorted()).toEqual(
@@ -82,7 +82,7 @@ describe('planAssetList', () => {
     expect(list.all).toHaveLength(10)
   })
 
-  it('puts the public files in the shell', () => {
+  it('puts the public files in the shell, but not the JSON Schemas of the diagram formats', () => {
     expect(list.shell).toEqual(['/favicon.svg', '/icons/icon-192.png'])
   })
 })

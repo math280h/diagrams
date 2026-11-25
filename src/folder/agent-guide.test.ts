@@ -3,6 +3,7 @@ import { AGENT_RULES } from '@/agent/instructions'
 import { bundledSkillFiles, loadSkills } from '@/agent/skills'
 import { TOOL_NAMES } from '@/agent/tool-definitions'
 import { createDiagram } from '@/model/defaults'
+import { DIAGRAM_SCHEMA_URL } from '@/persistence/schema-address'
 import { fileGuideText, guideText, schemaText, toolsText } from './agent-guide'
 
 describe('agent guide', () => {
@@ -14,7 +15,9 @@ describe('agent guide', () => {
 
   it('gives the diagram format as JSON Schema', () => {
     const schema = JSON.parse(schemaText()) as { properties: Record<string, unknown> }
-    expect(Object.keys(schema.properties)).toEqual(expect.arrayContaining(['id', 'name', 'nodes', 'edges', 'flows']))
+    expect(Object.keys(schema.properties)).toEqual(
+      expect.arrayContaining(['$schema', 'id', 'name', 'version', 'nodes', 'edges', 'flows']),
+    )
   })
 
   it('gives a guide for direct changes with the rules, an example file and the format', () => {
@@ -22,7 +25,8 @@ describe('agent guide', () => {
     const guide = fileGuideText(example)
     expect(guide).toContain(AGENT_RULES)
     const [, exampleJson, schemaJson] = guide.split('```json\n').map((part) => part.split('\n```')[0]!)
-    expect(JSON.parse(exampleJson!)).toMatchObject({ name: 'Example' })
+    expect(JSON.parse(exampleJson!)).toMatchObject({ $schema: DIAGRAM_SCHEMA_URL, name: 'Example' })
+    expect(guide).toContain(`"$schema": "${DIAGRAM_SCHEMA_URL}"`)
     expect(JSON.parse(schemaJson!)).toEqual(JSON.parse(schemaText()))
   })
 
