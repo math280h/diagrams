@@ -29,7 +29,6 @@ import { Inspector } from './inspector/Inspector'
 import { SensitiveDataPanel } from './SensitiveDataPanel'
 import { InsertMenu } from './InsertMenu'
 import { useEditorShortcuts } from './shortcuts'
-import { ShortcutsDialog } from './ShortcutsDialog'
 import { TopBar } from './TopBar'
 import { UnsavedLeaveGuard } from './UnsavedChanges'
 
@@ -119,7 +118,6 @@ function EditorShell() {
       <InsertMenu />
       <CommandMenu />
       <ExportDialog />
-      <ShortcutsDialog />
       <TraceImportDialog />
       <UnsavedLeaveGuard />
       <ImportDialog

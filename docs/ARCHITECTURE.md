@@ -1254,6 +1254,10 @@ The React app in Electron, plus file storage, agent control, the website handoff
 - A fixed 44 px drag strip tops every page, also without a header. Interactive elements and dialogs do not drag.
 - Back and forward: app buttons, Alt with arrow keys (Command with brackets on macOS), mouse side buttons (no browser
   buttons).
+- macOS menu bar (`electron/app-menu.ts`): app actions, reload and page zoom in each build, but developer tools only on
+  the dev server. Reload saves the diagram first, as a window close does. Chromium gives a key to the page first, so the
+  edit items ask the canvas first and use the system command only in a text field. Cut, copy and paste keep the
+  Electron roles, because these send the clipboard events that the canvas reads.
 - `pnpm app-icon` renders `build/icon.svg` to `build/icon.png` (1024 px), `build/icon.ico` (16 to 256 px) and the
   macOS menu bar icon `build/trayTemplate.png`.
   - Unpackaged app: shows the icon on the window and macOS dock (Electron otherwise shows its own).

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { homedir, hostname, userInfo } from 'node:os'
 import path from 'node:path'
-import { app, type BrowserWindow, dialog, powerMonitor, session, shell } from 'electron'
+import { app, type BrowserWindow, dialog, Menu, powerMonitor, session, shell, webContents } from 'electron'
 import electronUpdater from 'electron-updater'
 import { TOOL_DEFINITIONS } from '@/agent/tool-definitions'
 import {
@@ -16,8 +16,9 @@ import {
   FIRST_DEV_AGENT_PORT,
   HANDOFF_TTL_MS,
   PREVIEW_APP_LABEL,
+  REPOSITORY_URL,
 } from '@/desktop/constants'
-import { BUILD, repositoryName } from '@/desktop/build-config'
+import { BUILD, releaseLinks, repositoryName } from '@/desktop/build-config'
 import type { AgentInfo, GitHubSignIn } from '@/desktop/contract'
 import { createHandoffCodes, mountHandoff } from './agent/handoff'
 import { marketplaceFiles, writeMarketplace } from './agent/marketplace'
@@ -27,6 +28,7 @@ import { buildInstructions, bundledPluginConfig, bundledSkillFiles, loadSkills, 
 import { createToken, loadToken } from './agent/token'
 import { appAbout } from './about'
 import { agentWindowShow, createIdleClose } from './agent-window'
+import { appMenuTemplate, type HelpLink, runEditCommand } from './app-menu'
 import { registerAppScheme, serveRenderer } from './app-protocol'
 import {
   addWebsite,
@@ -42,7 +44,7 @@ import { findDeepLink, isConnectAgentLink, parseReceiveLink } from './deep-link'
 import { createCaptureService } from './capture'
 import { registerIpc } from './ipc'
 import { createLoginItem, startedAtLogin, type LoginItem } from './login-item'
-import { configurePaths, diagramsFolder, iconPath, rendererFolder } from './paths'
+import { configurePaths, devServerUrl, diagramsFolder, iconPath, rendererFolder } from './paths'
 import { parseRenderArgs, RENDER_USAGE, RenderUsageError, type RenderArgs } from './render-args'
 import { isolateRender, runRender } from './render-cli'
 import { createRendererRpc } from './renderer-rpc'
@@ -68,6 +70,7 @@ import {
   focusWindow,
   prepareAgentWindow,
   prepareQuit,
+  reloadMainWindow,
   rendererOrigin,
   setRendererUnsaved,
   setWindowColors,
@@ -82,6 +85,8 @@ const COPY_FILE_MODE = 0o644
 const AGENT_CALL_LIMIT_MS = 10 * 60_000
 const HANDOFF_OPEN_TIMEOUT_MS = 20_000
 const AGENT_SETUP_OPEN_TIMEOUT_MS = 20_000
+const MENU_COMMAND_TIMEOUT_MS = 20_000
+const MENU_EDIT_TIMEOUT_MS = 2000
 const UNSEEN_AGENT_WINDOW_IDLE_MS = 5 * 60_000
 const PORT_RETRY_MS = 2000
 /** How long the app waits for its kept agent port, for example while an app that quits still holds it. */
@@ -526,7 +531,8 @@ async function start() {
       await Promise.all([files.drain(), linked.drain()])
       return flushed?.unsaved ?? null
     },
-    confirmUnsavedClose: (window, unsaved, signal) => confirmUnsavedClose(unsaved, nativeCloseDialogs(window, signal)),
+    confirmUnsavedClose: (window, unsaved, signal, action) =>
+      confirmUnsavedClose(unsaved, nativeCloseDialogs(window, signal), action),
     focused: () => {
       watcher.rescan()
       linkedWatcher.rescan()
@@ -546,6 +552,32 @@ async function start() {
     clearTimeout(retry)
     void server.stop()
   })
+
+  const helpLinks: Record<HelpLink, () => string> = {
+    website: () => BUILD.website,
+    'whats-new': () => releaseLinks(updateRepository()).releases,
+    'source-code': () => REPOSITORY_URL,
+  }
+  const menu = appMenuTemplate(
+    process.platform,
+    { development: devServerUrl() !== null, updates: policy.kind !== 'none' },
+    {
+      run: (command) => {
+        focusWindow()
+        void rpc.call('menu.command', { command }, { timeoutMs: MENU_COMMAND_TIMEOUT_MS }).catch(() => undefined)
+      },
+      edit: (command) =>
+        void runEditCommand(
+          command,
+          webContents.getFocusedWebContents(),
+          currentWindow()?.webContents ?? null,
+          async (sent) => (await rpc.call('menu.edit', { command: sent }, { timeoutMs: MENU_EDIT_TIMEOUT_MS })).handled,
+        ),
+      open: (link) => void shell.openExternal(helpLinks[link]()),
+      reload: (ignoreCache) => void reloadMainWindow(ignoreCache),
+    },
+  )
+  if (menu) Menu.setApplicationMenu(Menu.buildFromTemplate(menu))
 
   serveRenderer(rendererFolder())
   if (!atLogin) createMainWindow()
