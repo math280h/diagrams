@@ -18,8 +18,10 @@ import {
   imageUrl,
   parseNameStatus,
   parsePatterns,
+  parseRefs,
   parseThemes,
   pathspecs,
+  releaseForRef,
   renderOptions,
   splitCommand,
 } from './lib.mjs'
@@ -45,7 +47,8 @@ const inputs = {
   mode: env.INPUT_MODE || 'auto',
   publish: env.INPUT_PUBLISH !== 'false',
   branch: env.INPUT_PREVIEW_BRANCH || 'diagram-previews',
-  version: env.INPUT_VERSION || 'latest',
+  version: env.INPUT_VERSION ?? '',
+  actionRef: env.ACTION_REF ?? '',
   app: env.INPUT_APP ?? '',
   baseApp: env.INPUT_BASE_APP ?? '',
   baseRoot: env.INPUT_BASE_ROOT ?? '',
@@ -87,10 +90,52 @@ function summary(text) {
   else console.log(text)
 }
 
+function releaseVersion() {
+  if (inputs.version) return inputs.version
+  if (!inputs.actionRef) {
+    console.log('::notice::The action has no ref, so it downloads the latest release of Diagrams.')
+    return 'latest'
+  }
+  const ghEnv = { env: { ...env, GH_TOKEN: inputs.token } }
+  const refs = parseRefs(
+    run('git', ['ls-remote', '--tags', '--heads', `https://github.com/${APP_REPOSITORY}.git`]).stdout,
+  )
+  const releases = run(
+    'gh',
+    ['release', 'list', '--repo', APP_REPOSITORY, '--exclude-drafts', '--limit', '1000', '--json', 'tagName'],
+    ghEnv,
+  ).stdout
+  const choice = releaseForRef({
+    ref: inputs.actionRef,
+    refs,
+    published: JSON.parse(releases).map((release) => release.tagName),
+  })
+  if (choice.error) throw new ActionError(choice.error)
+  if (choice.version) return choice.version
+  for (const tag of choice.candidates) {
+    const compared = run(
+      'gh',
+      ['api', `repos/${APP_REPOSITORY}/compare/${tag}...${choice.commit}`, '--jq', '.status'],
+      { ...ghEnv, allowFailure: true },
+    )
+    if (compared.status !== 0) {
+      throw new ActionError(
+        `The action could not compare ${tag} with the action ref ${inputs.actionRef}. Set the version input. ${compared.stderr.trim()}`,
+      )
+    }
+    if (['ahead', 'identical'].includes(compared.stdout.trim())) return tag
+  }
+  throw new ActionError(
+    `No release of Diagrams is in the history of the action ref ${inputs.actionRef}. Set the version input.`,
+  )
+}
+
 function installApp() {
   if (process.platform !== 'linux') {
     throw new ActionError('The action downloads Diagrams for Linux only. On another runner, set the app input.')
   }
+  const version = releaseVersion()
+  console.log(`The action downloads Diagrams ${version}.`)
   const folder = path.join(temp, 'diagrams-app')
   mkdirSync(folder, { recursive: true })
   run(
@@ -98,7 +143,7 @@ function installApp() {
     [
       'release',
       'download',
-      ...(inputs.version === 'latest' ? [] : [inputs.version]),
+      ...(version === 'latest' ? [] : [version]),
       '--repo',
       APP_REPOSITORY,
       '--pattern',
@@ -110,7 +155,7 @@ function installApp() {
     { env: { ...env, GH_TOKEN: inputs.token } },
   )
   const image = readdirSync(folder).find((name) => name.endsWith('.AppImage'))
-  if (!image) throw new ActionError(`The release ${inputs.version} has no Linux AppImage.`)
+  if (!image) throw new ActionError(`The release ${version} has no Linux AppImage.`)
   chmodSync(path.join(folder, image), 0o755)
   // An extracted AppImage starts without FUSE. GitHub runners have no libfuse2, which the AppImageKit runtime needs.
   run(path.join(folder, image), ['--appimage-extract'], { cwd: folder })

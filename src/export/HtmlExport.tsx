@@ -6,6 +6,7 @@ import { DialogFooter } from '@/components/ui/dialog'
 import { downloadBlob } from '@/lib/download'
 import { errorMessage } from '@/lib/error-message'
 import { safeFileName } from '@/lib/format'
+import { useReloadHold } from '@/new-version/new-version'
 import { currentDiagram } from '@/store/document'
 import { useDoc } from '@/store/doc-store'
 
@@ -17,6 +18,7 @@ export function HtmlExport({ onClose }: { onClose: () => void }) {
   const flowCount = useDoc((state) => state.flows.length)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  useReloadHold(busy ? 'The page export stops.' : null)
 
   const save = async () => {
     setBusy(true)

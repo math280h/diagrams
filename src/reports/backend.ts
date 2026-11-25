@@ -1,6 +1,7 @@
 import { BUILD } from '@/desktop/build-config'
 import { desktopApi } from '@/desktop/bridge'
 import { downloadBlob } from '@/lib/download'
+import { workerError, workerReplyError } from '@/new-version/file-load'
 import { parseSentReports, reportFileName, sentReport, withSentReport, type SentReport } from './history'
 import { abortError } from './pow/abort'
 import type { ProofReply } from './pow/pow-worker'
@@ -58,8 +59,9 @@ function solveInWorker(challenge: ChallengeResponse, signal?: AbortSignal): Prom
     if (signal?.aborted) stop()
     signal?.addEventListener('abort', stop, { once: true })
     worker.onmessage = (event: MessageEvent<ProofReply>) =>
-      event.data.ok ? resolve(event.data.proof) : reject(new Error(event.data.message))
-    worker.onerror = (event) => reject(new Error(event.message || 'The proof of work stopped.'))
+      event.data.ok ? resolve(event.data.proof) : reject(workerReplyError(event.data.message))
+    worker.onerror = (event) =>
+      reject(workerError(event, 'The proof of work stopped.', 'The proof of work did not load.'))
     worker.postMessage(challenge, [])
   }).finally(() => worker.terminate())
 }

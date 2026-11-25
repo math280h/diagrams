@@ -87,6 +87,100 @@ export function commentBody({ entries, intro }) {
   return [COMMENT_MARKER, '### Diagram images', '', intro, ...table, ''].join('\n')
 }
 
+const VERSION_TAG = /^v(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/
+const COMMIT_SHA = /^[0-9a-f]{40}$/i
+
+/** Reads a version tag such as `v1.2.3` or `v1.2.3-beta.1`, or returns null for another tag. */
+export function parseVersion(tag) {
+  const match = VERSION_TAG.exec(tag)
+  if (!match) return null
+  const [, major, minor, patch, prerelease] = match
+  return { core: [Number(major), Number(minor), Number(patch)], prerelease: prerelease?.split('.') ?? [] }
+}
+
+function compareIdentifiers(a, b) {
+  const numbers = [a, b].map((identifier) => (/^\d+$/.test(identifier) ? Number(identifier) : null))
+  if (numbers[0] !== null && numbers[1] !== null) return numbers[0] - numbers[1]
+  if (numbers[0] !== null) return -1
+  if (numbers[1] !== null) return 1
+  return a < b ? -1 : a > b ? 1 : 0
+}
+
+/** Compares two version tags in the order of semantic versioning, for `toSorted`: a release comes after its previews. */
+export function compareVersions(a, b) {
+  const [left, right] = [parseVersion(a), parseVersion(b)]
+  for (let index = 0; index < 3; index += 1) {
+    if (left.core[index] !== right.core[index]) return left.core[index] - right.core[index]
+  }
+  if (left.prerelease.length === 0 || right.prerelease.length === 0)
+    return right.prerelease.length - left.prerelease.length
+  for (let index = 0; index < Math.min(left.prerelease.length, right.prerelease.length); index += 1) {
+    const order = compareIdentifiers(left.prerelease[index], right.prerelease[index])
+    if (order !== 0) return order
+  }
+  return left.prerelease.length - right.prerelease.length
+}
+
+/**
+ * Reads the output of `git ls-remote`.
+ *
+ * @returns The commit of each ref. An annotated tag gives the commit that it points at, not the tag object.
+ */
+export function parseRefs(text) {
+  const refs = new Map()
+  for (const line of text.split('\n')) {
+    const [sha, name] = line.trim().split('\t')
+    if (!sha || !name) continue
+    if (name.endsWith('^{}')) refs.set(name.slice(0, -3), sha)
+    else if (!refs.has(name)) refs.set(name, sha)
+  }
+  return refs
+}
+
+/**
+ * Chooses the Diagrams release that matches the ref of the action.
+ *
+ * @param ref - The ref of the action in `uses:`: a tag, a branch or a full commit SHA.
+ * @param refs - The commit of each tag and branch of the app repository, from {@link parseRefs}.
+ * @param published - The tags of the published releases.
+ * @returns `version` if a published release has its tag at the commit of the ref. A release comes before a preview at
+ *   the same commit. Otherwise `commit` and `candidates`, the stable releases from newest to oldest: the first one that
+ *   the commit contains matches. `error` if the ref is unknown, or if it is a version tag or a commit with version tags
+ *   that have no published release.
+ */
+export function releaseForRef({ ref, refs, published }) {
+  const isSha = COMMIT_SHA.test(ref)
+  const commit = isSha ? ref.toLowerCase() : (refs.get(`refs/tags/${ref}`) ?? refs.get(`refs/heads/${ref}`))
+  if (!commit)
+    return { error: `The action ref ${ref} is not a tag, branch or commit of Diagrams. Set the version input.` }
+  const tagsAtCommit = parseVersion(ref)
+    ? [ref]
+    : [...refs]
+        .filter(([name, sha]) => sha === commit && name.startsWith('refs/tags/'))
+        .map(([name]) => name.slice('refs/tags/'.length))
+        .filter((tag) => parseVersion(tag))
+  const releases = tagsAtCommit
+    .filter((tag) => published.includes(tag))
+    .toSorted((a, b) => {
+      const stable = [a, b].map((tag) => (parseVersion(tag).prerelease.length === 0 ? 1 : 0))
+      return stable[0] - stable[1] || compareVersions(a, b)
+    })
+  if (releases.length > 0) return { version: releases.at(-1) }
+  const isBranch = !isSha && !refs.has(`refs/tags/${ref}`)
+  if (tagsAtCommit.length > 0 && !isBranch) {
+    const newest = tagsAtCommit.toSorted(compareVersions).at(-1)
+    return {
+      error: `Diagrams ${newest} has no published release yet. Run the job again after the release, or set the version input.`,
+    }
+  }
+  const candidates = published
+    .filter((tag) => parseVersion(tag)?.prerelease.length === 0)
+    .toSorted(compareVersions)
+    .toReversed()
+  if (candidates.length === 0) return { error: 'Diagrams has no published release. Set the version input.' }
+  return { commit, candidates }
+}
+
 /** Returns a link to a file on a branch that GitHub shows as an image to the people who can read the repository. */
 export function imageUrl({ server, repository, branch, file }) {
   return `${server}/${repository}/blob/${encodeURIComponent(branch)}/${file.split('/').map(encodeURIComponent).join('/')}?raw=true`

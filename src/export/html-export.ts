@@ -2,6 +2,8 @@ import type { LucideIconData } from 'lucide-react'
 import { BUNDLED_ICON_NAMES } from '@/canvas/icon-cache'
 import { iconSourceOf, loadIconSet, type IconEntry, type IconSourceId } from '@/canvas/icons/library'
 import type { Diagram } from '@/model/schema'
+import { FileLoadError, fetchAppFile, fileLoadFailed } from '@/new-version/file-load'
+import { serverBuild } from '@/new-version/new-version'
 import { PLAYER_FILES } from '@/standalone/files'
 import { currentThemeForBase } from '@/themes/active'
 import type { Theme } from '@/themes/schema'
@@ -68,7 +70,7 @@ async function fetchText(path: string): Promise<string> {
 }
 
 async function dataUrl(url: string): Promise<string> {
-  const blob = await (await fetch(url)).blob()
+  const blob = await (await fetchAppFile(url)).blob()
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () =>
@@ -113,6 +115,13 @@ export async function exportHtmlPage(
     pageIcons(diagram),
     fontCss(families),
   ])
+  if ((await serverBuild()) === 'replaced') {
+    const error = new FileLoadError(
+      'The server has a newer version of Diagrams than this tab. Reload, then export the page again.',
+    )
+    fileLoadFailed(error)
+    throw error
+  }
   const html = pageHtml({
     diagram,
     icons,

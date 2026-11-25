@@ -9,6 +9,7 @@ import { DesktopSettingsDialog } from '@/desktop/DesktopSettingsDialog'
 import { OpenInAppDialog } from '@/desktop/OpenInAppDialog'
 import { ShortcutsDialog } from '@/editor/ShortcutsDialog'
 import { FolderAgentDialog } from '@/folder/FolderAgentDialog'
+import { ReloadQuestion } from '@/new-version/ReloadQuestion'
 import { ProblemReportsDialog } from '@/reports/ProblemReportsDialog'
 import { ReportDialog } from '@/reports/ReportDialog'
 import { useAppChrome } from './use-app-chrome'
@@ -30,6 +31,7 @@ export function RootLayout() {
         <>
           <OpenInAppDialog />
           <FolderAgentDialog />
+          <ReloadQuestion />
         </>
       )}
       <ShortcutsDialog />

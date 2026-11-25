@@ -383,6 +383,7 @@ src/
   templates/    starter diagrams
   components/   shadcn (Base UI) primitives in ui/
   lib/          small shared helpers: errors, queues, idle mount, reduced motion
+  new-version/  the reload of a website tab after a deploy removed the files of its build
   styles/       canvas CSS and the colour variables of the default themes
 e2e/            Playwright tests for the website, and for the desktop app in e2e/desktop
 scripts/        icon catalog and build (icons/), app icon, README image, desktop dev runner, third-party licence and release notes plugins, release signing
@@ -1115,11 +1116,22 @@ WebWorker library).
   offline. A navigation waits 4 s for the network, so a new version shows at once when online.
 - A new worker waits until no old page is open and the old worker ends its work. Then it deletes the old page cache
   and hashed files outside the new build.
+- While a new worker waits, the installed app asks it to fetch every file of its build too. A page that reloaded into
+  the new build then works offline before the old worker ends.
 - `e2e/offline.spec.ts` builds and serves the website, then checks:
   - a tab without a worker;
   - the installed app without internet, also Tidy up after the full fetch;
   - a new version while online;
+  - the full fetch of a new version while its worker waits;
   - the clean-up after an update.
+
+### New version in an open tab
+
+A deploy removes the files of the old build, so an open tab cannot load its chunks, workers, fonts and icon sets
+(`src/new-version`). When such a load fails and the server does not have the entry script of the tab, the app saves the
+open diagram and offers a reload. A page change reloads at once, and a tab that gets the same build again shows an
+error and does not reload. A web page export also stops then, because the player files have no hash and come from
+the new build.
 
 ### Folder on the website
 
@@ -1450,7 +1462,7 @@ setting turns this off.
     Ubuntu 22.04 and later do not install.
 - Fuses turn off `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS`, inspect flags and extra `file://` rights, and allow only the
   checked asar archive.
-- Release (`docs/RELEASING.md`): a `v*` tag starts `.github/workflows/release.yml` and sets the version
+- Release (`docs/RELEASING.md`): a `v*.*.*` tag starts `.github/workflows/release.yml` and sets the version
   (`-c.extraMetadata.version`); a release needs no commit. `pnpm release:tag` calculates the tag. One job creates
   the draft, because parallel electron-builder jobs could each create one. Platform jobs package, drive the app
   through the agent server (`scripts/smoke-package.mjs`) and upload. The maintainer publishes the draft.
@@ -1590,11 +1602,19 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
 ### Render action
 
 `actions/render` is a composite GitHub Action that keeps diagram images current with the command-line render.
-`main.mjs` runs in Node; `lib.mjs` holds the tested parts (file patterns, image paths, the comment).
+`main.mjs` runs in Node; `lib.mjs` holds the tested parts (file patterns, image paths, the comment, the release).
 
 - App: the action downloads the Linux AppImage of a release with `gh` and the job token. Runners have no libfuse2,
   which the AppImageKit runtime of older releases needs, so the action unpacks the AppImage. The app runs under
   `xvfb-run` without a display, and with `--no-sandbox` without unprivileged user namespaces. The `app` input replaces the download (this CI: the build from source).
+- Version: without the `version` input, the ref of the action (`github.action_ref`) selects the release. If a release
+  tag is at the commit of the ref, that release matches. If not, the newest stable release that the commit contains
+  matches (compare API). A release does not change `package.json`, so the files of the action do not hold the
+  version. A version tag without a published release stops the action with an error, because other repositories
+  cannot download a draft.
+- Major tag: after a stable release is live, an admin runs `pnpm release:major-tag` (`scripts/release-major-tag.ts`).
+  It moves `v<major>` to the newest stable release of that major version, so a pin to `@v1` never gets a 2.x app. Only
+  admins can move `v*` tags, so no workflow moves it, and the Release workflow starts only for `v*.*.*` tags.
 - Files: only tracked files (`git ls-files` with glob pathspecs), so no `node_modules` or build output.
 - Write mode renders each file next to it and outputs the image paths. The workflow commits them with its own branch
   and message.
