@@ -1,5 +1,5 @@
 import { z } from '@/lib/zod'
-import { LAYOUT_DIRECTIONS, LAYOUT_STYLES } from '@/layout/types'
+import { graphvizStyleOfEngine, LAYOUT_DIRECTIONS, LAYOUT_STYLES } from '@/layout/types'
 import { BOUNDARY_PROVIDER_IDS } from '@/model/boundaries'
 import { COLORS } from '@/model/colors'
 import { BUILT_IN_THEME_IDS } from '@/themes/tokens'
@@ -32,6 +32,13 @@ const nodeRef = (what: string) =>
 const edgeRef = z
   .string()
   .describe('An edge: its id, "From -> To" with node labels, refs or ids, or its label if no other edge has it.')
+
+function layoutStyleError(input: unknown): string | undefined {
+  if (typeof input !== 'string') return undefined
+  const style = graphvizStyleOfEngine(input)
+  if (style === undefined) return undefined
+  return `"${input}" is a Graphviz engine, not a layout. Use the layout "${style}", which runs ${input}. The layouts are ${LAYOUT_STYLES.join(', ')}.`
+}
 
 const nodeFields = {
   label: z.string().describe('The card title, shape label, text, or group name. Write it in sentence case.'),
@@ -594,17 +601,17 @@ export const TOOL_DEFINITIONS = {
     input: z.object({
       diagramId,
       layout: z
-        .enum(LAYOUT_STYLES)
+        .enum(LAYOUT_STYLES, { error: ({ input }) => layoutStyleError(input) })
         .optional()
         .describe(
-          'flow (the default) puts layers along the direction, for request paths and layered architectures, and lines up nodes across groups. tree: a hierarchy from one root. hub: one central node, such as an event bus or a gateway, with the others around it. network: a mesh with many connections and no main direction. grid: compact rows for an inventory with few connections. lanes: each top-level group becomes a lane, such as a team or a tier (clients, edge, services, data); columns follow the edges and line up across lanes. The Graphviz engines: dot (layered), neato and fdp (force-directed network), circo (nodes on a circle, for rings and cycles), twopi (radial around center), osage (packed boxes). Except flow and lanes, each group is arranged on its own. network uses grid in a group with more than 80 nodes.',
+          'flow (the default) puts layers along the direction, for request paths and layered architectures, and lines up nodes across groups. tree: a hierarchy from one root. hub: one central node, such as an event bus or a gateway, with the others around it. network: a mesh with many connections and no main direction. grid: compact rows for an inventory with few connections. lanes: each top-level group becomes a lane, such as a team or a tier (clients, edge, services, data); columns follow the edges and line up across lanes. The Graphviz layouts: graphviz-layers (layers along the direction, as in flow), graphviz-spring (a network in which each edge gets about the same length), graphviz-force (a network in which the nodes push apart and the edges pull them together), graphviz-circle (nodes on a circle, for rings and cycles), graphviz-radial (rings around center), graphviz-packed (boxes packed in rows). Except flow and lanes, each group is arranged on its own. network uses grid in a group with more than 80 nodes.',
         ),
       direction: z
         .enum(LAYOUT_DIRECTIONS)
         .optional()
-        .describe('The main direction of the edges, for flow, tree, lanes and dot. The default is RIGHT.'),
+        .describe('The main direction of the edges, for flow, tree, lanes and graphviz-layers. The default is RIGHT.'),
       center: nodeRef(
-        'The node in the middle of a hub or twopi layout. The default is the node with the most edges',
+        'The node in the middle of a hub or graphviz-radial layout. The default is the node with the most edges',
       ).optional(),
     }),
     annotations: CHANGE,

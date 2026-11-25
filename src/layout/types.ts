@@ -7,12 +7,28 @@ export type LayoutDirection = (typeof LAYOUT_DIRECTIONS)[number]
 export const GRAPHVIZ_ENGINES = ['dot', 'neato', 'fdp', 'circo', 'twopi', 'osage'] as const
 export type GraphvizEngine = (typeof GRAPHVIZ_ENGINES)[number]
 
+/** The Graphviz engine of each layout style that Graphviz arranges. */
+export const GRAPHVIZ_STYLE_ENGINES = {
+  'graphviz-layers': 'dot',
+  'graphviz-spring': 'neato',
+  'graphviz-force': 'fdp',
+  'graphviz-circle': 'circo',
+  'graphviz-radial': 'twopi',
+  'graphviz-packed': 'osage',
+} as const satisfies Record<string, GraphvizEngine>
+export type GraphvizStyle = keyof typeof GRAPHVIZ_STYLE_ENGINES
+const GRAPHVIZ_STYLES = Object.keys(GRAPHVIZ_STYLE_ENGINES) as GraphvizStyle[]
+
 /** The arrangements of a layout. `flow` is the layered layout of Tidy up. */
-export const LAYOUT_STYLES = ['flow', 'tree', 'hub', 'network', 'grid', 'lanes', ...GRAPHVIZ_ENGINES] as const
+export const LAYOUT_STYLES = ['flow', 'tree', 'hub', 'network', 'grid', 'lanes', ...GRAPHVIZ_STYLES] as const
 export type LayoutStyle = (typeof LAYOUT_STYLES)[number]
 
-export function isGraphvizEngine(style: LayoutStyle): style is GraphvizEngine {
-  return (GRAPHVIZ_ENGINES as readonly string[]).includes(style)
+export function isGraphvizStyle(style: LayoutStyle): style is GraphvizStyle {
+  return Object.hasOwn(GRAPHVIZ_STYLE_ENGINES, style)
+}
+
+export function graphvizStyleOfEngine(name: string): GraphvizStyle | undefined {
+  return GRAPHVIZ_STYLES.find((style) => GRAPHVIZ_STYLE_ENGINES[style] === name)
 }
 
 export interface LayoutNode {

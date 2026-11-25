@@ -1,3 +1,4 @@
+import ELK from 'elkjs/lib/elk.bundled.js'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from '@/lib/zod'
 import type { IconSet } from '@/canvas/icons/library'
@@ -15,6 +16,9 @@ import { closeDiagramSession, openDiagram, openDiagramId, openDiagramSession } f
 import { resetHistory, undo, useHistory } from '@/store/history'
 import { TEMPLATES } from '@/templates'
 import { sampleTrace } from '@/import/trace-sample'
+import { computeLayout } from '@/layout/engine'
+import { graphvizWasm, type GraphvizRunner } from '@/layout/graphviz'
+import type { GraphvizEngine, LayoutStyle } from '@/layout/types'
 import type { HandlerContext } from './context'
 import { HANDLERS } from './handlers'
 import { runAgentTool } from './runtime'
@@ -1183,5 +1187,96 @@ describe('changes that do not reach storage', () => {
       'The diagram file could not go to the trash (No trash on this drive.), so the diagram and its file stay.',
     )
     expect(repository().load(diagramId)?.name).toBe('Shop')
+  })
+})
+
+describe('layout names', () => {
+  const GRAPHVIZ_LAYOUTS = [
+    ['graphviz-layers', 'dot'],
+    ['graphviz-spring', 'neato'],
+    ['graphviz-force', 'fdp'],
+    ['graphviz-circle', 'circo'],
+    ['graphviz-radial', 'twopi'],
+    ['graphviz-packed', 'osage'],
+  ] as const
+  const ring = {
+    nodes: ['A', 'B', 'C', 'D'].map((label) => ({ ref: label, label })),
+    edges: [
+      { from: 'A', to: 'B' },
+      { from: 'B', to: 'C' },
+      { from: 'C', to: 'D' },
+      { from: 'D', to: 'A' },
+    ],
+  }
+  const elk = new ELK()
+
+  function runWithEngines(styles: (LayoutStyle | undefined)[], engines: GraphvizEngine[]) {
+    const recordingRunner: GraphvizRunner = (dot, engine) => {
+      engines.push(engine)
+      return graphvizWasm(dot, engine)
+    }
+    const recording = () => ({
+      ...context(),
+      layout: async (...[nodes, edges, direction, choice]: Parameters<HandlerContext['layout']>) => {
+        styles.push(choice?.style)
+        await computeLayout(
+          elk,
+          {
+            nodes: nodes.map((node) => ({ id: node.id, width: 216, height: 60, minWidth: 0 })),
+            edges: edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target })),
+            direction,
+            layerGapPx: 120,
+            style: choice?.style ?? 'flow',
+          },
+          recordingRunner,
+        )
+        return { nodes, edges }
+      },
+    })
+    return (args: unknown) => runAgentTool('layout_diagram', args, new AbortController().signal, recording)
+  }
+
+  it('lists the layouts by their look in the schema', () => {
+    const { properties } = z.toJSONSchema(TOOL_DEFINITIONS.layout_diagram.input, { io: 'input' })
+    expect(properties?.layout).toMatchObject({
+      enum: ['flow', 'tree', 'hub', 'network', 'grid', 'lanes', ...GRAPHVIZ_LAYOUTS.map(([layout]) => layout)],
+    })
+  })
+
+  it.each(GRAPHVIZ_LAYOUTS)('lays out with %s through the Graphviz engine %s', async (layout, engine) => {
+    await call('create_diagram', { name: 'Ring' })
+    await call('add_elements', ring)
+    const styles: (LayoutStyle | undefined)[] = []
+    const engines: GraphvizEngine[] = []
+    expect(await runWithEngines(styles, engines)({ layout })).toMatchObject({ ok: true })
+    expect(styles).toEqual([layout])
+    expect(engines.length).toBeGreaterThan(0)
+    expect(new Set(engines)).toEqual(new Set([engine]))
+  })
+
+  it.each(GRAPHVIZ_LAYOUTS.map(([layout, engine]) => [engine, layout] as const))(
+    'refuses the engine name %s and names the layout %s',
+    async (engine, layout) => {
+      await call('create_diagram', { name: 'Ring' })
+      await call('add_elements', ring)
+      const styles: (LayoutStyle | undefined)[] = []
+      const engines: GraphvizEngine[] = []
+      const outcome = await runWithEngines(styles, engines)({ layout: engine })
+      expect(outcome.ok).toBe(false)
+      expect(outcome.ok ? '' : outcome.message).toContain(
+        `"${engine}" is a Graphviz engine, not a layout. Use the layout "${layout}", which runs ${engine}.`,
+      )
+      expect(styles).toEqual([])
+      expect(engines).toEqual([])
+    },
+  )
+
+  it('gives the schema error for a value that is not a layout', async () => {
+    await call('create_diagram', { name: 'Ring' })
+    const outcome = await runWithEngines([], [])({ layout: 'spiral' })
+    expect(outcome.ok).toBe(false)
+    const message = outcome.ok ? '' : outcome.message
+    expect(message).toContain('layout')
+    expect(message).not.toContain('Graphviz engine')
   })
 })

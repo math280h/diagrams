@@ -2,9 +2,17 @@ import ELK from 'elkjs/lib/elk.bundled.js'
 import { describe, expect, it } from 'vitest'
 import { GROUP_PADDING_PX } from '@/model/graph'
 import { computeLayout } from './engine'
+import { graphvizWasm, type GraphvizRunner } from './graphviz'
 import { laneColumns } from './lanes'
 import { hubTree } from './styles'
-import type { LayoutEdge, LayoutNode, LayoutRequest, PlacedNode } from './types'
+import {
+  GRAPHVIZ_ENGINES,
+  GRAPHVIZ_STYLE_ENGINES,
+  type LayoutEdge,
+  type LayoutNode,
+  type LayoutRequest,
+  type PlacedNode,
+} from './types'
 
 const elk = new ELK()
 
@@ -308,7 +316,15 @@ describe('hubTree', () => {
 })
 
 describe('Graphviz layouts', () => {
-  it.each(['dot', 'neato', 'fdp', 'circo', 'twopi', 'osage', 'lanes'] as const)(
+  it.each([
+    'graphviz-layers',
+    'graphviz-spring',
+    'graphviz-force',
+    'graphviz-circle',
+    'graphviz-radial',
+    'graphviz-packed',
+    'lanes',
+  ] as const)(
     'keeps nested groups around their nodes, keeps siblings apart and routes every edge with %s',
     async (style) => {
       const request = { ...hub(), style }
@@ -320,8 +336,30 @@ describe('Graphviz layouts', () => {
     },
   )
 
-  it('puts each child after its parent with dot', async () => {
-    const request = { ...orgChart(), style: 'dot' as const }
+  it.each([
+    ['graphviz-layers', 'dot'],
+    ['graphviz-spring', 'neato'],
+    ['graphviz-force', 'fdp'],
+    ['graphviz-circle', 'circo'],
+    ['graphviz-radial', 'twopi'],
+    ['graphviz-packed', 'osage'],
+  ] as const)('runs %s with the Graphviz engine %s', async (style, engine) => {
+    const engines: string[] = []
+    const recording: GraphvizRunner = (dot, used) => {
+      engines.push(used)
+      return graphvizWasm(dot, used)
+    }
+    await computeLayout(elk, { ...hub(), style }, recording)
+    expect(engines.length).toBeGreaterThan(0)
+    expect(new Set(engines)).toEqual(new Set([engine]))
+  })
+
+  it('gives each Graphviz engine one layout style', () => {
+    expect(Object.values(GRAPHVIZ_STYLE_ENGINES).toSorted()).toEqual([...GRAPHVIZ_ENGINES].toSorted())
+  })
+
+  it('puts each child after its parent with graphviz-layers', async () => {
+    const request = { ...orgChart(), style: 'graphviz-layers' as const }
     const rects = absolute((await computeLayout(elk, request)).nodes, request)
     for (const edge of request.edges) {
       const parent = rects.get(edge.source)!
@@ -329,7 +367,7 @@ describe('Graphviz layouts', () => {
     }
   })
 
-  it('puts a ring on a circle with circo', async () => {
+  it('puts a ring on a circle with graphviz-circle', async () => {
     const b = builder()
     const ids = Array.from({ length: 8 }, (_, index) => b.card(`r${index}`))
     ids.forEach((id, index) => b.edge(id, ids[(index + 1) % ids.length]!))
@@ -338,7 +376,7 @@ describe('Graphviz layouts', () => {
       edges: b.edges,
       direction: 'RIGHT',
       layerGapPx: 120,
-      style: 'circo',
+      style: 'graphviz-circle',
     }
     const centres = [...absolute((await computeLayout(elk, request)).nodes, request).values()].map(centreOf)
     const middle = {
@@ -349,8 +387,8 @@ describe('Graphviz layouts', () => {
     expect(Math.min(...distances) / Math.max(...distances)).toBeGreaterThan(0.8)
   })
 
-  it('puts the root in the middle with twopi', async () => {
-    const request = { ...star('s3'), style: 'twopi' as const }
+  it('puts the root in the middle with graphviz-radial', async () => {
+    const request = { ...star('s3'), style: 'graphviz-radial' as const }
     const rects = absolute((await computeLayout(elk, request)).nodes, request)
     const others = [...rects.keys()].filter((id) => id !== 's3').map((id) => centreOf(rects.get(id)!))
     const mean = {

@@ -18,7 +18,7 @@ The Diagrams app shows every change while you make it, and each call that change
    - `network` for a mesh with many connections and no main direction.
    - `grid` for an inventory with few connections, such as a list of services that a team owns.
    - `lanes` for swimlanes: put the nodes of each team or tier (for example clients, edge, services, data) in a top-level group, in the order of the lanes, then lay out with `lanes`.
-   - The Graphviz engines when the user asks for one or a shape needs it: `dot`, `neato`, `fdp`, `circo` for a ring or a cycle, `twopi`, `osage`.
+   - The Graphviz layouts when the user asks for Graphviz or a shape needs one: `graphviz-layers` for layers along the direction, `graphviz-spring` and `graphviz-force` for a network, `graphviz-circle` for a ring or a cycle, `graphviz-radial` for rings around `center`, `graphviz-packed` for boxes packed in rows. If the user names a Graphviz engine, use its layout: `dot` is `graphviz-layers`, `neato` is `graphviz-spring`, `fdp` is `graphviz-force`, `circo` is `graphviz-circle`, `twopi` is `graphviz-radial`, `osage` is `graphviz-packed`.
 6. **Check your work.** Call `lint_diagram` and fix each `warning` with `update_elements`; label the edges it lists where the label helps the reader. Then call `render_image` and look at the image. Fix overlaps, nodes outside their boundary and long labels with `update_elements`. Then render again.
 
 ## Nodes
