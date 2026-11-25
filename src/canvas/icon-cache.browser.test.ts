@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import { BUNDLED_ICON_NAMES, cacheVersion, loaded, loadIconNames, preloadIcons, subscribe } from './icon-cache'
 
+vi.mock(import('./icons/aliases'), async (original) => {
+  const aliases = await original()
+  const test = { 'old-database': 'database', 'old-anchor': 'anchor', 'old-ship': 'ship', 'logo:golang': 'logo:go' }
+  return { ...aliases, currentIconName: (name: string) => aliases.currentIconName(name, test) }
+})
+
 function watch() {
   const listener = vi.fn()
   const stop = subscribe(listener)
@@ -34,6 +40,17 @@ describe('icon cache', () => {
     await preloadIcons(['logo:go'])
     expect(loaded.has('logo:go')).toBe(true)
     expect(listener).toHaveBeenCalledTimes(1)
+    stop()
+  })
+
+  it('draws an icon of an earlier name under that name', async () => {
+    const { listener, stop } = watch()
+    await preloadIcons(['old-database', 'old-anchor', 'old-ship', 'logo:golang'])
+    expect(loaded.get('old-database')).toBe(loaded.get('database'))
+    expect(loaded.get('old-anchor')).toBe(loaded.get('anchor'))
+    expect(loaded.get('old-ship')).toBeDefined()
+    expect(loaded.has('logo:golang')).toBe(true)
+    expect(listener).toHaveBeenCalled()
     stop()
   })
 

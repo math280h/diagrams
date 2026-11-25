@@ -7,7 +7,7 @@ import * as simpleIcons from 'simple-icons'
 import type { SimpleIcon } from 'simple-icons'
 import { OFFICIAL_WEBSITE } from '../src/desktop/build-config.ts'
 import { REPOSITORY_URL } from '../src/desktop/constants.ts'
-import { ICON_SOURCES } from './icons/sources.ts'
+import { ICON_SOURCES, KEPT_LOGOS_FILE, type KeptLogo } from './icons/sources.ts'
 import {
   chromiumProjects,
   type Component,
@@ -318,11 +318,13 @@ function electronRuntime(): Component {
 
 /** Returns the components of the icon sets in `src/canvas/icons/data`, with the licensed logos. */
 export function iconSets(): Component[] {
-  const icons = new Map(
-    Object.values(simpleIcons)
+  const kept = readJson(KEPT_LOGOS_FILE) as Record<string, KeptLogo>
+  const icons = new Map<string, Pick<KeptLogo, 'title' | 'source' | 'license'>>([
+    ...Object.entries(kept).map(([slug, logo]) => [`logo:${slug}`, logo] as const),
+    ...Object.values(simpleIcons)
       .filter((icon): icon is SimpleIcon => typeof icon === 'object' && 'slug' in icon)
-      .map((icon) => [`logo:${icon.slug}`, icon]),
-  )
+      .map((icon) => [`logo:${icon.slug}`, icon] as const),
+  ])
   return ICON_SOURCES.map((source) => {
     const file = path.join(ICON_DATA, `${source.file}.json`)
     const data = readFileSync(file)

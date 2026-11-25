@@ -220,6 +220,10 @@ jobs:
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: node scripts/release-formats.ts --base "$BASE"
+      - name: Check that the icon names of earlier releases stay on the list
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: node scripts/icon-ids.ts --base "$BASE"
 
   docker:
     name: Docker image
