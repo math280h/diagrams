@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -82,6 +82,8 @@ const dataDir = path.join(temp, 'diagrams')
 const autostartDir = path.join(temp, 'autostart')
 const port = await freePort()
 const debugPort = systemLoginItem ? await freePort() : null
+mkdirSync(userData, { recursive: true })
+writeFileSync(path.join(userData, 'app-settings.json'), JSON.stringify({ autoUpdateCheck: false }))
 console.log(`Starting ${executable}`)
 const child = spawn(executable, debugPort ? [`--remote-debugging-port=${debugPort}`] : [], {
   env: {

@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -17,17 +17,11 @@ const electron = vi.hoisted(() => ({
 
 vi.mock('electron', () => ({ app: electron.app }))
 
-const {
-  autostartEnabled,
-  autostartEntry,
-  autostartLoginItem,
-  createLoginItem,
-  execValue,
-  startedAtLogin,
-  WINDOWS_LOGIN_ITEM,
-} = await import('./login-item')
+const { autostartEnabled, autostartEntry, autostartLoginItem, createLoginItem, startedAtLogin, WINDOWS_LOGIN_ITEM } =
+  await import('./login-item')
 
 const originalPlatform = process.platform
+const originalExecPath = process.execPath
 const folders: string[] = []
 
 function tempFolder() {
@@ -40,6 +34,10 @@ function onPlatform(platform: NodeJS.Platform) {
   Object.defineProperty(process, 'platform', { value: platform })
 }
 
+function onExecPath(execPath: string) {
+  Object.defineProperty(process, 'execPath', { value: execPath })
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   electron.app.isPackaged = true
@@ -47,24 +45,9 @@ beforeEach(() => {
 
 afterEach(() => {
   Object.defineProperty(process, 'platform', { value: originalPlatform })
+  onExecPath(originalExecPath)
   vi.unstubAllEnvs()
   for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true })
-})
-
-describe('execValue', () => {
-  it('writes plain arguments as they are', () => {
-    expect(execValue(['/opt/Diagrams/diagrams', BACKGROUND_ARG])).toBe('/opt/Diagrams/diagrams --background')
-  })
-
-  it('quotes and escapes arguments with spaces and reserved characters, as the Desktop Entry Specification asks', () => {
-    expect(execValue(['/home/a b/Diagrams.AppImage'])).toBe('"/home/a b/Diagrams.AppImage"')
-    expect(execValue(['/home/$user/50%/"x"'])).toBe('"/home/\\\\$user/50%%/\\\\"x\\\\""')
-    expect(execValue(['C:\\Apps\\Diagrams.exe'])).toBe('"C:\\\\\\\\Apps\\\\\\\\Diagrams.exe"')
-  })
-
-  it('refuses a path with a line break', () => {
-    expect(() => execValue(['/home/a\nb/diagrams'])).toThrow('line break')
-  })
 })
 
 describe('autostartEntry', () => {
@@ -124,6 +107,23 @@ describe('autostartLoginItem', () => {
     writeFileSync(file, '[Desktop Entry]\nType=Application\nExec=/opt/Diagrams/diagrams --background\n')
     autostartLoginItem(folder, ['/opt/Diagrams/diagrams', BACKGROUND_ARG]).sync()
     expect(readFileSync(file, 'utf8')).toContain('\nTryExec=/opt/Diagrams/diagrams\n')
+  })
+
+  it('writes the new path of an updated AppImage into an entry that is on, as the next start writes it', () => {
+    const folder = tempFolder()
+    const file = path.join(folder, AUTOSTART_FILE)
+    const item = autostartLoginItem(folder, ['/apps/Diagrams-1.0.AppImage', BACKGROUND_ARG])
+    item.moved('/apps/Diagrams-1.1.AppImage')
+    expect(existsSync(file)).toBe(false)
+
+    item.set(true)
+    item.moved('/apps/Diagrams-1.1.AppImage')
+    expect(readFileSync(file, 'utf8')).toBe(autostartEntry(['/apps/Diagrams-1.1.AppImage', BACKGROUND_ARG]))
+
+    const turnedOff = `${readFileSync(file, 'utf8')}Hidden=true\n`
+    writeFileSync(file, turnedOff)
+    item.moved('/apps/Diagrams-1.2.AppImage')
+    expect(readFileSync(file, 'utf8')).toBe(turnedOff)
   })
 })
 
@@ -188,6 +188,25 @@ describe('createLoginItem', () => {
     expect(createLoginItem().installed()).toBe(true)
     electron.app.isPackaged = false
     expect(createLoginItem().installed()).toBe(false)
+  })
+
+  it('starts the AppImage that runs the app, and not the AppImage of a parent process', () => {
+    onPlatform('linux')
+    const config = tempFolder()
+    electron.app.getPath.mockReturnValue(config)
+    const entry = () => readFileSync(path.join(config, 'autostart', AUTOSTART_FILE), 'utf8')
+
+    onExecPath('/tmp/.mount_Diagra1/diagrams')
+    vi.stubEnv('APPIMAGE', '/home/a/Diagrams.AppImage')
+    vi.stubEnv('APPDIR', '/tmp/.mount_Diagra1')
+    createLoginItem().set(true)
+    expect(entry()).toContain('\nExec=/home/a/Diagrams.AppImage --background\n')
+
+    onExecPath('/opt/Diagrams/diagrams')
+    vi.stubEnv('APPIMAGE', '/home/a/Editor.AppImage')
+    vi.stubEnv('APPDIR', '/tmp/.mount_Editor')
+    createLoginItem().set(true)
+    expect(entry()).toContain('\nExec=/opt/Diagrams/diagrams --background\n')
   })
 
   it('uses an autostart entry in the configuration folder on Linux', () => {

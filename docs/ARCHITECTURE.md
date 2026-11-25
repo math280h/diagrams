@@ -1426,6 +1426,11 @@ the SBOM.
   systems and failed lookups get the release page. It links only this repository's release files.
 - The app registers `diagrams://` at each start. The Windows uninstaller removes it if it points at the installed app
   (`build/installer.nsh`); an update keeps it.
+  - An AppImage installs no desktop entry, so the system cannot open `diagrams://` links with it. At each start, the
+    AppImage writes its path into `~/.local/share/applications/diagrams-appimage.desktop` and makes this entry the
+    handler (`electron/appimage-links.ts`). It keeps a handler that works, for example of the deb package, because
+    the user installed that app. An update can give the AppImage a new file name and remove the old file, so the
+    app then writes the new path into this entry and into the autostart entry during the quit.
 - Before an update Restart, main saves the open diagram and waits for the writes (`prepareQuit`): on macOS, the
   update quit skips the window close step.
 - When the install fails, for example after a cancelled password prompt of a deb install, the app undoes the quit
