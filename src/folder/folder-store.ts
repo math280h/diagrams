@@ -1,7 +1,8 @@
 import { create } from 'zustand'
-import { createJSONStorage, persist } from 'zustand/middleware'
+import { persist } from 'zustand/middleware'
 import { useAgentStore } from '@/desktop/agent-store'
 import { errorMessage } from '@/lib/error-message'
+import { localPersistStorage } from '@/lib/persist-storage'
 import { loadDiagramOrNull } from '@/persistence/active-repository'
 import { serializeDiagram } from '@/persistence/cached-repository'
 import { fileOfId } from '@/persistence/diagram-file-name'
@@ -39,7 +40,7 @@ interface FolderSettings {
 export const useFolderSettings = create<FolderSettings>()(
   persist((): FolderSettings => ({ agents: false }), {
     name: 'dg:folder-settings',
-    storage: createJSONStorage(() => localStorage),
+    storage: localPersistStorage(),
   }),
 )
 
