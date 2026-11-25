@@ -5,7 +5,7 @@ import { editorFit } from './fit'
 /**
  * Fits the diagram to the screen after the first measurement.
  *
- * The component does this only if the saved viewport shows no node.
+ * The component does this only if the saved view of this device shows no node.
  */
 export function RecoverViewport() {
   const initialized = useNodesInitialized()

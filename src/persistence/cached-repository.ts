@@ -1,4 +1,4 @@
-import type { FileChange, StoredFile } from '@/desktop/contract'
+import type { FileChange, FileWriteOutcome, StoredFile } from '@/desktop/contract'
 import type { Diagram } from '@/model/schema'
 import { errorMessage } from '@/lib/error-message'
 import { migrate } from './migrations'
@@ -13,7 +13,8 @@ import {
 } from './repository'
 
 export interface RepositorySink {
-  write(file: StoredFile): Promise<unknown>
+  /** Resolves with `kept-outside` when storage keeps a change from outside and does not take the file. */
+  write(file: StoredFile): Promise<FileWriteOutcome | void>
   /** Rejects with a {@link TrashError} if the trash fails and the file stays. */
   remove(id: string, trash: boolean): Promise<unknown>
 }
@@ -77,18 +78,20 @@ function withSortedKeys(value: unknown): unknown {
 }
 
 /**
- * Returns the content of a diagram file without `$schema` and the fields that change on a pan, a zoom, a measure or
- * any save, with the keys in a fixed order: a diagram that the app parses again has its keys in the order of the schema.
+ * Returns the content of a diagram file without `$schema`, the format, the view of a format before 22 and the fields
+ * that change on a measure or any save. The keys are in a fixed order: a diagram that the app parses again has its
+ * keys in the order of the schema.
  */
 function lastingContent(text: string): string {
   const {
     $schema: _schema,
+    version: _version,
     viewport: _viewport,
     rev: _rev,
     updatedAt: _updatedAt,
     nodes,
     ...rest
-  } = JSON.parse(text) as Diagram
+  } = JSON.parse(text) as Diagram & { viewport?: unknown }
   return JSON.stringify(withSortedKeys({ ...rest, nodes: nodes.map(({ measured: _measured, ...node }) => node) }))
 }
 
@@ -96,9 +99,10 @@ function lastingContent(text: string): string {
  * Creates a repository that keeps every diagram in memory and writes changes through to a sink.
  *
  * Reads are synchronous. The id of a diagram is its file name, so a copied file never saves under the id inside it.
- * Only the last save of a diagram sends `saved` or `save-failed`. A linked file and a file in a picked folder are
- * project files: a save that changes only the viewport, the save counter, the time, measured sizes or `$schema` does
- * not write them, when storage has the other content already.
+ * Only the last save of a diagram sends `saved` or `save-failed`. A save that the sink refuses for a change from outside
+ * sends neither, and the repository takes that change as {@link CachedRepository.applyExternal} does. A linked file and a file in a picked folder are
+ * project files: a save that changes only the save counter, the time, measured sizes, `$schema` or the format does not
+ * write them, when storage has the other content already.
  */
 export function createCachedRepository(options: {
   location: StorageLocation
@@ -120,13 +124,29 @@ export function createCachedRepository(options: {
     void work.then(() => pending.delete(work))
   }
 
-  const trackSave = (id: string, text: string, work: Promise<unknown>) => {
+  const applyExternal = (change: FileChange) => {
+    const current = entries.get(change.id)
+    if (change.kind === 'removed') {
+      stored.delete(change.id)
+      if (!current) return
+      entries.delete(change.id)
+      emit({ kind: 'changed', id: change.id })
+      return
+    }
+    stored.set(change.id, change.text)
+    if (current?.text === change.text) return
+    entries.set(change.id, entryFromText(change.id, change.text, change.path ?? current?.meta.path))
+    emit({ kind: 'changed', id: change.id })
+  }
+
+  const trackSave = (id: string, text: string, work: Promise<FileWriteOutcome | void>) => {
     const seq = (latestSave.get(id) ?? 0) + 1
     latestSave.set(id, seq)
     const isLatest = () => latestSave.get(id) === seq
     settle(
       work.then(
-        () => {
+        (outcome) => {
+          if (outcome?.kind === 'kept-outside') return applyExternal(outcome.change)
           if (!isLatest()) return
           stored.set(id, text)
           emit({ kind: 'saved', id })
@@ -214,20 +234,7 @@ export function createCachedRepository(options: {
       }
     },
 
-    applyExternal(change) {
-      const current = entries.get(change.id)
-      if (change.kind === 'removed') {
-        stored.delete(change.id)
-        if (!current) return
-        entries.delete(change.id)
-        emit({ kind: 'changed', id: change.id })
-        return
-      }
-      stored.set(change.id, change.text)
-      if (current?.text === change.text) return
-      entries.set(change.id, entryFromText(change.id, change.text, change.path ?? current?.meta.path))
-      emit({ kind: 'changed', id: change.id })
-    },
+    applyExternal,
 
     async settled() {
       await Promise.all(pending)

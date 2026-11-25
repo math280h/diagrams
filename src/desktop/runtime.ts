@@ -1,8 +1,7 @@
 import { toast } from 'sonner'
 import { createBrowserContext } from '@/agent/browser-context'
 import { runAgentTool } from '@/agent/runtime'
-import { repository } from '@/persistence/active-repository'
-import { parseDiagramJson } from '@/persistence/library-actions'
+import { readDiagramJson, saveReadDiagram, withFreshIdentity } from '@/persistence/library-actions'
 import { untilStored } from '@/persistence/until-stored'
 import { createAndOpenBlankDiagram, openPickedDiagramFiles } from '@/library/library-commands'
 import { watchCrashes } from '@/reports/crashes'
@@ -72,8 +71,9 @@ export function startDesktopRuntime(storageError: string | null = null) {
 
     'handoff.open': async ({ text }) => {
       if (storageError !== null) throw new Error(unavailable)
-      const diagram = parseDiagramJson(text)
-      const failure = await untilStored(diagram.id, () => repository().save(diagram))
+      const read = readDiagramJson(text)
+      const diagram = withFreshIdentity(read.diagram)
+      const failure = await untilStored(diagram.id, () => saveReadDiagram({ diagram, view: read.view }))
       if (failure !== null) throw new Error(failure)
       await router.navigate({ to: '/d/$diagramId', params: { diagramId: diagram.id } })
       toast.success(diagram.name ? `Opened “${diagram.name}” from the browser` : 'Opened the diagram from the browser')

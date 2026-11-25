@@ -78,10 +78,9 @@ describe('version history', () => {
     expect(you!.author).toBe('you')
   })
 
-  it('skips saves that change only the viewport or measured sizes', async () => {
+  it('skips saves that change only measured sizes', async () => {
     const start = diagram(['API'])
     beginVersions(start)
-    recordVersion({ ...start, viewport: { x: 40, y: 0, zoom: 2 } })
     recordVersion({ ...start, nodes: start.nodes.map((node) => ({ ...node, measured: { width: 216, height: 60 } })) })
     expect(await items()).toHaveLength(1)
   })

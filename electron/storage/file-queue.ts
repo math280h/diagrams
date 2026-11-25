@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { mkdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, rm, stat, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import type { FileChange } from '@/desktop/contract'
 import { errorMessage } from '@/lib/error-message'
@@ -62,8 +62,6 @@ async function removeFile(file: string, trash: ((file: string) => Promise<void>)
   }
 }
 
-type Operation = { kind: 'write'; text: string } | { kind: 'remove'; trash: boolean }
-
 interface KnownFile {
   digest: string
   size: number
@@ -83,21 +81,49 @@ export interface FileQueueOptions {
 
 export type FileQueue = ReturnType<typeof createFileQueue>
 
+export interface WriteOptions {
+  /** If true, the write replaces the file also after a change from outside, for example after a save dialog. */
+  replace?: boolean
+}
+
 /**
  * Writes and removes files one change at a time for each id.
  *
  * Writes are atomic. Each id keeps only its last change that is not written yet. {@link FileQueue.inspect} compares
- * each file with the digest, size and change time of the last write or remove that succeeded. A write that fails does
- * not change these values.
+ * each file with the digest, size and change time of the last read, write or remove that succeeded. A write that fails
+ * does not change these values. The size and change time of a read come from before the read, and those of a write
+ * from the temporary file before its rename. Thus a change from outside during a read or just after a write is not
+ * lost.
+ *
+ * Just before the rename, a write compares the file with these values. A file that changed from outside since then
+ * stays, and the write gives that change.
  */
 export function createFileQueue(options: FileQueueOptions) {
   const known = new Map<string, KnownFile>()
   const sequence = new Map<string, number>()
-  const chains = new Map<string, Promise<void>>()
+  const chains = new Map<string, Promise<unknown>>()
 
-  const remember = async (id: string, text: string) => {
-    const info = await stat(options.pathOf(id))
-    known.set(id, { digest: digest(text), size: info.size, mtimeMs: info.mtimeMs })
+  const read = async (id: string) => {
+    const file = options.pathOf(id)
+    const before = sequence.get(id)
+    const info = await stat(file)
+    const text = await readFile(file, 'utf8')
+    if (sequence.get(id) === before) known.set(id, { digest: digest(text), size: info.size, mtimeMs: info.mtimeMs })
+    return text
+  }
+
+  async function changeFromOutside(id: string, target: string): Promise<{ text: string; file: KnownFile } | null> {
+    const current = known.get(id)
+    if (!current) return null
+    try {
+      const info = await stat(target)
+      if (info.size === current.size && info.mtimeMs === current.mtimeMs) return null
+      const text = await readFile(target, 'utf8')
+      const hash = digest(text)
+      return hash === current.digest ? null : { text, file: { digest: hash, size: info.size, mtimeMs: info.mtimeMs } }
+    } catch {
+      return null
+    }
   }
 
   async function writeTemp(target: string, temp: string, text: string) {
@@ -111,28 +137,36 @@ export function createFileQueue(options: FileQueueOptions) {
     }
   }
 
-  async function perform(id: string, operation: Operation) {
-    const target = options.pathOf(id)
-    if (operation.kind === 'remove') {
-      await removeFile(target, operation.trash ? options.trash : undefined)
-      known.delete(id)
-      return
-    }
-    await writeThroughTemp(target, async (temp) => {
-      await writeTemp(target, temp, operation.text)
-      await withRetry(() => rename(temp, target))
-    })
-    await remember(id, operation.text)
+  async function remove(id: string, trash: boolean) {
+    await removeFile(options.pathOf(id), trash ? options.trash : undefined)
+    known.delete(id)
   }
 
-  function enqueue(id: string, operation: Operation): Promise<void> {
+  async function write(id: string, text: string, { replace = false }: WriteOptions): Promise<FileChange | null> {
+    const target = options.pathOf(id)
+    let kept: FileChange | null = null
+    await writeThroughTemp(target, async (temp) => {
+      await writeTemp(target, temp, text)
+      const written = await stat(temp)
+      const outside = replace ? null : await changeFromOutside(id, target)
+      if (outside) {
+        await rm(temp, { force: true }).catch(() => undefined)
+        known.set(id, outside.file)
+        kept = { kind: 'changed', id, text: outside.text }
+        return
+      }
+      await withRetry(() => rename(temp, target))
+      known.set(id, { digest: digest(text), size: written.size, mtimeMs: written.mtimeMs })
+    })
+    return kept
+  }
+
+  function enqueue<T>(id: string, perform: () => Promise<T>): Promise<T | undefined> {
     if (!options.accepts(id)) return Promise.reject(new Error(`"${id}" is not a valid diagram id.`))
     const seq = (sequence.get(id) ?? 0) + 1
     sequence.set(id, seq)
     const previous = chains.get(id) ?? Promise.resolve()
-    const run = previous
-      .catch(() => undefined)
-      .then(() => (sequence.get(id) === seq ? perform(id, operation) : undefined))
+    const run = previous.catch(() => undefined).then(() => (sequence.get(id) === seq ? perform() : undefined))
     chains.set(id, run)
     void run
       .catch(() => undefined)
@@ -173,11 +207,24 @@ export function createFileQueue(options: FileQueueOptions) {
   }
 
   return {
-    remember,
+    /**
+     * Reads a file and takes its content, size and change time as the known state, unless this app starts a write or
+     * remove of the file during the read.
+     */
+    read,
     knows: (id: string) => known.has(id),
     forget: (id: string) => known.delete(id),
-    write: (id: string, text: string) => enqueue(id, { kind: 'write', text }),
-    remove: (id: string, trash: boolean) => enqueue(id, { kind: 'remove', trash }),
+    /**
+     * Writes a file, unless it changed from outside since the last read or write.
+     *
+     * @returns The change from outside that the file keeps, or `null` after the write or after a later write of the
+     *   same id took its place.
+     */
+    write: async (id: string, text: string, writeOptions: WriteOptions = {}): Promise<FileChange | null> =>
+      (await enqueue(id, () => write(id, text, writeOptions))) ?? null,
+    remove: async (id: string, trash: boolean): Promise<void> => {
+      await enqueue(id, () => remove(id, trash))
+    },
     inspect,
     /** Returns the ids of the files that the queue knows. */
     knownIds: () => [...known.keys()],

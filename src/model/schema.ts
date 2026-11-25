@@ -1,7 +1,7 @@
 import { z } from '@/lib/zod'
 import { COLORS } from './colors'
 
-export const DIAGRAM_VERSION = 21
+export const DIAGRAM_VERSION = 22
 
 const colorSchema = z.enum(COLORS)
 
@@ -406,7 +406,9 @@ export const themeSchema = z.object({
 })
 export type DiagramTheme = z.infer<typeof themeSchema>
 
+/** The pan and zoom of a canvas: `x` and `y` in screen pixels, and `zoom` as a scale. */
 export const viewportSchema = z.object({ x: z.number(), y: z.number(), zoom: z.number() })
+export type DiagramView = z.infer<typeof viewportSchema>
 
 export const diagramSchema = z.object({
   $schema: z
@@ -422,7 +424,6 @@ export const diagramSchema = z.object({
   nodes: z.array(storedNodeSchema),
   edges: z.array(storedEdgeSchema),
   flows: z.array(flowSchema),
-  viewport: viewportSchema,
   /**
    * The save counter.
    *

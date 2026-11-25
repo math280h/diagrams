@@ -4,7 +4,9 @@ import {
   diagramSchema,
   storedEdgeSchema,
   storedNodeSchema,
+  viewportSchema,
   type Diagram,
+  type DiagramView,
   type StoredEdge,
   type StoredNode,
 } from '@/model/schema'
@@ -206,6 +208,14 @@ function toVersion21(raw: Record<string, unknown>): Record<string, unknown> {
   return raw
 }
 
+const VIEW_REMOVED_VERSION = 22
+
+/** Version 22 removes `viewport`: each device keeps its own view of a diagram. */
+function toVersion22(raw: Record<string, unknown>): Record<string, unknown> {
+  const { viewport: _viewport, ...rest } = raw
+  return rest
+}
+
 /** The migration at index `n` converts a diagram from version `n + 1` to version `n + 2`. */
 const MIGRATIONS: Migration[] = [
   toVersion2,
@@ -228,6 +238,7 @@ const MIGRATIONS: Migration[] = [
   toVersion19,
   toVersion20,
   toVersion21,
+  toVersion22,
 ]
 
 /**
@@ -238,6 +249,27 @@ const MIGRATIONS: Migration[] = [
 export const REWRITTEN_FIELDS: Readonly<Record<number, readonly string[]>> = {
   8: ['nodes[].data.accent', 'edges[].data.accent', 'flows[].token.accent', 'nodes[].data.tone'],
   19: ['theme.mode'],
+  22: ['viewport'],
+}
+
+const DEFAULT_VIEW: DiagramView = { x: 0, y: 0, zoom: 1 }
+
+/**
+ * Returns the editor view that diagram data of a format before 22 holds in `viewport`.
+ *
+ * Call it before {@link migrate}, because a migration can change the data.
+ *
+ * @returns `null` for data of format 22 or later, for a view that is not valid, and for the view at the origin with
+ *   zoom 1. These formats stored that view for a diagram that the editor fitted to the screen.
+ */
+export function legacyView(raw: unknown): DiagramView | null {
+  if (typeof raw !== 'object' || raw === null) return null
+  const { version = 1, viewport } = raw as Record<string, unknown>
+  if (typeof version !== 'number' || version >= VIEW_REMOVED_VERSION) return null
+  const view = viewportSchema.safeParse(viewport)
+  if (!view.success || view.data.zoom <= 0) return null
+  const { x, y, zoom } = view.data
+  return x === DEFAULT_VIEW.x && y === DEFAULT_VIEW.y && zoom === DEFAULT_VIEW.zoom ? null : { x, y, zoom }
 }
 
 export class DiagramFormatError extends Error {}

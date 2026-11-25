@@ -3,7 +3,7 @@ import { z } from '@/lib/zod'
 import { DIAGRAM_VERSION, diagramSchema, type Diagram } from '@/model/schema'
 import { currentDiagram, openDiagram } from '@/store/document'
 import { serializeDiagram } from './cached-repository'
-import { parseDiagramJson } from './library-actions'
+import { parseDiagramJson, readDiagramJson } from './library-actions'
 import { migrate, migrateElements, REWRITTEN_FIELDS } from './migrations'
 import { OLDEST_FORMAT, PREVIEW_FORMATS } from './release-formats'
 import { diagramSchemaPath, FIRST_PUBLISHED_FORMAT } from './schema-address'
@@ -15,6 +15,7 @@ const PUBLISHED_VERSIONS = VERSIONS.filter((version) => version >= OLDEST_PUBLIS
 const HOW = 'See "Change the diagram format" in docs/ARCHITECTURE.md.'
 const NEW_IDENTITY = new Set(['id', 'rev', 'createdAt', 'updatedAt'])
 const FLOAT_TOLERANCE = 1e-9
+const LAST_FORMAT_WITH_VIEW = 21
 
 interface SampleFile {
   version: number
@@ -110,4 +111,18 @@ describe('diagram formats', () => {
       expect(lostValues(copied, pasted, version), `${label}, copied and pasted`).toEqual([])
     }
   })
+
+  it.each(VERSIONS.filter((version) => version <= LAST_FORMAT_WITH_VIEW))(
+    'gives the view of each sample of format %i to the device before the migration drops it',
+    (version) => {
+      for (const { label, diagram } of samples(version)) {
+        expect(diagram, label).toHaveProperty('viewport')
+        expect(readDiagramJson(JSON.stringify(diagram)).view, `${label}, at the origin`).toBeNull()
+        const panned = { ...diagram, viewport: { x: -320.5, y: 48, zoom: 0.75 } }
+        const read = readDiagramJson(JSON.stringify(panned))
+        expect(read.view, label).toEqual(panned.viewport)
+        expect(read.diagram, label).not.toHaveProperty('viewport')
+      }
+    },
+  )
 })

@@ -80,8 +80,11 @@ test('reloads the page from the View menu after it saves the last change', async
   })
 
   await clickMenuItem(app, 'reload')
+  // Playwright rejects an evaluate while the page navigates, so the poll counts that as the old page.
   await expect
-    .poll(() => window.evaluate(() => (globalThis as { beforeReload?: boolean }).beforeReload ?? false))
+    .poll(() =>
+      window.evaluate(() => (globalThis as { beforeReload?: boolean }).beforeReload ?? false).catch(() => true),
+    )
     .toBe(false)
   await expect(name).toHaveValue('Kept over the reload')
 })

@@ -34,10 +34,7 @@ export function toStoredEdge(edge: DiagramEdge): StoredEdge | null {
 }
 
 export function toDiagram(
-  state: Pick<
-    DocState,
-    '$schema' | 'id' | 'name' | 'theme' | 'nodes' | 'edges' | 'flows' | 'viewport' | 'createdAt' | 'rev'
-  >,
+  state: Pick<DocState, '$schema' | 'id' | 'name' | 'theme' | 'nodes' | 'edges' | 'flows' | 'createdAt' | 'rev'>,
 ): Diagram {
   return {
     ...(state.$schema === undefined ? {} : { $schema: state.$schema }),
@@ -48,7 +45,6 @@ export function toDiagram(
     nodes: state.nodes.map(toStoredNode),
     edges: state.edges.map(toStoredEdge).filter((edge): edge is StoredEdge => edge !== null),
     flows: state.flows,
-    viewport: state.viewport,
     rev: state.rev,
     createdAt: state.createdAt,
     updatedAt: Date.now(),

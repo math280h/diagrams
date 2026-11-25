@@ -170,7 +170,6 @@ export function createDiagram(name = DEFAULT_DIAGRAM_NAME): Diagram {
     nodes: [],
     edges: [],
     flows: [],
-    viewport: { x: 0, y: 0, zoom: 1 },
     rev: 0,
     createdAt: now,
     updatedAt: now,

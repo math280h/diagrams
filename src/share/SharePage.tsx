@@ -5,20 +5,19 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { EngineProvider } from '@/engine/context'
 import { errorMessage } from '@/lib/error-message'
-import type { Diagram } from '@/model/schema'
-import { saveImported, withFreshIdentity } from '@/persistence/library-actions'
+import { saveReadDiagram, withFreshIdentity, type ReadDiagram } from '@/persistence/library-actions'
 import { PlayerStage } from '@/player/PlayerStage'
-import { decodeShareData } from './share-link'
+import { readShareData } from './share-link'
 
-type State = { kind: 'loading' } | { kind: 'failed'; message: string } | { kind: 'loaded'; diagram: Diagram }
+type State = { kind: 'loading' } | { kind: 'failed'; message: string } | { kind: 'loaded'; shared: ReadDiagram }
 
-function SharedDiagram({ diagram }: { diagram: Diagram }) {
+function SharedDiagram({ shared: { diagram, view } }: { shared: ReadDiagram }) {
   const navigate = useNavigate()
   const [flowId, setFlowId] = useState<string | undefined>(undefined)
 
   const saveCopy = () => {
     const copy = withFreshIdentity(diagram)
-    if (!saveImported(copy).ok) return
+    if (!saveReadDiagram({ diagram: copy, view }).ok) return
     void navigate({ to: '/d/$diagramId', params: { diagramId: copy.id } })
   }
 
@@ -45,8 +44,8 @@ function SharedLink({ data }: { data: string }) {
 
   useEffect(() => {
     let active = true
-    decodeShareData(data).then(
-      (diagram) => active && setState({ kind: 'loaded', diagram }),
+    readShareData(data).then(
+      (shared) => active && setState({ kind: 'loaded', shared }),
       (error: unknown) => active && setState({ kind: 'failed', message: errorMessage(error) }),
     )
     return () => {
@@ -54,7 +53,7 @@ function SharedLink({ data }: { data: string }) {
     }
   }, [data])
 
-  if (state.kind === 'loaded') return <SharedDiagram diagram={state.diagram} />
+  if (state.kind === 'loaded') return <SharedDiagram shared={state.shared} />
   return (
     <div className="grid h-full place-items-center p-6 text-center">
       {state.kind === 'loading' ? (
