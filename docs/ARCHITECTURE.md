@@ -1458,7 +1458,7 @@ setting turns this off.
     Ubuntu 22.04 and later do not install.
 - Fuses turn off `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS`, inspect flags and extra `file://` rights, and allow only the
   checked asar archive.
-- Release (`docs/RELEASING.md`): a `v*` tag starts `.github/workflows/release.yml` and sets the version
+- Release (`docs/RELEASING.md`): a `v*.*.*` tag starts `.github/workflows/release.yml` and sets the version
   (`-c.extraMetadata.version`); a release needs no commit. `pnpm release:tag` calculates the tag. One job creates
   the draft, because parallel electron-builder jobs could each create one. Platform jobs package, drive the app
   through the agent server (`scripts/smoke-package.mjs`) and upload. The maintainer publishes the draft.
@@ -1598,11 +1598,19 @@ It uses `renderDiagramImage` (as the agent tool `render_image` does) and `render
 ### Render action
 
 `actions/render` is a composite GitHub Action that keeps diagram images current with the command-line render.
-`main.mjs` runs in Node; `lib.mjs` holds the tested parts (file patterns, image paths, the comment).
+`main.mjs` runs in Node; `lib.mjs` holds the tested parts (file patterns, image paths, the comment, the release).
 
 - App: the action downloads the Linux AppImage of a release with `gh` and the job token. Runners have no libfuse2,
   which the AppImageKit runtime of older releases needs, so the action unpacks the AppImage. The app runs under
   `xvfb-run` without a display, and with `--no-sandbox` without unprivileged user namespaces. The `app` input replaces the download (this CI: the build from source).
+- Version: without the `version` input, the ref of the action (`github.action_ref`) selects the release. If a release
+  tag is at the commit of the ref, that release matches. If not, the newest stable release that the commit contains
+  matches (compare API). A release does not change `package.json`, so the files of the action do not hold the
+  version. A version tag without a published release stops the action with an error, because other repositories
+  cannot download a draft.
+- Major tag: after a stable release is live, an admin runs `pnpm release:major-tag` (`scripts/release-major-tag.ts`).
+  It moves `v<major>` to the newest stable release of that major version, so a pin to `@v1` never gets a 2.x app. Only
+  admins can move `v*` tags, so no workflow moves it, and the Release workflow starts only for `v*.*.*` tags.
 - Files: only tracked files (`git ls-files` with glob pathspecs), so no `node_modules` or build output.
 - Write mode renders each file next to it and outputs the image paths. The workflow commits them with its own branch
   and message.

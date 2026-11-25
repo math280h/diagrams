@@ -133,9 +133,10 @@ render fails and 2 for a wrong command line.
 
 ### Keep diagram images up to date with GitHub Actions
 
-The action `math280h/diagrams/actions/render` downloads the newest Linux release of the app and renders the diagram
-files in a repository (`**/*.diagram.json`, only files that git tracks). It runs on Linux runners. Pin `@main` to a
-release tag or a commit.
+The action `math280h/diagrams/actions/render` downloads the Linux release of the app and renders the diagram files in
+a repository (`**/*.diagram.json`, only files that git tracks). It runs on Linux runners. The ref of the action selects
+the release: `@v0` gets the newest `0.x` release, `@v0.2.0` or the commit of that tag gets v0.2.0, and `@main` gets
+the newest release. The major tag moves only for a release, never for a preview.
 
 Redraw the images when a diagram changes on `main`. The action writes `docs/orders.png` next to
 `docs/orders.diagram.json`, and the last step commits the images:
@@ -152,7 +153,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: math280h/diagrams/actions/render@main
+      - uses: math280h/diagrams/actions/render@v0
       - run: |
           git add -- '*.png'
           git diff --cached --quiet && exit 0
@@ -175,14 +176,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: math280h/diagrams/actions/render@main
+      - uses: math280h/diagrams/actions/render@v0
 ```
 
 The images of the comments go to the branch `diagram-previews`, because GitHub shows images in a comment only from an
 address. You can delete the branch at any time; the comments then lose their images. A pull request from a fork gets
 no comment, because its token cannot write. Other inputs: `files`, `format` (`png` or `svg`), `theme`, `max-size`,
-`mode` (`write`, `compare` or `auto`), `publish`, `preview-branch`, `version`, `app`, `base-app`, `base-root`, `screens`
-and `base-screens` (see
+`mode` (`write`, `compare` or `auto`), `publish`, `preview-branch`, `version` (a release such as `v0.2.0`, or `latest`),
+`app`, `base-app`, `base-root`, `screens` and `base-screens` (see
 [`actions/render/action.yml`](actions/render/action.yml)).
 
 With `base-app`, compare mode renders the same diagrams with two builds of the app instead, for example the app of a

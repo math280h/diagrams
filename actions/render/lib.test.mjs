@@ -2,12 +2,16 @@ import { describe, expect, it } from 'vitest'
 import {
   COMMENT_MARKER,
   commentBody,
+  compareVersions,
   imagePath,
   imageUrl,
   parseNameStatus,
   parsePatterns,
+  parseRefs,
   parseThemes,
+  parseVersion,
   pathspecs,
+  releaseForRef,
   renderOptions,
   splitCommand,
 } from './lib.mjs'
@@ -115,6 +119,87 @@ describe('render action', () => {
     const intro = 'No diagram looks different with this pull request, as of 0123456.'
     const body = commentBody({ intro, entries: [] })
     expect(body).toBe([COMMENT_MARKER, '### Diagram images', '', intro, ''].join('\n'))
+  })
+
+  it('sorts version tags as semantic versions', () => {
+    expect(parseVersion('v1.2.3-beta.1')).toEqual({ core: [1, 2, 3], prerelease: ['beta', '1'] })
+    expect(parseVersion('v1')).toBeNull()
+    expect(parseVersion('preview-57')).toBeNull()
+    expect(
+      ['v0.10.0', 'v0.2.0', 'v0.2.0-beta.2', 'v0.2.0-beta.10', 'v0.2.0-alpha.1', 'v1.0.0'].toSorted(compareVersions),
+    ).toEqual(['v0.2.0-alpha.1', 'v0.2.0-beta.2', 'v0.2.0-beta.10', 'v0.2.0', 'v0.10.0', 'v1.0.0'])
+  })
+
+  it('reads the commit of each ref, also of an annotated tag', () => {
+    const refs = parseRefs(
+      [
+        `${'a'.repeat(40)}\trefs/heads/main`,
+        `${'b'.repeat(40)}\trefs/tags/v0.1.0`,
+        `${'c'.repeat(40)}\trefs/tags/v0.1.0^{}`,
+        '',
+      ].join('\n'),
+    )
+    expect(refs.get('refs/heads/main')).toBe('a'.repeat(40))
+    expect(refs.get('refs/tags/v0.1.0')).toBe('c'.repeat(40))
+  })
+
+  describe('chooses the release of the action ref', () => {
+    const [old, release, beta, head, draft] = ['1', '2', '3', '4', '5'].map((digit) => digit.repeat(40))
+    const refs = new Map([
+      ['refs/tags/v0.1.0', old],
+      ['refs/tags/v0.2.0', release],
+      ['refs/tags/v0', release],
+      ['refs/tags/v0.3.0-beta.1', beta],
+      ['refs/tags/v0.3.0', draft],
+      ['refs/heads/main', head],
+      ['refs/heads/next', draft],
+    ])
+    const published = ['v0.3.0-beta.1', 'v0.2.0', 'v0.1.0']
+
+    it('takes the release of a version tag', () => {
+      expect(releaseForRef({ ref: 'v0.1.0', refs, published })).toEqual({ version: 'v0.1.0' })
+      expect(releaseForRef({ ref: 'v0.3.0-beta.1', refs, published })).toEqual({ version: 'v0.3.0-beta.1' })
+    })
+
+    it('takes the release at the commit of a major tag or a commit SHA', () => {
+      expect(releaseForRef({ ref: 'v0', refs, published })).toEqual({ version: 'v0.2.0' })
+      expect(releaseForRef({ ref: release.toUpperCase(), refs, published })).toEqual({ version: 'v0.2.0' })
+      expect(releaseForRef({ ref: beta, refs, published })).toEqual({ version: 'v0.3.0-beta.1' })
+    })
+
+    it('prefers a release to a preview at the same commit', () => {
+      const same = new Map([...refs, ['refs/tags/v0.2.0-beta.1', release]])
+      expect(releaseForRef({ ref: release, refs: same, published: [...published, 'v0.2.0-beta.1'] })).toEqual({
+        version: 'v0.2.0',
+      })
+    })
+
+    it('stops at a version tag that has no published release', () => {
+      for (const ref of ['v0.3.0', draft]) {
+        expect(releaseForRef({ ref, refs, published }).error).toBe(
+          'Diagrams v0.3.0 has no published release yet. Run the job again after the release, or set the version input.',
+        )
+      }
+    })
+
+    it('gives the stable releases to search for a branch or another commit', () => {
+      const stable = ['v0.2.0', 'v0.1.0']
+      expect(releaseForRef({ ref: 'main', refs, published })).toEqual({ commit: head, candidates: stable })
+      expect(releaseForRef({ ref: 'next', refs, published })).toEqual({ commit: draft, candidates: stable })
+      expect(releaseForRef({ ref: 'f'.repeat(40), refs, published })).toEqual({
+        commit: 'f'.repeat(40),
+        candidates: stable,
+      })
+    })
+
+    it('stops at an unknown ref or without a published release', () => {
+      expect(releaseForRef({ ref: 'feature', refs, published }).error).toBe(
+        'The action ref feature is not a tag, branch or commit of Diagrams. Set the version input.',
+      )
+      expect(releaseForRef({ ref: 'main', refs, published: [] }).error).toBe(
+        'Diagrams has no published release. Set the version input.',
+      )
+    })
   })
 
   it('links an image on the preview branch', () => {

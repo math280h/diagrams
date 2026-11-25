@@ -35,8 +35,11 @@ inputs:
     description: In compare mode, the branch that holds the images of the comments.
     default: diagram-previews
   version:
-    description: The Diagrams release to download, for example v0.2.0, or latest.
-    default: latest
+    description: >-
+      The Diagrams release to download, for example v0.2.0, or latest. Without it, the release that matches the ref of
+      the action: the release of a version tag such as v0.2.0, the newest release of a major tag such as v0, the release
+      at a pinned commit, and for a branch or another commit the newest release that it contains.
+    default: ''
   app:
     description: A command that starts Diagrams, for example a build from source. With it, the action downloads nothing.
     default: ''
@@ -94,3 +97,4 @@ runs:
         INPUT_SCREENS: ${{ inputs.screens }}
         INPUT_BASE_SCREENS: ${{ inputs.base-screens }}
         INPUT_TOKEN: ${{ inputs.token }}
+        ACTION_REF: ${{ github.action_ref }}
