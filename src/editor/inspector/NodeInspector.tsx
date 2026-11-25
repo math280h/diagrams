@@ -1,5 +1,6 @@
 import { AlignCenter, AlignLeft, AlignRight } from 'lucide-react'
 import { Icon } from '@/canvas/icon'
+import { currentIconName } from '@/canvas/icons/aliases'
 import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { newId } from '@/model/defaults'
@@ -273,7 +274,7 @@ function GroupFields({ node }: { node: GroupNodeType }) {
   const changeKind = (id: string) => {
     const next = boundaryKind(id)
     const patch: Partial<GroupData> = { kind: next.id }
-    if (data.icon === kind.icon) patch.icon = next.icon
+    if (currentIconName(data.icon) === kind.icon) patch.icon = next.icon
     if (next.tier !== 'custom' && data.label === 'Group') patch.label = ''
     if (next.tier === 'custom' && data.label === '') patch.label = 'Group'
     set(patch)

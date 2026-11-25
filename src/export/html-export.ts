@@ -1,5 +1,6 @@
 import type { LucideIconData } from 'lucide-react'
 import { BUNDLED_ICON_NAMES } from '@/canvas/icon-cache'
+import { currentIconName } from '@/canvas/icons/aliases'
 import { iconSourceOf, loadIconSet, type IconEntry, type IconSourceId } from '@/canvas/icons/library'
 import type { Diagram } from '@/model/schema'
 import { FileLoadError, fetchAppFile, fileLoadFailed } from '@/new-version/file-load'
@@ -31,32 +32,34 @@ function isIconData(value: unknown): value is LucideIconData {
 
 async function lucideIconData(name: string): Promise<LucideIconData | null> {
   const { dynamicIconImports } = await import('lucide-react/dynamic')
-  const load = dynamicIconImports[name as keyof typeof dynamicIconImports]
-  if (!load) return null
-  const module: Record<string, unknown> = await load()
+  if (!Object.hasOwn(dynamicIconImports, name)) return null
+  const module: Record<string, unknown> = await dynamicIconImports[name as keyof typeof dynamicIconImports]()
   const data = module[LUCIDE_ICON_DATA_EXPORT]
   return isIconData(data) ? data : null
 }
 
 async function pageIcons(diagram: Diagram): Promise<PageIcons> {
-  const bySource = new Map<IconSourceId, string[]>()
+  const bySource = new Map<IconSourceId, Set<string>>()
   const lucide: string[] = []
   for (const name of diagramIconNames(diagram)) {
-    const source = iconSourceOf(name)
-    if (source) bySource.set(source, [...(bySource.get(source) ?? []), name])
-    else if (!BUNDLED_ICON_NAMES.has(name)) lucide.push(name)
+    const current = currentIconName(name)
+    const source = iconSourceOf(current)
+    if (source) bySource.set(source, (bySource.get(source) ?? new Set()).add(current))
+    else if (!BUNDLED_ICON_NAMES.has(current)) lucide.push(name)
   }
   const sets = await Promise.all(
     [...bySource].map(async ([source, names]) => {
       const set = await loadIconSet(source)
-      const entries = names.map((name) => set.byId.get(name)).filter((entry): entry is IconEntry => !!entry)
+      const entries = [...names].map((name) => set.byId.get(name)).filter((entry): entry is IconEntry => !!entry)
       const art = Object.fromEntries(
         entries.flatMap((entry) => (entry.art && set.art[entry.art] ? [[entry.art, set.art[entry.art]!]] : [])),
       )
       return { source, entries, art }
     }),
   )
-  const icons = await Promise.all(lucide.map(async (name) => [name, await lucideIconData(name)] as const))
+  const icons = await Promise.all(
+    lucide.map(async (name) => [name, await lucideIconData(currentIconName(name))] as const),
+  )
   return {
     sets,
     lucide: Object.fromEntries(icons.filter((icon): icon is [string, LucideIconData] => icon[1] !== null)),

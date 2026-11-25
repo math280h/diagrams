@@ -8,6 +8,26 @@ export const KUBERNETES_ICONS_URL = `https://raw.githubusercontent.com/kubernete
 export const SALESFORCE_ICONS_VERSION = '10.18.1'
 export const SALESFORCE_ICONS_URL = `https://registry.npmjs.org/@salesforce-ux/icons/-/icons-${SALESFORCE_ICONS_VERSION}.tgz`
 
+export function simpleIconsUrl(version: string): string {
+  return `https://registry.npmjs.org/simple-icons/-/simple-icons-${version}.tgz`
+}
+
+/** The file of the logos that Simple Icons removed, by slug. `pnpm icons logos --keep-from <version>` adds to it. */
+export const KEPT_LOGOS_FILE = 'scripts/icons/kept-logos.json'
+
+/** The last data of a logo that Simple Icons removed. */
+export interface KeptLogo {
+  /** The Simple Icons version that the data comes from. */
+  version: string
+  title: string
+  /** The SVG path data, in a 24 by 24 view box. */
+  path: string
+  /** The page of the brand that the logo comes from. */
+  source: string
+  /** The licence of the logo, if it has its own. */
+  license?: { type: string; url?: string }
+}
+
 export type IconLicense = { id: string } | { expression: string } | { name: string; url: string }
 
 /** Where an icon set comes from, and on which terms the app ships it. */

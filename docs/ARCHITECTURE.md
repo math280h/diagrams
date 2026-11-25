@@ -333,6 +333,9 @@ Icon names are Lucide names (`database`) or prefixed set icons: `aws:`, `azure:`
   loads full sets for search.
 - `scripts/icons/catalog.mjs` lists curated entries: product name, source image, card form, import aliases, search
   keywords.
+- `src/canvas/icons/released-ids.json` holds every icon name that a release can write, and no name leaves it. Diagrams
+  keep their icon names, but Lucide renames icons and Simple Icons removes logos. A test fails when a name on the list
+  draws no icon: directly, through `ICON_ALIASES`, or as a retired logo from `scripts/icons/kept-logos.json`.
 - `pnpm icons` downloads the packages to `node_modules/.cache` and optimizes them with SVGO. It writes one JSON file per
   set to `src/canvas/icons/data`.
 - `scripts/icons/sources.ts` holds the download URL, version, website and terms of each set. `pnpm icons` and the

@@ -103,9 +103,14 @@ the trademark and brand guidelines of each brand still apply. These bundled logo
 
 Simple Icons provides each logo as one SVG path in one colour. The app draws that path without changes.
 
+Simple Icons removes some logos in a major version. If an earlier release of this app bundled a removed logo, the app
+keeps its last path, so that earlier diagrams still show it. The kept logos have the same terms as above. Each one is
+named here with the Simple Icons version that it comes from.
+
 The licences of Let's Encrypt, Tauri and Vue.js do not allow commercial use, and the Tauri licence does not allow
 changes. This project is free and non-commercial. If you use a fork of this project commercially, remove these three
-logos from `scripts/icons/catalog.mjs` and run `pnpm icons`.
+logos from `scripts/icons/catalog.mjs`, run `pnpm icons`, and remove their names from
+`src/canvas/icons/released-ids.json`.
 
 ## Lucide
 

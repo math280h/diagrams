@@ -2,6 +2,7 @@ import { Search } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Icon } from '@/canvas/icon'
 import { loadIconNames } from '@/canvas/icon-cache'
+import { currentIconName } from '@/canvas/icons/aliases'
 import { useIconTitle } from '@/canvas/icons/use-icon-title'
 import {
   ICON_SOURCES,
@@ -84,11 +85,12 @@ export function IconPicker({
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [source, setSource] = useState<PickerSource>(() => iconSourceOf(value) ?? 'symbols')
+  const current = currentIconName(value)
+  const [source, setSource] = useState<PickerSource>(() => iconSourceOf(current) ?? 'symbols')
   const [symbolNames, setSymbolNames] = useState<readonly string[]>([])
   const [sets, setSets] = useState<IconSet[]>([])
   const setTitle = useIconTitle(value)
-  const title = iconSourceOf(value) ? setTitle : symbolTitle(value)
+  const title = iconSourceOf(current) ? setTitle : symbolTitle(current)
 
   useEffect(() => {
     if (!open) return
@@ -118,12 +120,12 @@ export function IconPicker({
     setOpen(false)
   }
   const button = (entry: IconEntry) => (
-    <IconButton key={entry.id} name={entry.id} title={entry.title} selected={entry.id === value} onChoose={choose} />
+    <IconButton key={entry.id} name={entry.id} title={entry.title} selected={entry.id === current} onChoose={choose} />
   )
   const symbolGrid = (names: readonly string[]) => (
     <Grid>
       {names.map((name) => (
-        <IconButton key={name} name={name} title={symbolTitle(name)} selected={name === value} onChoose={choose} />
+        <IconButton key={name} name={name} title={symbolTitle(name)} selected={name === current} onChoose={choose} />
       ))}
     </Grid>
   )
