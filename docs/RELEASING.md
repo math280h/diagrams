@@ -30,6 +30,16 @@ version in `package.json` only names builds on your own computer, so a release n
    `linux/arm64` to `ghcr.io/math280h/diagrams` with the tags `<version>`, `<major>.<minor>`, `<major>` (from 1.0.0)
    and `latest` (only for the newest release). It attests the build provenance and the SBOM of the image. A preview
    release gets no image.
+7. When the release is live, move the major tag of the render action, for example `v1`, to the commit of the release:
+
+   ```sh
+   pnpm release:major-tag
+   ```
+
+   Workflows that use `math280h/diagrams/actions/render@v1` then run the action of that commit and download that
+   release. The script takes the newest published stable release, or the release that you name, such as `v0.4.1`. It
+   refuses a draft, a preview, or a release that is not the newest of its major version, and does nothing when the tag
+   points at the release already. Add `--dry-run` to only see the change.
 
 ## Release notes
 
@@ -89,8 +99,9 @@ the files, then publish.
 ## Who can release
 
 Only repository admins can create, move or delete `v*` tags (the "Release tags" ruleset), so only they can start a
-release or a preview. The `release` and `preview` environments accept only tags (`v*` and `v*-*`), so a pull request
-can never use them or their secrets.
+release or a preview. The Release workflow starts only for a version tag (`v*.*.*`), so a major tag such as `v1`
+starts no release. The `release` and `preview` environments accept only tags (`v*` and `v*-*`), so a pull request can
+never use them or their secrets.
 
 Test a package on your own computer with `pnpm desktop:package`. It writes the installer for your platform to
 `release/` and publishes nothing. `node scripts/smoke-package.mjs` then tests the packaged app.
