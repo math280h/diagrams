@@ -36,6 +36,7 @@ Open http://127.0.0.1:5173. For the desktop app, run `pnpm desktop:dev`.
 | Desktop installer    | `pnpm desktop:package` (writes `release/`; publishes nothing) |
 | Report server        | `pnpm report-server:build`, then `pnpm report-server:start`   |
 | Icon sets            | `pnpm icons` (downloads the official icon packages)           |
+| Icon names           | `node scripts/icon-ids.ts` (after an icon or Lucide update)   |
 | App icon             | `pnpm app-icon` (renders `build/icon.png` and `icon.ico`)     |
 
 Before you open a pull request, run `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm test` and `pnpm e2e`.
@@ -71,7 +72,8 @@ You can use AI tools. If you do:
 
 The icon sets come from the official packages of AWS, Microsoft, Google, the Kubernetes project and Simple Icons, under
 their own terms ([THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)). Do not add icons from other sources, and do not
-change the artwork of the official cloud icons.
+change the artwork of the official cloud icons. Each icon name that a release wrote must still draw its icon. If an
+update renames or removes an icon, follow [Keep icon names](docs/RELEASING.md#keep-icon-names).
 
 ## Licence
 

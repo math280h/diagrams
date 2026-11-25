@@ -56,9 +56,12 @@ const STORED_SETTINGS = z
     openAtLoginAdded: z.boolean().catch(DEFAULT_SETTINGS.openAtLoginAdded),
     agentWindow: z.enum(AGENT_WINDOW_MODES).catch(DEFAULT_SETTINGS.agentWindow),
     websites: ORIGINS,
-    shareWebsite: z.unknown().transform(originOrNull),
+    shareWebsite: z.unknown().optional().transform(originOrNull),
     addedBuildWebsites: ORIGINS,
-    updateRepository: z.unknown().transform((value) => (typeof value === 'string' ? repositoryName(value) : null)),
+    updateRepository: z
+      .unknown()
+      .optional()
+      .transform((value) => (typeof value === 'string' ? repositoryName(value) : null)),
   })
   .catch(DEFAULT_SETTINGS)
 

@@ -1,5 +1,6 @@
 import { definedFields } from '@/lib/defined-fields'
 import { edgeTravel, restingNodes, type TimelineSegment } from '@/engine/flow/compile'
+import { currentIconName } from '@/canvas/icons/aliases'
 import { iconSourceOf, type IconSet } from '@/canvas/icons/library'
 import { createOverviewStep, createStep } from '@/editor/flow/record'
 import { findEdgePath, joinEdges, nearestToken } from '@/engine/route'
@@ -68,25 +69,27 @@ export function createIconChecker(ctx: HandlerContext) {
   let lucide: Promise<ReadonlySet<string>> | null = null
 
   const entry = async (icon: string) => {
-    const source = iconSourceOf(icon)
+    const current = currentIconName(icon)
+    const source = iconSourceOf(current)
     if (!source) return undefined
     sets ??= ctx.iconSets()
-    return (await sets).find((candidate) => candidate.source === source)?.byId.get(icon)
+    return (await sets).find((candidate) => candidate.source === source)?.byId.get(current)
   }
 
   return {
     /**
-     * Returns the icon name if it exists. An unknown name becomes an empty string and adds a warning.
+     * Returns the current name of the icon if it exists. An unknown name becomes an empty string and adds a warning.
      *
      * @returns `undefined` if the input has no icon.
      */
     async check(icon: string | undefined, warnings: string[]): Promise<string | undefined> {
       if (icon === undefined || icon === '') return icon
-      if (iconSourceOf(icon)) {
-        if (await entry(icon)) return icon
+      const current = currentIconName(icon)
+      if (iconSourceOf(current)) {
+        if (await entry(current)) return current
       } else {
         lucide ??= ctx.lucideNames().then((names) => new Set(names))
-        if ((await lucide).has(icon)) return icon
+        if ((await lucide).has(current)) return current
       }
       warnings.push(`The icon "${icon}" does not exist, so the node has no icon. Find icons with search_icons.`)
       return ''

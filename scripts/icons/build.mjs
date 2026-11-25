@@ -1,23 +1,28 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { parseArgs } from 'node:util'
 import { gunzipSync } from 'node:zlib'
 import { unzipSync } from 'fflate'
 import * as simpleIcons from 'simple-icons'
 import { optimize } from 'svgo'
 import { AWS, AZURE, GCP, KUBERNETES, LOGO_ALIASES, LOGOS, SALESFORCE } from './catalog.mjs'
+import { logoEntries, logosBySlug, withKeptLogos, words } from './logos.ts'
 import {
   AWS_PACKAGE_URL,
   AZURE_PACKAGE_URL,
   GCP_CATEGORY_URL,
   GCP_CORE_URL,
+  KEPT_LOGOS_FILE,
   KUBERNETES_ICONS_URL,
   SALESFORCE_ICONS_URL,
+  simpleIconsUrl,
 } from './sources.ts'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const CACHE = join(ROOT, 'node_modules', '.cache', 'diagram-icons')
 const OUT = join(ROOT, 'src', 'canvas', 'icons', 'data')
+const KEPT_LOGOS = join(ROOT, KEPT_LOGOS_FILE)
 
 const SALESFORCE_ICONS_FOLDER = 'package/dist/salesforce-lightning-design-system-icons/'
 const SALESFORCE_UTILITY_GLYPH = 0.64
@@ -95,13 +100,6 @@ function clean(svg) {
       { name: 'removeAttrs', params: { attrs: 'data-name' } },
     ],
   }).data.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ')
-}
-
-function words(text) {
-  return text
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter(Boolean)
 }
 
 function entryFields(source, category, [slug, title, art, form, aliases, keywords]) {
@@ -208,28 +206,25 @@ async function buildKubernetes() {
   writeSet('k8s', { art, entries })
 }
 
-function buildLogos() {
-  const bySlug = new Map()
-  for (const icon of Object.values(simpleIcons)) {
-    if (icon && typeof icon === 'object' && 'slug' in icon) bySlug.set(icon.slug, icon)
+async function simpleIconsPackage(version) {
+  const archive = tarArchive(await download(simpleIconsUrl(version), `simple-icons-${version}.tgz`))
+  const file = join(CACHE, `simple-icons-${version}`, 'index.mjs')
+  mkdirSync(dirname(file), { recursive: true })
+  writeFileSync(
+    file,
+    find(archive, (p) => p === 'package/index.mjs', `simple-icons ${version}`),
+  )
+  return import(pathToFileURL(file).href)
+}
+
+async function buildLogos() {
+  const current = logosBySlug(simpleIcons)
+  let kept = JSON.parse(readFileSync(KEPT_LOGOS, 'utf8'))
+  if (keepFrom) {
+    kept = withKeptLogos(LOGOS, current, kept, logosBySlug(await simpleIconsPackage(keepFrom)), keepFrom)
+    writeFileSync(KEPT_LOGOS, `${JSON.stringify(kept, null, 2)}\n`)
   }
-  const entries = []
-  for (const [category, { form, slugs }] of Object.entries(LOGOS)) {
-    for (const slug of slugs.split(/\s+/)) {
-      const icon = bySlug.get(slug)
-      if (!icon) throw new Error(`Simple Icons has no ${slug}`)
-      entries.push({
-        id: `logo:${slug}`,
-        title: icon.title,
-        category,
-        form,
-        aliases: [...new Set([slug, icon.title.toLowerCase(), ...(LOGO_ALIASES[slug]?.split('|') ?? [])])],
-        keywords: [...new Set([slug, ...words(icon.title)])],
-        path: icon.path,
-      })
-    }
-  }
-  writeSet('logos', { entries })
+  writeSet('logos', { entries: logoEntries(LOGOS, LOGO_ALIASES, current, kept) })
 }
 
 async function buildSalesforce() {
@@ -260,6 +255,10 @@ const BUILDS = {
   salesforce: buildSalesforce,
 }
 
-const chosen = process.argv.slice(2)
+const { values, positionals: chosen } = parseArgs({
+  allowPositionals: true,
+  options: { 'keep-from': { type: 'string' } },
+})
+const keepFrom = values['keep-from']
 for (const name of chosen) if (!BUILDS[name]) throw new Error(`Unknown icon set ${name}`)
 for (const [name, build] of Object.entries(BUILDS)) if (chosen.length === 0 || chosen.includes(name)) await build()
