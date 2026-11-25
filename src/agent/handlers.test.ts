@@ -1010,6 +1010,83 @@ describe('runAgentTool', () => {
   })
 })
 
+describe('layout directions', () => {
+  const LAYOUT_TOOLS = ['add_elements', 'layout_diagram'] as const
+  const twoNodes = {
+    nodes: [
+      { ref: 'api', label: 'API' },
+      { ref: 'db', label: 'DB' },
+    ],
+    edges: [{ from: 'api', to: 'db' }],
+  }
+
+  function runWithDirections(directions: string[]) {
+    const recording = () => {
+      const ctx = context()
+      return {
+        ...ctx,
+        layout: (...args: Parameters<HandlerContext['layout']>) => {
+          directions.push(args[2])
+          return ctx.layout(...args)
+        },
+      }
+    }
+    return (tool: ToolName, args: unknown) => runAgentTool(tool, args, new AbortController().signal, recording)
+  }
+
+  it('lists the lowercase directions in the schema of each layout tool', () => {
+    for (const tool of LAYOUT_TOOLS) {
+      const { properties } = z.toJSONSchema(TOOL_DEFINITIONS[tool].input, { io: 'input' })
+      expect(properties?.direction, tool).toMatchObject({ enum: ['right', 'down', 'left', 'up'] })
+    }
+  })
+
+  it('gives each direction to the layout, with right as the default', async () => {
+    const directions: string[] = []
+    const run = runWithDirections(directions)
+    await call('create_diagram', { name: 'Shop' })
+    expect(await run('add_elements', twoNodes)).toMatchObject({ ok: true })
+    expect(await run('add_elements', { ...twoNodes, direction: 'down' })).toMatchObject({ ok: true })
+    for (const direction of ['right', 'down', 'left', 'up']) {
+      expect(await run('layout_diagram', { direction })).toMatchObject({ ok: true })
+    }
+    expect(await run('layout_diagram', { layout: 'lanes' })).toMatchObject({ ok: true })
+    expect(directions).toEqual(['right', 'down', 'right', 'down', 'left', 'up', 'right'])
+  })
+
+  it('refuses an uppercase direction and names the lowercase direction', async () => {
+    const directions: string[] = []
+    const run = runWithDirections(directions)
+    await call('create_diagram', { name: 'Shop' })
+    const calls = [
+      ['add_elements', 'RIGHT', 'right'],
+      ['add_elements', 'LEFT', 'left'],
+      ['layout_diagram', 'DOWN', 'down'],
+      ['layout_diagram', 'UP', 'up'],
+    ] as const
+    for (const [tool, direction, lowercase] of calls) {
+      const outcome = await run(tool, { ...twoNodes, direction })
+      expect(outcome.ok, `${tool} ${direction}`).toBe(false)
+      expect(outcome.ok ? '' : outcome.message).toContain(
+        `Write the direction in lowercase: "${lowercase}", not "${direction}". The directions are right, down, left, up.`,
+      )
+    }
+    expect(directions).toEqual([])
+    expect(useDoc.getState().nodes).toEqual([])
+  })
+
+  it('gives the schema error for a value that is not a direction', async () => {
+    await call('create_diagram', { name: 'Shop' })
+    for (const tool of LAYOUT_TOOLS) {
+      const outcome = await runWithDirections([])(tool, { ...twoNodes, direction: 'sideways' })
+      expect(outcome.ok, tool).toBe(false)
+      const message = outcome.ok ? '' : outcome.message
+      expect(message).toContain('direction')
+      expect(message).not.toContain('lowercase')
+    }
+  })
+})
+
 describe('agent changes that end after the editor moved on', () => {
   function gatedContext(signal = new AbortController().signal) {
     let release: () => void = () => undefined

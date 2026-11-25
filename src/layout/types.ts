@@ -1,7 +1,17 @@
 import type { XY } from '@/model/schema'
 
-export const LAYOUT_DIRECTIONS = ['RIGHT', 'DOWN', 'LEFT', 'UP'] as const
+export const LAYOUT_DIRECTIONS = ['right', 'down', 'left', 'up'] as const
 export type LayoutDirection = (typeof LAYOUT_DIRECTIONS)[number]
+
+/** The value of the ELK option `elk.direction` for each layout direction. */
+export const ELK_DIRECTIONS = { right: 'RIGHT', down: 'DOWN', left: 'LEFT', up: 'UP' } as const satisfies Record<
+  LayoutDirection,
+  string
+>
+
+export function isLayoutDirection(value: string): value is LayoutDirection {
+  return (LAYOUT_DIRECTIONS as readonly string[]).includes(value)
+}
 
 /** The Graphviz engines that a layout can use. */
 export const GRAPHVIZ_ENGINES = ['dot', 'neato', 'fdp', 'circo', 'twopi', 'osage'] as const

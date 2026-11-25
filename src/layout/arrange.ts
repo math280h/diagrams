@@ -6,7 +6,7 @@ import { LAYERED_OPTIONS, spacingOptions } from './hierarchy'
 import { graphvizWasm, type GraphvizRunner } from './graphviz'
 import { placeLevel } from './styles'
 import { childUnder, lowestCommonContainer, type LayoutTree } from './tree'
-import type { LayoutRequest, PlacedNode } from './types'
+import { ELK_DIRECTIONS, type LayoutRequest, type PlacedNode } from './types'
 
 interface Box {
   id: string
@@ -88,7 +88,7 @@ async function layeredPositions(
     layoutOptions: {
       ...LAYERED_OPTIONS,
       ...spacingOptions(request.layerGapPx),
-      'elk.direction': request.direction,
+      'elk.direction': ELK_DIRECTIONS[request.direction],
       'elk.layered.nodePlacement.bk.fixedAlignment': 'BALANCED',
     },
     children: boxes.map((box) => ({ id: box.id, width: box.width, height: box.height })),
@@ -182,8 +182,8 @@ function scoreArrangement(
     const position = positions.get(box)!
     return { x: position.x + rect.x + rect.width / 2, y: position.y + rect.y + rect.height / 2 }
   }
-  const vertical = request.direction === 'DOWN' || request.direction === 'UP'
-  const forwardSign = request.direction === 'DOWN' || request.direction === 'RIGHT' ? 1 : -1
+  const vertical = request.direction === 'down' || request.direction === 'up'
+  const forwardSign = request.direction === 'down' || request.direction === 'right' ? 1 : -1
   let cost = 0
   const lines: number[][] = []
   for (const [source, target] of ends) {
@@ -215,8 +215,8 @@ function gridPositions(
   request: LayoutRequest,
   score: (positions: Positions) => Score,
 ): Positions {
-  const vertical = request.direction === 'DOWN' || request.direction === 'UP'
-  const mirrored = request.direction === 'UP' || request.direction === 'LEFT'
+  const vertical = request.direction === 'down' || request.direction === 'up'
+  const mirrored = request.direction === 'up' || request.direction === 'left'
   const gapPx = request.layerGapPx
   const incoming = new Set(edges.map((edge) => edge.target))
   const outgoing = new Set(edges.map((edge) => edge.source))

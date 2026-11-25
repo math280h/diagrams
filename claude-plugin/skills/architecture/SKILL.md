@@ -12,7 +12,7 @@ The Diagrams app shows every change while you make it, and each call that change
 3. **Choose icons and boundaries.** Call `search_icons` once for each product the user names, for example "postgres", "lambda" or "kafka". If the system runs in a cloud account, a network or a cluster, call `list_boundary_kinds`.
 4. **Add everything in one call.** Send all nodes and edges in one `add_elements` call. Give each node a `ref` and use the refs in `from`, `to` and `parent`. Do not give `x` and `y`. The app places new nodes.
 5. **Lay it out.** After you add more than four nodes, call `layout_diagram` with the `layout` that fits the shape of the system:
-   - `flow` (the default) for request paths with `RIGHT`, and for layered stacks with `DOWN`.
+   - `flow` (the default) for request paths with `direction: "right"`, and for layered stacks with `direction: "down"`.
    - `tree` for a hierarchy from one root, such as an org chart or a dependency tree.
    - `hub` for one central node with many others around it, such as an event bus or an API gateway. Name it in `center`.
    - `network` for a mesh with many connections and no main direction.
