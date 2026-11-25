@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -118,6 +118,13 @@ describe('createAppSettings', () => {
     expect(createAppSettings(file, OFFICIAL).get()).toMatchObject({ openAtLoginAdded: true, agentWindow: 'focus' })
     writeFileSync(file, JSON.stringify({ ...stored(), openAtLoginAdded: 'yes', agentWindow: 'minimized' }))
     expect(createAppSettings(file, OFFICIAL).get()).toMatchObject({ openAtLoginAdded: false, agentWindow: 'show' })
+  })
+
+  it('keeps each stored value of a file that has only some of the settings', () => {
+    const file = settingsFile()
+    mkdirSync(path.dirname(file), { recursive: true })
+    writeFileSync(file, JSON.stringify({ keepRunning: false, backgroundNoticeShown: true }))
+    expect(createAppSettings(file, OFFICIAL).get()).toEqual(stored({ keepRunning: false, backgroundNoticeShown: true }))
   })
 })
 
