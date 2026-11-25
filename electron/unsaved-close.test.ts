@@ -26,6 +26,19 @@ describe('confirmUnsavedClose', () => {
     expect(keep.write).not.toHaveBeenCalled()
   })
 
+  it('names the reload in the buttons before a reload', async () => {
+    const answers = dialogs([CLOSE])
+    expect(await confirmUnsavedClose(UNSAVED, answers, 'reload')).toBe(true)
+    expect(answers.ask).toHaveBeenCalledWith(
+      expect.objectContaining({ buttons: ['Save a copy…', 'Reload without saving', 'Do not reload'] }),
+    )
+    const close = dialogs([KEEP_OPEN])
+    await confirmUnsavedClose(UNSAVED, close)
+    expect(close.ask).toHaveBeenCalledWith(
+      expect.objectContaining({ buttons: ['Save a copy…', 'Close without saving', 'Keep the window open'] }),
+    )
+  })
+
   it('saves a copy of the diagram file and then closes', async () => {
     const answers = dialogs([SAVE_COPY], ['/home/me/Shop v2.diagram.json'])
     expect(await confirmUnsavedClose(UNSAVED, answers)).toBe(true)

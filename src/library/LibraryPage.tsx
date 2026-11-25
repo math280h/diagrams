@@ -52,7 +52,6 @@ import type { Diagram } from '@/model/schema'
 import { dataCrossings } from '@/model/threats'
 import { fromDiagram } from '@/persistence/serialize'
 import {
-  createBlankDiagram,
   discardUnusedBlankDiagrams,
   duplicateDiagram,
   exportDiagramJson,
@@ -71,8 +70,9 @@ import { Features } from './Features'
 import { PrivacySection } from './PrivacySection'
 import { LivePreview } from './LivePreview'
 import { SiteFooter } from './SiteFooter'
+import { createAndOpenBlankDiagram, openPickedDiagramFiles } from './library-commands'
 import { reportError } from '@/store/problem-store'
-import { openDiagramFiles, showDiagramFile } from '@/desktop/linked-files'
+import { showDiagramFile } from '@/desktop/linked-files'
 
 const FEATURED_ID = 'order-system'
 
@@ -337,13 +337,8 @@ export function LibraryPage() {
   const [renameValue, setRenameValue] = useState('')
   const [deleting, setDeleting] = useState<DiagramMeta | null>(null)
   const [crossingsShown, setCrossingsShown] = useState(false)
-  const openFiles = () =>
-    void openDiagramFiles().then(
-      (ids) => {
-        if (ids.length === 1) void navigate({ to: '/d/$diagramId', params: { diagramId: ids[0]! } })
-      },
-      (error: unknown) => reportError('The file could not be opened.', error),
-    )
+  const open = (id: string) => void navigate({ to: '/d/$diagramId', params: { diagramId: id } })
+  const openFiles = () => openPickedDiagramFiles(open)
   const templates = useMemo(
     () => TEMPLATES.map((template) => ({ ...template, preview: template.cover?.() ?? template.build() })),
     [],
@@ -359,12 +354,7 @@ export function LibraryPage() {
 
   useEffect(() => discardUnusedBlankDiagrams(), [])
 
-  const open = (id: string) => void navigate({ to: '/d/$diagramId', params: { diagramId: id } })
-
-  const createBlank = () => {
-    const { diagram, result } = createBlankDiagram()
-    if (result.ok) open(diagram.id)
-  }
+  const createBlank = () => createAndOpenBlankDiagram(open)
 
   const text = query.trim().toLowerCase()
   const visible = text ? items.filter((meta) => meta.name.toLowerCase().includes(text)) : items

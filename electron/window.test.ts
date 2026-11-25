@@ -8,6 +8,7 @@ vi.mock('electron', async () => {
   class FakeWebContents extends Emitter {
     setWindowOpenHandler() {}
     reload() {}
+    reloadIgnoringCache() {}
     navigationHistory = { canGoBack: () => false, canGoForward: () => false }
   }
   class FakeBrowserWindow extends Emitter {
@@ -153,6 +154,47 @@ describe('close of a window with an unsaved diagram', () => {
     window.close()
     await done
     expect(beforeClose).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('reloadMainWindow', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('saves the open diagram first, and then reloads the page', async () => {
+    const { createMainWindow, reloadMainWindow, beforeClose, confirmUnsavedClose } = await loadWindow()
+    const window = createMainWindow(null)
+    const reload = vi.spyOn(window.webContents, 'reload')
+    await reloadMainWindow(false)
+    expect(beforeClose).toHaveBeenCalledOnce()
+    expect(confirmUnsavedClose).not.toHaveBeenCalled()
+    expect(reload).toHaveBeenCalledOnce()
+    expect(window.isDestroyed()).toBe(false)
+  })
+
+  it('asks first when the diagram is not saved, and keeps the page when the user does not reload', async () => {
+    const { createMainWindow, reloadMainWindow, beforeClose, confirmUnsavedClose } = await loadWindow()
+    beforeClose.mockResolvedValue(UNSAVED)
+    confirmUnsavedClose.mockResolvedValueOnce(false)
+    const window = createMainWindow(null)
+    const reload = vi.spyOn(window.webContents, 'reload')
+    const reloadIgnoringCache = vi.spyOn(window.webContents, 'reloadIgnoringCache')
+    await reloadMainWindow(false)
+    expect(confirmUnsavedClose).toHaveBeenCalledWith(window, UNSAVED, expect.any(AbortSignal), 'reload')
+    expect(reload).not.toHaveBeenCalled()
+
+    await reloadMainWindow(true)
+    expect(reloadIgnoringCache).toHaveBeenCalledOnce()
+    expect(reload).not.toHaveBeenCalled()
+  })
+
+  it('reloads once when the user asks again while the first reload waits for the save', async () => {
+    const { createMainWindow, reloadMainWindow } = await loadWindow()
+    const window = createMainWindow(null)
+    const reload = vi.spyOn(window.webContents, 'reload')
+    await Promise.all([reloadMainWindow(false), reloadMainWindow(false)])
+    expect(reload).toHaveBeenCalledOnce()
   })
 })
 

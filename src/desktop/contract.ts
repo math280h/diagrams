@@ -165,6 +165,18 @@ export type GitHubSignIn =
   | { state: 'waiting'; userCode: string; verificationUri: string }
   | { state: 'signed-in'; kept: boolean }
 
+/** A command of the macOS menu bar that the app window runs. */
+export type MenuCommand =
+  | 'settings'
+  | 'check-for-updates'
+  | 'new-diagram'
+  | 'open-files'
+  | 'shortcuts'
+  | 'problem-reports'
+
+/** An edit command of the macOS menu bar that the app runs on the canvas, and the system runs in a text field. */
+export type EditCommand = 'undo' | 'redo' | 'delete' | 'select-all'
+
 export type ToolContent = { type: 'text'; text: string } | { type: 'image'; mimeType: 'image/png'; data: string }
 
 export type ToolOutcome = { ok: true; content: ToolContent[] } | { ok: false; message: string }
@@ -322,6 +334,12 @@ export interface RendererRequests {
   'app.flush': { input: null; output: { unsaved: UnsavedFile | null } }
   /** Opens the "Connect an agent" dialog. */
   'app.connectAgent': { input: null; output: null }
+  'menu.command': { input: { command: MenuCommand }; output: null }
+  /**
+   * Runs an edit command of the menu bar on the canvas. `handled` is false when a text field, a dialog or a menu has the
+   * focus, or when no editor is open. The main process then runs the command of the system.
+   */
+  'menu.edit': { input: { command: EditCommand }; output: { handled: boolean } }
   /** Renders a diagram file and returns the image or the video as base64. */
   'render.file': { input: RenderRequest; output: { data: string } }
   /** Mounts an export stage in the capture window. Below 1, `viewportScale` scales its size and viewport. */

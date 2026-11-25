@@ -1,7 +1,16 @@
 import { useEffect } from 'react'
 import { copyDiagramAsPng } from '@/export/image-copy'
+import type { EditCommand } from '@/desktop/contract'
+import { handleMenuEdit } from '@/desktop/menu-edit'
 import type { Engine } from '@/engine/engine'
-import { duplicateSelection, groupSelection, nudgeSelection, selectAll, ungroupSelection } from '@/store/actions'
+import {
+  deleteSelection,
+  duplicateSelection,
+  groupSelection,
+  nudgeSelection,
+  selectAll,
+  ungroupSelection,
+} from '@/store/actions'
 import { shortcutLetter } from '@/lib/keys'
 import { redo, undo } from '@/store/history'
 import { setUi, useUi } from '@/store/ui-store'
@@ -20,8 +29,31 @@ function isTyping(target: EventTarget | null) {
   )
 }
 
+function selectAllAt(target: EventTarget | null) {
+  if (target instanceof Element && target.closest('[data-step-list]')) selectAllSteps()
+  else selectAll()
+}
+
+const MENU_EDITS: Record<EditCommand, (focused: Element | null) => void> = {
+  undo: () => undo(),
+  redo: () => redo(),
+  delete: () => {
+    if (!deleteSelectedSteps()) deleteSelection()
+  },
+  'select-all': selectAllAt,
+}
+
+function runMenuEditOnCanvas(command: EditCommand): boolean {
+  const focused = document.activeElement
+  if (isTyping(focused) || useVersions.getState().previewId !== null) return false
+  MENU_EDITS[command](focused)
+  return true
+}
+
 export function useEditorShortcuts(engine: Engine) {
   const fitToScreen = useFitToScreen()
+
+  useEffect(() => handleMenuEdit(runMenuEditOnCanvas), [])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -59,8 +91,7 @@ export function useEditorShortcuts(engine: Engine) {
       }
       if (mod && key === 'a') {
         event.preventDefault()
-        if (event.target instanceof Element && event.target.closest('[data-step-list]')) selectAllSteps()
-        else selectAll()
+        selectAllAt(event.target)
         return
       }
       if (mod) return

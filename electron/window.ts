@@ -3,6 +3,7 @@ import type { UnsavedFile, WindowColors } from '@/desktop/contract'
 import { APP_ORIGIN, originOf } from './app-protocol'
 import { APP_NAME, devServerUrl, iconPath, preloadPath } from './paths'
 import { isCrashReason } from './reports/crash-store'
+import type { UnsavedAction } from './unsaved-close'
 import type { WindowState } from './window-bounds'
 import { loadWindowColors, loadWindowState, saveWindowColors, trackWindowState } from './window-state'
 
@@ -35,12 +36,17 @@ export interface WindowHooks {
    */
   beforeClose(): Promise<UnsavedFile | null>
   /**
-   * Asks the user before a window closes while its diagram is not saved.
+   * Asks the user before a window closes or reloads while its diagram is not saved.
    *
    * @param signal - Aborts when the system session ends. The question then closes.
-   * @returns True if the window can close.
+   * @returns True if the window can close or reload.
    */
-  confirmUnsavedClose(window: BrowserWindow, unsaved: UnsavedFile, signal: AbortSignal): Promise<boolean>
+  confirmUnsavedClose(
+    window: BrowserWindow,
+    unsaved: UnsavedFile,
+    signal: AbortSignal,
+    action: UnsavedAction,
+  ): Promise<boolean>
   focused(): void
   /** Runs when the page moves in its history. */
   navigated(state: { canGoBack: boolean; canGoForward: boolean }): void
@@ -58,6 +64,7 @@ interface MainWindow {
   stateToRestore: WindowState | null
   unseenAgentWindow: boolean
   closed: Promise<void> | null
+  reloading: boolean
 }
 
 let hooks: WindowHooks | null = null
@@ -90,11 +97,11 @@ function currentMain(): MainWindow | null {
   return main && !main.window.isDestroyed() ? main : null
 }
 
-async function closeAllowed(entry: MainWindow | null): Promise<boolean> {
+async function closeAllowed(entry: MainWindow | null, action: UnsavedAction = 'close'): Promise<boolean> {
   const unsaved = (await hooks?.beforeClose().catch(() => null)) ?? null
   if (!unsaved || !entry || !hooks || sessionEnd.signal.aborted) return true
   present(entry, 'focus')
-  const close = await hooks.confirmUnsavedClose(entry.window, unsaved, sessionEnd.signal).catch(() => true)
+  const close = await hooks.confirmUnsavedClose(entry.window, unsaved, sessionEnd.signal, action).catch(() => true)
   return close || sessionEnd.signal.aborted
 }
 
@@ -186,6 +193,7 @@ export function createMainWindow(show: WindowShow | null = 'focus'): BrowserWind
     stateToRestore: windowHidden ? null : state,
     unseenAgentWindow: show === null,
     closed: null,
+    reloading: false,
   }
   window.once('ready-to-show', () => {
     entry.readyToShow = true
@@ -273,6 +281,25 @@ export async function prepareQuit(): Promise<boolean> {
   if (!(await closeAllowed(currentMain()))) return false
   closedForQuit = true
   return true
+}
+
+/**
+ * Reloads the page of the main window after {@link WindowHooks.beforeClose}. When the open diagram is not saved, the
+ * user chooses first. A window that closes or reloads now does not reload again.
+ *
+ * @param ignoreCache - If true, the page loads its files again without the cache.
+ */
+export async function reloadMainWindow(ignoreCache: boolean) {
+  const entry = currentMain()
+  if (!entry || entry.closed || entry.reloading) return
+  entry.reloading = true
+  try {
+    if (!(await closeAllowed(entry, 'reload')) || entry.window.isDestroyed() || entry.closed) return
+    if (ignoreCache) entry.window.webContents.reloadIgnoringCache()
+    else entry.window.webContents.reload()
+  } finally {
+    entry.reloading = false
+  }
 }
 
 /**
