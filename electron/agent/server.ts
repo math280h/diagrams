@@ -5,6 +5,7 @@ import { TOOL_DEFINITIONS, TOOL_NAMES, type ToolName } from '@/agent/tool-defini
 import { AGENT_ENDPOINT, AGENT_HOST, MAX_HANDOFF_BYTES } from '@/desktop/constants'
 import type { AgentState, ToolOutcome } from '@/desktop/contract'
 import { errorMessage } from '@/lib/error-message'
+import { z } from '@/lib/zod'
 import { bearerMatches } from './token'
 
 const START_TIMEOUT_MS = 5000
@@ -20,6 +21,12 @@ export interface AgentServerOptions {
   callTool: (tool: ToolName, args: unknown, signal: AbortSignal) => Promise<ToolOutcome>
   /** Adds resources and prompts. */
   extend?: (server: ViteMCP<AgentAuth>) => void
+  /**
+   * Maps each earlier prompt name to its new name.
+   *
+   * A `prompts/get` call for an earlier name gets an error that gives the new name.
+   */
+  renamedPrompts?: Readonly<Record<string, string>>
   /** Adds HTTP routes. They run before the MCP endpoint. */
   routes?: (app: Hono) => void
   logger?: Logger
@@ -33,6 +40,34 @@ function toMcpResult(outcome: ToolOutcome): ContentResult {
         ? { type: 'text', text: block.text }
         : { type: 'image', data: block.data, mimeType: block.mimeType },
     ),
+  }
+}
+
+const JSON_RPC_INVALID_PARAMS = -32_602
+
+const PROMPT_REQUEST = z.object({
+  id: z.union([z.string(), z.number()]),
+  method: z.literal('prompts/get'),
+  params: z.object({ name: z.string() }),
+})
+
+async function renamedPromptError(request: Request, renamed: Readonly<Record<string, string>>) {
+  let body: unknown
+  try {
+    body = JSON.parse(await request.clone().text())
+  } catch {
+    return null
+  }
+  const call = PROMPT_REQUEST.safeParse(body)
+  if (!call.success || !Object.hasOwn(renamed, call.data.params.name)) return null
+  const { id, params } = call.data
+  return {
+    jsonrpc: '2.0',
+    id,
+    error: {
+      code: JSON_RPC_INVALID_PARAMS,
+      message: `The prompt "${params.name}" has a new name: "${renamed[params.name]}".`,
+    },
   }
 }
 
@@ -79,6 +114,15 @@ export function createAgentServer(options: AgentServerOptions) {
     if (!hosts.has(c.req.header('host')?.toLowerCase() ?? '')) return c.text('Forbidden', 403)
     await next()
   })
+  const renamedPrompts = options.renamedPrompts
+  if (renamedPrompts) {
+    app.post(AGENT_ENDPOINT, async (c, next) => {
+      const caller = !c.req.header('origin') && bearerMatches(c.req.header('authorization'), options.token())
+      const error = caller ? await renamedPromptError(c.req.raw, renamedPrompts) : null
+      if (error) return c.json(error)
+      await next()
+    })
+  }
   options.routes?.(app)
   return server
 }

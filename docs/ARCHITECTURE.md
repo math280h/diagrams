@@ -1225,10 +1225,11 @@ with snapdom, because Chromium gives only pixels.
 - `NativeImage` bitmaps are BGRA with premultiplied alpha. Video frames go to the renderer as RGBA with straight alpha,
   as `ImageData` expects.
 - After a GPU process restart, the capture window can paint frames with the marker and a fully transparent stage. A
-  GIF then got blank frames on a macOS runner with two apps on the virtual GPU. Thus a frame counts only when no GPU
-  process restart occurs during its capture and, on an opaque background, each pixel is opaque. Otherwise the main
-  process renders the moment again in a new capture window, up to 3 times, and then fails the capture. It also does
-  not use a window again after a GPU process restart.
+  GIF then got blank frames on a macOS runner with two apps on the virtual GPU. Thus on an opaque background, a frame
+  counts only when at least half of its pixels are opaque. A restart alone does not spoil a frame, and edge pixels
+  can be soft. On a transparent background, a frame counts only when no GPU process restart occurs during its
+  capture. Otherwise the main process renders the moment again in a new capture window, up to 3 times, and then
+  fails the capture. It also does not use a window again after a GPU process restart.
 - When a native image capture fails, the stage session uses snapdom. When a video frame fails, the export stops.
 
 ### Storage
@@ -1556,9 +1557,16 @@ as:
 
 - server instructions that point to the skills (Claude Code shows 4,096 characters);
 - `skill://diagrams/<skill>/<file>` resources, in the file layout of the MCP skills extension;
-- the prompts `draw-architecture`, `animate-flow`, `diagram-from-code`, `threat-model` and `review-diagram`;
+- one prompt for each skill, with the name of the skill: `architecture`, `flows`, `infrastructure`, `review` and
+  `threat-model`;
 - a local plugin marketplace in the user data folder, written at start with the app version, for
   `claude plugin install`.
+
+Hosts show prompts as commands, so a user who knows a skill finds its prompt by the same name. Claude Code keeps them
+apart: `/diagrams:flows` runs the plugin skill, and `/mcp__diagrams__flows` runs the prompt (from the plugin server:
+`/mcp__plugin_diagrams_diagrams__flows`). ViteMCP has no hook for an unknown prompt, so a route before the MCP endpoint
+answers a `prompts/get` for an earlier name (`RENAMED_PROMPTS`) with an error that gives the new name. The prompt list
+does not show the earlier names.
 
 The `infrastructure` skill builds or checks a diagram from Terraform, Compose or Kubernetes files. The agent reads the
 files with its client tools. The app has no parser, because the formats change often. Each node keeps its source as a
@@ -1650,8 +1658,8 @@ enforce them:
 From 1.0.0, a release with the same major version also keeps these interfaces. A 0.x release can change them:
 
 - The MCP tools of the agent server, their names and their arguments.
-- The names of the MCP prompts (`draw-architecture`, `animate-flow`, `diagram-from-code`, `threat-model`,
-  `review-diagram`) and of the skills in `claude-plugin/skills`, because users call them by name.
+- The names of the skills in `claude-plugin/skills` and of the MCP prompts (`architecture`, `flows`,
+  `infrastructure`, `review`, `threat-model`), because users call them by name.
 - The command line: `--render` with its options and exit codes.
 - The inputs and outputs of the render action.
 - Theme files (`.theme.json`).

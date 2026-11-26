@@ -36,7 +36,6 @@ ${list.join('\n')}`
 
 const SKILL_PROMPTS = [
   {
-    name: 'draw-architecture',
     skill: 'architecture',
     description: 'Draw or extend an architecture diagram in the Diagrams app.',
     argument: 'request',
@@ -44,7 +43,6 @@ const SKILL_PROMPTS = [
     required: true,
   },
   {
-    name: 'animate-flow',
     skill: 'flows',
     description: 'Add an animated flow that plays a request through the open diagram.',
     argument: 'request',
@@ -52,7 +50,6 @@ const SKILL_PROMPTS = [
     required: true,
   },
   {
-    name: 'diagram-from-code',
     skill: 'infrastructure',
     description: 'Draw a diagram from Terraform, docker-compose or Kubernetes files, or check a diagram against them.',
     argument: 'request',
@@ -61,7 +58,6 @@ const SKILL_PROMPTS = [
     required: true,
   },
   {
-    name: 'threat-model',
     skill: 'threat-model',
     description: 'Mark the sensitive data in the open diagram and check each trust boundary crossing with STRIDE.',
     argument: 'focus',
@@ -69,7 +65,6 @@ const SKILL_PROMPTS = [
     required: false,
   },
   {
-    name: 'review-diagram',
     skill: 'review',
     description: 'Review the open diagram and fix layout and clarity problems.',
     argument: 'focus',
@@ -77,6 +72,14 @@ const SKILL_PROMPTS = [
     required: false,
   },
 ] as const
+
+/** Maps each earlier prompt name to the name of the prompt that replaces it. */
+export const RENAMED_PROMPTS: Readonly<Record<string, (typeof SKILL_PROMPTS)[number]['skill']>> = {
+  'draw-architecture': 'architecture',
+  'animate-flow': 'flows',
+  'diagram-from-code': 'infrastructure',
+  'review-diagram': 'review',
+}
 
 const DEFAULT_REVIEW_TASK = 'Review the open diagram.'
 
@@ -104,7 +107,7 @@ export function registerSkills<T extends ViteMCPAuth>(server: ViteMCP<T>, skills
     const skill = skills.find((candidate) => candidate.name === prompt.skill)
     if (!skill) continue
     server.addPrompt({
-      name: prompt.name,
+      name: prompt.skill,
       description: prompt.description,
       arguments: [{ name: prompt.argument, description: prompt.argumentDescription, required: prompt.required }],
       load: async (args) => ({

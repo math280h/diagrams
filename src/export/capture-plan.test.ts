@@ -7,6 +7,7 @@ import {
   markerColors,
   MAX_NATIVE_SIDE_PX,
   MAX_PAGE_ZOOM,
+  opaqueShare,
   planCapture,
   readMarker,
 } from './capture-plan'
@@ -114,5 +115,13 @@ describe('capture marker', () => {
     expect(allOpaque(new Uint8Array([0, 0, 0, 255, 9, 9, 9, 255]))).toBe(true)
     expect(allOpaque(new Uint8Array([0, 0, 0, 255, 0, 0, 0, 0]))).toBe(false)
     expect(allOpaque(new Uint8Array([255, 255, 255, 254]))).toBe(false)
+  })
+
+  it('gives the share of opaque pixels of a frame', () => {
+    const frame = (alphas: number[]) => new Uint8Array(alphas.flatMap((alpha) => [1, 2, 3, alpha]))
+    expect(opaqueShare(frame([255, 255, 255, 255]))).toBe(1)
+    expect(opaqueShare(frame([255, 255, 255, 128]))).toBe(0.75)
+    expect(opaqueShare(frame([0, 0, 0, 0]))).toBe(0)
+    expect(opaqueShare(new Uint8Array())).toBe(0)
   })
 })

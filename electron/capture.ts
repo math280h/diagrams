@@ -4,10 +4,10 @@ import { app, BrowserWindow, type NativeImage, type WebContents } from 'electron
 import { CAPTURE_HASH } from '@/desktop/constants'
 import type { CaptureRequest } from '@/desktop/contract'
 import {
-  allOpaque,
   bgraToRgba,
   MARKER_COUNT,
   MARKER_PX,
+  opaqueShare,
   planCapture,
   readMarker,
   type CapturePlan,
@@ -33,6 +33,8 @@ const MAX_SESSIONS = 16
 const PAINT_TIMEOUT_MS = 5000
 /** A capture renders its moment at most this many times until it gets a complete frame. */
 const MAX_CAPTURE_TRIES = 3
+/** The smallest share of opaque pixels, from 0 to 1, of a complete frame on an opaque background. */
+const MIN_OPAQUE_SHARE = 0.5
 
 interface Session {
   stage: unknown
@@ -88,10 +90,10 @@ export type CaptureHandlers = Pick<MainHandlers, 'capture.open' | 'capture.image
  * Captures run one at a time. The window shows one stage at a time. When a capture has a different session or viewport
  * scale than the last capture, the window mounts its stage.
  *
- * A frame is complete when no GPU process restart occurs during its capture and, on an opaque background, each pixel
- * is opaque. After an incomplete frame, the next try renders the moment in a new window. After
- * {@link MAX_CAPTURE_TRIES} incomplete frames, the capture fails. The service does not use a window again after a GPU
- * process restart.
+ * On an opaque background, a frame is complete when at least {@link MIN_OPAQUE_SHARE} of its pixels are opaque. On a
+ * transparent background, a frame is complete when no GPU process restart occurs during its capture. After an
+ * incomplete frame, the next try renders the moment in a new window. After {@link MAX_CAPTURE_TRIES} incomplete
+ * frames, the capture fails. The service does not use a window again after a GPU process restart.
  */
 export function createCaptureService(): { handlers: CaptureHandlers; dispose: () => void } {
   const rpc = createRendererRpc()
@@ -222,7 +224,8 @@ export function createCaptureService(): { handlers: CaptureHandlers; dispose: ()
       const shown = await show(request)
       const image = await capture(shown)
       const pixels = image.toBitmap()
-      if (gpuRestarts === restartsBefore && (!shown.opaque || allOpaque(pixels))) return { image, pixels }
+      const complete = shown.opaque ? opaqueShare(pixels) >= MIN_OPAQUE_SHARE : gpuRestarts === restartsBefore
+      if (complete) return { image, pixels }
       closeWindow()
       if (tries >= MAX_CAPTURE_TRIES) throw new Error('The capture window gave no complete frame of the stage.')
     }
