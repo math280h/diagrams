@@ -1,5 +1,5 @@
 import type { Theme } from './schema'
-import { CANVAS_PERCENTS } from './tokens'
+import { APP_COLOR_VARIABLES, CANVAS_PERCENTS, CANVAS_TOKEN_VARIABLES } from './tokens'
 
 const SAFE_ID = /^[\w:-]+$/
 const SAFE_COLOR = /^#[\da-f]{6}([\da-f]{2})?$/i
@@ -9,12 +9,16 @@ function safeValue(value: string | number): boolean {
   return typeof value === 'number' ? Number.isFinite(value) : SAFE_COLOR.test(value)
 }
 
-function declarations(entries: [string, string | number][], prefix: string): string {
-  return entries
-    .filter(([, value]) => safeValue(value))
-    .map(
-      ([name, value]) => `--${prefix}${name}:${typeof value === 'number' && PERCENTS.has(name) ? `${value}%` : value}`,
-    )
+function declarations(
+  values: Readonly<Partial<Record<string, string | number>>>,
+  variables: Readonly<Record<string, string>>,
+) {
+  return Object.entries(values)
+    .flatMap(([key, value]) => {
+      const variable = Object.hasOwn(variables, key) ? variables[key] : undefined
+      if (!variable || value === undefined || !safeValue(value)) return []
+      return [`${variable}:${typeof value === 'number' && PERCENTS.has(key) ? `${value}%` : value}`]
+    })
     .join(';')
 }
 
@@ -26,9 +30,9 @@ function declarations(entries: [string, string | number][], prefix: string): str
 export function themeCss(theme: Theme): string {
   if (!SAFE_ID.test(theme.id)) return ''
   const rules: string[] = []
-  const app = declarations(Object.entries(theme.app), '')
+  const app = declarations(theme.app, APP_COLOR_VARIABLES)
   if (app) rules.push(`[data-app-base][data-app-theme="${theme.id}"]{${app}}`)
-  const canvas = declarations(Object.entries(theme.canvas), 'dg-')
+  const canvas = declarations(theme.canvas, CANVAS_TOKEN_VARIABLES)
   if (canvas) rules.push(`:is(.dg-canvas,.dg-zones)[data-base][data-theme="${theme.id}"]{${canvas}}`)
   return rules.join('\n')
 }

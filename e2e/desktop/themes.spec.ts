@@ -19,6 +19,7 @@ test('takes the themes of the themes folder, follows their changes, and copies a
   await window.getByRole('group', { name: 'Theme mode' }).getByRole('button', { name: 'Dark' }).click()
   const files = window.getByRole('list', { name: 'Theme files' })
   await expect(files.getByRole('listitem')).toHaveText([/Brand/])
+  await expect(files.getByRole('listitem')).not.toContainText('Unknown keys')
 
   await window.getByRole('combobox', { name: 'Dark theme', exact: true }).click()
   await window.getByRole('option', { name: 'Brand' }).click()
@@ -28,7 +29,7 @@ test('takes the themes of the themes folder, follows their changes, and copies a
 
   writeFileSync(
     path.join(themes, 'brand.theme.json'),
-    JSON.stringify({ name: 'Brand', base: 'dark', canvas: { ground: '#203040' } }),
+    JSON.stringify({ name: 'Brand', base: 'dark', canvas: { background: '#203040' } }),
   )
   await expect(canvas).toHaveCSS('background-color', 'rgb(32, 48, 64)')
 
@@ -39,6 +40,7 @@ test('takes the themes of the themes folder, follows their changes, and copies a
     canvas: Record<string, string>
   }
   expect(copy.name).toBe('Brand copy')
-  expect(copy.canvas.ground).toBe('#203040')
+  expect(copy.canvas.background).toBe('#203040')
+  expect(copy.canvas).not.toHaveProperty('ground')
   await expect(canvas).toHaveAttribute('data-theme', 'custom:brand-copy')
 })

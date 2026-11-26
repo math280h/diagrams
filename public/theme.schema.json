@@ -28,14 +28,14 @@
       ]
     },
     "app": {
-      "description": "The colours of the app around the canvas. Each is the CSS variable --<name>.",
+      "description": "The colours of the app around the canvas.",
       "type": "object",
       "properties": {
         "background": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "foreground": {
+        "text": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
@@ -43,59 +43,59 @@
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "card-foreground": {
+        "card-text": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "popover": {
+        "popup": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "popover-foreground": {
+        "popup-text": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "primary": {
+        "action": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "primary-hover": {
+        "action-hover": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "primary-foreground": {
+        "action-text": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "secondary": {
+        "secondary-action": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "secondary-foreground": {
+        "secondary-action-text": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "muted": {
+        "muted-fill": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "muted-foreground": {
+        "muted-text": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "faint": {
+        "flow-pending": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "accent": {
+        "highlight": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "accent-foreground": {
+        "highlight-text": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "destructive": {
+        "error": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
@@ -107,7 +107,7 @@
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "focus": {
+        "focus-ring": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
@@ -127,7 +127,7 @@
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "flow-ink": {
+        "flow-text": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
@@ -142,54 +142,156 @@
         "warn": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "foreground": {
+          "deprecated": true,
+          "description": "The earlier name of text.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "card-foreground": {
+          "deprecated": true,
+          "description": "The earlier name of card-text.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "popover": {
+          "deprecated": true,
+          "description": "The earlier name of popup.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "popover-foreground": {
+          "deprecated": true,
+          "description": "The earlier name of popup-text.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "primary": {
+          "deprecated": true,
+          "description": "The earlier name of action.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "primary-hover": {
+          "deprecated": true,
+          "description": "The earlier name of action-hover.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "primary-foreground": {
+          "deprecated": true,
+          "description": "The earlier name of action-text.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "secondary": {
+          "deprecated": true,
+          "description": "The earlier name of secondary-action.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "secondary-foreground": {
+          "deprecated": true,
+          "description": "The earlier name of secondary-action-text.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "muted": {
+          "deprecated": true,
+          "description": "The earlier name of muted-fill.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "muted-foreground": {
+          "deprecated": true,
+          "description": "The earlier name of muted-text.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "faint": {
+          "deprecated": true,
+          "description": "The earlier name of flow-pending.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "accent": {
+          "deprecated": true,
+          "description": "The earlier name of highlight.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "accent-foreground": {
+          "deprecated": true,
+          "description": "The earlier name of highlight-text.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "destructive": {
+          "deprecated": true,
+          "description": "The earlier name of error.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "focus": {
+          "deprecated": true,
+          "description": "The earlier name of focus-ring.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "flow-ink": {
+          "deprecated": true,
+          "description": "The earlier name of flow-text.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         }
       }
     },
     "canvas": {
-      "description": "The colours of the canvas. Each is the CSS variable --dg-<name>. hue-fill and hue-line are percents, the dim values are opacities from 0 to 1.",
+      "description": "The colours of the canvas. hue-fill and hue-line are percents, the dim values are opacities from 0 to 1.",
       "type": "object",
       "properties": {
-        "zone-orange": {
+        "orange": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "zone-yellow": {
+        "yellow": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "zone-green": {
+        "green": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "zone-teal": {
+        "teal": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "zone-blue": {
+        "blue": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "zone-pink": {
+        "pink": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "zone-red": {
+        "red": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "ground": {
+        "background": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "chrome": {
+        "overlay": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "grid": {
+        "grid-dot": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "grid-active": {
+        "grid-dot-drag": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
@@ -197,15 +299,15 @@
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "grid-line-active": {
+        "grid-line-drag": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "panel": {
+        "node": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "panel-active": {
+        "node-highlight": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
@@ -213,15 +315,15 @@
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "line": {
+        "border": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "line-dim": {
+        "border-idle": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "line-strong": {
+        "border-strong": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
@@ -237,27 +339,27 @@
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "muted": {
+        "muted-text": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "faint": {
+        "faint-text": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "edge": {
+        "connection": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "edge-strong": {
+        "connection-arrow": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "particle": {
+        "traffic": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "select": {
+        "selection": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
@@ -265,7 +367,7 @@
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "flow-ink": {
+        "flow-text": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
@@ -281,39 +383,39 @@
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "wire-http": {
+        "protocol-http": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "wire-rpc": {
+        "protocol-rpc": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "wire-data": {
+        "protocol-data": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "wire-messaging": {
+        "protocol-messaging": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "wire-text-http": {
+        "protocol-http-text": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "wire-text-rpc": {
+        "protocol-rpc-text": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "wire-text-data": {
+        "protocol-data-text": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "wire-text-messaging": {
+        "protocol-messaging-text": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
-        "wire-ink": {
+        "protocol-token-text": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
         },
@@ -337,7 +439,212 @@
           "minimum": 0,
           "maximum": 1
         },
+        "dim-flow-icons": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "zone-orange": {
+          "deprecated": true,
+          "description": "The earlier name of orange.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "zone-yellow": {
+          "deprecated": true,
+          "description": "The earlier name of yellow.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "zone-green": {
+          "deprecated": true,
+          "description": "The earlier name of green.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "zone-teal": {
+          "deprecated": true,
+          "description": "The earlier name of teal.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "zone-blue": {
+          "deprecated": true,
+          "description": "The earlier name of blue.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "zone-pink": {
+          "deprecated": true,
+          "description": "The earlier name of pink.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "zone-red": {
+          "deprecated": true,
+          "description": "The earlier name of red.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "ground": {
+          "deprecated": true,
+          "description": "The earlier name of background.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "chrome": {
+          "deprecated": true,
+          "description": "The earlier name of overlay.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "grid": {
+          "deprecated": true,
+          "description": "The earlier name of grid-dot.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "grid-active": {
+          "deprecated": true,
+          "description": "The earlier name of grid-dot-drag.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "grid-line-active": {
+          "deprecated": true,
+          "description": "The earlier name of grid-line-drag.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "panel": {
+          "deprecated": true,
+          "description": "The earlier name of node.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "panel-active": {
+          "deprecated": true,
+          "description": "The earlier name of node-highlight.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "line": {
+          "deprecated": true,
+          "description": "The earlier name of border.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "line-dim": {
+          "deprecated": true,
+          "description": "The earlier name of border-idle.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "line-strong": {
+          "deprecated": true,
+          "description": "The earlier name of border-strong.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "muted": {
+          "deprecated": true,
+          "description": "The earlier name of muted-text.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "faint": {
+          "deprecated": true,
+          "description": "The earlier name of faint-text.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "edge": {
+          "deprecated": true,
+          "description": "The earlier name of connection.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "edge-strong": {
+          "deprecated": true,
+          "description": "The earlier name of connection-arrow.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "particle": {
+          "deprecated": true,
+          "description": "The earlier name of traffic.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "select": {
+          "deprecated": true,
+          "description": "The earlier name of selection.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "flow-ink": {
+          "deprecated": true,
+          "description": "The earlier name of flow-text.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "wire-http": {
+          "deprecated": true,
+          "description": "The earlier name of protocol-http.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "wire-rpc": {
+          "deprecated": true,
+          "description": "The earlier name of protocol-rpc.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "wire-data": {
+          "deprecated": true,
+          "description": "The earlier name of protocol-data.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "wire-messaging": {
+          "deprecated": true,
+          "description": "The earlier name of protocol-messaging.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "wire-text-http": {
+          "deprecated": true,
+          "description": "The earlier name of protocol-http-text.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "wire-text-rpc": {
+          "deprecated": true,
+          "description": "The earlier name of protocol-rpc-text.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "wire-text-data": {
+          "deprecated": true,
+          "description": "The earlier name of protocol-data-text.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "wire-text-messaging": {
+          "deprecated": true,
+          "description": "The earlier name of protocol-messaging-text.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
+        "wire-ink": {
+          "deprecated": true,
+          "description": "The earlier name of protocol-token-text.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}([\\da-fA-F]{2})?$"
+        },
         "dim-art": {
+          "deprecated": true,
+          "description": "The earlier name of dim-flow-icons.",
           "type": "number",
           "minimum": 0,
           "maximum": 1
@@ -345,18 +652,30 @@
       }
     },
     "window": {
-      "description": "The colours of the desktop window: controls and symbols for the window buttons on Windows and Linux, border for the active window border on Windows.",
+      "description": "The colours of the desktop window: button-background and button-symbols for the window buttons on Windows and Linux, border for the active window border on Windows.",
       "type": "object",
       "properties": {
-        "controls": {
+        "button-background": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}$"
         },
-        "symbols": {
+        "button-symbols": {
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}$"
         },
         "border": {
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}$"
+        },
+        "controls": {
+          "deprecated": true,
+          "description": "The earlier name of button-background.",
+          "type": "string",
+          "pattern": "^#[\\da-fA-F]{6}$"
+        },
+        "symbols": {
+          "deprecated": true,
+          "description": "The earlier name of button-symbols.",
           "type": "string",
           "pattern": "^#[\\da-fA-F]{6}$"
         }

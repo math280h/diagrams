@@ -1,7 +1,16 @@
 import { BUILD } from '@/desktop/build-config'
 import type { Theme, ThemeFile } from './schema'
 import { addThemeStyles } from './styles'
-import { APP_COLORS, CANVAS_COLORS, CANVAS_OPACITIES, CANVAS_PERCENTS, type AppColor, type CanvasToken } from './tokens'
+import {
+  APP_COLOR_VARIABLES,
+  APP_COLORS,
+  CANVAS_COLORS,
+  CANVAS_OPACITIES,
+  CANVAS_PERCENTS,
+  CANVAS_TOKEN_VARIABLES,
+  type AppColor,
+  type CanvasToken,
+} from './tokens'
 
 /** The address of the JSON Schema of theme files, for the completion of text editors. */
 export const THEME_SCHEMA_URL = `${BUILD.website}/theme.schema.json`
@@ -37,16 +46,16 @@ export function fullThemeFile(theme: Theme, name: string): ThemeFile {
     const canvasStyle = getComputedStyle(canvasProbe)
     const app: Partial<Record<AppColor, string>> = {}
     for (const token of APP_COLORS) {
-      const value = longHex(appStyle.getPropertyValue(`--${token}`).trim())
+      const value = longHex(appStyle.getPropertyValue(APP_COLOR_VARIABLES[token]).trim())
       if (HEX.test(value)) app[token] = value
     }
     const canvas: Partial<Record<CanvasToken, string | number>> = {}
     for (const token of CANVAS_COLORS) {
-      const value = longHex(canvasStyle.getPropertyValue(`--dg-${token}`).trim())
+      const value = longHex(canvasStyle.getPropertyValue(CANVAS_TOKEN_VARIABLES[token]).trim())
       if (HEX.test(value)) canvas[token] = value
     }
     for (const token of CANVAS_PERCENTS) {
-      const value = Number.parseFloat(canvasStyle.getPropertyValue(`--dg-${token}`))
+      const value = Number.parseFloat(canvasStyle.getPropertyValue(CANVAS_TOKEN_VARIABLES[token]))
       if (Number.isFinite(value)) canvas[token] = value
     }
     for (const token of CANVAS_OPACITIES) {
@@ -59,7 +68,7 @@ export function fullThemeFile(theme: Theme, name: string): ThemeFile {
       base: theme.base,
       ...(theme.contrast === 'high' ? { contrast: 'high' as const } : {}),
       app,
-      canvas: canvas as ThemeFile['canvas'],
+      canvas,
       ...(Object.keys(theme.window).length > 0 ? { window: theme.window } : {}),
     }
   } finally {

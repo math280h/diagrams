@@ -188,6 +188,18 @@ action.
   in `src/persistence/release-formats.ts`; then `pnpm release:tag major` works.
 - Do not remove a name from `src/canvas/icons/released-ids.json`. Diagrams of earlier releases use these icon names.
   The CI job "Release formats" fails when a change removes one (`node scripts/icon-ids.ts --base <git ref>`).
+- Do not remove a key from `src/themes/released-keys.json`. Theme files of earlier releases use these keys. The CI
+  job "Release formats" fails when a change removes one (`node scripts/theme-keys.ts --base <git ref>`).
+
+### Keep theme keys
+
+After a change to the keys in `src/themes/tokens.ts`, `src/themes/released-keys.test.ts` can fail:
+
+- The app has new theme keys. Run `node scripts/theme-keys.ts`. It adds them, and the keys of each release tag, to
+  `src/themes/released-keys.json`.
+- A key of an earlier release does not read. For a renamed key, add the earlier name and the new key to
+  `THEME_KEY_ALIASES` in `src/themes/tokens.ts`. Keep each colour themeable, so that an earlier theme file keeps its
+  colours.
 
 ### Keep icon names
 

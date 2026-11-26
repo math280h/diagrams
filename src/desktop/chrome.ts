@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { create } from 'zustand'
 import type { ThemeMode } from '@/store/settings-store'
 import type { Theme } from '@/themes/schema'
+import { APP_COLOR_VARIABLES } from '@/themes/tokens'
 import { desktopApi } from './bridge'
 import { HEX_COLOR_PATTERN } from './constants'
 import type { WindowColors } from './contract'
@@ -87,9 +88,9 @@ function opaqueColor(color: string): string {
  */
 export function windowColorsOf(theme: Theme, mode: ThemeMode, read: (name: string) => string): WindowColors | null {
   const colors = {
-    controls: theme.window.controls ?? opaqueColor(read('--panel')),
-    symbols: theme.window.symbols ?? opaqueColor(read('--foreground')),
-    background: opaqueColor(read('--background')),
+    controls: theme.window['button-background'] ?? opaqueColor(read(APP_COLOR_VARIABLES.panel)),
+    symbols: theme.window['button-symbols'] ?? opaqueColor(read(APP_COLOR_VARIABLES.text)),
+    background: opaqueColor(read(APP_COLOR_VARIABLES.background)),
   }
   if (!Object.values(colors).every((color) => HEX_COLOR_PATTERN.test(color))) return null
   return { ...colors, border: theme.window.border ?? null, scheme: mode === 'system' ? 'system' : theme.base }

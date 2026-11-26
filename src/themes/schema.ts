@@ -5,10 +5,12 @@ import {
   CANVAS_OPACITIES,
   CANVAS_PERCENTS,
   THEME_BASES,
+  THEME_KEY_ALIASES,
   WINDOW_COLORS,
   type AppColor,
   type CanvasToken,
   type ThemeBase,
+  type ThemeKeyGroup,
   type WindowColor,
 } from './tokens'
 
@@ -20,17 +22,43 @@ const opaqueColor = z.string().regex(OPAQUE_COLOR_PATTERN, 'Use a colour in the 
 const percent = z.number().min(0).max(100)
 const opacity = z.number().min(0).max(1)
 
-function optionalFields<K extends string, T extends z.ZodType>(keys: readonly K[], value: T) {
-  return Object.fromEntries(keys.map((key) => [key, value.optional()])) as Record<K, z.ZodOptional<T>>
+function valuesOf<K extends string, T extends z.ZodType>(keys: readonly K[], value: T) {
+  return Object.fromEntries(keys.map((key) => [key, value])) as Record<K, T>
 }
 
-const appSchema = z.object(optionalFields(APP_COLORS, color))
-const canvasSchema = z.object({
-  ...optionalFields(CANVAS_COLORS, color),
-  ...optionalFields(CANVAS_PERCENTS, percent),
-  ...optionalFields(CANVAS_OPACITIES, opacity),
-})
-const windowSchema = z.object(optionalFields(WINDOW_COLORS, opaqueColor))
+function withCurrentKeys<K extends string, V>(
+  values: Readonly<Record<string, V | undefined>>,
+  aliases: Readonly<Record<string, K>>,
+): Partial<Record<K, V>> {
+  const current: Partial<Record<K, V>> = {}
+  for (const [key, value] of Object.entries(values)) {
+    if (value !== undefined && !Object.hasOwn(aliases, key)) current[key as K] = value
+  }
+  for (const [alias, key] of Object.entries(aliases)) {
+    const value = values[alias]
+    if (value !== undefined && current[key] === undefined) current[key] = value
+  }
+  return current
+}
+
+function groupSchema<K extends string, V>(
+  values: Readonly<Record<K, z.ZodType<V>>>,
+  aliases: Readonly<Record<string, K>>,
+) {
+  const fields: Record<string, z.ZodOptional<z.ZodType<V>>> = {}
+  for (const [key, value] of Object.entries<z.ZodType<V>>(values)) fields[key] = value.optional()
+  for (const [alias, key] of Object.entries(aliases)) {
+    fields[alias] = values[key].optional().meta({ deprecated: true, description: `The earlier name of ${key}.` })
+  }
+  return z.object(fields).transform((group) => withCurrentKeys(group, aliases))
+}
+
+const appSchema = groupSchema<AppColor, string>(valuesOf(APP_COLORS, color), THEME_KEY_ALIASES.app)
+const canvasSchema = groupSchema<CanvasToken, string | number>(
+  { ...valuesOf(CANVAS_COLORS, color), ...valuesOf(CANVAS_PERCENTS, percent), ...valuesOf(CANVAS_OPACITIES, opacity) },
+  THEME_KEY_ALIASES.canvas,
+)
+const windowSchema = groupSchema<WindowColor, string>(valuesOf(WINDOW_COLORS, opaqueColor), THEME_KEY_ALIASES.window)
 
 /** The content of a `.theme.json` file. A colour that a theme leaves out comes from its base. */
 export const themeFileSchema = z
@@ -46,16 +74,16 @@ export const themeFileSchema = z
       .describe(
         'high for a theme with 7:1 for text and 4.5:1 for lines. The app can use it when the system asks for more contrast.',
       ),
-    app: appSchema.optional().describe('The colours of the app around the canvas. Each is the CSS variable --<name>.'),
+    app: appSchema.optional().describe('The colours of the app around the canvas.'),
     canvas: canvasSchema
       .optional()
       .describe(
-        'The colours of the canvas. Each is the CSS variable --dg-<name>. hue-fill and hue-line are percents, the dim values are opacities from 0 to 1.',
+        'The colours of the canvas. hue-fill and hue-line are percents, the dim values are opacities from 0 to 1.',
       ),
     window: windowSchema
       .optional()
       .describe(
-        'The colours of the desktop window: controls and symbols for the window buttons on Windows and Linux, border for the active window border on Windows.',
+        'The colours of the desktop window: button-background and button-symbols for the window buttons on Windows and Linux, border for the active window border on Windows.',
       ),
   })
   .describe('A colour theme of Diagrams.')
@@ -86,21 +114,26 @@ export function themeOfFile(id: string, file: ThemeFile): Theme {
   }
 }
 
-const KNOWN_KEYS: Record<string, ReadonlySet<string>> = {
-  '': new Set(Object.keys(themeFileSchema.shape)),
-  app: new Set(APP_COLORS),
-  canvas: new Set(Object.keys(canvasSchema.shape)),
-  window: new Set(WINDOW_COLORS),
+const FILE_KEYS: ReadonlySet<string> = new Set(Object.keys(themeFileSchema.shape))
+const GROUP_KEYS: Readonly<Record<ThemeKeyGroup, ReadonlySet<string>>> = {
+  app: new Set([...APP_COLORS, ...Object.keys(THEME_KEY_ALIASES.app)]),
+  canvas: new Set([
+    ...CANVAS_COLORS,
+    ...CANVAS_PERCENTS,
+    ...CANVAS_OPACITIES,
+    ...Object.keys(THEME_KEY_ALIASES.canvas),
+  ]),
+  window: new Set([...WINDOW_COLORS, ...Object.keys(THEME_KEY_ALIASES.window)]),
 }
 
 function unknownKeys(value: unknown): string[] {
   if (typeof value !== 'object' || value === null) return []
   const record = value as Record<string, unknown>
-  const found = Object.keys(record).filter((key) => !KNOWN_KEYS['']!.has(key))
-  for (const group of ['app', 'canvas', 'window']) {
+  const found = Object.keys(record).filter((key) => !FILE_KEYS.has(key))
+  for (const [group, known] of Object.entries(GROUP_KEYS)) {
     const inner = record[group]
     if (typeof inner !== 'object' || inner === null) continue
-    for (const key of Object.keys(inner)) if (!KNOWN_KEYS[group]!.has(key)) found.push(`${group}.${key}`)
+    for (const key of Object.keys(inner)) if (!known.has(key)) found.push(`${group}.${key}`)
   }
   return found
 }

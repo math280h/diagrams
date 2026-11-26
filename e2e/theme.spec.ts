@@ -106,10 +106,14 @@ test('imports a theme file into the browser, warns about weak contrast, and remo
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify({ name: 'Dim ink', base: 'dark', canvas: { muted: '#555555' } })),
   })
-  await expect(page.locator('[data-editor-canvas] .dg-canvas')).toHaveAttribute('data-theme', 'custom:dim-ink')
+  const canvas = page.locator('[data-editor-canvas] .dg-canvas')
+  await expect(canvas).toHaveAttribute('data-theme', 'custom:dim-ink')
+  await expect(canvas).toHaveCSS('--dg-muted', '#555555')
   const file = page.getByRole('list', { name: 'Theme files' }).getByRole('listitem')
   await expect(file).toContainText('Dim ink')
-  await expect(file).toContainText('below their contrast')
+  await expect(file).not.toContainText('Unknown keys')
+  await file.getByText('below their contrast').click()
+  await expect(file.getByText(/^canvas\.muted-text on canvas\.background:/)).toBeVisible()
 
   await page.reload()
   await expect(page.locator('[data-editor-canvas] .dg-canvas')).toHaveAttribute('data-theme', 'custom:dim-ink')
