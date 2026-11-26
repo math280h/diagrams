@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { z } from '@/lib/zod'
 import { BUILT_IN_THEMES } from './built-in'
+import sample022 from './samples/v0.2.2.theme.json'
 import { parseThemeText, themeFileSchema } from './schema'
-import { BUILT_IN_THEME_IDS } from './tokens'
+import { themeCss } from './stylesheet'
+import { BUILT_IN_THEME_IDS, THEME_KEY_ALIASES, THEME_KEY_GROUPS } from './tokens'
 
 describe('theme files', () => {
   it('reads a theme that gives some colours, and gives the others no value', () => {
@@ -13,7 +15,7 @@ describe('theme files', () => {
         name: 'Brand',
         base: 'dark',
         app: { flow: '#ff7a00' },
-        canvas: { ground: '#101010', 'hue-fill': 14, 'dim-art': 0.6 },
+        canvas: { background: '#101010', 'hue-fill': 14, 'dim-flow-icons': 0.6 },
         window: { border: '#ff7a00' },
       }),
     )
@@ -26,21 +28,60 @@ describe('theme files', () => {
         base: 'dark',
         contrast: 'standard',
         app: { flow: '#ff7a00' },
-        canvas: { ground: '#101010', 'hue-fill': 14, 'dim-art': 0.6 },
+        canvas: { background: '#101010', 'hue-fill': 14, 'dim-flow-icons': 0.6 },
         window: { border: '#ff7a00' },
       },
     })
   })
 
+  it('reads a file with the keys of 0.2.2 in the colours of 0.2.2, and knows each key', () => {
+    const parsed = parseThemeText('custom:old', JSON.stringify(sample022))
+    if (!parsed.ok) throw new Error(parsed.problem)
+    expect(parsed.unknown).toEqual([])
+    const declarations = (css: string) => [...css.matchAll(/\{([^}]*)\}/g)].flatMap((rule) => rule[1]!.split(';'))
+    const percent = (key: string) => (key.startsWith('hue-') ? '%' : '')
+    const before = [
+      ...Object.entries(sample022.app).map(([key, value]) => `--${key}:${value}`),
+      ...Object.entries(sample022.canvas).map(([key, value]) => `--dg-${key}:${value}${percent(key)}`),
+    ]
+    expect(declarations(themeCss(parsed.theme)).toSorted()).toEqual(before.toSorted())
+    expect(parsed.theme.window).toEqual({
+      'button-background': sample022.window.controls,
+      'button-symbols': sample022.window.symbols,
+      border: sample022.window.border,
+    })
+  })
+
+  it('takes the current key when a file has a key and its earlier name', () => {
+    for (const canvas of [
+      { ground: '#111111', background: '#222222' },
+      { background: '#222222', ground: '#111111' },
+    ]) {
+      expect(parseThemeText('custom:both', JSON.stringify({ name: 'Both', base: 'dark', canvas }))).toMatchObject({
+        ok: true,
+        unknown: [],
+        theme: { canvas: { background: '#222222' } },
+      })
+    }
+  })
+
+  it('names the earlier key of the file when its value is not valid', () => {
+    const parsed = parseThemeText(
+      'custom:bad',
+      JSON.stringify({ name: 'Bad', base: 'dark', canvas: { ground: 'red' } }),
+    )
+    expect(parsed.ok ? '' : parsed.problem).toContain('canvas.ground: Use a colour in the form #rrggbb')
+  })
+
   it('names the keys that the format does not know, and keeps the rest of the theme', () => {
     const parsed = parseThemeText(
       'custom:typo',
-      JSON.stringify({ name: 'Typo', base: 'light', colour: 1, canvas: { grund: '#ffffff', ground: '#fafafa' } }),
+      JSON.stringify({ name: 'Typo', base: 'light', colour: 1, canvas: { grund: '#ffffff', background: '#fafafa' } }),
     )
     expect(parsed).toMatchObject({
       ok: true,
       unknown: ['colour', 'canvas.grund'],
-      theme: { canvas: { ground: '#fafafa' } },
+      theme: { canvas: { background: '#fafafa' } },
     })
   })
 
@@ -72,5 +113,18 @@ describe('theme files', () => {
     await expect(`${JSON.stringify(z.toJSONSchema(themeFileSchema, { io: 'input' }), null, 2)}\n`).toMatchFileSnapshot(
       '../../public/theme.schema.json',
     )
+  })
+
+  it('marks the earlier names of keys as deprecated in the JSON Schema, so that editors accept old files', () => {
+    const schema = z.toJSONSchema(themeFileSchema, { io: 'input' }) as {
+      properties: Record<string, { properties: Record<string, { deprecated?: boolean; description?: string }> }>
+    }
+    for (const group of THEME_KEY_GROUPS) {
+      const properties = schema.properties[group]!.properties
+      for (const [name, key] of Object.entries(THEME_KEY_ALIASES[group])) {
+        expect(properties[name]).toMatchObject({ deprecated: true, description: `The earlier name of ${key}.` })
+        expect(properties[key]).not.toHaveProperty('deprecated')
+      }
+    }
   })
 })

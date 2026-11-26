@@ -343,17 +343,25 @@ export uses the theme of the person who exports.
   window. A colour that a theme does not give comes from the base rules in `src/index.css` and
   `src/styles/canvas.css`, because the theme rules (`src/themes/stylesheet.ts`) only replace variables.
 - The stylesheet accepts only hex colours and numbers, so a theme file cannot add other CSS.
+- The keys of a theme file name the part that they colour, for example `popup` and `focus-ring`. `src/themes/tokens.ts`
+  maps each key to its CSS variable. Thus the CSS keeps the shadcn names and the `--dg-*` names, and a key can change
+  without a change to the CSS.
+- A key that a release read stays valid. `THEME_KEY_ALIASES` gives the key of each earlier name, so a file with
+  earlier names keeps its colours and shows no unknown keys. When a file has a key and its earlier name, the key wins.
+- `src/themes/released-keys.json` holds every key that a release can read, and no key leaves it. A test fails when a
+  key on the list does not read, directly or through an alias.
 - The theme files of the user are in `themes/` of the diagrams folder. The desktop app and the website with an open
   folder read the same files. A browser without a folder keeps imported files in `localStorage`.
 - `public/theme.schema.json` is the JSON Schema of a theme file, for text editors. `src/themes/schema.test.ts` writes
-  it from the zod schema. A copy of a theme (`fullThemeFile`) names this schema in `$schema` and holds every colour,
-  also the colours from the base.
+  it from the zod schema. It marks each earlier name as `deprecated`, so that an editor accepts old files. A copy of a
+  theme (`fullThemeFile`) names this schema in `$schema` and holds every colour under the current keys, also the
+  colours from the base.
 - The app reads at most 200 theme files from a folder, each at most 256 KiB.
 - `public/theme-boot.js` applies the last theme before the app script loads, so the first frame has its colours.
 - The desktop window takes its button, border and background colours from the theme and keeps them for the next start.
   macOS draws its own window buttons.
 - `src/styles/contrast.browser.test.ts` checks the colour pairs of each built-in theme. The app does the same check on
-  each theme file of the user and shows the pairs below their contrast.
+  each theme file of the user and shows the pairs below their contrast by their keys.
 
 ### Parallel steps and paths
 
@@ -1665,6 +1673,9 @@ enforce them:
   `src/share/samples`, and `scripts/release-formats.ts --base` fails when a change edits them.
 - Icon names: `src/canvas/icons/released-ids.json` only grows. `src/canvas/icons/released-ids.test.ts` checks that
   each name draws an icon, and `scripts/icon-ids.ts --base` in CI fails when a change removes a name.
+- Theme keys: `src/themes/released-keys.json` only grows. `src/themes/released-keys.test.ts` checks that each key
+  reads, directly or through `THEME_KEY_ALIASES`, and `scripts/theme-keys.ts --base` in CI fails when a change
+  removes a key.
 
 From 1.0.0, a release with the same major version also keeps these interfaces. A 0.x release can change them:
 

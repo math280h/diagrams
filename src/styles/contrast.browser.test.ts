@@ -19,13 +19,13 @@ describe('the contrast check of a theme file', () => {
     const grey = themeOfFile('custom:grey', {
       name: 'Grey',
       base: 'dark',
-      canvas: { ground: '#2a2a2a', muted: '#555555' },
-      app: { 'muted-foreground': '#3a3a3a' },
+      canvas: { background: '#2a2a2a', 'muted-text': '#555555' },
+      app: { 'muted-text': '#3a3a3a' },
     })
     const names = checkThemeContrast(grey).map((failure) => failure.name)
-    expect(names).toContain('--dg-muted on --dg-ground')
-    expect(names).toContain('--muted-foreground on --background')
-    expect(names).not.toContain('--dg-text on --dg-ground')
+    expect(names).toContain('canvas.muted-text on canvas.background')
+    expect(names).toContain('app.muted-text on app.background')
+    expect(names).not.toContain('canvas.text on canvas.background')
   })
 
   it('needs more contrast from a theme with high contrast', () => {

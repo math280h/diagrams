@@ -1,6 +1,13 @@
-import { COLORS } from '@/model/colors'
+import { COLORS, type Color } from '@/model/colors'
 import type { Theme } from './schema'
 import { addThemeStyles } from './styles'
+import {
+  APP_COLOR_VARIABLES,
+  CANVAS_COLOR_VARIABLES,
+  CANVAS_PERCENT_VARIABLES,
+  type AppColor,
+  type CanvasColor,
+} from './tokens'
 
 type RGB = readonly [number, number, number]
 
@@ -18,64 +25,82 @@ export interface ContrastFailure {
   min: number
 }
 
-const ZONES = COLORS.filter((color) => color !== 'neutral')
+const ZONES = COLORS.filter((color): color is Exclude<Color, 'neutral'> => color !== 'neutral')
 const PROTOCOLS = ['http', 'rpc', 'data', 'messaging'] as const
 
-const hueFill = (zone: string, ground: string) =>
-  `color-mix(in oklab, var(--dg-zone-${zone}) var(--dg-hue-fill), var(${ground}))`
-const hueLine = (zone: string) => `color-mix(in oklab, var(--dg-zone-${zone}) var(--dg-hue-line), var(--dg-panel))`
+const canvasColor = (key: CanvasColor) => `var(${CANVAS_COLOR_VARIABLES[key]})`
+const appColor = (key: AppColor) => `var(${APP_COLOR_VARIABLES[key]})`
+const hueFill = (zone: CanvasColor) =>
+  `color-mix(in oklab, ${canvasColor(zone)} var(${CANVAS_PERCENT_VARIABLES['hue-fill']}), ${canvasColor('node')})`
+const hueLine = (zone: CanvasColor) =>
+  `color-mix(in oklab, ${canvasColor(zone)} var(${CANVAS_PERCENT_VARIABLES['hue-line']}), ${canvasColor('node')})`
 
-/** Lists the pairs of canvas colours that must be told apart, with the contrast that each pair needs. */
+/**
+ * Lists the pairs of canvas colours that must be told apart, with the contrast that each pair needs. Each name has the
+ * keys of a theme file.
+ */
 export function canvasContrastPairs(high: boolean): ContrastPair[] {
   const text = high ? 7 : 4.5
   const line = high ? 4.5 : 3
   const pairs: ContrastPair[] = []
   const add = (name: string, front: string, back: string, min: number) => pairs.push({ name, front, back, min })
-  for (const back of ['--dg-ground', '--dg-panel', '--dg-raised']) {
-    for (const token of ['--dg-text', '--dg-muted', '--dg-select'])
-      add(`${token} on ${back}`, `var(${token})`, `var(${back})`, text)
-    add(`--dg-faint on ${back}`, 'var(--dg-faint)', `var(${back})`, high ? text : 3)
+  const addKeys = (front: CanvasColor, back: CanvasColor, min: number) =>
+    add(`canvas.${front} on canvas.${back}`, canvasColor(front), canvasColor(back), min)
+  for (const back of ['background', 'node', 'raised'] as const) {
+    for (const front of ['text', 'muted-text', 'selection'] as const) addKeys(front, back, text)
+    addKeys('faint-text', back, high ? text : 3)
   }
-  for (const back of ['--dg-ground', '--dg-panel']) {
-    for (const token of ['--dg-line', '--dg-line-strong', '--dg-edge', '--dg-edge-strong', '--dg-flow'])
-      add(`${token} on ${back}`, `var(${token})`, `var(${back})`, high ? line : 0)
-    add(`--dg-line-dim on ${back}`, 'var(--dg-line-dim)', `var(${back})`, high ? 3 : 0)
+  for (const back of ['background', 'node'] as const) {
+    for (const front of ['border', 'border-strong', 'connection', 'connection-arrow', 'flow'] as const)
+      addKeys(front, back, high ? line : 0)
+    addKeys('border-idle', back, high ? 3 : 0)
   }
-  for (const token of ['--dg-ok', '--dg-warn', '--dg-error'])
-    add(`${token} on --dg-ground`, `var(${token})`, 'var(--dg-ground)', high ? text : 3)
-  add('--dg-flow-ink on --dg-flow', 'var(--dg-flow-ink)', 'var(--dg-flow)', text)
+  for (const front of ['ok', 'warn', 'error'] as const) addKeys(front, 'background', high ? text : 3)
+  addKeys('flow-text', 'flow', text)
   for (const protocol of PROTOCOLS) {
-    add(`wire text ${protocol} on ground`, `var(--dg-wire-text-${protocol})`, 'var(--dg-ground)', text)
-    add(`wire ink on wire text ${protocol}`, 'var(--dg-wire-ink)', `var(--dg-wire-text-${protocol})`, text)
-    add(`wire ${protocol} on ground`, `var(--dg-wire-${protocol})`, 'var(--dg-ground)', high ? line : 0)
+    addKeys(`protocol-${protocol}-text`, 'background', text)
+    addKeys('protocol-token-text', `protocol-${protocol}-text`, text)
+    addKeys(`protocol-${protocol}`, 'background', high ? line : 0)
   }
   for (const zone of ZONES) {
-    add(`zone ${zone} text on ground`, `var(--dg-zone-${zone})`, 'var(--dg-ground)', high ? text : 0)
-    add(`text on ${zone} card`, 'var(--dg-text)', hueFill(zone, '--dg-panel'), text)
-    add(`muted on ${zone} card`, 'var(--dg-muted)', hueFill(zone, '--dg-panel'), text)
-    add(`${zone} card outline on ground`, hueLine(zone), 'var(--dg-ground)', high ? line : 0)
+    addKeys(zone, 'background', high ? text : 0)
+    add(`canvas.text on ${zone} nodes`, canvasColor('text'), hueFill(zone), text)
+    add(`canvas.muted-text on ${zone} nodes`, canvasColor('muted-text'), hueFill(zone), text)
+    add(`${zone} node outline on canvas.background`, hueLine(zone), canvasColor('background'), high ? line : 0)
   }
   return pairs.filter((pair) => pair.min > 0)
 }
 
-/** Lists the pairs of app colours that must be told apart, with the contrast that each pair needs. */
+/**
+ * Lists the pairs of app colours that must be told apart, with the contrast that each pair needs. Each name has the
+ * keys of a theme file.
+ */
 export function appContrastPairs(high: boolean): ContrastPair[] {
   const text = high ? 7 : 4.5
   const pairs: ContrastPair[] = []
-  const add = (name: string, front: string, back: string, min: number) => pairs.push({ name, front, back, min })
-  for (const back of ['background', 'card', 'popover', 'panel', 'muted', 'accent', 'secondary', 'raised']) {
-    add(`--foreground on --${back}`, 'var(--foreground)', `var(--${back})`, text)
-    add(`--muted-foreground on --${back}`, 'var(--muted-foreground)', `var(--${back})`, text)
+  const add = (front: AppColor, back: AppColor, min: number) =>
+    pairs.push({ name: `app.${front} on app.${back}`, front: appColor(front), back: appColor(back), min })
+  const backs = [
+    'background',
+    'card',
+    'popup',
+    'panel',
+    'muted-fill',
+    'highlight',
+    'secondary-action',
+    'raised',
+  ] as const
+  for (const back of backs) {
+    add('text', back, text)
+    add('muted-text', back, text)
   }
-  for (const back of ['background', 'card', 'panel']) {
-    for (const token of ['faint', 'destructive', 'warn', 'ok']) {
-      add(`--${token} on --${back}`, `var(--${token})`, `var(--${back})`, text)
-    }
-    add(`--focus on --${back}`, 'var(--focus)', `var(--${back})`, 3)
+  for (const back of ['background', 'card', 'panel'] as const) {
+    for (const front of ['flow-pending', 'error', 'warn', 'ok'] as const) add(front, back, text)
+    add('focus-ring', back, 3)
   }
-  add('--primary-foreground on --primary', 'var(--primary-foreground)', 'var(--primary)', text)
-  add('--primary-foreground on --primary-hover', 'var(--primary-foreground)', 'var(--primary-hover)', text)
-  add('--flow-ink on --flow', 'var(--flow-ink)', 'var(--flow)', text)
+  add('action-text', 'action', text)
+  add('action-text', 'action-hover', text)
+  add('flow-text', 'flow', text)
   return pairs
 }
 

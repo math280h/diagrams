@@ -13,6 +13,7 @@
     ".playwright-mcp",
     "src/canvas/icons/data",
     "public/theme.schema.json",
+    "src/themes/released-keys.json",
     "public/schemas"
   ]
 }
