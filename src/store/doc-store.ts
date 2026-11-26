@@ -15,7 +15,6 @@ export interface DocState extends DocSnapshot {
   /** The `$schema` of the open diagram, if it is not a schema address of the app. */
   $schema?: string
   id: string | null
-  viewport: { x: number; y: number; zoom: number }
   createdAt: number
   /** The `rev` value of the last save or load. */
   rev: number
@@ -28,7 +27,6 @@ export const useDoc = create<DocState>(() => ({
   nodes: [],
   edges: [],
   flows: [],
-  viewport: { x: 0, y: 0, zoom: 1 },
   createdAt: 0,
   rev: 0,
 }))

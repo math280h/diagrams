@@ -172,14 +172,13 @@ describe('changes from outside the editor', () => {
     warning.mockRestore()
   })
 
-  it('loads a diagram that changed while only measured sizes and the viewport wait for their save', async () => {
+  it('loads a diagram that changed while only measured sizes wait for their save', async () => {
     const { toast } = await import('sonner')
     const warning = vi.spyOn(toast, 'warning')
     const diagram = stored('Shop')
     openDiagramSession(diagram)
     useDoc.setState((state) => ({
       nodes: state.nodes.map((node) => ({ ...node, measured: { width: 120, height: 48 } })),
-      viewport: { x: 10, y: 20, zoom: 1.5 },
     }))
     folderRepository().applyExternal({
       kind: 'changed',

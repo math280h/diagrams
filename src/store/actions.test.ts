@@ -50,7 +50,6 @@ import {
   setEdgeSides,
   setName,
   setTheme,
-  setViewport,
   fitGroupsToChildren,
   setNodeFrames,
   snapAfterDrag,
@@ -587,12 +586,6 @@ describe('diagram name, theme and view', () => {
     expect(useDoc.getState().name).toBe('Shop')
     undo()
     expect(useDoc.getState().name).toBe('Start')
-  })
-
-  it('sets the viewport without an undo step', () => {
-    setViewport({ x: 40, y: -20, zoom: 1.5 })
-    expect(useDoc.getState().viewport).toEqual({ x: 40, y: -20, zoom: 1.5 })
-    expect(canUndo()).toBe(false)
   })
 
   it('replaces the content with an older version as one undo step', () => {

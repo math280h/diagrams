@@ -1,15 +1,16 @@
 import { DIAGRAM_FILE_SUFFIX } from '@/desktop/constants'
 import { forgetOpenedInApp } from '@/desktop/open-in-app'
 import { createDiagram, DEFAULT_DIAGRAM_NAME, newId } from '@/model/defaults'
-import type { Diagram } from '@/model/schema'
+import type { Diagram, DiagramView } from '@/model/schema'
 import { templateDiagrams, type Template } from '@/templates'
 import { downloadBlob } from '@/lib/download'
 import { safeFileName } from '@/lib/format'
+import { copyView, forgetView, rememberView } from '@/store/device-views'
 import { closeDiagramSession, openDiagramId } from '@/store/document'
 import { reportError } from '@/store/problem-store'
 import { forgetVersions } from '@/store/versions'
 import { loadDiagramOrNull, repository } from './active-repository'
-import { DiagramFormatError, migrate } from './migrations'
+import { DiagramFormatError, legacyView, migrate } from './migrations'
 import type { DiagramMeta, RemoveOptions, RemoveResult, SaveResult } from './repository'
 import { withSchemaAddress } from './schema-address'
 
@@ -85,6 +86,7 @@ export function duplicateDiagram(id: string): Diagram | null {
   if (!source) return null
   const copy = withFreshIdentity(source, `${source.name} copy`)
   repository().save(copy)
+  copyView(id, copy.id)
   return copy
 }
 
@@ -105,6 +107,7 @@ export async function deleteDiagram(id: string, options?: RemoveOptions): Promis
   if (result.ok) {
     forgetOpenedInApp(id)
     forgetVersions(id)
+    forgetView(id)
   }
   return result
 }
@@ -147,12 +150,18 @@ export function exportStoredDiagram(meta: Pick<DiagramMeta, 'id' | 'name'>) {
 
 const NOT_A_DIAGRAM = 'This file is not a diagram. Open a diagram file that Diagrams exported.'
 
+/** A diagram that the app read, and the editor view that its file held in a format before 22. */
+export interface ReadDiagram {
+  diagram: Diagram
+  view: DiagramView | null
+}
+
 /**
  * Reads a diagram from JSON text and keeps its id.
  *
  * @throws DiagramFormatError If the text is not a valid diagram.
  */
-export function readDiagramJson(text: string): Diagram {
+export function readDiagramJson(text: string): ReadDiagram {
   let raw: unknown
   try {
     raw = JSON.parse(text)
@@ -160,7 +169,8 @@ export function readDiagramJson(text: string): Diagram {
     throw new DiagramFormatError(NOT_A_DIAGRAM)
   }
   if (typeof raw !== 'object' || raw === null) throw new DiagramFormatError(NOT_A_DIAGRAM)
-  return migrate(raw)
+  const view = legacyView(raw)
+  return { diagram: migrate(raw), view }
 }
 
 /**
@@ -169,5 +179,12 @@ export function readDiagramJson(text: string): Diagram {
  * @throws DiagramFormatError If the text is not a valid diagram.
  */
 export function parseDiagramJson(text: string): Diagram {
-  return withFreshIdentity(readDiagramJson(text))
+  return withFreshIdentity(readDiagramJson(text).diagram)
+}
+
+/** Saves a diagram that the app read, and keeps the view of its file as the view of this device. */
+export function saveReadDiagram({ diagram, view }: ReadDiagram): SaveResult {
+  const result = repository().save(diagram)
+  if (result.ok && view) rememberView(diagram.id, view)
+  return result
 }

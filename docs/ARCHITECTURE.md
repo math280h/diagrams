@@ -310,15 +310,26 @@ build/          app icon sources and renders
 
 ### Data model
 
-A `Diagram` holds nodes (`card`, `shape`, `text`, `group`), edges (`flow`), flows, the diagram settings and the
-viewport. The settings (`theme`) hold the font pair, the background, snap and the colour and routing switches. The
-settings hold no colours, because the colour theme belongs to the viewer (see "Themes").
+A `Diagram` holds nodes (`card`, `shape`, `text`, `group`), edges (`flow`), flows and the diagram settings. The
+settings (`theme`) hold the font pair, the background, snap and the colour and routing switches. The settings hold no
+colours, because the colour theme belongs to the viewer (see "Themes").
 
 - Web: `dg:diagram:<id>` per diagram, plus `dg:index`.
 - Desktop: `Documents/Diagrams/<id>.diagram.json`. A folder on the website uses the same file names.
 - Theme files of the user: `themes/<name>.theme.json` in the diagrams folder (see "Themes").
 - `rev` detects edits from another tab or program.
 - `repository()` returns the store of the build; callers do not know which.
+
+The editor view (pan and zoom) is not in a diagram. A pan or zoom thus does not save the diagram, and a diagram file
+in git does not change when a person only looks at it.
+
+- Each device keeps the last view of each diagram by diagram id, in `localStorage` (`dg:views`,
+  `src/store/device-views.ts`). The desktop app uses the `localStorage` of its renderer.
+- The store keeps the views of at most 500 diagrams. A delete removes the view of the diagram, and a copy gets the
+  view of the original.
+- A diagram without a view on the device opens fitted to the screen.
+- Formats before 22 stored `viewport`. The first open of such a diagram on a device takes it as the view of the
+  device (`legacyView`). Imports, the website handoff and share links of these formats do the same.
 
 A `Flow` is an ordered list of steps (node, edge or the whole flow; caption, duration, camera mode). It can also have
 paths and keyframe tracks (camera, opacity, traffic). The app computes the timeline from the steps and never stores it.
@@ -408,8 +419,7 @@ Every format that a release wrote must open with no loss, until a new major vers
 - `src/persistence/migrations.ts` migrates older data (one step per version) before the schema parses it. All inputs use
   it: browser storage, diagram files, imports, website handoff, version history, pasted nodes (the clipboard carries
   the `version` of the source app).
-- A diagram keeps its format until the app saves a change (also a pan or zoom), so older apps elsewhere can still open
-  it.
+- A diagram keeps its format until the app saves a change, so older apps elsewhere can still open it.
 - A diagram file starts with `$schema`, the address of the JSON Schema of its format (`public/schemas/diagram-v<N>.json`
   on the website). Text editors use it to check and complete the files that people write by hand. The app writes the
   address of the current format, or an address of the user. Browser storage keeps only an address of the user, and
@@ -494,6 +504,7 @@ The change of each format, with the migration value in parentheses:
 - 19: theme has no `mode` (the migration deletes the value; the colour theme of each viewer colours the canvas).
 - 20: `captionStyle` on flows (`bottom`), optional on flow steps.
 - 21, optional: `$schema` (the address of the JSON Schema of a diagram file).
+- 22: no `viewport` (the migration deletes the value; each device keeps its own view, see "Data model").
 
 ### Request and response bodies
 
@@ -843,7 +854,7 @@ Versions keep saved states of each diagram across sessions; undo ends with the t
 - A version: gzip-compressed diagram JSON plus a record with author, time and summary.
 - Each diagram keeps its newest 200 versions; a diagram delete deletes them.
 - `src/store/versions.ts` records a version after each editor save, also when the storage write fails. Saves that
-  change only the viewport or measured sizes make no version.
+  change only measured sizes make no version.
 - User edits join the newest version for five minutes after its first edit, so the list stays short.
 - Agent calls and restores make their own versions. They change and save inside `asVersionAuthor`, which names the
   author and the tool title or the restored time. All other saves are user edits, also while an agent call waits for a
@@ -1097,7 +1108,7 @@ Claude Code then works on the diagrams through files in that folder. The user in
 - Before a write, the app reads the file. If it differs from that last text, the app does not write it, and loads the
   change from outside. So the app never writes over an agent change that came between two scans. The app version
   stays in the version history.
-- A save that changes only the viewport, the save counter, measured sizes or `$schema` does not write a file of the
+- A save that changes only the save counter, measured sizes, `$schema` or the format does not write a file of the
   folder. Linked files on the desktop follow the same rule.
 - The open diagram loads a change from outside at once, unless a change of the user waits for its save. Then it offers
   "Load newer", as the desktop app does.
@@ -1288,8 +1299,8 @@ with snapdom, because Chromium gives only pixels.
 - Files use indented JSON with numbers to two decimals, for small diffs.
 - `app-settings.json` in the user data folder holds the app settings. Each key reads alone. A key that is not there or
   not valid takes its default. The other keys of the file stay in use.
-- The app does not write a linked file when only the viewport, save counter, time, measured sizes or `$schema`
-  change. A pan or zoom must not alter the repository file.
+- The app does not write a linked file when only the save counter, time, measured sizes, `$schema` or the format
+  change. A diagram that a person only opens must not alter the repository file.
 - Version history shows the last git commit of a linked file over the canvas, with a change summary (`git show
   HEAD:./<file>` through `files.committed`). Restore is one undo step. Git must be on the PATH.
 - An unreadable diagrams folder at start shows the reason and "Try again"; agent calls fail at once with it.

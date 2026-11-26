@@ -78,18 +78,20 @@ function withSortedKeys(value: unknown): unknown {
 }
 
 /**
- * Returns the content of a diagram file without `$schema` and the fields that change on a pan, a zoom, a measure or
- * any save, with the keys in a fixed order: a diagram that the app parses again has its keys in the order of the schema.
+ * Returns the content of a diagram file without `$schema`, the format, the view of a format before 22 and the fields
+ * that change on a measure or any save. The keys are in a fixed order: a diagram that the app parses again has its
+ * keys in the order of the schema.
  */
 function lastingContent(text: string): string {
   const {
     $schema: _schema,
+    version: _version,
     viewport: _viewport,
     rev: _rev,
     updatedAt: _updatedAt,
     nodes,
     ...rest
-  } = JSON.parse(text) as Diagram
+  } = JSON.parse(text) as Diagram & { viewport?: unknown }
   return JSON.stringify(withSortedKeys({ ...rest, nodes: nodes.map(({ measured: _measured, ...node }) => node) }))
 }
 
@@ -99,8 +101,8 @@ function lastingContent(text: string): string {
  * Reads are synchronous. The id of a diagram is its file name, so a copied file never saves under the id inside it.
  * Only the last save of a diagram sends `saved` or `save-failed`. A save that the sink refuses for a change from outside
  * sends neither, and the repository takes that change as {@link CachedRepository.applyExternal} does. A linked file and a file in a picked folder are
- * project files: a save that changes only the viewport, the save counter, the time, measured sizes or `$schema` does
- * not write them, when storage has the other content already.
+ * project files: a save that changes only the save counter, the time, measured sizes, `$schema` or the format does not
+ * write them, when storage has the other content already.
  */
 export function createCachedRepository(options: {
   location: StorageLocation

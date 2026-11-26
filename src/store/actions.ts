@@ -178,11 +178,6 @@ export function setTheme(patch: Partial<DiagramTheme>) {
   useDoc.setState({ theme: { ...useDoc.getState().theme, ...patch } })
 }
 
-/** Sets the viewport that the next save writes. It records no undo step. */
-export function setViewport(viewport: Diagram['viewport']) {
-  useDoc.setState({ viewport })
-}
-
 /** Replaces the name, theme, nodes, edges and flows with those of an older version, as one undo step. */
 export function restoreContent(version: Diagram) {
   record()

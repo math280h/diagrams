@@ -1,6 +1,6 @@
 import { base64UrlToBytes, bytesToBase64Url } from '@/lib/base64url'
-import type { Diagram } from '@/model/schema'
-import { DiagramFormatError, migrate } from '@/persistence/migrations'
+import type { Diagram, DiagramView } from '@/model/schema'
+import { DiagramFormatError, legacyView, migrate } from '@/persistence/migrations'
 import { compressLink, decompressLink } from './link-codec'
 import { type Json, withExplicitIds, withImplicitIds } from './link-ids'
 
@@ -123,22 +123,35 @@ async function readDeflateData(data: string): Promise<unknown> {
 }
 
 /**
+ * Reads the diagram in share data, in the current format or in an earlier one, and the editor view that data of a
+ * format before 22 holds.
+ *
+ * @returns A diagram with a new id, in the current format.
+ * @throws ShareLinkError If the data is damaged or holds no diagram that this app can read.
+ */
+export async function readShareData(data: string): Promise<{ diagram: Diagram; view: DiagramView | null }> {
+  let content: unknown
+  if (data.startsWith(MODEL_PREFIX)) content = await readModelData(data)
+  else if (data.startsWith(DEFLATE_PREFIX)) content = await readDeflateData(data)
+  else throw new ShareLinkError('This link does not hold a diagram.')
+  const now = Date.now()
+  const view = legacyView(content)
+  try {
+    const diagram = migrate({ ...(content as object), id: 'd_shared', rev: 0, createdAt: now, updatedAt: now })
+    return { diagram, view }
+  } catch (error) {
+    throw new ShareLinkError(error instanceof DiagramFormatError ? error.message : 'This link holds no diagram.')
+  }
+}
+
+/**
  * Reads the diagram in share data, in the current format or in an earlier one.
  *
  * @returns A diagram with a new id, in the current format.
  * @throws ShareLinkError If the data is damaged or holds no diagram that this app can read.
  */
 export async function decodeShareData(data: string): Promise<Diagram> {
-  let content: unknown
-  if (data.startsWith(MODEL_PREFIX)) content = await readModelData(data)
-  else if (data.startsWith(DEFLATE_PREFIX)) content = await readDeflateData(data)
-  else throw new ShareLinkError('This link does not hold a diagram.')
-  const now = Date.now()
-  try {
-    return migrate({ ...(content as object), id: 'd_shared', rev: 0, createdAt: now, updatedAt: now })
-  } catch (error) {
-    throw new ShareLinkError(error instanceof DiagramFormatError ? error.message : 'This link holds no diagram.')
-  }
+  return (await readShareData(data)).diagram
 }
 
 /** Returns the address of a share link on the site at `base`, for example `https://draw.thias.dev/`. */

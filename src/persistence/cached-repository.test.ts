@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createDiagram, createFlow } from '@/model/defaults'
+import { createDiagram, createFlow, defaultTextData } from '@/model/defaults'
 import type { Diagram } from '@/model/schema'
 import { createCachedRepository, serializeDiagram, type RepositorySink } from './cached-repository'
 import { TrashError, type RepositoryEvent, type StorageLocation } from './repository'
@@ -131,21 +131,17 @@ describe('createCachedRepository', () => {
   })
 
   it('writes numbers to two decimals', () => {
-    const text = serializeDiagram(diagram('Round', { viewport: { x: 12.345678, y: -0.004, zoom: 0.8333333 } }))
-    expect(JSON.parse(text).viewport).toEqual({ x: 12.35, y: 0, zoom: 0.83 })
+    const node = { id: 'n_1', type: 'text', position: { x: 12.345678, y: -0.004 }, data: defaultTextData() } as const
+    const text = serializeDiagram(diagram('Round', { nodes: [{ ...node, measured: { width: 80.125, height: 24 } }] }))
+    expect(JSON.parse(text).nodes[0]).toMatchObject({ position: { x: 12.35, y: 0 }, measured: { width: 80.13 } })
   })
 
-  it('does not write a linked file again when only the view, the save counter or the sizes change', async () => {
+  it('does not write a linked file again when only the save counter, the time or the sizes change', async () => {
     const first = diagram('Linked', { id: 'link-1' })
     const { repository, sink, events } = setup([
       { id: 'link-1', text: serializeDiagram(first), path: '/repo/docs/a.diagram.json' },
     ])
-    repository.save({
-      ...first,
-      viewport: { x: 40, y: 10, zoom: 1.5 },
-      rev: first.rev + 1,
-      updatedAt: first.updatedAt + 1,
-    })
+    repository.save({ ...first, rev: first.rev + 1, updatedAt: first.updatedAt + 1 })
     await repository.settled()
     expect(sink.write).not.toHaveBeenCalled()
     expect(events).toContainEqual({ kind: 'saved', id: 'link-1' })
@@ -156,13 +152,13 @@ describe('createCachedRepository', () => {
     expect(sink.write).toHaveBeenCalledTimes(1)
   })
 
-  it('does not write a file of a picked folder again when only the view, the save counter or the sizes change', async () => {
+  it('does not write a file of a picked folder again when only the save counter or the sizes change', async () => {
     const first = diagram('Project', { id: 'd_project' })
     const { repository, sink } = setup([{ id: 'd_project', text: serializeDiagram(first) }], {
       kind: 'picked-folder',
       name: 'docs',
     })
-    repository.save({ ...first, viewport: { x: 5, y: 5, zoom: 2 }, rev: first.rev + 1 })
+    repository.save({ ...first, rev: first.rev + 1 })
     await repository.settled()
     expect(sink.write).not.toHaveBeenCalled()
     repository.save({ ...first, name: 'Renamed' })
@@ -170,12 +166,26 @@ describe('createCachedRepository', () => {
     expect(sink.write).toHaveBeenCalledTimes(1)
   })
 
+  it('does not write a linked file of format 21 again only to drop its view and give it the new format', async () => {
+    const first = diagram('Older', { id: 'link-3' })
+    const older = { ...first, version: 21, viewport: { x: 40, y: 10, zoom: 1.5 } }
+    const { repository, sink } = setup([
+      { id: 'link-3', text: serializeDiagram(older as unknown as Diagram), path: '/repo/docs/c.diagram.json' },
+    ])
+    repository.save({ ...repository.load('link-3')!, rev: first.rev + 1 })
+    await repository.settled()
+    expect(sink.write).not.toHaveBeenCalled()
+    repository.save({ ...first, name: 'Renamed' })
+    await repository.settled()
+    expect(sink.write).toHaveBeenCalledWith({ id: 'link-3', text: expect.not.stringContaining('viewport') })
+  })
+
   it('does not write a linked file without a schema address again only to add the address', async () => {
     const first = diagram('Hand-written', { id: 'link-2' })
     const { repository, sink } = setup([
       { id: 'link-2', text: JSON.stringify(first), path: '/repo/docs/b.diagram.json' },
     ])
-    repository.save({ ...first, viewport: { x: 5, y: 5, zoom: 2 }, rev: first.rev + 1 })
+    repository.save({ ...first, rev: first.rev + 1 })
     await repository.settled()
     expect(sink.write).not.toHaveBeenCalled()
     repository.save({ ...first, name: 'Renamed' })
@@ -206,7 +216,7 @@ describe('createCachedRepository', () => {
     expect(sink.write).not.toHaveBeenCalled()
   })
 
-  it('writes a linked file again after its write failed, also when the next save changes only the view', async () => {
+  it('writes a linked file again after its write failed, also when the next save changes only the rev', async () => {
     const first = diagram('Linked', { id: 'link-1' })
     const { repository, sink, events } = setup([
       { id: 'link-1', text: serializeDiagram(first), path: '/repo/docs/a.diagram.json' },
@@ -214,7 +224,7 @@ describe('createCachedRepository', () => {
     sink.write.mockRejectedValueOnce(new Error('EBUSY'))
     repository.save({ ...first, name: 'Renamed' })
     await repository.settled()
-    repository.save({ ...first, name: 'Renamed', viewport: { x: 9, y: 9, zoom: 2 }, rev: first.rev + 1 })
+    repository.save({ ...first, name: 'Renamed', rev: first.rev + 1 })
     await repository.settled()
     expect(sink.write).toHaveBeenCalledTimes(2)
     expect(events.at(-1)).toEqual({ kind: 'saved', id: 'link-1' })

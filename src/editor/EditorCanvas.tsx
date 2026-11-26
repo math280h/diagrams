@@ -23,9 +23,9 @@ import {
   onNodesChange,
   reparentAfterDrag,
   selectOnly,
-  setViewport,
   snapAfterDrag,
 } from '@/store/actions'
+import { deviceView, rememberView } from '@/store/device-views'
 import { useDoc } from '@/store/doc-store'
 import { beginGesture, endGesture } from '@/store/history'
 import { setUi, useUi } from '@/store/ui-store'
@@ -44,9 +44,7 @@ import { ZoomControls } from './ZoomControls'
 import { useNavigate } from '@tanstack/react-router'
 import { flushPendingSave } from '@/store/document'
 
-function isDefaultViewport(viewport: Viewport): boolean {
-  return viewport.x === 0 && viewport.y === 0 && viewport.zoom === 1
-}
+const ORIGIN_VIEW: Viewport = { x: 0, y: 0, zoom: 1 }
 
 type GuideLines = Pick<HelperLines, 'vertical' | 'horizontal'>
 
@@ -95,7 +93,8 @@ export function EditorCanvas() {
   const empty = useDoc((state) => state.nodes.length === 0)
   const large = useDoc((state) => state.nodes.length >= MINIMAP_MIN_NODES)
   const theme = useDoc((state) => state.theme)
-  const [initialViewport] = useState(() => useDoc.getState().viewport)
+  const openId = useDoc((state) => state.id)
+  const [savedView] = useState(() => (openId === null ? null : deviceView(openId)))
   const [narrow] = useState(() => window.innerWidth < NARROW_SCREEN_PX)
   const colorTheme = useActiveTheme()
   const showMinimap = useSettings((state) => state.showMinimap)
@@ -203,8 +202,8 @@ export function EditorCanvas() {
           levelOfDetail
           onOpenDiagram={openDiagram}
           showCaption={false}
-          defaultViewport={initialViewport}
-          fitView={!empty && isDefaultViewport(initialViewport) && !narrow}
+          defaultViewport={savedView ?? ORIGIN_VIEW}
+          fitView={!empty && savedView === null && !narrow}
           fitViewOptions={editorFit()}
           onNodesChange={handleNodesChange}
           onEdgesChange={onEdgesChange}
@@ -216,7 +215,7 @@ export function EditorCanvas() {
           onSelectionDragStop={(event, dragged) => onDragStop(event, null, dragged)}
           onSelectionChange={onSelectionChange}
           onMoveEnd={(event, viewport) => {
-            if (event) setViewport(viewport)
+            if (event && openId !== null) rememberView(openId, viewport)
           }}
           onNodeClick={(event, node) => {
             if (!recording) return

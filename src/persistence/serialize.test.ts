@@ -13,7 +13,7 @@ import { DIAGRAM_VERSION, diagramSchema } from '@/model/schema'
 import { TEMPLATES, templateDiagrams } from '@/templates'
 import { serializeDiagram } from './cached-repository'
 import { diagramFileText } from './library-actions'
-import { DiagramFormatError, migrate, migrateElements } from './migrations'
+import { DiagramFormatError, legacyView, migrate, migrateElements } from './migrations'
 import { DIAGRAM_SCHEMA_URL, diagramSchemaPath } from './schema-address'
 import { fromDiagram, toDiagram } from './serialize'
 
@@ -76,6 +76,30 @@ describe('migrate', () => {
     expect(migrated.edges[0]!.data).not.toHaveProperty('accent')
     expect(() => migrateElements(nodes, edges, DIAGRAM_VERSION + 1)).toThrow(/^The copied nodes use format/)
     expect(() => migrateElements('nodes', [], DIAGRAM_VERSION)).toThrow(DiagramFormatError)
+  })
+
+  it('drops the view of version 21 and gives it to the caller before the migration', () => {
+    const v21 = { ...createDiagram('Shop'), version: 21, viewport: { x: 120, y: -40, zoom: 0.75 } }
+    const raw = JSON.parse(JSON.stringify(v21))
+    expect(legacyView(raw)).toEqual({ x: 120, y: -40, zoom: 0.75 })
+    const migrated = migrate(raw)
+    expect(migrated.version).toBe(DIAGRAM_VERSION)
+    expect(migrated).not.toHaveProperty('viewport')
+    expect(JSON.parse(serializeDiagram(migrated))).not.toHaveProperty('viewport')
+    expect(migrate({ ...createDiagram(), version: 21 })).not.toHaveProperty('viewport')
+  })
+
+  it('reads the view only of data of a format before 22', () => {
+    const viewport = { x: 5, y: 6, zoom: 2 }
+    expect(legacyView({ version: 1, viewport })).toEqual(viewport)
+    expect(legacyView({ viewport })).toEqual(viewport)
+    expect(legacyView({ version: 22, viewport })).toBeNull()
+    expect(legacyView({ version: 21, viewport: { x: 0, y: 0, zoom: 1 } })).toBeNull()
+    expect(legacyView({ version: 21, viewport: { x: 1, y: 2, zoom: -1 } })).toBeNull()
+    expect(legacyView({ version: 21, viewport: { x: 'left', y: 2, zoom: 1 } })).toBeNull()
+    expect(legacyView({ version: '21', viewport })).toBeNull()
+    expect(legacyView('diagram')).toBeNull()
+    expect(legacyView(null)).toBeNull()
   })
 
   it('rejects data that is not a diagram', () => {

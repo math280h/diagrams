@@ -363,22 +363,20 @@ describe('mergeDiagrams', () => {
     expect(result.detachedNodes).toHaveLength(1)
   })
 
-  it('takes the viewport, the measured sizes, the rev and the save time from mine', () => {
+  it('takes the measured sizes, the rev and the save time from mine', () => {
     const mine = edited(base, (draft) => {
-      draft.viewport = { x: 5, y: 6, zoom: 2 }
       draft.rev = 9
       draft.updatedAt = 1234
       node(draft, api).measured = { width: 216, height: 64 }
     })
     const theirs = edited(base, (draft) => {
-      draft.viewport = { x: 50, y: 60, zoom: 0.5 }
       draft.rev = 12
       node(draft, api).measured = { width: 216, height: 80 }
       node(draft, api).position = { x: 0, y: 0 }
     })
     const result = merged(mine, theirs)
     expect(result.conflicts).toEqual([])
-    expect(result.diagram).toMatchObject({ viewport: { x: 5, y: 6, zoom: 2 }, rev: 9, updatedAt: 1234 })
+    expect(result.diagram).toMatchObject({ rev: 9, updatedAt: 1234 })
     expect(node(result.diagram, api)).toMatchObject({ measured: { width: 216, height: 64 }, position: { x: 0, y: 0 } })
   })
 

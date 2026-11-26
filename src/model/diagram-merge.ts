@@ -473,7 +473,7 @@ export function changedElements(base: Diagram, side: Diagram): Set<string> {
  * details, the traffic and the bodies. A change on one side takes that side, and the same change on both sides
  * counts once. A field that the two sides changed in different ways is a conflict of its own. An element that one
  * side deleted and the other side changed, and an element that both sides added in different ways, are conflicts of
- * the whole element. The viewport, the measured sizes, the rev and the save time come from `mine`. `$schema` comes
+ * the whole element. The measured sizes, the rev and the save time come from `mine`. `$schema` comes
  * from `theirs` if only `theirs` changed it, else from `mine`.
  *
  * @param choices - The choice for each conflict, by {@link MergeConflict.key}. A conflict without a choice, or with a

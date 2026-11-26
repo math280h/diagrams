@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { Locator, Page } from '@playwright/test'
 import { DIAGRAM_VERSION, type Diagram } from '@/model/schema'
@@ -85,6 +85,45 @@ function twoCards(name: string) {
   const diagram = { ...b.build(name), id: 'd_e2e_merge' }
   return { diagram, file: { id: diagram.id, text: JSON.stringify(diagram) }, api, db }
 }
+
+test('keeps a pan and a zoom on this computer and does not write them to the file', async ({ window, dirs }) => {
+  const { diagram, file } = twoCards('Shop to look at')
+  const target = path.join(dirs.data, `${file.id}.diagram.json`)
+  writeFileSync(target, file.text)
+  await window.reload()
+  await expect(window.getByText(diagram.name)).toBeVisible({ timeout: 10_000 })
+  const openDiagram = () =>
+    window.evaluate((id) => {
+      location.hash = `#/d/${id}`
+    }, file.id)
+  await openDiagram()
+  await expect(window.getByLabel('Diagram name')).toHaveValue(diagram.name)
+  await expect.poll(() => readFileSync(target, 'utf8')).toContain('"$schema"')
+  await window.waitForTimeout(SAVE_WAIT_MS)
+  const before = readFileSync(target, 'utf8')
+  const modifiedMs = statSync(target).mtimeMs
+
+  const viewport = window.locator('[data-editor-canvas] .react-flow__viewport')
+  const box = (await window.locator('[data-editor-canvas]').boundingBox())!
+  await window.mouse.move(box.x + box.width / 2, box.y + 40)
+  await window.mouse.down()
+  await window.mouse.move(box.x + box.width / 2 - 160, box.y + 120, { steps: 8 })
+  await window.mouse.up()
+  await window.keyboard.down('Control')
+  await window.mouse.wheel(0, -200)
+  await window.keyboard.up('Control')
+  await window.waitForTimeout(SAVE_WAIT_MS)
+  const moved = await viewport.getAttribute('style')
+  expect(await window.evaluate(() => localStorage.getItem('dg:views'))).toContain(file.id)
+  expect(readFileSync(target, 'utf8')).toBe(before)
+  expect(statSync(target).mtimeMs).toBe(modifiedMs)
+
+  await window.getByRole('link', { name: 'All diagrams' }).click()
+  await expect(window.getByText(diagram.name)).toBeVisible()
+  await openDiagram()
+  await expect(viewport).toHaveAttribute('style', moved!)
+  expect(readFileSync(target, 'utf8')).toBe(before)
+})
 
 function pulled(diagram: Diagram, recipe: (draft: Diagram) => void) {
   const draft = structuredClone(diagram)

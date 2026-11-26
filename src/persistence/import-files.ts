@@ -4,7 +4,7 @@ import { isZip, unzipEntries } from '@/lib/zip'
 import type { Diagram } from '@/model/schema'
 import { loadDiagramOrNull, repository } from './active-repository'
 import { isSafeId } from './diagram-file-name'
-import { readDiagramJson, withFreshIdentity } from './library-actions'
+import { readDiagramJson, saveReadDiagram, withFreshIdentity, type ReadDiagram } from './library-actions'
 
 export interface ImportedDiagram {
   id: string
@@ -31,9 +31,8 @@ interface Source {
   blob: Blob
 }
 
-interface Parsed {
+interface Parsed extends ReadDiagram {
   file: string
-  diagram: Diagram
 }
 
 const NO_DIAGRAM_IN_IMAGE =
@@ -84,7 +83,7 @@ export async function readDiagramFiles(files: readonly File[]): Promise<{ parsed
   for (const file of files) {
     for (const source of await sourcesOf(file, failed)) {
       try {
-        parsed.push({ file: source.file, diagram: readDiagramJson(await diagramText(source)) })
+        parsed.push({ file: source.file, ...readDiagramJson(await diagramText(source)) })
       } catch (error) {
         failed.push({ file: source.file, reason: errorMessage(error) })
       }
@@ -113,7 +112,7 @@ export function saveReadDiagrams(parsed: readonly Parsed[]): ImportReport {
   const newIds = new Map<string, string>()
   const toSave: Parsed[] = []
 
-  for (const { file, diagram } of parsed) {
+  for (const { file, diagram, view } of parsed) {
     const { id } = diagram
     const storedHere = stored.has(id) || repository().storedText(id) !== null
     const occupant = placed.get(id) ?? (storedHere ? loadDiagramOrNull(id) : null)
@@ -123,23 +122,23 @@ export function saveReadDiagrams(parsed: readonly Parsed[]): ImportReport {
     }
     if (!storedHere && !placed.has(id) && isSafeId(id)) {
       placed.set(id, diagram)
-      toSave.push({ file, diagram })
+      toSave.push({ file, diagram, view })
       continue
     }
     const copy = withFreshIdentity(diagram)
     if (storedHere && !newIds.has(id)) newIds.set(id, copy.id)
     placed.set(copy.id, copy)
-    toSave.push({ file, diagram: copy })
+    toSave.push({ file, diagram: copy, view })
     report.copies.push({ id: copy.id, name: copy.name })
   }
 
-  for (const { file, diagram } of toSave) {
+  for (const { file, diagram, view } of toSave) {
     for (const node of diagram.nodes) {
       if ((node.type === 'card' || node.type === 'group') && node.data.opens !== undefined) {
         node.data.opens = newIds.get(node.data.opens) ?? node.data.opens
       }
     }
-    const result = repository().save(diagram)
+    const result = saveReadDiagram({ diagram, view })
     if (result.ok) report.imported.push({ id: diagram.id, name: diagram.name })
     else {
       report.failed.push({ file, reason: result.message })

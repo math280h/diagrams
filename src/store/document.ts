@@ -12,6 +12,7 @@ import { exportDiagramJson } from '@/persistence/library-actions'
 import { fromDiagram, toDiagram } from '@/persistence/serialize'
 import { storageCopy } from '@/persistence/storage-copy'
 import { restoreContent } from './actions'
+import { adoptLegacyView } from './device-views'
 import { useDoc, type DocState } from './doc-store'
 import { resetHistory } from './history'
 import { MERGE_PREVIEW_ID, reviewChosen, reviewOf, useOutsideReview } from './outside-review'
@@ -30,7 +31,6 @@ export function openDiagram(diagram: Diagram) {
     nodes,
     edges,
     flows: diagram.flows,
-    viewport: diagram.viewport,
     createdAt: diagram.createdAt,
     rev: diagram.rev,
   })
@@ -42,15 +42,15 @@ export function currentDiagram(): Diagram {
 }
 
 function persistedPart(state: DocState) {
-  return [state.name, state.theme, state.nodes, state.edges, state.flows, state.viewport] as const
+  return [state.name, state.theme, state.nodes, state.edges, state.flows] as const
 }
 
 /** Returns the parts of a diagram that a save writes, apart from the save time and the rev. */
 function savedContent(diagram: Diagram) {
-  return JSON.stringify([diagram.name, diagram.theme, diagram.nodes, diagram.edges, diagram.flows, diagram.viewport])
+  return JSON.stringify([diagram.name, diagram.theme, diagram.nodes, diagram.edges, diagram.flows])
 }
 
-/** Returns the parts of a diagram that the user changes: the saved parts without the viewport and measured sizes. */
+/** Returns the parts of a diagram that the user changes: the saved parts without the measured sizes. */
 function userContent(diagram: Diagram) {
   const nodes = diagram.nodes.map(({ measured: _measured, ...node }) => node)
   return JSON.stringify([diagram.name, diagram.theme, nodes, diagram.edges, diagram.flows])
@@ -94,7 +94,7 @@ const UNREADABLE_TITLE = 'The newer version cannot be read.'
  * {@link SAVE_RETRY_DELAYS_MS}, on the next change and on flush, until a save reaches storage.
  *
  * A change from outside loads at once, unless a change of the user waits for its save or did not reach storage. A
- * change of only the viewport or the measured sizes does not count. Otherwise the session offers the newer version.
+ * change of only the measured sizes does not count. Otherwise the session offers the newer version.
  * Until the user loads it or keeps the open version, a save only records a version. A version from outside that the
  * app cannot read gets no save.
  *
@@ -504,6 +504,7 @@ export function whenDiagramReady(id: string, timeoutMs = 10_000): Promise<LoadSt
 
 /**
  * Loads a diagram into the document store and saves later changes to the repository while the editor shows it.
+ * The stored view of a diagram of an earlier format becomes the view of this device ({@link adoptLegacyView}).
  *
  * @returns `loading`, `missing`, `invalid` with a message, or `ready`.
  */
@@ -517,6 +518,7 @@ export function useDiagramDocument(id: string): LoadStatus {
         useLoadState.setState({ id, status: { kind: 'missing' } })
         return
       }
+      adoptLegacyView(id, repository().storedText(id))
       openDiagramSession(diagram)
       useLoadState.setState({ id, status: { kind: 'ready' } })
     } catch (error) {
