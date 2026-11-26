@@ -7,6 +7,8 @@ import { DiagramBuilder } from '@/templates/builder'
 import { diagramFile, expect, launchApp, test } from './fixtures'
 
 const SAVE_WAIT_MS = 2000
+// On macOS, Chromium reads Control with a wheel as a trackpad pinch. The editor zooms with Command and the wheel there.
+const ZOOM_KEY = process.platform === 'darwin' ? 'Meta' : 'Control'
 const APP_SAVE_DELAY_MS = 400
 const NOTICE_STEP_MS = 16
 const NOTICE_CLOCK_BUDGET_MS = APP_SAVE_DELAY_MS - 100
@@ -109,9 +111,9 @@ test('keeps a pan and a zoom on this computer and does not write them to the fil
   await window.mouse.down()
   await window.mouse.move(box.x + box.width / 2 - 160, box.y + 120, { steps: 8 })
   await window.mouse.up()
-  await window.keyboard.down('Control')
+  await window.keyboard.down(ZOOM_KEY)
   await window.mouse.wheel(0, -200)
-  await window.keyboard.up('Control')
+  await window.keyboard.up(ZOOM_KEY)
   await window.waitForTimeout(SAVE_WAIT_MS)
   const moved = await viewport.getAttribute('style')
   expect(await window.evaluate(() => localStorage.getItem('dg:views'))).toContain(file.id)
